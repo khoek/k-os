@@ -1,0 +1,9 @@
+port_e9_hack: enabled=1
+
+debug: action=ignore
+
+boot: cdrom
+ata0-master: type=cdrom, path=cdrom.iso, status=inserted
+ata0-slave: type=disk, path=hdd2.img
+ata1-master: type=disk, path=hdd2.img
+ata1-slave: type=disk, path=hdd2.img
