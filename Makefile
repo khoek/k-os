@@ -1,4 +1,4 @@
-include Makefile.local
+-include Makefile.local
 
 all: cdrom.iso
 
@@ -32,4 +32,3 @@ build/kernel.elf: libk/libk.a kernel/kernel.a
 cdrom.iso: build/boot/grub/grub.cfg build/kernel.elf
 	@echo "creating image"
 	grub-mkrescue -o cdrom.iso build
-

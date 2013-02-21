@@ -1,4 +1,4 @@
-include ../Makefile.local
+-include ../Makefile.local
 
 CFLAGS=	-Wall -Wextra -Werror -I../libk/inc -Iinc -std=gnu99 \
 		-nostdlib -nostartfiles -nodefaultlibs -ffreestanding
