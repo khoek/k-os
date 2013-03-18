@@ -5,3 +5,6 @@
 *.img
 build
 Makefile.local
+compiler/build
+compiler/local
+bochsrc.txt

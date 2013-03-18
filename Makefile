@@ -18,16 +18,14 @@ clean:
 	rm -rf build/*
 
 run: cdrom.iso
-	make -C ../bochs
 	@echo "running bochs"
-	@echo "c" | $(BOCHS) -q
+	sudo $(BOCHS) -q
 
 build/boot/grub/grub.cfg: boot/grub/grub.cfg
 	@cp -R boot build
 
 build/kernel.elf: libk/libk.a kernel/kernel.a
-	@echo "linking kernel"
-	@$(LD) -T linker.ld -o build/kernel.elf kernel/kernel.a -Llibk -lk
+	@make -C kernel ../build/kernel.elf
 
 cdrom.iso: build/boot/grub/grub.cfg build/kernel.elf
 	@echo "creating image"

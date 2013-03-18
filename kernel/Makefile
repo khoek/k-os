@@ -15,15 +15,19 @@ OBJS=	src/loader.o src/kmain.o src/panic.o src/console.o \
 
 .s.o:
 	@echo "    nasm  $<"
-	@nasm -f elf -o $@ $<
+	@$(NASM) -f elf -o $@ $<
 
 %.o: %.c
 	@echo "      cc  $<"
-	@i586-elf-gcc $(CFLAGS) $(INCS) -c -o $@ $<
+	@$(GCC) $(CFLAGS) $(INCS) -c -o $@ $<
 
 kernel.a: $(OBJS)
 	@echo "building kernel.a"
-	@ar rcs kernel.a $(OBJS)
+	@$(AR) rcs kernel.a $(OBJS)
+
+../build/kernel.elf: kernel.a
+	@echo "linking kernel"
+	@$(LD) -T ../linker.ld -o ../build/kernel.elf kernel.a -L../libk -lk
 
 clean:
 	rm -f ./*/*.o

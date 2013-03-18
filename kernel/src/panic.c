@@ -7,6 +7,13 @@
 
 #define BUFFSIZE 512
 
+void die() {
+    while(true) {
+        cli();
+        hlt();
+    }
+}
+
 void panic(char* message) {
     console_color(0xC7);
 

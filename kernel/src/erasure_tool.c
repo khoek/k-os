@@ -2,6 +2,7 @@
 #include <string.h>
 #include "erasure_tool.h"
 #include "common.h"
+#include "panic.h"
 #include "idt.h"
 #include "pit.h"
 #include "mm.h"
@@ -40,6 +41,9 @@ static void print_header() {
 }
 
 static void print_tech_info() {
+   console_clear();   
+   print_header();
+
    console_color(0x0E);
    kprintf("Technical Information\n");
    console_color(0x07);
@@ -58,14 +62,26 @@ static void print_tech_info() {
    wait_for_enter();
 }
 
-static void run_tool() {
-   kprintf("Please select the drives which you would like to erase.\n");
+static void run_tool(uint8_t devices) {
+   uint8_t highlighted;
 
-   uint8_t highlighted = 1;
-   bool selected[4] = {0,0,1,0};
+   for (uint8_t i = 0; i < 4; i++) {
+      if (ide_device_is_present(i) && ide_device_get_type(i) == 0) {
+         highlighted = i;
+         break;
+      }
+   }
 
+   bool selected[4] = {0,0,0,0};
    bool selecting = true;
+   uint8_t selectedNum = 0;
+
    while (selecting) {
+      console_clear();
+      print_header();
+
+      kprintf("Please select the drives which you would like to erase.\n");
+
       for (uint8_t i = 0; i < 4; i++) {
          if (ide_device_is_present(i) && ide_device_get_type(i) == 0) {
             uint8_t foreground = 0x7, background = 0x0;
@@ -77,24 +93,64 @@ static void run_tool() {
 
             console_color((background << 4) + foreground);
             kprintf("   - ATA Device %u %7uMB - %s\n", i, ide_device_get_size(i) / 1024 / 2, ide_device_get_string(i, IDE_STRING_MODEL));
+            console_color(0x07);
          }
       }
 
-      kprintf("\n\nUse the \"ARROW KEYS\" to highlight a drive.\n");
+      for (int i = 0; i < 10 - devices; i++) kprintf("\n");
+
+      kprintf("Use the \"ARROW KEYS\" to highlight a drive.\n");
       kprintf("Press \"SPACE\"  to select/deselect the currently highlighted drive.\n\n");
+
+      kprintf("NOTE: You must select at least one drive to continue.\n\n");
+
       kprintf("Press \"ENTER\"  to continue.\n");
       kprintf("Press \"ESCAPE\" to go back.");
 
       switch (get_key()) {
+         case '\n':
+            if (selectedNum > 0) {
+               selecting = false;
+            }
+            break;
          case '\1':
             return;
-         case '\n':
-            selecting = false;
+         case '\3':
+            do {
+               highlighted--;
+               if (highlighted > 3) highlighted = 3;
+            } while (!(ide_device_is_present(highlighted) && ide_device_get_type(highlighted) == 0));
+            break;
+         case '\5':
+            do {
+               highlighted++;
+               if (highlighted == 4) highlighted = 0;
+            } while (!(ide_device_is_present(highlighted) && ide_device_get_type(highlighted) == 0));
+            break;
+         case ' ':
+            selected[highlighted] = !selected[highlighted];
+            selectedNum += selected[highlighted] ? 1 : -1;
             break;
       }
    }
 
-   kprintf("Please enter the number of passes to be performed (max 99): ");
+   console_clear();
+   print_header();
+
+   kprintf("Please select the drives which you would like to erase.\n");
+
+   for (uint8_t i = 0; i < 4; i++) {
+      if (ide_device_is_present(i) && ide_device_get_type(i) == 0) {
+         uint8_t foreground = 0x7, background = 0x0;
+         if (selected[i]) foreground = 0xC;
+
+         console_color((background << 4) + foreground);
+         kprintf("   - ATA Device %u %7uMB - %s\n", i, ide_device_get_size(i) / 1024 / 2, ide_device_get_string(i, IDE_STRING_MODEL));
+         console_color(0x07);
+      }
+   }
+
+   kprintf("\n\nPlease enter the number of passes to be performed (max 99, 0 to cancel): ");
 
    uint8_t idx = 0;
    char raw_passes[3];
@@ -118,11 +174,17 @@ static void run_tool() {
    raw_passes[idx] = '\0';
    uint32_t passes = atoi(raw_passes);
 
-   kprintf("\n\nPress enter to ");
+   if (passes == 0) return;
+
+   kprintf("\n\nPress \"ENTER\"  to ");
    console_color(0x0C);
-   kprintf("WIPE ALL ATTACHED ATA Disks");
+   kprintf("WIPE THE ATA DISKS SELECTED ABOVE");
    console_color(0x07);
-   kprintf(" with %u passes.\nPress ESCAPE to cancel and go back.\n\n", passes);
+   kprintf(" in %u pass", passes);
+
+   if (passes != 1) kprintf("es");
+
+   kprintf(".\nPress \"ESCAPE\" to cancel and go back.\n\n", passes);
 
    bool wait = true;
    while (wait) {
@@ -140,9 +202,9 @@ static void run_tool() {
    kprintf("Starting Data Erasure Tool...\n\n");
 
    uint8_t *space = (uint8_t *) page_to_address(alloc_page());
-   for (uint32_t i = 1; i < 64; i++) {
+   for (uint32_t i = 1; i < 63; i++) {
       alloc_page();
-      kprintf("Initializing... %3u%%\r", (i * 100) / 64);
+      kprintf("Initializing... %3u%%\r", ((i + 1) * 100) / 64);
    }
    kprintf("Initializing... 100%%\n");
 
@@ -152,21 +214,23 @@ static void run_tool() {
 
       kprintf("Starting Data Erasure Tool...\n\n");
 
-      kprintf("Initializing... 100%%\n");
+      kprintf("Initializing... 100%% %d\n", space);
 
       kprintf("\nWriting Pass %02u of %02u...\n", pass + 1, passes);
       for (uint32_t i = 0; i < (64 * 4 * 1024); i++) {
          space[i] = bit;
       }
 
+      int device = 0;
       for (uint32_t i = 0; i < 4; i++) {
          if (selected[i]) {
+            device++;
             uint32_t written = 0;
             while(written < ide_device_get_size(i)) {
                written += ide_write_sectors_same(i, ide_device_get_size(i) - written, written, space) / 512;
-               kprintf("   - Writing to device %u... %3u%%\r", i, (written * 100) / ide_device_get_size(i));
+               kprintf("   - Writing to device %u... %3u%%\r", device, (written * 100) / ide_device_get_size(i));
             }
-            kprintf("   - Writing to device %u... 100%\n", i);
+            kprintf("   - Writing to device %u... 100%\n", device);
          }
       }
 
@@ -179,13 +243,14 @@ static void run_tool() {
    kprintf("You may now turn the computer off.");
 
    beep();
+   die();
 }
 
 static void main_menu() {
    while (true) {
       print_header();
 
-      kprintf("It will attempt to completley destory ALL DATA on ALL ATTACHED ATA Disks.\n\n");
+      kprintf("It will attempt to completley destory ALL DATA on SELECTED ATA DISKS.\n\n");
 
       kprintf("The following devices have been detected:\n");
 
@@ -199,25 +264,27 @@ static void main_menu() {
 
       if (devices == 0) {
          console_color(0x0C);
-         kprintf("No devices have been detected. Running this tool will not do anything.\n");
+         kprintf("\nNo devices have been detected. You cannot run this tool.\n");
          console_color(0x07);
       }
 
-      for (uint8_t i = 0; i < 12 - devices + (devices == 0 ? 0 : 1); i++) {
-         kprintf("\n");
-      }
+      for (uint8_t i = 0; i < 12 - devices + 1; i++) kprintf("\n");
 
       kprintf("Press \"i\"     to view technical information.\n");
-      kprintf("Press \"ENTER\" to continue.");
+
+      if (devices == 0) {
+         kprintf("You may turn the computer off.");
+      } else {
+         kprintf("Press \"ENTER\" to continue.");
+      }
 
       char c = get_key();
-      print_header();
       switch (c) {
          case 'i':
             print_tech_info();
             break;
          case '\n':
-            run_tool();
+            run_tool(devices);
             break;
       }
    }

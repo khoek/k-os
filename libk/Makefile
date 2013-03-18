@@ -13,7 +13,7 @@ OBJS=	src/string.o src/printf.o
 
 libk.a: $(OBJS)
 	@echo "building libk.a"
-	@ar rcs libk.a $(OBJS)
+	@$(AR) rcs libk.a $(OBJS)
 
 clean:
 	rm -f ./*/*.o
