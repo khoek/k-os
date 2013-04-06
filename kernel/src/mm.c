@@ -87,7 +87,7 @@ static void paging_init(uint32_t max_addr) {
         }
     }
 
-    paging_set_directory(&page_directory);
+    //paging_set_directory(&page_directory);
 }
 
 static uint32_t get_index(page_t * page) {

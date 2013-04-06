@@ -8,8 +8,8 @@
 #include "mm.h"
 #include "console.h"
 
-#define IDE_ATA		0x00
-#define IDE_ATAPI	0x01
+#define TYPE_PATA		0x00
+#define TYPE_PATAPI	0x01
 
 #define IDE_ESUCCESS	 0
 #define IDE_EERROR	-1
@@ -184,7 +184,6 @@ char * ide_device_get_string(uint8_t device, uint8_t string) {
       default:
          panicf("IDE - Illegal string %u for device %u", string, device);
    }
-
 }
 
 static void ide_write(uint8_t channel, uint8_t reg, uint8_t data) {
@@ -356,7 +355,7 @@ static void irq_wait(uint8_t channel) {
    channels[channel].irq = false;
 }
 
-static int32_t ide_ata_access(bool write, bool same, uint8_t drive, uint64_t numsects, uint32_t lba, void * edi) {
+static int32_t TYPE_PATA_access(bool write, bool same, uint8_t drive, uint64_t numsects, uint32_t lba, void * edi) {
    uint8_t lba_mode /* 0: CHS, 1:LBA28,ide_buf 2: LBA48 */, dma /* 0: No DMA, 1: DMA */;
    uint8_t lba_io[6];
    uint32_t channel = ide_devices[drive].channel; // Read the Channel.
@@ -537,7 +536,7 @@ void ide_init(uint32_t BAR0, uint32_t BAR1, uint32_t BAR2, uint32_t BAR3, uint32
    for (uint8_t i = 0; i < 2; i++) {
       for (uint8_t j = 0; j < 2; j++) {
  
-         uint8_t err = 0, type = IDE_ATA, status;
+         uint8_t err = 0, type = TYPE_PATA, status;
          ide_devices[device].present = 0; // Assuming that no drive here.
 
          // (I) Select Drive:
@@ -557,18 +556,19 @@ void ide_init(uint32_t BAR0, uint32_t BAR1, uint32_t BAR2, uint32_t BAR3, uint32
             if ((status & ATA_SR_ERR)) {err = 1; break;} // If Err, Device is not ATA.
             if (!(status & ATA_SR_BSY) && (status & ATA_SR_DRQ)) break; // Everything is right.
          }
- 
+
          // (IV) Probe for ATAPI Devices: 
          if (err != 0) {
             uint8_t cl = ide_read(i, ATA_REG_LBA1);
             uint8_t ch = ide_read(i, ATA_REG_LBA2);
- 
+            
             if (cl == 0x14 && ch == 0xEB)
-               type = IDE_ATAPI;
+               type = TYPE_PATAPI;
             else if (cl == 0x69 && ch == 0x96)
-               type = IDE_ATAPI;
+               type = TYPE_PATAPI;
             else
                continue; // Unknown Type (may not be a device).
+                
  
             ide_write(i, ATA_REG_COMMAND, ATA_CMD_IDENTIFY_PACKET);
             sleep(1);
@@ -651,7 +651,7 @@ void ide_init(uint32_t BAR0, uint32_t BAR1, uint32_t BAR2, uint32_t BAR3, uint32
             // Device uses CHS or 28-bit Addressing:
             ide_devices[device].size = *((uint32_t *)(ide_buf + ATA_IDENT_MAX_LBA));
          }
- 
+
          // (VIII) String indicates model of device (like Western Digital HDD and SONY DVD-RW...):
          for(uint8_t k = 0; k < 40; k += 2) {
             ide_devices[device].model[k] = ide_buf[ATA_IDENT_MODEL + k + 1];
@@ -678,30 +678,30 @@ void ide_init(uint32_t BAR0, uint32_t BAR1, uint32_t BAR2, uint32_t BAR3, uint32
 static void ide_bounds_check(uint8_t drive, uint64_t numsects, uint32_t lba) {
    if (drive > 3 || ide_devices[drive].present == 0)
       panicf("IDE - writing sectors to nonexistent drive %u", drive);
-   else if (((lba + numsects) > ide_devices[drive].size) && (ide_devices[drive].type == IDE_ATA))
+   else if (((lba + numsects) > ide_devices[drive].size) && (ide_devices[drive].type == TYPE_PATA))
       panicf("IDE - writing to nonexistent sectors %u-%u to drive %u", ide_devices[drive].size, lba + numsects, drive);
 }
 
 int32_t ide_read_sectors(uint8_t drive, uint64_t numsects, uint32_t lba, void * edi) {
    ide_bounds_check(drive, numsects, lba);
 
-   if (ide_devices[drive].type == IDE_ATA)
-      return ide_ata_access(ATA_READ, false, drive, numsects, lba, edi);
-   else if (ide_devices[drive].type == IDE_ATAPI)
+   if (ide_devices[drive].type == TYPE_PATA)
+      return TYPE_PATA_access(ATA_READ, false, drive, numsects, lba, edi);
+   else if (ide_devices[drive].type == TYPE_PATAPI)
       //for (i = 0; i < numsects; i++) 
       return 0;
    else 
       panic("IDE - unknown device type");
       //panic("IDE ATAPI read not supported");
-         //err = ide_atapi_read(drive, lba + i, 1, es, edi + (i*2048));
+         //err = TYPE_PATApi_read(drive, lba + i, 1, es, edi + (i*2048));
 }
 
 int32_t ide_write_sectors(uint8_t drive, uint64_t numsects, uint32_t lba, void * edi) {
    ide_bounds_check(drive, numsects, lba);
 
-   if (ide_devices[drive].type == IDE_ATA)
-      return ide_ata_access(ATA_WRITE, false, drive, numsects, lba, edi);
-   else if (ide_devices[drive].type == IDE_ATAPI)
+   if (ide_devices[drive].type == TYPE_PATA)
+      return TYPE_PATA_access(ATA_WRITE, false, drive, numsects, lba, edi);
+   else if (ide_devices[drive].type == TYPE_PATAPI)
       return 0; 
       //panic("IDE ATAPI write not supported");
    else 
@@ -711,9 +711,9 @@ int32_t ide_write_sectors(uint8_t drive, uint64_t numsects, uint32_t lba, void *
 int32_t ide_write_sectors_same(uint8_t drive, uint64_t numsects, uint32_t lba, void * edi) {
    ide_bounds_check(drive, numsects, lba);
 
-   if (ide_devices[drive].type == IDE_ATA)
-      return ide_ata_access(ATA_WRITE, true, drive, numsects, lba, edi);
-   else if (ide_devices[drive].type == IDE_ATAPI)
+   if (ide_devices[drive].type == TYPE_PATA)
+      return TYPE_PATA_access(ATA_WRITE, true, drive, numsects, lba, edi);
+   else if (ide_devices[drive].type == TYPE_PATAPI)
       return 0; 
       //panic("IDE ATAPI write not supported");
    else 

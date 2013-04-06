@@ -5,10 +5,9 @@
 #include "io.h"
 #include "console.h"
 
-#define PIT_CLOCK       1193180
+#define PIT_CLOCK 1193180
 
 uint64_t ticks;
-
 uint64_t uptime() {
    return ticks;
 }

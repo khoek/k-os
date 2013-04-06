@@ -18,8 +18,8 @@ clean:
 	rm -rf build/*
 
 run: cdrom.iso
-	@echo "running bochs"
-	sudo $(BOCHS) -q
+	@echo "running qemu"
+	@qemu-system-x86_64 -cdrom cdrom.iso -drive id=disk,file=hdd.img,if=none -device ahci,id=ahci -device ide-drive,drive=disk,bus=ahci.0
 
 build/boot/grub/grub.cfg: boot/grub/grub.cfg
 	@cp -R boot build

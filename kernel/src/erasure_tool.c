@@ -227,7 +227,7 @@ static void run_tool(uint8_t devices) {
             device++;
             uint32_t written = 0;
             while(written < ide_device_get_size(i)) {
-               written += ide_write_sectors_same(i, ide_device_get_size(i) - written, written, space) / 512;
+               //written += ide_write_sectors_same(i, ide_device_get_size(i) - written, written, space) / 512;
                kprintf("   - Writing to device %u... %3u%%\r", device, (written * 100) / ide_device_get_size(i));
             }
             kprintf("   - Writing to device %u... 100%\n", device);

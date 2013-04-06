@@ -14,17 +14,21 @@
 #include "erasure_tool.h"
 
 void kmain(multiboot_info_t* mbd, int magic) {
-   if (magic != MULTIBOOT_BOOTLOADER_MAGIC)		panic("multiboot did not pass correct magic number");
-   if (!(mbd->flags & MULTIBOOT_INFO_MEMORY))		panic("multiboot did not pass memory information");
-   if (!(mbd->flags & MULTIBOOT_INFO_MEM_MAP))		panic("multiboot did not pass memory map");
-   if (!(mbd->flags & MULTIBOOT_INFO_BOOTDEV))		panic("multiboot did not pass boot device");
-
    console_clear();
    kprintf("Starting K-OS...\n\n");
 
+   if (magic != MULTIBOOT_BOOTLOADER_MAGIC)	panic("multiboot loader did not pass correct magic number");
+   if (!(mbd->flags & MULTIBOOT_INFO_MEMORY))	panic("multiboot loader did not pass memory information");
+   if (!(mbd->flags & MULTIBOOT_INFO_MEM_MAP))	panic("multiboot loader did not pass memory map");
+   if (!(mbd->flags & MULTIBOOT_INFO_BOOTDEV))	panic("multiboot loader did not pass boot device");
+
    gdt_init();
+
+   kprintf("Registering PS/2 Keyboard Driver...\n\n");
+   keyboard_init();
+
    idt_init();
-   
+
    pit_init(100);
 
    kprintf("Initializing MM...\n");
@@ -43,13 +47,10 @@ void kmain(multiboot_info_t* mbd, int magic) {
    //kprintf("\nInitializing VFS...\n");
    //vfs_init(mbd->boot_device);
 
-   kprintf("\nRegistering PS/2 Keyboard Driver...\n");
-   keyboard_init();
-
    //kprintf("\n\nLaunching Shell Command Interpreter...");
    //run_shell();
 
    sleep(100);
 
-   erasure_tool_run();
+   //erasure_tool_run();
 }
