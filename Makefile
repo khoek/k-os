@@ -9,8 +9,9 @@ src:
 
 cdrom.iso: src
 	@echo "creating image"
-	@cp -R grub.cfg build/boot/grub/
-	@cp -R kernel.elf src/kernel.elf
+	@mkdir -p build/boot/grub
+	@cp grub.cfg build/boot/grub/grub.cfg
+	@cp src/kernel.elf build/kernel.elf
 	@grub-mkrescue -o cdrom.iso build
 
 clean:
