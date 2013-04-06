@@ -22,7 +22,7 @@ all: kernel.elf
 
 %.o: %.c
 	@echo "      cc  $<"
-	@$(GCC) $(CFLAGS) -c -o $@ $<
+	@$(GCC) $(CFLAGS) -I. -c -o $@ $<
 
 kernel.a: $(OBJS)
 	@echo "building kernel.a"
