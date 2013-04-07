@@ -1,8 +1,8 @@
 # K-OS
 
-An basic operating system written by Keeley Hoek as a hobby. It was insipired by Charlie Somerville's incredible [JSOS](https://github.com/charliesome/KOS).
+An basic operating system written by Keeley Hoek as a hobby. It was insipired by Charlie Somerville's incredible [JSOS](https://github.com/charliesome/JSOS).
 
-It contains some code (including the libc) from [JSOS](https://github.com/charliesome/KOS) as well as [dlmalloc](http://g.oswego.edu/dl/html/malloc.html) which are licensed under the Simplified BSD license and the [Creative Commons CC0 1.0 Universal Public Domain Dedication](http://creativecommons.org/publicdomain/zero/1.0/), respectively.
+It contains some code from [JSOS](https://github.com/charliesome/KOS) as well as [dlmalloc](http://g.oswego.edu/dl/html/malloc.html) which are licensed under the Simplified BSD license and the [Creative Commons CC0 1.0 Universal Public Domain Dedication](http://creativecommons.org/publicdomain/zero/1.0/), respectively.
 
 ## License
 
@@ -30,7 +30,3 @@ The kernel is licensed under the Simplified BSD license:
     ON ANY THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT
     (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS
     SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
-
-    The views and conclusions contained in the software and documentation are those
-    of the authors and should not be interpreted as representing official policies, 
-    either expressed or implied, of the FreeBSD Project.
