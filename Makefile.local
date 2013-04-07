@@ -1,4 +1,0 @@
-GCC=	../compiler/local/bin/i586-elf-gcc
-LD=	../compiler/local/bin/i586-elf-ld
-AR=	../compiler/local/bin/i586-elf-ar
-NASM=	nasm
