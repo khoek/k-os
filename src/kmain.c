@@ -33,12 +33,12 @@ void kmain(multiboot_info_t* mbd, int magic) {
 
    kprintf("Initializing MM...\n");
    uint32_t highest_module = 0;
-   multiboot_module_t* mods = (multiboot_module_t*)mbd->mods_addr;
+   multiboot_module_t* mods = (multiboot_module_t*) mbd->mods_addr;
    for(uint32_t i = 0; i < mbd->mods_count; i++) {
        if(mods[i].mod_end > highest_module) {
            highest_module = mods[i].mod_end;
        }
-   }    
+   }
    mm_init((multiboot_memory_map_t*)mbd->mmap_addr, mbd->mmap_length, highest_module);
 
    kprintf("\nProbing PCI...\n");

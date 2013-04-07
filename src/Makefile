@@ -1,6 +1,6 @@
 -include ../Makefile.local
 
-CFLAGS=	-Wall -Wextra -Werror -I../libk/inc -Iinc -std=gnu99 \
+CFLAGS=	-Wall -Wextra -Werror -I. -std=gnu99 \
 		-nostdlib -nostartfiles -nodefaultlibs -ffreestanding
 
 OBJS=	string.o printf.o \
@@ -22,18 +22,13 @@ all: kernel.elf
 
 %.o: %.c
 	@echo "      cc  $<"
-	@$(GCC) $(CFLAGS) -I. -c -o $@ $<
+	@$(CC) $(CFLAGS) -c -o $@ $<
 
-kernel.a: $(OBJS)
-	@echo "building kernel.a"
-	@$(AR) rcs kernel.a $(OBJS)
-
-kernel.elf: kernel.a
+kernel.elf: $(OBJS)
 	@echo "linking kernel"
-	@$(LD) -T linker.ld -o kernel.elf kernel.a
+	@$(LD) -T linker.ld -o kernel.elf $(OBJS)
 
 clean:
-	rm -f ./*/*.o
-	rm -f kernel.a
+	rm -f *.o
 
 .PHONY: all clean
