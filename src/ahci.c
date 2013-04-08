@@ -150,10 +150,7 @@ kprintf("%u %u %u", port->cmd, port->cmd & AHCI_FLAG_FR, port->cmd & AHCI_FLAG_C
 }
  
 static void port_rebase(ahci_port *port, int portno) {
-kprintf("im here");
     stop_port(port);
-
-kprintf("stopped");
  
     // Command list offset: 1K * port
     // Command list entry size = 32
@@ -163,14 +160,12 @@ kprintf("stopped");
     port->clbu = 0;
     memset((void*)(port->clb), 0, 1024);
  
-kprintf("s2");
     // FIS offset: 32K+256*portno
     // FIS entry size = 256 uint8_ts per port
     port->fb = AHCI_BASE + (32<<10) + (portno<<8);
     port->fbu = 0;
     memset((void*)(port->fb), 0, 256);
  
-kprintf("s2");
     // Command table offset: 40K + 8K*portno
     // Command table size = 256*32 = 8K per port
     ahci_cmd_header *cmdheader = (ahci_cmd_header*)(port->clb);
@@ -183,9 +178,7 @@ kprintf("s2");
         memset((void*)cmdheader[i].ctba, 0, 256);
     }
  
-kprintf("s3");
     start_port(port);
-kprintf("s4");
 }
 
 static uint32_t check_type(ahci_port *port) {  
@@ -229,7 +222,6 @@ void ahci_init(void *BAR5) {
                     continue;
             }
 
-kprintf("invoking");
             port_rebase(&abar->port[i], i);
         }
     }
