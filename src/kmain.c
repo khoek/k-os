@@ -53,6 +53,8 @@ void kmain(multiboot_info_t *mbd, int magic) {
 
    //sleep(100);
 
+   console_clear();
+
    kprintf("\ndone!");
 
    //erasure_tool_run();

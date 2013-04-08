@@ -225,6 +225,4 @@ void ahci_init(void *BAR5) {
             //port_rebase(&abar->port[i], i);
         }
     }
-
-kprintf("bye");
 }

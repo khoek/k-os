@@ -160,7 +160,5 @@ void pci_init() {
     }
 
     probeAllBuses();
-
-    while(1);
 }
 
