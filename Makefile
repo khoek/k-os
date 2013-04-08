@@ -27,5 +27,4 @@ run: image hdd.img
 clean:
 	make -C src clean
 	rm -f cdrom.iso
-	rm -f kernel.sys
-
+	rm -f hdd.img

@@ -31,5 +31,6 @@ kernel.elf: $(OBJS)
 
 clean:
 	rm -f *.o
+	rm -f kernel.elf
 
 .PHONY: all clean
