@@ -1,6 +1,6 @@
 -include Makefile.local
 
-.PHONY: all kernel run clean
+.PHONY: all kernel image run clean
 
 all: kernel cdrom.iso
 
@@ -18,7 +18,9 @@ build/boot/grub/grub.cfg: boot/grub/grub.cfg
 hdd.img:
 	@dd if=/dev/zero of=hdd.img count=512
 
-run: cdrom.iso hdd.img
+image: kernel cdrom.iso
+
+run: image hdd.img
 	@echo "running qemu"
 	@$(QEMU) -cdrom cdrom.iso -drive id=disk,file=hdd.img,if=none -device ahci,id=ahci -device ide-drive,drive=disk,bus=ahci.0
 

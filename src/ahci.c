@@ -149,7 +149,7 @@ kprintf("%u %u %u", port->cmd, port->cmd & AHCI_FLAG_FR, port->cmd & AHCI_FLAG_C
     port->cmd &= ~AHCI_FLAG_FRE;
 }
  
-static void port_rebase(ahci_port *port, int portno) {
+/*static*/ void port_rebase(ahci_port *port, int portno) {
     stop_port(port);
  
     // Command list offset: 1K * port
@@ -225,4 +225,6 @@ void ahci_init(void *BAR5) {
             //port_rebase(&abar->port[i], i);
         }
     }
+
+kprintf("bye");
 }
