@@ -143,7 +143,7 @@ kprintf("port %X ", port);
  
 kprintf("%u %u %u", port->cmd, port->cmd & AHCI_FLAG_FR, port->cmd & AHCI_FLAG_CR);
     // Wait until FR (bit14), CR (bit15) are cleared
-    //while((port->cmd & AHCI_FLAG_FR) /*|| (port->cmd & AHCI_FLAG_CR)*/);
+    while((port->cmd & AHCI_FLAG_FR) /*|| (port->cmd & AHCI_FLAG_CR)*/);
  
     // Clear FRE (bit4)
     port->cmd &= ~AHCI_FLAG_FRE;
@@ -222,7 +222,7 @@ void ahci_init(void *BAR5) {
                     continue;
             }
 
-            port_rebase(&abar->port[i], i);
+            //port_rebase(&abar->port[i], i);
         }
     }
 }

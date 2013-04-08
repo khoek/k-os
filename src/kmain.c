@@ -51,7 +51,9 @@ void kmain(multiboot_info_t *mbd, int magic) {
    //kprintf("\n\nLaunching Shell Command Interpreter...");
    //run_shell();
 
-   sleep(100);
+   //sleep(100);
+
+   kprintf("\ndone!");
 
    //erasure_tool_run();
 }
