@@ -1,10 +1,10 @@
 -include Makefile.local
 
-.PHONY: all clean run
+.PHONY: all kernel run clean
 
-all: cdrom.iso
+all: kernel cdrom.iso
 
-src/kernel.elf:
+kernel:
 	make -C src all
 	
 cdrom.iso: src/kernel.elf build/boot/grub/grub.cfg
@@ -24,3 +24,6 @@ run: cdrom.iso hdd.img
 
 clean:
 	make -C src clean
+	rm -f cdrom.iso
+	rm -f kernel.sys
+
