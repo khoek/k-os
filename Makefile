@@ -22,7 +22,7 @@ image: kernel cdrom.iso
 
 run: image hdd.img
 	@echo "running qemu"
-	@$(QEMU) -cdrom cdrom.iso -drive id=disk,file=hdd.img,if=none -device ahci,id=ahci -device ide-drive,drive=disk,bus=ahci.0
+	@$(QEMU) -cdrom cdrom.iso -hda hdd.img
 
 clean:
 	make -C src clean
