@@ -66,7 +66,7 @@ void gdt_init() {
     gdt[4].base_24_31               = 0x00;
     
     gdtr.size = (sizeof(gdt_entry_t) * 5) - 1;
-    gdtr.offset = (unsigned int)gdt;
+    gdtr.offset = (unsigned int) gdt;
     __asm__ volatile("lgdt (%0)" :: "m"(gdtr));
     gdt_reload_segment_registers();
 }

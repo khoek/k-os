@@ -3,6 +3,7 @@
 *.a
 *.iso
 *.img
+*.elf
 build
 Makefile.local
 compiler/build
