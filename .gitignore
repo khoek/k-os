@@ -5,4 +5,4 @@
 *.img
 *.elf
 build
-compiler/build=
+Makefile.local
