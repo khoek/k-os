@@ -1,12 +1,12 @@
 # K-OS
 
-An basic operating system written by Keeley Hoek as a hobby. It was insipired by Charlie Somerville's incredible [JSOS](https://github.com/charliesome/JSOS).
+An basic operating system written by Keeley Hoek as a hobby. It was inspired by Charlie Somerville's incredible [JSOS](https://github.com/charliesome/JSOS).
 
-It contains some code from [JSOS](https://github.com/charliesome/KOS) as well as [dlmalloc](http://g.oswego.edu/dl/html/malloc.html) which are licensed under the Simplified BSD license and the [Creative Commons CC0 1.0 Universal Public Domain Dedication](http://creativecommons.org/publicdomain/zero/1.0/), respectively.
+It contains some code from [JSOS](https://github.com/charliesome/KOS) which is licensed under the Simplified BSD license.
 
 ## License
 
-The kernel is licensed under the Simplified BSD license:
+Where not explicitly indicated otherwise, all source code is licensed under the Simplified BSD license:
 
     Copyright (c) 2012, Keeley Hoek
     All rights reserved.
