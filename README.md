@@ -8,7 +8,7 @@ It contains some code from [JSOS](https://github.com/charliesome/KOS) which is l
 
 Where not explicitly indicated otherwise, all source code is licensed under the Simplified BSD license:
 
-    Copyright (c) 2012, Keeley Hoek
+    Copyright (c) 2012-2013, Keeley Hoek
     All rights reserved.
 
     Redistribution and use in source and binary forms, with or without
