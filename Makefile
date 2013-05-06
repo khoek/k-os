@@ -22,7 +22,7 @@ image: kernel cdrom.iso
 
 run: image hdd.img
 	@echo "running qemu"
-	@$(QEMU) -cdrom cdrom.iso -hda hdd.img
+	@$(QEMU) -boot d -cdrom cdrom.iso -hda hdd.img
 
 clean:
 	make -C src clean
