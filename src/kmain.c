@@ -68,7 +68,7 @@ void kmain(multiboot_info_t *mbd, int magic) {
    }
 
    //__asm__ volatile("jmp *%0" :: "p" (box));
-   __asm__ volatile("int $80");
+   __asm__ volatile("int $0x80");
 
    kprintf("\ndone!");
 }
