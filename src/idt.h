@@ -25,8 +25,11 @@ typedef struct idt_entry {
     uint16_t offset_hi;
 } __attribute__((__packed__)) idt_entry_t;
 
-void idt_init();
+static inline void lidt(idtr_t *idtr) {
+   __asm__ volatile("lidt (%0)" :: "p" (idtr));
+}
 
+void idt_init();
 void idt_register(uint32_t vector, void(*isr)(uint32_t));
 void init_isr();
 void idt_register_handler(uint8_t gate, uint32_t isr);

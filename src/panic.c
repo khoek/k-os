@@ -5,24 +5,43 @@
 #include "idt.h"
 #include "console.h"
 
-#define BUFFSIZE 512
+#define MAX_FRAMES  32
+#define BUFFSIZE    512
 
 void die() {
-    while(true) {
-        cli();
-        hlt();
-    }
+    cli();
+    while(true) hlt();
 }
 
 void panic(char* message) {
-    console_color(0xC7);
+    cli();
 
-    kprintf("Kernel Panic - %s", message);
+    console_color(0xC7);
+    kprintf("\n\nKernel Panic - %s\n", message);
+    console_color(0x07);
  
-    while(true) {
-        cli();
-        hlt();
+    // Stack contains:
+    //  Second function argument
+    //  First function argument (MaxFrames)
+    //  Return address in calling function
+    //  ebp of calling function (pointed to by current ebp)
+    unsigned int * ebp;
+    //ebp = ((unsigned int *)&message) - 2;
+    asm("mov %%ebp,%0" : "=r"(ebp));
+
+    kprintf("Stack trace:\n");
+    for(unsigned int frame = 0; frame < MAX_FRAMES; frame++)
+    {
+        unsigned int eip = ebp[1];
+        if(eip == 0)
+            break;
+
+        ebp = (unsigned int *)(ebp[0]);
+        //unsigned int * arguments = &ebp[2];
+        kprintf("    0x%X     \n", eip);
     }
+
+    while(true) hlt();
 }
 
 void panicf(char* fmt, ...) {

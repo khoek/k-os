@@ -8,7 +8,7 @@
 #include "mm.h"
 #include "console.h"
 
-#define TYPE_PATA		0x00
+#define TYPE_PATA	0x00
 #define TYPE_PATAPI	0x01
 
 #define IDE_ESUCCESS	 0
@@ -355,7 +355,7 @@ static void irq_wait(uint8_t channel) {
    channels[channel].irq = false;
 }
 
-static int32_t TYPE_PATA_access(bool write, bool same, uint8_t drive, uint64_t numsects, uint32_t lba, void * edi) {
+static int32_t pata_access(bool write, bool same, uint8_t drive, uint64_t numsects, uint32_t lba, void * edi) {
    uint8_t lba_mode /* 0: CHS, 1:LBA28,ide_buf 2: LBA48 */, dma /* 0: No DMA, 1: DMA */;
    uint8_t lba_io[6];
    uint32_t channel = ide_devices[drive].channel; // Read the Channel.
@@ -405,7 +405,7 @@ static int32_t TYPE_PATA_access(bool write, bool same, uint8_t drive, uint64_t n
    // (II) See if drive supports DMA or not;
    dma = false;
 
-   if (lba_mode > 0 /* There is no CHS (lba_mode == 0) for DMA */ && ide_devices[drive].features & ATA_FEATURE_DMA) { 
+   if (lba_mode > 0 /* There is no CHS (lba_mode == 0) for DMA */ && ide_devices[drive].features & ATA_FEATURE_DMA && 0) { 
       dma = true;
       ide_write(channel, ATA_REG_CONTROL, channels[channel].nIEN = ATA_IRQ_ON);
       ide_write_long(channel, ATA_REG_PRDTABLE, (uint32_t) channels[channel].prdt); //store the address of the PRDT
@@ -684,9 +684,8 @@ static void ide_bounds_check(uint8_t drive, uint64_t numsects, uint32_t lba) {
 
 int32_t ide_read_sectors(uint8_t drive, uint64_t numsects, uint32_t lba, void * edi) {
    ide_bounds_check(drive, numsects, lba);
-
    if (ide_devices[drive].type == TYPE_PATA)
-      return TYPE_PATA_access(ATA_READ, false, drive, numsects, lba, edi);
+      return pata_access(ATA_READ, false, drive, numsects, lba, edi);
    else if (ide_devices[drive].type == TYPE_PATAPI)
       //for (i = 0; i < numsects; i++) 
       return 0;
@@ -700,7 +699,7 @@ int32_t ide_write_sectors(uint8_t drive, uint64_t numsects, uint32_t lba, void *
    ide_bounds_check(drive, numsects, lba);
 
    if (ide_devices[drive].type == TYPE_PATA)
-      return TYPE_PATA_access(ATA_WRITE, false, drive, numsects, lba, edi);
+      return pata_access(ATA_WRITE, false, drive, numsects, lba, edi);
    else if (ide_devices[drive].type == TYPE_PATAPI)
       return 0; 
       //panic("IDE ATAPI write not supported");
@@ -712,7 +711,7 @@ int32_t ide_write_sectors_same(uint8_t drive, uint64_t numsects, uint32_t lba, v
    ide_bounds_check(drive, numsects, lba);
 
    if (ide_devices[drive].type == TYPE_PATA)
-      return TYPE_PATA_access(ATA_WRITE, true, drive, numsects, lba, edi);
+      return pata_access(ATA_WRITE, true, drive, numsects, lba, edi);
    else if (ide_devices[drive].type == TYPE_PATAPI)
       return 0; 
       //panic("IDE ATAPI write not supported");

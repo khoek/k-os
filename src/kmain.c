@@ -6,6 +6,7 @@
 #include "pit.h"
 #include "rand.h"
 #include "mm.h"
+#include "ide.h"
 #include "pci.h"
 #include "vfs.h"
 #include "keyboard.h"
@@ -14,13 +15,12 @@
 #include "erasure_tool.h"
 
 void kmain(multiboot_info_t *mbd, int magic) {
-   console_clear();
-   kprintf("Starting K-OS...\n\n");
+    console_clear();
+    kprintf("Starting K-OS...\n\n");
 
-   if (magic != MULTIBOOT_BOOTLOADER_MAGIC)	panic("multiboot loader did not pass correct magic number");
-   if (!(mbd->flags & MULTIBOOT_INFO_MEMORY))	panic("multiboot loader did not pass memory information");
-   if (!(mbd->flags & MULTIBOOT_INFO_MEM_MAP))	panic("multiboot loader did not pass memory map");
-   if (!(mbd->flags & MULTIBOOT_INFO_BOOTDEV))	panic("multiboot loader did not pass boot device");
+    if (magic != MULTIBOOT_BOOTLOADER_MAGIC)	panic("multiboot loader did not pass correct magic number");
+    if (!(mbd->flags & MULTIBOOT_INFO_MEMORY))	panic("multiboot loader did not pass memory information");
+    if (!(mbd->flags & MULTIBOOT_INFO_MEM_MAP))	panic("multiboot loader did not pass memory map");
 
    gdt_init();
 
@@ -53,9 +53,22 @@ void kmain(multiboot_info_t *mbd, int magic) {
 
    //sleep(100);
 
-   console_clear();
+   //console_clear();
+
+   for(uint8_t i = 0; i < 4; i++) {
+      kprintf("%c", ide_device_is_present(i) ? 'X' : '-');
+   }
+   kprintf("\n\n");
+
+   unsigned char box[512];
+   ide_read_sectors(0, 1, 0, box);
+
+   for(int i = 0; i < 16; i++) {
+     kprintf("%02X%02X ", box[i * 2], box[i * 2 + 1]);
+   }
+
+   //__asm__ volatile("jmp *%0" :: "p" (box));
+   __asm__ volatile("int $80");
 
    kprintf("\ndone!");
-
-   //erasure_tool_run();
 }

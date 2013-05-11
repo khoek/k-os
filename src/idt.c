@@ -20,10 +20,10 @@
 #define INIT			0x11 //enter "init" mode
 #define EOI			0x20 //end of interrupt handler
 
-//Potential spurious (ignore) vectors
+//Potential spurious vectors
 #define IRQ_SPURIOUS		7
-#define INT_SPURIOUS_MASTER	PIC_MASTER_OFFSET + IRQ_SPURIOUS
-#define INT_SPURIOUS_SLAVE	PIC_SLAVE_OFFSET + IRQ_SPURIOUS
+#define INT_SPURIOUS_MASTER	(PIC_MASTER_OFFSET + IRQ_SPURIOUS)
+#define INT_SPURIOUS_SLAVE	(PIC_SLAVE_OFFSET + IRQ_SPURIOUS)
 
 #define PIC_REG_IRR	0x0A
 #define PIC_REG_ISR	0x0B
@@ -34,7 +34,7 @@ static void (*isrs[255 - PIC_MASTER_OFFSET])(uint32_t);
 
 void idt_register(uint32_t vector, void(*isr)(uint32_t)) {
    if (isrs[vector - PIC_MASTER_OFFSET]) {
-      panicf("Registering Second INT handler for %u", vector);
+      panicf("Registering second interrupt handler for %u", vector);
    } else {
       isrs[vector - PIC_MASTER_OFFSET] = isr;
    }
@@ -52,7 +52,7 @@ void idt_register_handler(uint8_t gate, uint32_t isr) {
    idt[gate].type = 0x80 /* present */ | 0xe /* 32 bit interrupt gate */;
 }
 
-static char* exceptions[] = {
+static char* exceptions[32] = {
     [0] =	"Divide-by-zero Error",
     [1] =	"Debug",
     [2] =	"Non-maskable Interrupt",
@@ -82,10 +82,10 @@ static char* exceptions[] = {
 
 uint32_t isr_dispatch(uint32_t vector, uint32_t error) {
    if (vector < PIC_MASTER_OFFSET) {
-         panicf("Exception: Code %u %s - %u", vector, exceptions[vector] ? exceptions[vector] : "Unknown", error);
+      panicf("Exception: Code %u %s - %u", vector, exceptions[vector] ? exceptions[vector] : "Unknown", error);
    }
 
-//get_reg(MASTER_COMMAND, PIC_REG_ISR);
+   get_reg(MASTER_COMMAND, PIC_REG_ISR);
 
    if(vector == INT_SPURIOUS_MASTER && !(get_reg(MASTER_COMMAND, PIC_REG_ISR) & (1 << IRQ_SPURIOUS))) {
      return 0;
@@ -116,28 +116,28 @@ void idt_init() {
 
    //send INIT command
    outb(MASTER_COMMAND, INIT);
-   outb(SLAVE_COMMAND, INIT);
+   outb(SLAVE_COMMAND , INIT);
 
    //set interrupt vector offset
    outb(MASTER_DATA, PIC_MASTER_OFFSET);
-   outb(SLAVE_DATA, PIC_SLAVE_OFFSET);
+   outb(SLAVE_DATA , PIC_SLAVE_OFFSET);
 
    //set master/slave status
    outb(MASTER_DATA, 2);
-   outb(SLAVE_DATA, 4);
+   outb(SLAVE_DATA , 4);
 
    //set mode
    outb(MASTER_DATA, 0x05);
-   outb(SLAVE_DATA, 0x01);
+   outb(SLAVE_DATA , 0x01);
 
    //clear IRQ masks
    outb(MASTER_DATA, 0x0);
-   outb(SLAVE_DATA, 0x0);
+   outb(SLAVE_DATA , 0x0);
 
    idtr.size = (256 * 8) - 1;
    idtr.offset = (uint32_t) idt;
 
-   __asm__ volatile("lidt (%0)" :: "m" (idtr));
+   lidt(&idtr);
 
    sti();
 }

@@ -41,10 +41,7 @@ void beep() {
 
 void sleep(uint32_t milis) {
    uint64_t then = ticks;
-
-   while(ticks - then < milis) {
-      hlt();
-   }
+   while(ticks - then < milis) hlt();
 }
 
 void pit_init(uint32_t freq) {

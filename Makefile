@@ -16,7 +16,7 @@ build/boot/grub/grub.cfg: boot/grub/grub.cfg
 	@cp -R boot build
 
 hdd.img:
-	@dd if=/dev/zero of=hdd.img count=512
+	@dd if=/dev/zero of=hdd.img count=2048
 
 image: kernel cdrom.iso
 
