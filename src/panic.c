@@ -20,22 +20,13 @@ void panic(char* message) {
     kprintf("\n\nKernel Panic - %s\n", message);
     console_color(0x07);
  
-    // Stack contains:
-    //  Second function argument
-    //  First function argument (MaxFrames)
-    //  Return address in calling function
-    //  ebp of calling function (pointed to by current ebp)
     unsigned int * ebp;
-    //ebp = ((unsigned int *)&message) - 2;
     asm("mov %%ebp,%0" : "=r"(ebp));
 
-    kprintf("Stack trace:\n");
-    for(unsigned int frame = 0; frame < MAX_FRAMES; frame++)
-    {
-        unsigned int eip = ebp[1];
+    for(uint16_t frame = 0; frame < MAX_FRAMES; frame++) {
+        uint32_t eip = ebp[1];
         if(eip == 0)
             break;
-
         ebp = (unsigned int *)(ebp[0]);
         //unsigned int * arguments = &ebp[2];
         kprintf("    0x%X     \n", eip);
@@ -48,11 +39,9 @@ void panicf(char* fmt, ...) {
     char buff[BUFFSIZE];
     va_list va;
     va_start(va, fmt);
-
     if(vsprintf(buff, fmt, va) > BUFFSIZE) {
         panic("panicf overflow");
     }
-
     va_end(va);
 
     panic(buff);

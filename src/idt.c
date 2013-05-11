@@ -75,7 +75,7 @@ static char* exceptions[32] = {
     [30] =	"Security Exception"
 };
 
-/*static FIXME*/ uint16_t get_reg(uint16_t pic, uint8_t reg) {
+static uint16_t get_reg(uint16_t pic, uint8_t reg) {
     outb(pic, reg);
     return inb(pic);
 }

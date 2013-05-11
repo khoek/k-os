@@ -117,20 +117,20 @@ void keyboard_register_key_down(void (*handler)(char)) {
    keydown = handler;
 }
 
-bool shiftState() {
+bool shift_down() {
    return keyStates[42] || keyStates[54];
 }
 
-bool controlState() {
+bool control_down() {
    return keyStates[29];
 }
 
-bool altState() {
+bool alt_down() {
    return keyStates[56];
 }
 
-char translateScanCode(uint16_t code) {   
-   bool shift = shiftState();
+static char translate_code(uint16_t code) {   
+   bool shift = shift_down();
    if(keyStates[58]) {
       shift = !shift;
    }
@@ -138,29 +138,28 @@ char translateScanCode(uint16_t code) {
    return keyMap[code * 2 + (shift ? 1 : 0)];
 }
 
-void dispatch(uint16_t code) {
+static void dispatch(uint16_t code) {
    if(((uint32_t) code) >> 7) {
       code -= 128;
       keyStates[code] = false;
 
       if(keyup != 0) {
-         (*keyup)(translateScanCode(code));
+         (*keyup)(translate_code(code));
       }
    } else {
       keyStates[code] = true;
  
       if(keydown != 0) {
-         (*keydown)(translateScanCode(code));
+         (*keydown)(translate_code(code));
       }
    }
 }
 
-static void int33(uint32_t UNUSED(error)) {
+static void handle_event(uint32_t UNUSED(error)) {
    while(inb(0x64) & 2);
-
    dispatch(inb(0x60));
 }
 
 void keyboard_init() {
-   idt_register(33, &int33);
+   idt_register(33, &handle_event);
 }
