@@ -1,5 +1,4 @@
 global loader                           ; making entry point visible to linker
-global end_of_image
 global magic                            ; we will use this in kmain
 global mbd                              ; we will use this in kmain
  
@@ -40,8 +39,3 @@ align 4
 stack: resb STACKSIZE                   ; reserve 16k stack on a doubleword boundary
 magic: resd 1
 mbd:   resd 1
-
-section .end_of_image
-
-align 4
-end_of_image:

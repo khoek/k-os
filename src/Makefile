@@ -18,16 +18,16 @@ all: kernel.elf
 		
 .s.o:
 	@echo "    nasm  $<"
-	@$(NASM) -f elf -o $@ $<
+	@$(NASM) -f elf -g -o $@ $<
 
 %.o: %.c
 	@echo "      cc  $<"
-	@$(CC) $(CFLAGS) -c -o $@ $<
+	@$(CC) $(CFLAGS) -c -g -o $@ $<
 
-kernel.elf: $(OBJS)
+kernel.elf: $(OBJS) linker.ld
 	@echo "linking kernel"
 	@echo "      ld"
-	@$(LD) -T linker.ld -o kernel.elf $(OBJS)
+	@$(LD) -T linker.ld -g -o kernel.elf $(OBJS)
 
 clean:
 	rm -f *.o

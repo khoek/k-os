@@ -1,8 +1,8 @@
 #include <stdbool.h>
 #include <stdint.h>
 
-#define IDE_STRINGS		1
-#define IDE_STRING_MODEL	0
+#define IDE_STRINGS         1
+#define IDE_STRING_MODEL    0
 
 void ide_init(uint32_t BAR0, uint32_t BAR1, uint32_t BAR2, uint32_t BAR3, uint32_t BAR4);
 

@@ -5,28 +5,28 @@
 #include "ahci.h"
 #include "console.h"
 
-#define CONFIG_ADDRESS	0xCF8
-#define CONFIG_DATA	0xCFC
+#define CONFIG_ADDRESS  0xCF8
+#define CONFIG_DATA     0xCFC
 
-#define REG_FULL_BAR0	0x10
-#define REG_FULL_BAR1	0x14
-#define REG_FULL_BAR2	0x18
-#define REG_FULL_BAR3	0x1C
-#define REG_FULL_BAR4	0x20
-#define REG_FULL_BAR5	0x24
+#define REG_FULL_BAR0   0x10
+#define REG_FULL_BAR1   0x14
+#define REG_FULL_BAR2   0x18
+#define REG_FULL_BAR3   0x1C
+#define REG_FULL_BAR4   0x20
+#define REG_FULL_BAR5   0x24
 
-#define REG_WORD_VENDOR	0x00
-#define REG_WORD_DEVICE	0x02
+#define REG_WORD_VENDOR 0x00
+#define REG_WORD_DEVICE 0x02
 
 //Header type 0x00
-#define REG_BYTE_REVISN	0x08
-#define REG_BYTE_PROGID	0x09
-#define REG_BYTE_SCLASS	0x0A
-#define REG_BYTE_CLASS	0x0B
-#define REG_BYTE_HEADER	0x0E
+#define REG_BYTE_REVISN 0x08
+#define REG_BYTE_PROGID 0x09
+#define REG_BYTE_SCLASS 0x0A
+#define REG_BYTE_CLASS  0x0B
+#define REG_BYTE_HEADER 0x0E
 
 //Header type 0x01
-#define REG_BYTE_2NDBUS	0x19
+#define REG_BYTE_2NDBUS 0x19
 
 static uint32_t pci_read(uint16_t bus, uint16_t slot, uint16_t func, uint16_t offset) {
     outl(CONFIG_ADDRESS, (uint32_t)((((uint32_t) 0x80000000) | (uint32_t) bus << 16) | ((uint32_t) slot << 11) | ((uint32_t) func << 8) | (offset & 0xFC)));
@@ -52,25 +52,25 @@ static uint8_t pci_read_byte(uint16_t bus, uint16_t slot, uint16_t func, uint16_
 //}
 
 static char* classes[] = {
-    [0] =	"Unspecified Type",
-    [1] =	"Mass Storage Controller",
-    [2] =	"Network Controller",
-    [3] =	"Display Controller",
-    [4] =	"Multimedia Controller",
-    [5] =	"Memory Controller",
-    [6] =	"Bridge Device",
-    [7] =	"Simple Communication Controller",
-    [8] =	"Base System Peripheral",
-    [9] =	"Input Device",
-    [10] =	"Docking Station",
-    [11] =	"Processor",
-    [12] =	"Serial Bus Controller",
-    [13] =	"Wireless Controller",
-    [14] =	"Intelligent I/O Controller",
-    [15] =	"Satellite Communication Controller",
-    [16] =	"Encryption/Decryption Controller",
-    [17] =	"Data Acquisition and Signal Processing Controller",
-    [255] =	"Miscellaneous Device"
+    [0] =   "Unspecified Type",
+    [1] =   "Mass Storage Controller",
+    [2] =   "Network Controller",
+    [3] =   "Display Controller",
+    [4] =   "Multimedia Controller",
+    [5] =   "Memory Controller",
+    [6] =   "Bridge Device",
+    [7] =   "Simple Communication Controller",
+    [8] =   "Base System Peripheral",
+    [9] =   "Input Device",
+    [10] =  "Docking Station",
+    [11] =  "Processor",
+    [12] =  "Serial Bus Controller",
+    [13] =  "Wireless Controller",
+    [14] =  "Intelligent I/O Controller",
+    [15] =  "Satellite Communication Controller",
+    [16] =  "Encryption/Decryption Controller",
+    [17] =  "Data Acquisition and Signal Processing Controller",
+    [255] = "Miscellaneous Device"
 };
 
 static void probe_bus(uint8_t bus);
@@ -78,26 +78,22 @@ static void probe_device(uint8_t bus, uint8_t device);
 static void probe_function(uint8_t bus, uint8_t device, uint8_t function);
 
 static void probe_bus(uint8_t bus) {
-    uint8_t device;
-
-    for(device = 0; device < 32; device++) {
+    for(uint8_t device = 0; device < 32; device++) {
         probe_device(bus, device);
     }
 }
 
 static void probe_device(uint8_t bus, uint8_t device) {
-    uint8_t function = 0;
-    uint16_t vendor = pci_read_word(bus, device, function, REG_WORD_VENDOR);
+    uint16_t vendor = pci_read_word(bus, device, 0, REG_WORD_VENDOR);
+    
+    if(vendor == 0x0000 || vendor == 0xFFFF) return;
 
-    if(vendor == 0xFFFF || vendor == 0x0000) return;
-
-    probe_function(bus, device, function);
-    if((pci_read_byte(bus, device, function, REG_BYTE_HEADER) & 0x80) != 0) {
-        // It is a multi-function device, so probe remaining functions
-        for(function = 1; function < 8; function++) {
-            if((pci_read_word(bus, device, function, REG_WORD_VENDOR)) != 0xFFFF) {
-                probe_function(bus, device, function);
-            }
+    probe_function(bus, device, 0);
+    if((pci_read_byte(bus, device, 0, REG_BYTE_HEADER) & 0x80) != 0) {
+        for(int function = 1; function < 8; function++) {
+             if((pci_read_word(bus, device, function, REG_WORD_VENDOR)) != 0xFFFF) {
+                 probe_function(bus, device, function);
+             }
         }
     }
 }
@@ -116,27 +112,27 @@ static void probe_function(uint8_t bus, uint8_t device, uint8_t function) {
 
     switch(class) {
         case 0x01:
-            switch(subclass) {
-                case 0x01:
-                    ide_init(
-                        pci_read(bus, device, function, REG_FULL_BAR0),
-                        pci_read(bus, device, function, REG_FULL_BAR1),
-                        pci_read(bus, device, function, REG_FULL_BAR2),
-                        pci_read(bus, device, function, REG_FULL_BAR3),
-                        pci_read(bus, device, function, REG_FULL_BAR4));
-                    break;
-                case 0x06:
-                    ahci_init((void *) pci_read(bus, device, function, REG_FULL_BAR5));
-                    break;
-            }
-            break;
+             switch(subclass) {
+                 case 0x01:
+                     ide_init(
+                          pci_read(bus, device, function, REG_FULL_BAR0),
+                          pci_read(bus, device, function, REG_FULL_BAR1),
+                          pci_read(bus, device, function, REG_FULL_BAR2),
+                          pci_read(bus, device, function, REG_FULL_BAR3),
+                          pci_read(bus, device, function, REG_FULL_BAR4));
+                     break;
+                 case 0x06:
+                     ahci_init((void *) pci_read(bus, device, function, REG_FULL_BAR5));
+                     break;
+             }
+             break;
         case 0x06:
-            switch(subclass) {
-                case 0x04:
-                    probe_bus(pci_read_byte(bus, device, function, REG_BYTE_2NDBUS));
-                    break;
-            }
-            break;
+             switch(subclass) {
+                 case 0x04:
+                     probe_bus(pci_read_byte(bus, device, function, REG_BYTE_2NDBUS));
+                     break;
+             }
+             break;
     }
 }
 
@@ -147,8 +143,8 @@ static void probeAllBuses() {
      } else {
         //Multiple PCI host controllers
         for(unsigned int function = 0; function < 8; function++) {
-            if(pci_read_word(0, 0, function, REG_WORD_VENDOR) != 0xFFFF) break;
-            probe_bus(function);
+             if(pci_read_word(0, 0, function, REG_WORD_VENDOR) != 0xFFFF) break;
+             probe_bus(function);
         }
     }
 }

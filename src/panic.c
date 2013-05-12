@@ -5,8 +5,8 @@
 #include "idt.h"
 #include "console.h"
 
-#define MAX_FRAMES  32
-#define BUFFSIZE    512
+#define MAX_FRAMES      32
+#define BUFFSIZE        512
 
 void die() {
     cli();
@@ -16,7 +16,7 @@ void die() {
 void panic(char* message) {
     cli();
 
-    console_color(0xC7);
+    console_color(0x0C);
     kprintf("\n\nKernel Panic - %s\n", message);
     console_color(0x07);
  
@@ -26,7 +26,7 @@ void panic(char* message) {
     for(uint16_t frame = 0; frame < MAX_FRAMES; frame++) {
         uint32_t eip = ebp[1];
         if(eip == 0)
-            break;
+             break;
         ebp = (unsigned int *)(ebp[0]);
         //unsigned int * arguments = &ebp[2];
         kprintf("    0x%X     \n", eip);
