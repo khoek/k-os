@@ -2,7 +2,7 @@
 #include "string.h"
 
 int isdigit(char c) {
-     return (c >= '0') && (c <= '9');
+     return c >= '0' && c <= '9';
 }
 
 char* itoa(int value, char* buff, int base) {

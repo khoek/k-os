@@ -19,14 +19,15 @@ void panic(char* message) {
     cli();
 
     console_clear();
-
+    
     console_color(0x0C);
-    kprintf("Kernel Panic - %s\n", message);
+    kprintf("KERNEL PANIC: ");
     console_color(0x07);
+    kprintf("%s\n\n", message);
  
     kprintf("Stack trace:\n");
     uint32_t *ebp, eip = -1;
-    asm("mov %%ebp, %0" : "=r"(ebp));
+    asm("mov %%ebp, %0" : "=r" (ebp));
     eip = ebp[1];
 
     for(uint32_t frame = 0; eip != 0 && frame < MAX_FRAMES; frame++) {        
