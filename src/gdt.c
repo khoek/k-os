@@ -15,12 +15,12 @@ typedef struct gdt_entry {
     unsigned char base_24_31;
 } __attribute__((__packed__)) gdt_entry_t;
 
-gdt_entry_t* gdt = (gdt_entry_t*)0x71000;
+gdt_entry_t* gdt = (gdt_entry_t*) 0x71000;
 gdtr_t gdtr;
 
 extern int end_of_image;
 
-void gdt_reload_segment_registers();
+void reload_segment_registers();
 
 void gdt_init() {
      unsigned int code_end = ((unsigned int)&end_of_image + 4095) / 4096;
@@ -70,5 +70,5 @@ void gdt_init() {
      
      __asm__ volatile("lgdt (%0)" :: "m"(gdtr));
      
-     gdt_reload_segment_registers();
+     reload_segment_registers();
 }

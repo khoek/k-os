@@ -22,16 +22,6 @@ SECTIONS {
         ebss = .;
     }
 
-    .symtab ALIGN (0x1000) : {
-        symtab_start = .;
-
-        *(.symtab*)
-        *(.strtab*)
-        *(.shstrtab*)
-
-        symtab_end = .;
-    }
-
     .end_of_image : {
         end_of_image = .;
     }

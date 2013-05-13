@@ -3,26 +3,26 @@
 #include "ahci.h"
 #include "console.h"
 
-#define AHCI_BASE    0x400000 // 4M
+#define AHCI_BASE       0x400000 // 4M
 
-#define AHCI_DEV_NULL    0
-#define AHCI_DEV_SATA    1
+#define AHCI_DEV_NULL   0
+#define AHCI_DEV_SATA   1
 #define AHCI_DEV_SATAPI 2
-#define AHCI_DEV_SEMB    3
-#define AHCI_DEV_PM      4
+#define AHCI_DEV_SEMB   3
+#define AHCI_DEV_PM     4
 
-#define AHCI_FLAG_ST     (1)
-#define AHCI_FLAG_FRE    (1 << 4)
+#define AHCI_FLAG_ST     (1 <<  0)
+#define AHCI_FLAG_FRE    (1 <<  4)
 #define AHCI_FLAG_FR     (1 << 14)
 #define AHCI_FLAG_CR     (1 << 15)
 
-#define AHCI_PORT_STATUS_DET_PRESENT 0x3
-#define AHCI_PORT_STATUS_IPM_ACTIVE 0x1
+#define AHCI_PORT_STATUS_DET_PRESENT    0x3
+#define AHCI_PORT_STATUS_IPM_ACTIVE     0x1
 
-#define TYPE_SATA    0x00000101 // SATA drive
+#define TYPE_SATA   0x00000101 // SATA drive
 #define TYPE_SATAPI 0xEB140101 // SATAPI drive
-#define TYPE_SEMB    0xC33C0101 // Enclosure management bridge
-#define TYPE_PM      0x96690101 // Port multiplier
+#define TYPE_SEMB   0xC33C0101 // Enclosure management bridge
+#define TYPE_PM     0x96690101 // Port multiplier
  
 typedef struct {
     uint32_t    dba;        // Data base address

@@ -44,7 +44,7 @@ void idt_set_gate(uint8_t gate, idt_entry_t entry) {
     idt[gate] = entry;
 }
 
-void idt_register_handler(uint8_t gate, uint32_t isr) {
+void idt_register_isr(uint32_t gate, uint32_t isr) {
     idt[gate].offset_lo = isr & 0xffff;
     idt[gate].offset_hi = (isr >> 16) & 0xffff;
     idt[gate].cs = 0x08;
@@ -82,7 +82,7 @@ static uint16_t get_reg(uint16_t pic, uint8_t reg) {
 
 uint32_t isr_dispatch(uint32_t vector, uint32_t error) {
     if (vector < PIC_MASTER_OFFSET) {
-        panicf("Exception: Code %u %s - %u", vector, exceptions[vector] ? exceptions[vector] : "Unknown", error);
+        panicf("Exception: Code %u %s - 0x%X", vector, exceptions[vector] ? exceptions[vector] : "Unknown", error);
     }
 
     get_reg(MASTER_COMMAND, PIC_REG_ISR);

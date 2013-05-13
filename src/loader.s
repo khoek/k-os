@@ -1,41 +1,32 @@
-global loader                           ; making entry point visible to linker
-global magic                            ; we will use this in kmain
-global mbd                              ; we will use this in kmain
- 
-extern kmain                            ; kmain is defined in kmain.cpp
- 
-; setting up the Multiboot header - see GRUB docs for details
-MODULEALIGN equ  1<<0                   ; align loaded modules on page boundaries
-MEMINFO     equ  1<<1                   ; provide memory map
-FLAGS       equ  MODULEALIGN | MEMINFO  ; this is the Multiboot 'flag' field
-MAGIC       equ  0x1BADB002             ; 'magic number' lets bootloader find the header
-CHECKSUM    equ -(MAGIC + FLAGS)        ; checksum required
- 
-section .text
- 
-align 4
-    dd MAGIC
-    dd FLAGS
-    dd CHECKSUM
- 
-; reserve initial kernel stack space
-STACKSIZE equ 0x4000                    ; that's 16k.
- 
+.global loader
+.type   loader, @function
+
+.set ALIGN,    1 << 0                   # align loaded modules on page boundaries
+.set MEMINFO,  1 << 1                   # provide memory map
+.set FLAGS,    ALIGN | MEMINFO          # this is the multiboot 'flag' field
+.set MAGIC,    0x1BADB002               # 'magic number' lets bootloader find the header
+.set CHECKSUM, -(MAGIC + FLAGS)         # checksum required
+
+.align 4
+.long MAGIC
+.long FLAGS
+.long CHECKSUM
+
+.skip 0x400                             # reserve 16 KiB stack
+stack:
+
 loader:
-    mov  esp, stack + STACKSIZE         ; set up the stack
-    push eax                            ; Multiboot magic number
-    push ebx                            ; Multiboot info structure
- 
-    call kmain                          ; call kernel proper
+    movl  $stack, %esp                  # set up the stack, stacks grow downwards
+    pushl %ebx                          # multiboot info
+    pushl %eax                          # magic number
 
-    cli                                 ; clear interrupt flag and hang
-.hang:
-    hlt                                 ; halt forever
-    jmp  .hang
- 
-section .bss 
+    call  kmain
 
-align 4
-stack: resb STACKSIZE                   ; reserve 16k stack on a doubleword boundary
-magic: resd 1
-mbd:   resd 1
+    cli
+.size loader, .-loader
+
+.type hang, @function
+hang:                                   # hang if kmain returns
+    hlt
+    jmp   hang
+.size hang, .-hang

@@ -1,38 +1,47 @@
+#include <stddef.h>
 #include <stdbool.h>
 #include <stdarg.h>
+#include <string.h>
 #include <printf.h>
 #include "panic.h"
 #include "idt.h"
+#include "elf.h"
 #include "console.h"
 
 #define MAX_FRAMES      32
 #define BUFFSIZE        512
 
 void die() {
-    cli();
     while(true) hlt();
 }
 
 void panic(char* message) {
     cli();
 
+    console_clear();
+
     console_color(0x0C);
-    kprintf("\n\nKernel Panic - %s\n", message);
+    kprintf("Kernel Panic - %s\n", message);
     console_color(0x07);
  
-    unsigned int * ebp;
-    asm("mov %%ebp,%0" : "=r"(ebp));
+    kprintf("Stack trace:\n");
+    uint32_t *ebp, eip = -1;
+    asm("mov %%ebp, %0" : "=r"(ebp));
+    eip = ebp[1];
 
-    for(uint16_t frame = 0; frame < MAX_FRAMES; frame++) {
-        uint32_t eip = ebp[1];
-        if(eip == 0)
-             break;
-        ebp = (unsigned int *)(ebp[0]);
-        //unsigned int * arguments = &ebp[2];
-        kprintf("    0x%X     \n", eip);
+    for(uint32_t frame = 0; eip != 0 && frame < MAX_FRAMES; frame++) {        
+        elf_symbol_t *symbol = elf_lookup_symbol(eip);
+        if(symbol == NULL) {
+            kprintf("    0x%X\n", eip);        
+        } else {
+            kprintf("    %s+0x%X\n", elf_symbol_name(symbol), eip - symbol->value);
+        }
+        
+        ebp = (uint32_t *) ebp[0];
+        eip = ebp[1];
     }
-
-    while(true) hlt();
+    
+    die();
 }
 
 void panicf(char* fmt, ...) {
@@ -46,3 +55,4 @@ void panicf(char* fmt, ...) {
 
     panic(buff);
 }
+

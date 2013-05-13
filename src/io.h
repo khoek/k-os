@@ -20,7 +20,6 @@ static inline uint32_t inl(uint16_t port) {
 	return ret;
 }
 
-
 static inline void insw(uint16_t port, void * buff, uint32_t size) {
     __asm__ volatile("rep insw" : "+D"(buff), "+c"(size) : "d"(port) : "memory");
 }
