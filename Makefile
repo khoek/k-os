@@ -13,7 +13,8 @@ cdrom.iso: src/kernel.elf build/boot/grub/grub.cfg
 	@grub-mkrescue -o cdrom.iso build
 
 build/boot/grub/grub.cfg: boot/grub/grub.cfg
-	@cp -R boot build
+	@mkdir -p build/boot/grub/
+	@cp -R boot/grub/grub.cfg build/boot/grub/grub.cfg
 
 hdd.img:
 	@dd if=/dev/zero of=hdd.img count=2048
@@ -26,5 +27,6 @@ run: image hdd.img
 
 clean:
 	make -C src clean
+	rm -rf build
 	rm -f cdrom.iso
 	rm -f hdd.img

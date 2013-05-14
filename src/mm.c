@@ -5,9 +5,9 @@
 #include "common.h"
 #include "panic.h"
 #include "console.h"
+#include "module.h"
 
 #define MAX_ORDER 10
-#define PAGE_SIZE 0x1000
 #define ADDRESS_SPACE_SIZE 4294967296ULL
 
 #define NUM_ENTRIES 1024
@@ -24,71 +24,6 @@ static uint32_t mem_end;
 static uint32_t page_directory[1024] ALIGN(PAGE_SIZE);
 static page_t  *pages;
 static page_t  *free_page_list[MAX_ORDER + 1];
-
-static void paging_init() {
-    uint32_t page_table_start = mem_start;
-    //reserve space for the page tables, remeaining page aligned, page directory is declared in the BSS above
-    mem_start += DIV_UP(8 * NUM_ENTRIES * NUM_ENTRIES, PAGE_SIZE) * PAGE_SIZE;
-
-    //reserve space for the page_t structs, remaining page aligned
-    pages = (page_t *) mem_start;
-    num_pages = DIV_DOWN(mem_end - mem_start, PAGE_SIZE);
-    mem_start += DIV_UP(sizeof(page_t) * NUM_ENTRIES * NUM_ENTRIES, PAGE_SIZE) * PAGE_SIZE;
-
-    uint32_t total = mem_end - page_table_start;
-    uint32_t paging_overhead = DIV_UP(8 * NUM_ENTRIES * NUM_ENTRIES, PAGE_SIZE) * PAGE_SIZE;
-    uint32_t malloc_overhead = DIV_UP(sizeof(page_t) * NUM_ENTRIES * NUM_ENTRIES, PAGE_SIZE) * PAGE_SIZE;
-    uint32_t available = mem_end - mem_start;
-    kprintf("Total     RAM:   %4u MB (%7u pages)\n", DIV_DOWN(total,           1024 * 1024), DIV_DOWN(total,           PAGE_SIZE));
-    kprintf("Available RAM:   %4u MB (%7u pages)\n", DIV_DOWN(available,       1024 * 1024), DIV_DOWN(available,       PAGE_SIZE));
-    kprintf("Paging Overhead: %4u MB (%7u pages)\n", DIV_DOWN(paging_overhead, 1024 * 1024), DIV_DOWN(paging_overhead, PAGE_SIZE));
-    kprintf("MAlloc Overhead: %4u MB (%7u pages)\n", DIV_DOWN(malloc_overhead, 1024 * 1024), DIV_DOWN(malloc_overhead, PAGE_SIZE));
-    kprintf("Physical Address Space: 0x%08X - 0x%08X\n", page_table_start, mem_end);
-
-    free_page_list[MAX_ORDER] = &pages[0];
-
-    page_t * last_page = NULL;
-    for (uint32_t page = 0; page < num_pages; page++) {
-        pages[page].flags = 0;
-        pages[page].order = MAX_ORDER;
-
-        pages[page].next = NULL;
-        if (page % (1 << MAX_ORDER) == 0) {
-             pages[page].prev = last_page;
-
-             if (last_page != NULL) {
-                 last_page->next = &pages[page];
-             }
-
-             last_page = &pages[page];
-        } else {
-             pages[page].prev = NULL;
-        }
-    }
-
-    for(uint32_t i = 0; i < NUM_ENTRIES; i++) {
-        uint32_t page_mem_start_addr = i * PAGE_SIZE * 1024;
-
-        //reserve 4 KiB for page table, mem_start is already page aligned...
-        uint32_t *page_table = (uint32_t *) page_table_start;
-        page_table_start += PAGE_SIZE;
-
-        page_directory[i] = (uint32_t) page_table | 1 /* present */ | 2 /* read/write */;
-        for(uint32_t j = 0; j < NUM_ENTRIES; j++) {
-             page_table[j] = (page_mem_start_addr + j * PAGE_SIZE) | 1 /* present */;
-             if(!(i == 0 && j == 0) && (page_mem_start_addr < 0x00120000 /* start of code */ || page_mem_start_addr >= (uint32_t) &end_of_image)) {
-                 page_table[j] |= 2;
-             }
-        }
-    }
-
-    __asm__ volatile("mov %0, %%cr3":: "b" (page_directory));
-    uint32_t cr0;
-    __asm__ volatile("mov %%cr0, %0": "=b" (cr0));
-    cr0 |= 1 << 31; //enable paging
-    cr0 |= 1 << 16; //enable read-only protection in supervisor mode
-    __asm__ volatile("mov %0, %%cr0":: "b" (cr0));
-}
 
 static uint32_t get_index(page_t * page) {
     return (((uint32_t) page) - ((uint32_t) pages)) / (sizeof(page_t));
@@ -196,13 +131,77 @@ void * page_to_address(page_t *page) {
   return (void *) ((get_index(page) * PAGE_SIZE) + mem_start);
 }
 
+static void paging_init() {
+    uint32_t page_table_start = mem_start;
+    //reserve space for the page tables, remeaining page aligned, page directory is declared in the BSS above
+    mem_start += DIV_UP(8 * NUM_ENTRIES * NUM_ENTRIES, PAGE_SIZE) * PAGE_SIZE;
+
+    //reserve space for the page_t structs, remaining page aligned
+    pages = (page_t *) mem_start;
+    num_pages = DIV_DOWN(mem_end - mem_start, PAGE_SIZE);
+    mem_start += DIV_UP(sizeof(page_t) * NUM_ENTRIES * NUM_ENTRIES, PAGE_SIZE) * PAGE_SIZE;
+
+    uint32_t total = mem_end - page_table_start;
+    uint32_t paging_overhead = DIV_UP(8 * NUM_ENTRIES * NUM_ENTRIES, PAGE_SIZE) * PAGE_SIZE;
+    uint32_t malloc_overhead = DIV_UP(sizeof(page_t) * NUM_ENTRIES * NUM_ENTRIES, PAGE_SIZE) * PAGE_SIZE;
+    uint32_t available = mem_end - mem_start;
+    kprintf("Total     RAM:   %4u MB (%7u pages)\n", DIV_DOWN(total,           1024 * 1024), DIV_DOWN(total,           PAGE_SIZE));
+    kprintf("Available RAM:   %4u MB (%7u pages)\n", DIV_DOWN(available,       1024 * 1024), DIV_DOWN(available,       PAGE_SIZE));
+    kprintf("Paging Overhead: %4u MB (%7u pages)\n", DIV_DOWN(paging_overhead, 1024 * 1024), DIV_DOWN(paging_overhead, PAGE_SIZE));
+    kprintf("MAlloc Overhead: %4u MB (%7u pages)\n", DIV_DOWN(malloc_overhead, 1024 * 1024), DIV_DOWN(malloc_overhead, PAGE_SIZE));
+    kprintf("Physical Address Space: 0x%08X - 0x%08X\n", page_table_start, mem_end);
+
+    free_page_list[MAX_ORDER] = &pages[0];
+
+    page_t * last_page = NULL;
+    for (uint32_t page = 0; page < num_pages; page++) {
+        pages[page].flags = 0;
+        pages[page].order = MAX_ORDER;
+
+        pages[page].next = NULL;
+        if (page % (1 << MAX_ORDER) == 0) {
+             pages[page].prev = last_page;
+
+             if (last_page != NULL) {
+                 last_page->next = &pages[page];
+             }
+
+             last_page = &pages[page];
+        } else {
+             pages[page].prev = NULL;
+        }
+    }
+
+    for(uint32_t i = 0; i < NUM_ENTRIES; i++) {
+        uint32_t page_mem_start_addr = i * PAGE_SIZE * 1024;
+
+        uint32_t *page_table = (uint32_t *) page_table_start; //page_table_start is already page aligned
+        page_table_start += PAGE_SIZE;
+
+        page_directory[i] = (uint32_t) page_table | 1 /* present */ | 2 /* read/write */;
+        for(uint32_t j = 0; j < NUM_ENTRIES; j++) {
+             page_table[j] = (page_mem_start_addr + j * PAGE_SIZE) | 1 /* present */;
+             if(!(i == 0 && j == 0) && (page_mem_start_addr < 0x00120000 /* start of code */ || page_mem_start_addr >= (uint32_t) &end_of_image)) {
+                 page_table[j] |= 2;
+             }
+        }
+    }
+
+    __asm__ volatile("mov %0, %%cr3":: "b" (page_directory));
+    uint32_t cr0;
+    __asm__ volatile("mov %%cr0, %0": "=b" (cr0));
+    cr0 |= 1 << 31; //enable paging
+    cr0 |= 1 << 16; //enable read-only protection in supervisor mode
+    __asm__ volatile("mov %0, %%cr0":: "b" (cr0));
+}
+
 void mm_init(multiboot_info_t *mbd) {
     kernel_end = (uint32_t) &end_of_image;
 
-    multiboot_module_t *mods = mbd->mods;
-    for(uint32_t i = 0; i < mbd->mods_count; i++) {
-        if(mods[i].mod_end > kernel_end) {
-            kernel_end = mods[i].mod_end;
+    for(uint32_t i = 0; i < module_count(); i++) {
+        uint32_t end = module_get(i)->mod_end - 1;
+        if(kernel_end < end) {
+            kernel_end = end;
         }
     }
 
@@ -258,3 +257,4 @@ void mm_init(multiboot_info_t *mbd) {
 
     paging_init();
 }
+

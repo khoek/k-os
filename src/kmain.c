@@ -6,6 +6,7 @@
 #include "elf.h"
 #include "gdt.h"
 #include "idt.h"
+#include "module.h"
 #include "keyboard.h"
 #include "pit.h"
 #include "mm.h"
@@ -18,19 +19,22 @@ void kmain(uint32_t magic, multiboot_info_t *mbd) {
 
     kprintf("Starting K-OS (v%u.%u.%u)...\n\n", MAJOR, MINOR, PATCH);
     if (magic != MULTIBOOT_BOOTLOADER_MAGIC)    panic("multiboot loader did not pass correct magic number");
-    if (!(mbd->flags & MULTIBOOT_INFO_MEMORY))  panic("multiboot loader did not pass memory information");
     if (!(mbd->flags & MULTIBOOT_INFO_MEM_MAP)) panic("multiboot loader did not pass memory map");
 
     elf_init(mbd);
 
     gdt_init();
-    idt_init();
 
-    kprintf("Registering PS/2 Keyboard Driver...\n\n");
+    kprintf("Parsing Kernel Modules...\n");
+    module_init(mbd);
+
+    kprintf("\nRegistering PS/2 Keyboard Driver...\n\n");
     keyboard_init();
 
     kprintf("Initializing PIT to %uHz...\n\n", PIT_FREQ);
     pit_init(PIT_FREQ);
+    
+    idt_init();
 
     kprintf("Initializing MM...\n");
     mm_init(mbd);

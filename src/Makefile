@@ -5,7 +5,8 @@ CFLAGS=	-Wall -Wextra -Werror -m32 -I. -std=gnu99 \
 
 OBJS=	loader.o string.o printf.o \
         kmain.o elf.o panic.o console.o \
-        gdt.o gdthelper.o idt.o idthelper.o mm.o \
+        gdt.o gdthelper.o idt.o idthelper.o \
+        module.o mm.o \
         pit.o rand.o keyboard.o \
         pci.o ide.o ahci.o vfs.o \
         shell.o erasure_tool.o \
