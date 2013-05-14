@@ -6,16 +6,13 @@
 #include "panic.h"
 #include "console.h"
 
+#define MAX_ORDER 10
+#define PAGE_SIZE 0x1000
 #define ADDRESS_SPACE_SIZE 4294967296ULL
 
-#define MAX_ORDER 10
+#define NUM_ENTRIES 1024
 
-#define DIV_DOWN(x, y) ((x) / (y))
-#define DIV_UP(x, y) ((((x) - 1) / (y)) + 1)
-
-#define PAGE_FLAG_USED    0x01
-
-#define BIT_SET(bits, bit) (((uint32_t) bits) & ((uint32_t) bit))
+#define PAGE_FLAG_USED (1 << 0)
 
 extern uint32_t end_of_image;
 static uint32_t kernel_end;
@@ -23,29 +20,29 @@ static uint32_t kernel_end;
 static uint32_t num_pages;
 static uint32_t mem_start;
 static uint32_t mem_end;
-//static uint32_t current_increment;
 
-static uint32_t page_directory[1024] __attribute__((aligned(PAGE_SIZE)));
-static page_t * pages;
-static page_t * free_page_list[MAX_ORDER + 1];
+static uint32_t page_directory[1024] ALIGN(PAGE_SIZE);
+static page_t  *pages;
+static page_t  *free_page_list[MAX_ORDER + 1];
 
-static void paging_init(uint32_t max_addr) {
-    // this maps in page table entries up to
-    uint32_t max_dir_ent = max_addr / (PAGE_SIZE * 1024);
-    uint32_t page_table_space = mem_start;
-    mem_start += PAGE_SIZE * (max_dir_ent + 1);
+static void paging_init() {
+    uint32_t page_table_start = mem_start;
+    //reserve space for the page tables, page directory is declared in the BSS above
+    mem_start += NUM_ENTRIES * NUM_ENTRIES * 4;
 
-    pages = (page_t *) mem_start;
+    //reserve space for the page_t structs, remaining page aligned
+    pages = (page_t *) mem_start;    
+    num_pages = DIV_DOWN(mem_end - mem_start, PAGE_SIZE);
+    mem_start += DIV_UP(sizeof(page_t) * NUM_ENTRIES * NUM_ENTRIES, PAGE_SIZE) * PAGE_SIZE;
 
-    uint32_t len = mem_end - mem_start;
-    uint32_t num_pages = DIV_DOWN(len, PAGE_SIZE);
-
-    //truncate len to a multiple of PAGE_SIZE and update end
-    len = num_pages * PAGE_SIZE;
-    mem_end = ((uint32_t) pages) + len;
-
-    //reserve space for the page_t structs, and keep mem_start page aligned
-    mem_start += DIV_UP(sizeof(page_t) * num_pages, PAGE_SIZE) * PAGE_SIZE;
+    uint32_t total = mem_end - page_table_start;
+    uint32_t paging_overhead = DIV_UP(NUM_ENTRIES * NUM_ENTRIES * 4, PAGE_SIZE) * PAGE_SIZE;
+    uint32_t malloc_overhead = sizeof(page_t) * NUM_ENTRIES * NUM_ENTRIES;
+    kprintf("Total Available:  %4u MB (%7u pages)\n", total / (1024 * 1024), total / PAGE_SIZE);
+    kprintf("Paging Overhead:  %4u MB (%7u pages)\n", paging_overhead / (1024 * 1024), paging_overhead / PAGE_SIZE);
+    kprintf("MAlloc Overhead:  %4u MB (%7u pages)\n", malloc_overhead / (1024 * 1024), malloc_overhead / PAGE_SIZE);
+    kprintf("Available Memory: %4u MB (%7u pages)\n", (mem_end - mem_start) / (1024 * 1024), DIV_DOWN(mem_end - mem_start, PAGE_SIZE));
+    kprintf("Address Space: 0x%08X - 0x%08X\n", mem_start, mem_end);
 
     free_page_list[MAX_ORDER] = &pages[0];
 
@@ -68,17 +65,16 @@ static void paging_init(uint32_t max_addr) {
         }
     }
 
-    for(uint32_t i = 0; i <= max_dir_ent; i++) {
-        //calculate page mem_start address:
+    for(uint32_t i = 0; i < NUM_ENTRIES; i++) {
         uint32_t page_mem_start_addr = i * PAGE_SIZE * 1024;
 
         //reserve 4 KiB for page table, mem_start is already page aligned...
-        uint32_t *page_table = (uint32_t *) page_table_space;
-        page_table_space += PAGE_SIZE;
+        uint32_t *page_table = (uint32_t *) page_table_start;
+        page_table_start += PAGE_SIZE;
 
         //construct page table:
         page_directory[i] = (uint32_t) page_table | 1 /* present */ | 2 /* read/write */;
-        for(uint32_t j = 0; j < 1024; j++) {
+        for(uint32_t j = 0; j < NUM_ENTRIES; j++) {
              page_table[j] = (page_mem_start_addr + j * PAGE_SIZE) | 1 /* present */;
              if(!(i == 0 && j == 0) && (page_mem_start_addr < 0x00120000 /* start of code */ || page_mem_start_addr >= (uint32_t) &end_of_image)) {
                  page_table[j] |= 2; // allow writes to non-code pages
@@ -86,13 +82,11 @@ static void paging_init(uint32_t max_addr) {
         }
     }
 
-    if(1) return; // FIXME, add working paging! :D
-
     __asm__ volatile("mov %0, %%cr3":: "b" (page_directory));
     uint32_t cr0;
     __asm__ volatile("mov %%cr0, %0": "=b" (cr0));
     cr0 |= 1 << 31; //enable paging
-    cr0 |= 1 << 16; //enforce read-only page protection (through GPFs)
+    cr0 |= 1 << 16; //enable read-only protection in supervisor mode
     __asm__ volatile("mov %0, %%cr0":: "b" (cr0));
 }
 
@@ -107,7 +101,7 @@ static page_t * get_buddy(page_t * page) {
         return NULL;
     }
 
-    if((DIV_DOWN(index, (1 << page->order)) % 2)) {
+    if(DIV_DOWN(index, (1 << page->order)) % 2) {
         return page - (1 << page->order);
     } else {
         return page + (1 << page->order);
@@ -227,53 +221,40 @@ void mm_init(multiboot_info_t *mbd) {
                  end_addr = ADDRESS_SPACE_SIZE - 1;
              }
 
-             uint32_t len = ((uint32_t) mmap[i].addr) + ((uint32_t) MIN(mmap[i].len, ADDRESS_SPACE_SIZE - mmap[i].addr - 1));
-             if(len < best_len) {
+             if(mmap[i].addr > start_addr) {
+                 start_addr = (uint32_t) mmap[i].addr;
+             }
+             
+             uint32_t aligned_start = DIV_UP(start_addr, PAGE_SIZE) * PAGE_SIZE, aligned_end = DIV_DOWN(end_addr, PAGE_SIZE) * PAGE_SIZE, len = aligned_end - aligned_start;
+             if(aligned_start > aligned_end || len < best_len) {
                  continue;
              }
              idx = i;
              best_len = len;
 
-             if(mmap[i].addr > start_addr) {
-                 start_addr = (uint32_t) mmap[i].addr;
-             }
-
-             mem_start = ((start_addr + PAGE_SIZE - 1) / PAGE_SIZE) * PAGE_SIZE; //page align start_addr:
-             mem_end = end_addr;
+             //page align start_addr and end_addr
+             mem_start = aligned_start; 
+             mem_end = aligned_end;
         }
     }
 
     for(uint32_t i = 0; i < (mbd->mmap_length / sizeof(multiboot_memory_map_t)); i++) {
-        kprintf("    -  ");
         if(idx == i) {
             console_color(0x0A);
-            kprintf("U");
-            console_color(0x07);
         } else if(mmap[i].type != MULTIBOOT_MEMORY_AVAILABLE) {
             console_color(0x0C);
-            kprintf("R");
-            console_color(0x07);
         } else {
-            kprintf(" ");
+            console_color(0x0E);
         }
 
-        kprintf(" %4u MB (0x%08X - 0x%08X)\n",
+        kprintf("    - %4u MB (0x%08X - 0x%08X)\n",
         ((uint32_t) mmap[i].len) / (1024 * 1024),
         ((uint32_t) mmap[i].addr),
         ((uint32_t) mmap[i].addr) + ((uint32_t) MIN(mmap[i].len, ADDRESS_SPACE_SIZE - mmap[i].addr - 1)));
-    }
+    }        
+    console_color(0x07);
 
     if(idx == ((uint32_t) -1)) panic("MM - did not find suitable memory region");
 
-    paging_init(mem_end);
+    paging_init();
 }
-
-//void * sbrk(int32_t increment) {
-//    if(current_increment + increment >= max_size) return NULL;
-//    if(increment < 0 && ((uint32_t) -increment) > current_increment) panic("MM - trying to sbrk to negative current_increment");
-//
-//    void* ptr = (void *)(mem_start + current_increment);
-//    current_increment += increment;
-//
-//    return ptr;
-//}

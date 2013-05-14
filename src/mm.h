@@ -1,7 +1,5 @@
 #include "multiboot.h"
 
-#define PAGE_SIZE 4096
-
 #define ALLOC_NONE 0
 
 typedef struct page {
