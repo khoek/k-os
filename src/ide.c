@@ -267,14 +267,14 @@ static uint8_t ide_error(uint8_t channel) {
 
     if (status & ATA_SR_ERR)
         return IDE_EERROR; // Error. //TODO detect and report error code
- 
+
     if (status & ATA_SR_DF)
         return IDE_EFAULT; // Device Fault.
 
     return IDE_ESUCCESS;
 }
 
-static uint8_t ide_poll(uint8_t channel, bool drq) { 
+static uint8_t ide_poll(uint8_t channel, bool drq) {
     for(uint8_t i = 0; i < 4; i++) // Delay 400 nanosecond for BSY to be set:
         ide_read(channel, ATA_REG_ALTSTATUS); // Reading the Alternate Status port wastes 100ns; loop four times.
 
@@ -292,7 +292,7 @@ static uint8_t ide_poll(uint8_t channel, bool drq) {
 uint8_t ide_print_error(uint32_t drive, uint8_t err) {
     if (err == 0)
         return err;
- 
+
     kprintf("IDE:");
     if (err == 1) {kprintf("- Device Fault\n       "); err = 19;}
     else if (err == 2) {
@@ -312,7 +312,7 @@ uint8_t ide_print_error(uint32_t drive, uint8_t err) {
         (const char *[]){"Primary", "Secondary"}[ide_devices[drive].channel], // Use the channel as an index into the array
         (const char *[]){"Master", "Slave"}[ide_devices[drive].drive], // Same as above, using the drive
         ide_devices[drive].model);
- 
+
     return err;
 }
 
@@ -323,7 +323,7 @@ static void handle_irq_primary(uint32_t UNUSED(error)) {
 
     if(status & ATA_BMSTATUS_INTERRUPT) {
         if(status & ATA_BMSTATUS_ACTIVE) {
-        panic("IDE - Primary Channel Interrupt with Active Flag Set");        
+        panic("IDE - Primary Channel Interrupt with Active Flag Set");
         } else {
         ide_write(ATA_PRIMARY, ATA_REG_BMSTATUS, ATA_BMSTATUS_INTERRUPT);
         channels[ATA_PRIMARY].irq = true;
@@ -340,7 +340,7 @@ static void handle_irq_secondary(uint32_t UNUSED(error)) {
 
     if(status & ATA_BMSTATUS_INTERRUPT) {
         if(status & ATA_BMSTATUS_ACTIVE) {
-        panic("IDE - Secondary Channel Interrupt with Active Flag Set");        
+        panic("IDE - Secondary Channel Interrupt with Active Flag Set");
         } else {
         ide_write(ATA_SECONDARY, ATA_REG_BMSTATUS, ATA_BMSTATUS_INTERRUPT);
         channels[ATA_SECONDARY].irq = true;
@@ -405,7 +405,7 @@ static int32_t pata_access(bool write, bool same, uint8_t drive, uint64_t numsec
     // (II) See if drive supports DMA or not;
     dma = false;
 
-    if (lba_mode > 0 /* There is no CHS (lba_mode == 0) for DMA */ && ide_devices[drive].features & ATA_FEATURE_DMA && 0) { 
+    if (lba_mode > 0 /* There is no CHS (lba_mode == 0) for DMA */ && ide_devices[drive].features & ATA_FEATURE_DMA && 0) {
         dma = true;
         ide_write(channel, ATA_REG_CONTROL, channels[channel].nIEN = ATA_IRQ_ON);
         ide_write_long(channel, ATA_REG_PRDTABLE, (uint32_t) channels[channel].prdt); //store the address of the PRDT
@@ -458,8 +458,8 @@ static int32_t pata_access(bool write, bool same, uint8_t drive, uint64_t numsec
     // If (!DMA & !LBA#)    DO_PIO_CHS;
 
     if (lba_mode == 0 && !dma && !write) ide_write(channel, ATA_REG_COMMAND, ATA_CMD_PIO_READ);
-    if (lba_mode == 1 && !dma && !write) ide_write(channel, ATA_REG_COMMAND, ATA_CMD_PIO_READ);    
-    if (lba_mode == 2 && !dma && !write) ide_write(channel, ATA_REG_COMMAND, ATA_CMD_PIO_READ_EXT);    
+    if (lba_mode == 1 && !dma && !write) ide_write(channel, ATA_REG_COMMAND, ATA_CMD_PIO_READ);
+    if (lba_mode == 2 && !dma && !write) ide_write(channel, ATA_REG_COMMAND, ATA_CMD_PIO_READ_EXT);
     if (lba_mode == 0 &&  dma && !write) ide_write(channel, ATA_REG_COMMAND, ATA_CMD_DMA_READ);
     if (lba_mode == 1 &&  dma && !write) ide_write(channel, ATA_REG_COMMAND, ATA_CMD_DMA_READ);
     if (lba_mode == 2 &&  dma && !write) ide_write(channel, ATA_REG_COMMAND, ATA_CMD_DMA_READ_EXT);
@@ -476,7 +476,7 @@ static int32_t pata_access(bool write, bool same, uint8_t drive, uint64_t numsec
         } else {
         ide_write(channel, ATA_REG_BMCOMMAND, ATA_BMCMD_WRITE);
         }
-        
+
         ide_write(channel, ATA_REG_BMCOMMAND, ATA_BMCMD_START);
         irq_wait(channel);
     } else {
@@ -495,12 +495,12 @@ static int32_t pata_access(bool write, bool same, uint8_t drive, uint64_t numsec
             edi += sector_size;
         }
         } else {
-        // PIO Write.       
+        // PIO Write.
         for (i = 0; i < (numsects == 0 ? 256 : numsects); i++) {
             ide_poll(channel, 0); // Polling.
             asm("rep outsw"::"c"(sector_size / 2 /* in words */), "d"(channels[channel].base /* bus base */), "S"(edi)); // Send Data
             transfered += sector_size;
-            
+
             if (!same) edi += sector_size;
         }
 
@@ -535,45 +535,45 @@ void ide_init(uint32_t BAR0, uint32_t BAR1, uint32_t BAR2, uint32_t BAR3, uint32
     int device = 0;
     for (uint8_t i = 0; i < 2; i++) {
         for (uint8_t j = 0; j < 2; j++) {
- 
+
         uint8_t err = 0, type = TYPE_PATA, status;
         ide_devices[device].present = 0; // Assuming that no drive here.
 
         // (I) Select Drive:
         ide_write(i, ATA_REG_HDDEVSEL, 0xA0 | (j << 4)); // Select Drive.
         sleep(1); // Wait 1ms for drive select to work.
- 
+
         // (II) Send ATA Identify Command:
         ide_write(i, ATA_REG_COMMAND, ATA_CMD_IDENTIFY);
         sleep(1); // This function should be implemented in your OS. which waits for 1 ms.
                  // it is based on System Timer Device Driver.
- 
+
         // (III) Polling:
         if (ide_read(i, ATA_REG_STATUS) == 0) continue; // If Status = 0, No Device.
- 
+
         while(1) {
             status = ide_read(i, ATA_REG_STATUS);
             if ((status & ATA_SR_ERR)) {err = 1; break;} // If Err, Device is not ATA.
             if (!(status & ATA_SR_BSY) && (status & ATA_SR_DRQ)) break; // Everything is right.
         }
 
-        // (IV) Probe for ATAPI Devices: 
+        // (IV) Probe for ATAPI Devices:
         if (err != 0) {
             uint8_t cl = ide_read(i, ATA_REG_LBA1);
             uint8_t ch = ide_read(i, ATA_REG_LBA2);
-            
+
             if (cl == 0x14 && ch == 0xEB)
                 type = TYPE_PATAPI;
             else if (cl == 0x69 && ch == 0x96)
                 type = TYPE_PATAPI;
             else
                 continue; // Unknown Type (may not be a device).
-                  
- 
+
+
             ide_write(i, ATA_REG_COMMAND, ATA_CMD_IDENTIFY_PACKET);
             sleep(1);
         }
- 
+
         // (V) Read Identification Space of the Device:
         ide_read_buffer(i, ATA_REG_DATA, ide_buf, 128);
 
@@ -585,9 +585,9 @@ void ide_init(uint32_t BAR0, uint32_t BAR1, uint32_t BAR2, uint32_t BAR3, uint32
         ide_devices[device].signature   = *((uint16_t *) (ide_buf + ATA_IDENT_DEVICETYPE));
         ide_devices[device].features     = *((uint16_t *) (ide_buf + ATA_IDENT_FEATURES));
         ide_devices[device].commandSets = *((uint32_t *) (ide_buf + ATA_IDENT_COMMANDSETS));
-        
+
         //FIXME make this work! :D (autodecteting the best hdd speeds and setting them
-            
+
         //int8_t mode = -1;
 
         //if (ide_devices[device].features & ATA_FEATURE_DMA) {
@@ -659,13 +659,13 @@ void ide_init(uint32_t BAR0, uint32_t BAR1, uint32_t BAR2, uint32_t BAR3, uint32
             ide_devices[device].model[k] = ide_buf[ATA_IDENT_MODEL + k + 1];
             ide_devices[device].model[k + 1] = ide_buf[ATA_IDENT_MODEL + k];
         }
-                                                                                                                                                                                          
+
         ide_devices[device].model[40] = 0; // Terminate String.
- 
+
         device++;
         }
     }
- 
+
     // 4- Print Summary:
     for (uint8_t i = 0; i < 4; i++) {
         if (ide_devices[i].present == 1) {
@@ -689,9 +689,9 @@ int32_t ide_read_sectors(uint8_t drive, uint64_t numsects, uint32_t lba, void * 
     if (ide_devices[drive].type == TYPE_PATA)
         return pata_access(ATA_READ, false, drive, numsects, lba, edi);
     else if (ide_devices[drive].type == TYPE_PATAPI)
-        //for (i = 0; i < numsects; i++) 
+        //for (i = 0; i < numsects; i++)
         return 0;
-    else 
+    else
         panic("IDE - unknown device type");
         //panic("IDE ATAPI read not supported");
         //err = patapi_access_read(drive, lba + i, 1, es, edi + (i*2048));
@@ -703,9 +703,9 @@ int32_t ide_write_sectors(uint8_t drive, uint64_t numsects, uint32_t lba, void *
     if (ide_devices[drive].type == TYPE_PATA)
         return pata_access(ATA_WRITE, false, drive, numsects, lba, edi);
     else if (ide_devices[drive].type == TYPE_PATAPI)
-        return 0; 
+        return 0;
         //panic("IDE ATAPI write not supported");
-    else 
+    else
         panic("IDE - unknown device type");
 }
 
@@ -715,9 +715,9 @@ int32_t ide_write_sectors_same(uint8_t drive, uint64_t numsects, uint32_t lba, v
     if (ide_devices[drive].type == TYPE_PATA)
         return pata_access(ATA_WRITE, true, drive, numsects, lba, edi);
     else if (ide_devices[drive].type == TYPE_PATAPI)
-        return 0; 
+        return 0;
         //panic("IDE ATAPI write not supported");
-    else 
+    else
         panic("IDE - unknown device type");
 }
 

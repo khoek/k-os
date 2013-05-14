@@ -46,7 +46,7 @@ static uint8_t pci_read_byte(uint16_t bus, uint16_t slot, uint16_t func, uint16_
   //  uint32_t lbus = (uint32_t) bus;
   //  uint32_t lslot = (uint32_t) slot;
   //  uint32_t lfunc = (uint32_t) func;
- 
+
 //    outl(CONFIG_ADDRESS, (uint32_t)((lbus << 16) | (lslot << 11) | (lfunc << 8) | (offset & 0xfc) | ((uint32_t) 0x80000000)));
 //    outl(CONFIG_DATA, data);
 //}
@@ -85,7 +85,7 @@ static void probe_bus(uint8_t bus) {
 
 static void probe_device(uint8_t bus, uint8_t device) {
     uint16_t vendor = pci_read_word(bus, device, 0, REG_WORD_VENDOR);
-    
+
     if(vendor == 0x0000 || vendor == 0xFFFF) return;
 
     probe_function(bus, device, 0);
@@ -136,7 +136,7 @@ static void probe_function(uint8_t bus, uint8_t device, uint8_t function) {
     }
 }
 
-static void probeAllBuses() { 
+static void probeAllBuses() {
      if((pci_read_byte(0, 0, 0, REG_BYTE_HEADER) & 0x80) == 0) {
         //Single PCI host controller
         probe_bus(0);

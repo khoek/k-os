@@ -7,7 +7,7 @@
 .macro isr vector, error=0
     .type   isr_\vector, @function
     jmp isr_reg_\vector
-    isr_\vector: 
+    isr_\vector:
         cli
         pusha
     .if \error
@@ -23,7 +23,7 @@
         iret
     .size isr_\vector, .-isr_\vector
 
-    isr_reg_\vector: 
+    isr_reg_\vector:
         pushl $isr_\vector
         pushl $\vector
         call idt_register_isr

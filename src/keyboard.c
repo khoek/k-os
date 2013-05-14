@@ -40,7 +40,7 @@ char keyMap[] = {
           '[', '{',
           ']', '}',
           '\n', '\n',
-            0, 0,  
+            0, 0,
           'a', 'A',
           's', 'S',
 
@@ -129,12 +129,12 @@ bool alt_down() {
     return keyStates[56];
 }
 
-static char translate_code(uint16_t code) {    
+static char translate_code(uint16_t code) {
     bool shift = shift_down();
     if(keyStates[58]) {
         shift = !shift;
     }
- 
+
     return keyMap[code * 2 + (shift ? 1 : 0)];
 }
 
@@ -148,7 +148,7 @@ static void dispatch(uint16_t code) {
         }
     } else {
         keyStates[code] = true;
- 
+
         if(keydown != 0) {
             (*keydown)(translate_code(code));
         }

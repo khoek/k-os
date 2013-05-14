@@ -5,16 +5,16 @@
 // Redistribution and use in source and binary forms, with or without
 // modification, are permitted provided that the following conditions
 // are met:
-// 
-// 1. Redistributions of source code must retain the above copyright 
-//    notice, this list of conditions and the following disclaimer.  
+//
+// 1. Redistributions of source code must retain the above copyright
+//    notice, this list of conditions and the following disclaimer.
 // 2. Redistributions in binary form must reproduce the above copyright
 //    notice, this list of conditions and the following disclaimer in the
-//    documentation and/or other materials provided with the distribution.  
+//    documentation and/or other materials provided with the distribution.
 // 3. Neither the name of the project nor the names of its contributors
 //    may be used to endorse or promote products derived from this software
-//    without specific prior written permission. 
-// 
+//    without specific prior written permission.
+//
 // THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS "AS IS" AND
 // ANY EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE
 // IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR PURPOSE
@@ -24,10 +24,10 @@
 // OR SERVICES; LOSS OF USE, DATA, OR PROFITS; OR BUSINESS INTERRUPTION)
 // HOWEVER CAUSED AND ON ANY THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT
 // LIABILITY, OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY
-// OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF 
+// OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
 // SUCH DAMAGE.
 //
- 
+
 /*
  *  This file includes modifications made by Keeley Hoek <escortkeel@gmail.com>.
  */
@@ -70,7 +70,7 @@ static char *number(char *str, long num, int base, int size, int precision, int 
   if (type & LARGE)  dig = upper_digits;
   if (type & LEFT) type &= ~ZEROPAD;
   if (base < 2 || base > 36) return 0;
-  
+
   c = (type & ZEROPAD) ? '0' : ' ';
   sign = 0;
   if (type & SIGN) {
@@ -110,7 +110,7 @@ static char *number(char *str, long num, int base, int size, int precision, int 
   size -= precision;
   if (!(type & (ZEROPAD | LEFT))) while (size-- > 0) *str++ = ' ';
   if (sign) *str++ = sign;
-  
+
   if (type & SPECIAL) {
     if (base == 8) {
       *str++ = '0';
@@ -156,7 +156,7 @@ static char *iaddr(char *str, unsigned char *addr, int size, int type) {
   for (i = 0; i < 4; i++) {
     if (i != 0) tmp[len++] = '.';
     n = addr[i];
-    
+
     if (n == 0) {
       tmp[len++] = digits[0];
     } else {
@@ -199,7 +199,7 @@ int vsprintf(char *buf, const char *fmt, va_list args) {
       *str++ = *fmt;
       continue;
     }
-                  
+
     // Process flags
     flags = 0;
 repeat:
@@ -211,7 +211,7 @@ repeat:
       case '#': flags |= SPECIAL; goto repeat;
       case '0': flags |= ZEROPAD; goto repeat;
     }
-          
+
     // Get field width
     field_width = -1;
     if (is_digit(*fmt)) {
@@ -228,7 +228,7 @@ repeat:
     // Get the precision
     precision = -1;
     if (*fmt == '.') {
-      ++fmt;    
+      ++fmt;
       if (is_digit(*fmt)) {
         precision = skip_atoi(&fmt);
       } else if (*fmt == '*') {

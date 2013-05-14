@@ -11,7 +11,7 @@ OBJS=	loader.o string.o printf.o \
         shell.o erasure_tool.o \
 
 all: kernel.elf
-		
+
 .s.o:
 	@echo "      as  $<"
 	@$(AS) -o $@ $<

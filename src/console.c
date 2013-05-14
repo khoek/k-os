@@ -79,10 +79,10 @@ void console_cursor(uint8_t r, uint8_t c) {
      col = c;
 
      uint16_t base_vga_port = *(uint16_t *) 0x463; // read base vga port from bios data
-     
+
      outb(base_vga_port, 0x0e);
      outb(base_vga_port + 1, ((row * CONSOLE_WIDTH + col) >> 8) & 0xff);
-     
+
      outb(base_vga_port, 0x0f);
      outb(base_vga_port + 1, (row * CONSOLE_WIDTH + col) & 0xff);
 }

@@ -123,9 +123,9 @@ uint32_t isr_dispatch(uint32_t vector, uint32_t error) {
     return 0;
 }
 
-void idt_init() {     
+void idt_init() {
     cli();
-     
+
     init_isr();
 
     //send INIT command

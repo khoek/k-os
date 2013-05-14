@@ -6,7 +6,7 @@ all: kernel cdrom.iso
 
 kernel:
 	make -C src all
-	
+
 cdrom.iso: src/kernel.elf build/boot/grub/grub.cfg
 	@echo "creating image"
 	@cp src/kernel.elf build/kernel.elf

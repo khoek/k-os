@@ -22,7 +22,7 @@
 #define ELF_BIND_LOOS       10
 #define ELF_BIND_HIOS       12
 #define ELF_BIND_LOPROC     13
-#define ELF_BIND_HIPROC     15 
+#define ELF_BIND_HIPROC     15
 
 typedef struct {
   uint32_t name;

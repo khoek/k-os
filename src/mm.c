@@ -85,14 +85,14 @@ static void paging_init(uint32_t max_addr) {
              }
         }
     }
-    
+
     if(1) return; // FIXME, add working paging! :D
-    
+
     __asm__ volatile("mov %0, %%cr3":: "b" (page_directory));
     uint32_t cr0;
     __asm__ volatile("mov %%cr0, %0": "=b" (cr0));
     cr0 |= 1 << 31; //enable paging
-    cr0 |= 1 << 16; //enforce read-only page protection (through GPFs)    
+    cr0 |= 1 << 16; //enforce read-only page protection (through GPFs)
     __asm__ volatile("mov %0, %%cr0":: "b" (cr0));
 }
 
@@ -177,7 +177,7 @@ void free_page(page_t *page) {
         uint32_t page_index = get_index(page);
         page_t *primary_page = &pages[page_index - (page_index % 2)];
         primary_page->order++;
-        
+
         if(free_page_list[primary_page->order]) {
              free_page_list[primary_page->order]->prev = primary_page;
         }
@@ -202,7 +202,7 @@ void * page_to_address(page_t *page) {
   return (void *) ((get_index(page) * PAGE_SIZE) + mem_start);
 }
 
-void mm_init(multiboot_info_t *mbd) {    
+void mm_init(multiboot_info_t *mbd) {
     kernel_end = (uint32_t) &end_of_image;
 
     multiboot_module_t *mods = mbd->mods;
@@ -211,13 +211,13 @@ void mm_init(multiboot_info_t *mbd) {
             kernel_end = mods[i].mod_end;
         }
     }
-    
+
     kprintf("Kernel image ends at 0x%08X\n", kernel_end);
 
     multiboot_memory_map_t *mmap = mbd->mmap;
     uint64_t end_addr;
     uint32_t start_addr = ((kernel_end + PAGE_SIZE - 1) / PAGE_SIZE) * PAGE_SIZE, best_len = 0, idx = -1;
-    for(uint32_t i = 0; i < (mbd->mmap_length / sizeof(multiboot_memory_map_t)); i++) {    
+    for(uint32_t i = 0; i < (mbd->mmap_length / sizeof(multiboot_memory_map_t)); i++) {
         if(mmap[i].type == MULTIBOOT_MEMORY_AVAILABLE) {
              if(mmap[i].addr >= ADDRESS_SPACE_SIZE) {
                  continue;
@@ -226,23 +226,23 @@ void mm_init(multiboot_info_t *mbd) {
              if(end_addr > ADDRESS_SPACE_SIZE) {
                  end_addr = ADDRESS_SPACE_SIZE - 1;
              }
-             
+
              uint32_t len = ((uint32_t) mmap[i].addr) + ((uint32_t) MIN(mmap[i].len, ADDRESS_SPACE_SIZE - mmap[i].addr - 1));
              if(len < best_len) {
                  continue;
-             }             
+             }
              idx = i;
              best_len = len;
-             
+
              if(mmap[i].addr > start_addr) {
                  start_addr = (uint32_t) mmap[i].addr;
              }
-             
+
              mem_start = ((start_addr + PAGE_SIZE - 1) / PAGE_SIZE) * PAGE_SIZE; //page align start_addr:
              mem_end = end_addr;
         }
     }
-    
+
     for(uint32_t i = 0; i < (mbd->mmap_length / sizeof(multiboot_memory_map_t)); i++) {
         kprintf("    -  ");
         if(idx == i) {
@@ -254,17 +254,17 @@ void mm_init(multiboot_info_t *mbd) {
             kprintf("R");
             console_color(0x07);
         } else {
-            kprintf(" ");            
+            kprintf(" ");
         }
-        
+
         kprintf(" %4u MB (0x%08X - 0x%08X)\n",
         ((uint32_t) mmap[i].len) / (1024 * 1024),
         ((uint32_t) mmap[i].addr),
         ((uint32_t) mmap[i].addr) + ((uint32_t) MIN(mmap[i].len, ADDRESS_SPACE_SIZE - mmap[i].addr - 1)));
     }
-    
+
     if(idx == ((uint32_t) -1)) panic("MM - did not find suitable memory region");
-    
+
     paging_init(mem_end);
 }
 

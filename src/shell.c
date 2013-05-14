@@ -47,7 +47,7 @@ void run_shell() {
     keyboard_register_key_down(&key_pressed);
 
     console_clear();
-    kprintf("Welcome to K-OS! Written By Keeley Hoek (escortkeel)\n\n$ "); 
+    kprintf("Welcome to K-OS! Written By Keeley Hoek (escortkeel)\n\n$ ");
     prompt_row = console_row();
 
     while(1) hlt();

@@ -41,7 +41,7 @@ static void print_header() {
 }
 
 static void print_tech_info() {
-    console_clear();    
+    console_clear();
     print_header();
 
     console_color(0x0E);
@@ -310,7 +310,7 @@ void erasure_tool_run() {
     kprintf("\n\n\n\n\n\n\n");
     kprintf("If you do not agree to the above terms TURN THE COMPUTER OFF NOW.\n");
     kprintf("If you do agree to the above terms press enter to continue.");
-    
+
     beep();
 
     wait_for_enter();

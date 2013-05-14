@@ -14,15 +14,15 @@
 
 void kmain(uint32_t magic, multiboot_info_t *mbd) {
     console_clear();
-    
+
     kprintf("Starting K-OS...\n\n");
     if (magic != MULTIBOOT_BOOTLOADER_MAGIC)    panic("multiboot loader did not pass correct magic number");
     if (!(mbd->flags & MULTIBOOT_INFO_MEMORY))  panic("multiboot loader did not pass memory information");
     if (!(mbd->flags & MULTIBOOT_INFO_MEM_MAP)) panic("multiboot loader did not pass memory map");
-    
+
     elf_init(mbd);
 
-    gdt_init();    
+    gdt_init();
     idt_init();
 
     kprintf("Registering PS/2 Keyboard Driver...\n\n");
@@ -36,7 +36,7 @@ void kmain(uint32_t magic, multiboot_info_t *mbd) {
 
     kprintf("\nProbing PCI...\n");
     pci_init();
-    
+
     kprintf("\n");
     for(uint8_t seconds = 5; seconds > 0; seconds--) {
         kprintf("Exploding... %u\r", seconds);

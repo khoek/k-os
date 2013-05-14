@@ -29,7 +29,7 @@ static kernel_t kernel;
 
 void elf_init(multiboot_info_t *mbd) {
     elf_section_header_t *sh = (elf_section_header_t *) mbd->u.elf_sec.addr;
-  
+
     for (uint32_t i = 0; i < mbd->u.elf_sec.num; i++) {
         const char *name = (const char *) sh[mbd->u.elf_sec.shndx].addr + sh[i].name;
         if (!strcmp(name, ".strtab")) {
@@ -47,17 +47,17 @@ void elf_init(multiboot_info_t *mbd) {
 elf_symbol_t * elf_lookup_symbol(uint32_t address) {
     if(!kernel.strtabfound || !kernel.symtabfound) return NULL;
 
-    for (uint32_t i = 0; i < (kernel.symtabsz / sizeof(elf_symbol_t)); i++) {        
+    for (uint32_t i = 0; i < (kernel.symtabsz / sizeof(elf_symbol_t)); i++) {
         if (ELF32_ST_TYPE(kernel.symtab[i].info) == ELF_TYPE_FUNC && address > kernel.symtab[i].value && address <= kernel.symtab[i].value + kernel.symtab[i].size) {
             return &kernel.symtab[i];
         }
     }
-    
+
     return NULL;
 }
 
 const char * elf_symbol_name(elf_symbol_t *symbol) {
-    if(symbol == NULL) return NULL;   
+    if(symbol == NULL) return NULL;
     return (const char *) ((uint32_t) kernel.strtab + symbol->name);
 }
 
