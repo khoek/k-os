@@ -13,14 +13,14 @@
 #define PIT_FREQ 100
 
 void kmain(uint32_t magic, multiboot_info_t *mbd) {
-    elf_init(mbd);
-
     console_clear();
     
     kprintf("Starting K-OS...\n\n");
-    if (magic != MULTIBOOT_BOOTLOADER_MAGIC)	panic("multiboot loader did not pass correct magic number");
-    if (!(mbd->flags & MULTIBOOT_INFO_MEMORY))	panic("multiboot loader did not pass memory information");
-    if (!(mbd->flags & MULTIBOOT_INFO_MEM_MAP))	panic("multiboot loader did not pass memory map");
+    if (magic != MULTIBOOT_BOOTLOADER_MAGIC)    panic("multiboot loader did not pass correct magic number");
+    if (!(mbd->flags & MULTIBOOT_INFO_MEMORY))  panic("multiboot loader did not pass memory information");
+    if (!(mbd->flags & MULTIBOOT_INFO_MEM_MAP)) panic("multiboot loader did not pass memory map");
+    
+    elf_init(mbd);
 
     gdt_init();    
     idt_init();
