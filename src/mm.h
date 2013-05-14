@@ -11,7 +11,7 @@ typedef struct page {
     struct page * next;
 } page_t;
 
-void mm_init(multiboot_memory_map_t *mmap, uint32_t length, uint32_t highest_module);
+void mm_init(multiboot_info_t *mbd);
 
 page_t * alloc_page();
 void free_page(page_t *page);

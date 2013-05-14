@@ -12,20 +12,7 @@ static inline void hlt() {
     __asm__ volatile("hlt");
 }
 
-typedef struct idtr {
-	uint16_t size;
-	uint32_t offset;
-} __attribute__((__packed__)) idtr_t;
-
-typedef struct idt_entry {
-    uint16_t offset_lo;
-    uint16_t cs;
-    uint8_t zero;
-    uint8_t type;
-    uint16_t offset_hi;
-} __attribute__((__packed__)) idt_entry_t;
-
-static inline void lidt(idtr_t *idtr) {
+static inline void lidt(void *idtr) {
    __asm__ volatile("lidt (%0)" :: "p" (idtr));
 }
 

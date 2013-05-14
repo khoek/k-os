@@ -1,10 +1,11 @@
 #include <stddef.h>
 #include "gdt.h"
+#include "common.h"
 
 typedef struct gdtr {
     unsigned short size;
     unsigned int offset;
-} __attribute__((__packed__)) gdtr_t;
+} PACKED gdtr_t;
 
 typedef struct gdt_entry {
     unsigned short limit_0_15;
@@ -13,7 +14,7 @@ typedef struct gdt_entry {
     unsigned char access;
     unsigned char limit_16_19_and_flags;
     unsigned char base_24_31;
-} __attribute__((__packed__)) gdt_entry_t;
+} PACKED gdt_entry_t;
 
 gdt_entry_t* gdt = (gdt_entry_t*) 0x71000;
 gdtr_t gdtr;

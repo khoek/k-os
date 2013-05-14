@@ -18,6 +18,12 @@
  *  WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM, OUT OF OR
  *  IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
  */
+ 
+/*
+ *  This file includes modifications made by Keeley Hoek <escortkeel@gmail.com>.
+ */
+ 
+#include "common.h"
 
 #ifndef MULTIBOOT_HEADER
 #define MULTIBOOT_HEADER 1
@@ -122,26 +128,47 @@ struct multiboot_header
 };
 
 /* The symbol table for a.out. */
-struct multiboot_aout_symbol_table
+typedef struct multiboot_aout_symbol_table
 {
   multiboot_uint32_t tabsize;
   multiboot_uint32_t strsize;
   multiboot_uint32_t addr;
   multiboot_uint32_t reserved;
-};
-typedef struct multiboot_aout_symbol_table multiboot_aout_symbol_table_t;
+} multiboot_aout_symbol_table_t;
 
 /* The section header table for ELF. */
-struct multiboot_elf_section_header_table
+typedef struct multiboot_elf_section_header_table
 {
   multiboot_uint32_t num;
   multiboot_uint32_t size;
   multiboot_uint32_t addr;
   multiboot_uint32_t shndx;
-};
-typedef struct multiboot_elf_section_header_table multiboot_elf_section_header_table_t;
+} multiboot_elf_section_header_table_t;
 
-struct multiboot_info
+typedef struct multiboot_mmap_entry
+{
+  multiboot_uint32_t size;
+  multiboot_uint64_t addr;
+  multiboot_uint64_t len;
+#define MULTIBOOT_MEMORY_AVAILABLE              1
+#define MULTIBOOT_MEMORY_RESERVED               2
+  multiboot_uint32_t type;
+} PACKED multiboot_memory_map_t;
+
+typedef struct multiboot_mod_list
+{
+  /* the memory used goes from bytes 'mod_start' to 'mod_end-1' inclusive */
+  multiboot_uint32_t mod_start;
+  multiboot_uint32_t mod_end;
+
+  /* Module command line */
+  multiboot_uint32_t cmdline;
+
+  /* padding to take it to 16 bytes (must be zero) */
+  multiboot_uint32_t pad;
+} PACKED multiboot_module_t;
+
+typedef struct multiboot_info
 {
   /* Multiboot info version number */
   multiboot_uint32_t flags;
@@ -157,8 +184,8 @@ struct multiboot_info
   multiboot_uint32_t cmdline;
 
   /* Boot-Module list */
-  multiboot_uint32_t mods_count;
-  multiboot_uint32_t mods_addr;
+  multiboot_uint32_t  mods_count;
+  multiboot_module_t *mods;
 
   union
   {
@@ -167,8 +194,8 @@ struct multiboot_info
   } u;
 
   /* Memory Mapping buffer */
-  multiboot_uint32_t mmap_length;
-  multiboot_uint32_t mmap_addr;
+  multiboot_uint32_t      mmap_length;
+  multiboot_memory_map_t *mmap;
 
   /* Drive Info buffer */
   multiboot_uint32_t drives_length;
@@ -190,33 +217,7 @@ struct multiboot_info
   multiboot_uint16_t vbe_interface_seg;
   multiboot_uint16_t vbe_interface_off;
   multiboot_uint16_t vbe_interface_len;
-};
-typedef struct multiboot_info multiboot_info_t;
-
-struct multiboot_mmap_entry
-{
-  multiboot_uint32_t size;
-  multiboot_uint64_t addr;
-  multiboot_uint64_t len;
-#define MULTIBOOT_MEMORY_AVAILABLE              1
-#define MULTIBOOT_MEMORY_RESERVED               2
-  multiboot_uint32_t type;
-} __attribute__((packed));
-typedef struct multiboot_mmap_entry multiboot_memory_map_t;
-
-struct multiboot_mod_list
-{
-  /* the memory used goes from bytes 'mod_start' to 'mod_end-1' inclusive */
-  multiboot_uint32_t mod_start;
-  multiboot_uint32_t mod_end;
-
-  /* Module command line */
-  multiboot_uint32_t cmdline;
-
-  /* padding to take it to 16 bytes (must be zero) */
-  multiboot_uint32_t pad;
-};
-typedef struct multiboot_mod_list multiboot_module_t;
+} multiboot_info_t;
 
 #endif /* ! ASM_FILE */
 

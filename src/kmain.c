@@ -34,19 +34,20 @@ void kmain(uint32_t magic, multiboot_info_t *mbd) {
 
     kprintf("Initializing MM...\n");
 
-    uint32_t highest_module = 0;
-    multiboot_module_t *mods = (multiboot_module_t *) mbd->mods_addr;
-    for(uint32_t i = 0; i < mbd->mods_count; i++) {
-        if(mods[i].mod_end > highest_module) {
-            highest_module = mods[i].mod_end;
-        }
-    }
-    mm_init((multiboot_memory_map_t *) mbd->mmap_addr, mbd->mmap_length, highest_module);
+    mm_init(mbd);
 
     kprintf("\nProbing PCI...\n");
     pci_init();
+    
+    kprintf("\n");
+    for(uint8_t seconds = 5; seconds > 0; seconds--) {
+        kprintf("Exploding... %u\r", seconds);
+        sleep(100);
+    }
+    kprintf("Exploding... 0\r");
+    sleep(10);
+    kprintf("Exploding... BOOM!");
 
-    kprintf("\nExploding...");
     __asm__ volatile("int $0x80");
 
     panic("kmain returned!");

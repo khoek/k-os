@@ -1,5 +1,6 @@
 #include <stddef.h>
 #include "idt.h"
+#include "common.h"
 #include "io.h"
 #include "panic.h"
 #include "console.h"
@@ -27,6 +28,19 @@
 
 #define PIC_REG_IRR    0x0A
 #define PIC_REG_ISR    0x0B
+
+typedef struct idtr {
+	uint16_t size;
+	uint32_t offset;
+} PACKED idtr_t;
+
+typedef struct idt_entry {
+    uint16_t offset_lo;
+    uint16_t cs;
+    uint8_t zero;
+    uint8_t type;
+    uint16_t offset_hi;
+} PACKED idt_entry_t;
 
 static idtr_t idtr;
 static idt_entry_t* idt = (idt_entry_t *) 0x70000;
