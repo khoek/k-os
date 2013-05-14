@@ -214,17 +214,10 @@ void mm_init(multiboot_info_t *mbd) {
     
     kprintf("Kernel image ends at 0x%08X\n", kernel_end);
 
-    bool found = false;
     multiboot_memory_map_t *mmap = mbd->mmap;
-    uint32_t start_addr = ((kernel_end + PAGE_SIZE - 1) / PAGE_SIZE) * PAGE_SIZE, best_len = 0;
     uint64_t end_addr;
-    for(uint32_t i = 0; i < (mbd->mmap_length / sizeof(multiboot_memory_map_t)); i++) {
-        kprintf("    - %s %4u MB (0x%08X - 0x%08X)\n",
-        (mmap[i].type == MULTIBOOT_MEMORY_AVAILABLE) ? " " : "R",
-        ((uint32_t) mmap[i].len) / (1024 * 1024),
-        ((uint32_t) mmap[i].addr),
-        ((uint32_t) mmap[i].addr) + ((uint32_t) mmap[i].len));
-    
+    uint32_t start_addr = ((kernel_end + PAGE_SIZE - 1) / PAGE_SIZE) * PAGE_SIZE, best_len = 0, idx = -1;
+    for(uint32_t i = 0; i < (mbd->mmap_length / sizeof(multiboot_memory_map_t)); i++) {    
         if(mmap[i].type == MULTIBOOT_MEMORY_AVAILABLE) {
              if(mmap[i].addr >= ADDRESS_SPACE_SIZE) {
                  continue;
@@ -234,25 +227,44 @@ void mm_init(multiboot_info_t *mbd) {
                  end_addr = ADDRESS_SPACE_SIZE - 1;
              }
              
-             uint32_t len = end_addr - mmap[i].addr;
-             if(len < best_len || mmap[i].addr + len <= start_addr) {
+             uint32_t len = ((uint32_t) mmap[i].addr) + ((uint32_t) MIN(mmap[i].len, ADDRESS_SPACE_SIZE - mmap[i].addr - 1));
+             if(len < best_len) {
                  continue;
              }             
+             idx = i;
              best_len = len;
              
              if(mmap[i].addr > start_addr) {
                  start_addr = (uint32_t) mmap[i].addr;
              }
-             // page align mem_start address:
-             mem_start = ((start_addr + PAGE_SIZE - 1) / PAGE_SIZE) * PAGE_SIZE;
+             
+             mem_start = ((start_addr + PAGE_SIZE - 1) / PAGE_SIZE) * PAGE_SIZE; //page align start_addr:
              mem_end = end_addr;
-             found = true;
         }
     }
     
-    if(!found) panic("MM - did not find suitable memory region");
+    for(uint32_t i = 0; i < (mbd->mmap_length / sizeof(multiboot_memory_map_t)); i++) {
+        kprintf("    -  ");
+        if(idx == i) {
+            console_color(0x0A);
+            kprintf("U");
+            console_color(0x07);
+        } else if(mmap[i].type != MULTIBOOT_MEMORY_AVAILABLE) {
+            console_color(0x0C);
+            kprintf("R");
+            console_color(0x07);
+        } else {
+            kprintf(" ");            
+        }
+        
+        kprintf(" %4u MB (0x%08X - 0x%08X)\n",
+        ((uint32_t) mmap[i].len) / (1024 * 1024),
+        ((uint32_t) mmap[i].addr),
+        ((uint32_t) mmap[i].addr) + ((uint32_t) MIN(mmap[i].len, ADDRESS_SPACE_SIZE - mmap[i].addr - 1)));
+    }
     
-    kprintf("%u MB available memory (0x%08X - 0x%08X)\n", (mem_end - mem_start) / (1024 * 1024), mem_start, mem_end);
+    if(idx == ((uint32_t) -1)) panic("MM - did not find suitable memory region");
+    
     paging_init(mem_end);
 }
 
