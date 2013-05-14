@@ -39,11 +39,11 @@ static void paging_init() {
     uint32_t paging_overhead = DIV_UP(8 * NUM_ENTRIES * NUM_ENTRIES, PAGE_SIZE) * PAGE_SIZE;
     uint32_t malloc_overhead = DIV_UP(sizeof(page_t) * NUM_ENTRIES * NUM_ENTRIES, PAGE_SIZE) * PAGE_SIZE;
     uint32_t available = mem_end - mem_start;
-    kprintf("Total Available:  %4u MB (%7u pages)\n", DIV_DOWN(total,           1024 * 1024), DIV_DOWN(total,           PAGE_SIZE));
-    kprintf("Paging Overhead:  %4u MB (%7u pages)\n", DIV_DOWN(paging_overhead, 1024 * 1024), DIV_DOWN(paging_overhead, PAGE_SIZE));
-    kprintf("MAlloc Overhead:  %4u MB (%7u pages)\n", DIV_DOWN(malloc_overhead, 1024 * 1024), DIV_DOWN(malloc_overhead, PAGE_SIZE));
-    kprintf("Available Memory: %4u MB (%7u pages)\n", DIV_DOWN(available,       1024 * 1024), DIV_DOWN(available,       PAGE_SIZE));
-    kprintf("Address Space: 0x%08X - 0x%08X\n", mem_start, mem_end);
+    kprintf("Total     RAM:   %4u MB (%7u pages)\n", DIV_DOWN(total,           1024 * 1024), DIV_DOWN(total,           PAGE_SIZE));
+    kprintf("Available RAM:   %4u MB (%7u pages)\n", DIV_DOWN(available,       1024 * 1024), DIV_DOWN(available,       PAGE_SIZE));
+    kprintf("Paging Overhead: %4u MB (%7u pages)\n", DIV_DOWN(paging_overhead, 1024 * 1024), DIV_DOWN(paging_overhead, PAGE_SIZE));
+    kprintf("MAlloc Overhead: %4u MB (%7u pages)\n", DIV_DOWN(malloc_overhead, 1024 * 1024), DIV_DOWN(malloc_overhead, PAGE_SIZE));
+    kprintf("Physical Address Space: 0x%08X - 0x%08X\n", page_table_start, mem_end);
 
     free_page_list[MAX_ORDER] = &pages[0];
 
@@ -73,12 +73,11 @@ static void paging_init() {
         uint32_t *page_table = (uint32_t *) page_table_start;
         page_table_start += PAGE_SIZE;
 
-        //construct page table:
         page_directory[i] = (uint32_t) page_table | 1 /* present */ | 2 /* read/write */;
         for(uint32_t j = 0; j < NUM_ENTRIES; j++) {
              page_table[j] = (page_mem_start_addr + j * PAGE_SIZE) | 1 /* present */;
              if(!(i == 0 && j == 0) && (page_mem_start_addr < 0x00120000 /* start of code */ || page_mem_start_addr >= (uint32_t) &end_of_image)) {
-                 page_table[j] |= 2; // allow writes to non-code pages
+                 page_table[j] |= 2;
              }
         }
     }
