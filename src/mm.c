@@ -223,7 +223,7 @@ void mm_init(multiboot_info_t *mbd) {
              if(mmap[i].addr > start_addr) {
                  start_addr = (uint32_t) mmap[i].addr;
              }
-             
+
              uint32_t aligned_start = DIV_UP(start_addr, PAGE_SIZE) * PAGE_SIZE, aligned_end = DIV_DOWN(end_addr, PAGE_SIZE) * PAGE_SIZE, len = aligned_end - aligned_start;
              if(aligned_start > aligned_end || len < best_len) {
                  continue;
@@ -232,7 +232,7 @@ void mm_init(multiboot_info_t *mbd) {
              best_len = len;
 
              //page align start_addr and end_addr
-             mem_start = aligned_start; 
+             mem_start = aligned_start;
              mem_end = aligned_end;
         }
     }
@@ -250,7 +250,7 @@ void mm_init(multiboot_info_t *mbd) {
         ((uint32_t) mmap[i].len) / (1024 * 1024),
         ((uint32_t) mmap[i].addr),
         ((uint32_t) mmap[i].addr) + ((uint32_t) MIN(mmap[i].len, ADDRESS_SPACE_SIZE - mmap[i].addr - 1)));
-    }        
+    }
     console_color(0x07);
 
     if(idx == ((uint32_t) -1)) panic("MM - did not find suitable memory region");

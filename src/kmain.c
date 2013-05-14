@@ -33,7 +33,7 @@ void kmain(uint32_t magic, multiboot_info_t *mbd) {
 
     kprintf("Initializing PIT to %uHz...\n\n", PIT_FREQ);
     pit_init(PIT_FREQ);
-    
+
     idt_init();
 
     kprintf("Initializing MM...\n");
@@ -43,7 +43,7 @@ void kmain(uint32_t magic, multiboot_info_t *mbd) {
     pci_init();
 
     kprintf("\nDone.");
-    
+
     die();
     panic("kmain returned!");
 }
