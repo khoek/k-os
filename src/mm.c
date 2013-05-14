@@ -27,21 +27,22 @@ static page_t  *free_page_list[MAX_ORDER + 1];
 
 static void paging_init() {
     uint32_t page_table_start = mem_start;
-    //reserve space for the page tables, page directory is declared in the BSS above
-    mem_start += NUM_ENTRIES * NUM_ENTRIES * 4;
+    //reserve space for the page tables, remeaining page aligned, page directory is declared in the BSS above
+    mem_start += DIV_UP(8 * NUM_ENTRIES * NUM_ENTRIES, PAGE_SIZE) * PAGE_SIZE;
 
     //reserve space for the page_t structs, remaining page aligned
-    pages = (page_t *) mem_start;    
+    pages = (page_t *) mem_start;
     num_pages = DIV_DOWN(mem_end - mem_start, PAGE_SIZE);
     mem_start += DIV_UP(sizeof(page_t) * NUM_ENTRIES * NUM_ENTRIES, PAGE_SIZE) * PAGE_SIZE;
 
     uint32_t total = mem_end - page_table_start;
-    uint32_t paging_overhead = DIV_UP(NUM_ENTRIES * NUM_ENTRIES * 4, PAGE_SIZE) * PAGE_SIZE;
-    uint32_t malloc_overhead = sizeof(page_t) * NUM_ENTRIES * NUM_ENTRIES;
-    kprintf("Total Available:  %4u MB (%7u pages)\n", total / (1024 * 1024), total / PAGE_SIZE);
-    kprintf("Paging Overhead:  %4u MB (%7u pages)\n", paging_overhead / (1024 * 1024), paging_overhead / PAGE_SIZE);
-    kprintf("MAlloc Overhead:  %4u MB (%7u pages)\n", malloc_overhead / (1024 * 1024), malloc_overhead / PAGE_SIZE);
-    kprintf("Available Memory: %4u MB (%7u pages)\n", (mem_end - mem_start) / (1024 * 1024), DIV_DOWN(mem_end - mem_start, PAGE_SIZE));
+    uint32_t paging_overhead = DIV_UP(8 * NUM_ENTRIES * NUM_ENTRIES, PAGE_SIZE) * PAGE_SIZE;
+    uint32_t malloc_overhead = DIV_UP(sizeof(page_t) * NUM_ENTRIES * NUM_ENTRIES, PAGE_SIZE) * PAGE_SIZE;
+    uint32_t available = mem_end - mem_start;
+    kprintf("Total Available:  %4u MB (%7u pages)\n", DIV_DOWN(total,           1024 * 1024), DIV_DOWN(total,           PAGE_SIZE));
+    kprintf("Paging Overhead:  %4u MB (%7u pages)\n", DIV_DOWN(paging_overhead, 1024 * 1024), DIV_DOWN(paging_overhead, PAGE_SIZE));
+    kprintf("MAlloc Overhead:  %4u MB (%7u pages)\n", DIV_DOWN(malloc_overhead, 1024 * 1024), DIV_DOWN(malloc_overhead, PAGE_SIZE));
+    kprintf("Available Memory: %4u MB (%7u pages)\n", DIV_DOWN(available,       1024 * 1024), DIV_DOWN(available,       PAGE_SIZE));
     kprintf("Address Space: 0x%08X - 0x%08X\n", mem_start, mem_end);
 
     free_page_list[MAX_ORDER] = &pages[0];
