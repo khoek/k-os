@@ -6,7 +6,7 @@ It contains some code from [JSOS](https://github.com/charliesome/KOS) which is l
 
 ## License
 
-Where not explicitly indicated otherwise, all source code is licensed under the Simplified BSD license:
+Where not explicitly indicated otherwise, all source code is licensed under the following terms:
 
     Copyright (c) 2012-2013, Keeley Hoek
     All rights reserved.
