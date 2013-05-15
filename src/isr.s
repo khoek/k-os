@@ -1,41 +1,46 @@
-.global init_isr
-.type   init_isr, @function
+.global isr_init
 
-.extern isr_dispatch
-.extern idt_register_isr
+.extern interrupt_dispatch
+.extern idt_set_isr
+
+.type isr_common, @function
+isr_common:
+    pusha
+    pushl %esp
+    call interrupt_dispatch
+    addl $4, %esp
+    popa
+    addl $8, %esp
+    sti
+    iret
+.size isr_common, .-isr_common
 
 .macro isr vector, error=0
-    .type   isr_\vector, @function
-    jmp isr_reg_\vector
+    jmp isr_set_\vector
+
+    .type isr_\vector, @function
     isr_\vector:
         cli
-        pusha
-    .if \error
-        pushl %eax
-    .else
-        pushl 0
+    .if !\error
+        pushl $0
     .endif
         pushl $\vector
-        call isr_dispatch
-        addl $8, %esp
-        popa
-        sti
-        iret
+        jmp isr_common
     .size isr_\vector, .-isr_\vector
 
-    isr_reg_\vector:
+    isr_set_\vector:
         pushl $isr_\vector
         pushl $\vector
-        call idt_register_isr
+        call idt_set_isr
         addl $8, %esp
-    .size isr_reg_\vector, .-isr_reg_\vector
 .endm
 
 .macro isr_err vector
     isr \vector, 1
 .endm
 
-init_isr:
+.type isr_init, @function
+isr_init:
     isr       0
     isr       1
     isr       2
@@ -46,7 +51,6 @@ init_isr:
     isr       7
     isr_err   8
     isr       9
-
     isr_err  10
     isr_err  11
     isr_err  12
@@ -57,7 +61,6 @@ init_isr:
     isr_err  17
     isr      18
     isr      19
-
     isr      20
     isr      21
     isr      22
@@ -68,7 +71,6 @@ init_isr:
     isr      27
     isr      28
     isr      29
-
     isr      30
     isr      31
     isr      32
@@ -79,7 +81,6 @@ init_isr:
     isr      37
     isr      38
     isr      39
-
     isr      40
     isr      41
     isr      42
@@ -90,7 +91,6 @@ init_isr:
     isr      47
     isr      48
     isr      49
-
     isr      50
     isr      51
     isr      52
@@ -101,7 +101,6 @@ init_isr:
     isr      57
     isr      58
     isr      59
-
     isr      60
     isr      61
     isr      62
@@ -112,7 +111,6 @@ init_isr:
     isr      67
     isr      68
     isr      69
-
     isr      70
     isr      71
     isr      72
@@ -123,7 +121,6 @@ init_isr:
     isr      77
     isr      78
     isr      79
-
     isr      80
     isr      81
     isr      82
@@ -134,7 +131,6 @@ init_isr:
     isr      87
     isr      88
     isr      89
-
     isr      90
     isr      91
     isr      92
@@ -145,7 +141,6 @@ init_isr:
     isr      97
     isr      98
     isr      99
-
     isr     100
     isr     101
     isr     102
@@ -156,7 +151,6 @@ init_isr:
     isr     107
     isr     108
     isr     109
-
     isr     110
     isr     111
     isr     112
@@ -167,7 +161,6 @@ init_isr:
     isr     117
     isr     118
     isr     119
-
     isr     120
     isr     121
     isr     122
@@ -178,7 +171,6 @@ init_isr:
     isr     127
     isr     128
     isr     129
-
     isr     130
     isr     131
     isr     132
@@ -189,7 +181,6 @@ init_isr:
     isr     137
     isr     138
     isr     139
-
     isr     140
     isr     141
     isr     142
@@ -200,7 +191,6 @@ init_isr:
     isr     147
     isr     148
     isr     149
-
     isr     150
     isr     151
     isr     152
@@ -211,7 +201,6 @@ init_isr:
     isr     157
     isr     158
     isr     159
-
     isr     160
     isr     161
     isr     162
@@ -222,7 +211,6 @@ init_isr:
     isr     167
     isr     168
     isr     169
-
     isr     170
     isr     171
     isr     172
@@ -233,7 +221,6 @@ init_isr:
     isr     177
     isr     178
     isr     179
-
     isr     180
     isr     181
     isr     182
@@ -244,7 +231,6 @@ init_isr:
     isr     187
     isr     188
     isr     189
-
     isr     190
     isr     191
     isr     192
@@ -255,7 +241,6 @@ init_isr:
     isr     197
     isr     198
     isr     199
-
     isr     200
     isr     201
     isr     202
@@ -266,7 +251,6 @@ init_isr:
     isr     207
     isr     208
     isr     209
-
     isr     210
     isr     211
     isr     212
@@ -277,7 +261,6 @@ init_isr:
     isr     217
     isr     218
     isr     219
-
     isr     220
     isr     221
     isr     222
@@ -288,7 +271,6 @@ init_isr:
     isr     227
     isr     228
     isr     229
-
     isr     230
     isr     231
     isr     232
@@ -299,7 +281,6 @@ init_isr:
     isr     237
     isr     238
     isr     239
-
     isr     240
     isr     241
     isr     242
@@ -310,7 +291,6 @@ init_isr:
     isr     247
     isr     248
     isr     249
-
     isr     250
     isr     251
     isr     252
@@ -319,4 +299,5 @@ init_isr:
     isr     255
 
     ret
-.size init_isr, .-init_isr
+.size isr_init, .-isr_init
+

@@ -1,6 +1,7 @@
 #include <stddef.h>
 #include "idt.h"
 #include "common.h"
+#include "gdt.h"
 #include "io.h"
 #include "panic.h"
 #include "console.h"
@@ -29,39 +30,35 @@
 #define PIC_REG_IRR    0x0A
 #define PIC_REG_ISR    0x0B
 
-typedef struct idtr {
+typedef struct idtd {
 	uint16_t size;
 	uint32_t offset;
-} PACKED idtr_t;
+} PACKED idtd_t;
 
 typedef struct idt_entry {
     uint16_t offset_lo;
-    uint16_t cs;
+    uint16_t selector;
     uint8_t zero;
     uint8_t type;
     uint16_t offset_hi;
 } PACKED idt_entry_t;
 
-static idtr_t idtr;
-static idt_entry_t* idt = (idt_entry_t *) 0x70000;
-static void (*isrs[255 - PIC_MASTER_OFFSET])(uint32_t);
+static idtd_t idtd;
+static idt_entry_t idt[256];
+static void (*handlers[256 - PIC_MASTER_OFFSET])(interrupt_t *);
 
-void idt_register(uint32_t vector, void(*isr)(uint32_t)) {
-    if (isrs[vector - PIC_MASTER_OFFSET]) {
+void idt_register(uint32_t vector, void(*handler)(interrupt_t *)) {
+    if (handlers[vector - PIC_MASTER_OFFSET]) {
         panicf("Registering second interrupt handler for %u", vector);
     } else {
-        isrs[vector - PIC_MASTER_OFFSET] = isr;
+        handlers[vector - PIC_MASTER_OFFSET] = handler;
     }
 }
 
-void idt_set_gate(uint8_t gate, idt_entry_t entry) {
-    idt[gate] = entry;
-}
-
-void idt_register_isr(uint32_t gate, uint32_t isr) {
+void idt_set_isr(uint32_t gate, uint32_t isr) {
     idt[gate].offset_lo = isr & 0xffff;
     idt[gate].offset_hi = (isr >> 16) & 0xffff;
-    idt[gate].cs = 0x08;
+    idt[gate].selector = SEL_CODE_KERNEL;
     idt[gate].zero = 0;
     idt[gate].type = 0x80 /* present */ | 0xe /* 32 bit interrupt gate */;
 }
@@ -94,39 +91,37 @@ static uint16_t get_reg(uint16_t pic, uint8_t reg) {
      return inb(pic);
 }
 
-uint32_t isr_dispatch(uint32_t vector, uint32_t error) {
-    if (vector < PIC_MASTER_OFFSET) {
-        panicf("Exception: Code %u %s - 0x%X", vector, exceptions[vector] ? exceptions[vector] : "Unknown", error);
+void interrupt_dispatch(interrupt_t *interrupt) {
+    if (interrupt->vector < PIC_MASTER_OFFSET) {
+        panicf("Exception: Code %u %s - EIP:0x%X 0x%X", interrupt->vector, exceptions[interrupt->vector] ? exceptions[interrupt->vector] : "Unknown", interrupt->eip, interrupt->error);
     }
 
-    get_reg(MASTER_COMMAND, PIC_REG_ISR);
-
-    if(vector == INT_SPURIOUS_MASTER && !(get_reg(MASTER_COMMAND, PIC_REG_ISR) & (1 << IRQ_SPURIOUS))) {
-      return 0;
-    } else if (vector == INT_SPURIOUS_SLAVE && !(get_reg(SLAVE_COMMAND, PIC_REG_ISR) & (1 << IRQ_SPURIOUS))) {
-      outb(MASTER_COMMAND, EOI);
-      return 0;
+    if(interrupt->vector == INT_SPURIOUS_MASTER && !(get_reg(MASTER_COMMAND, PIC_REG_IRR) & (1 << IRQ_SPURIOUS))) {
+        return;
+    } else if (interrupt->vector == INT_SPURIOUS_SLAVE && !(get_reg(SLAVE_COMMAND, PIC_REG_IRR) & (1 << IRQ_SPURIOUS))) {
+        outb(MASTER_COMMAND, EOI);
+        return;
     }
 
-    if (isrs[vector - PIC_MASTER_OFFSET] == NULL) {
-        panicf("no registered handler for interrupt %u", vector);
+    if (handlers[interrupt->vector - PIC_MASTER_OFFSET] == NULL) {
+        panicf("no registered handler for interrupt %u", interrupt->vector);
     } else {
-        isrs[vector - PIC_MASTER_OFFSET](error);
+        handlers[interrupt->vector - PIC_MASTER_OFFSET](interrupt);
     }
 
-    if (vector >= PIC_SLAVE_OFFSET) {
+    if (interrupt->vector >= PIC_SLAVE_OFFSET) {
           outb(SLAVE_COMMAND, EOI);
     }
 
     outb(MASTER_COMMAND, EOI);
-
-    return 0;
 }
+
+extern void isr_init();
 
 void idt_init() {
     cli();
 
-    init_isr();
+    isr_init();
 
     //send INIT command
     outb(MASTER_COMMAND, INIT);
@@ -148,10 +143,10 @@ void idt_init() {
     outb(MASTER_DATA, 0x0);
     outb(SLAVE_DATA , 0x0);
 
-    idtr.size = (256 * 8) - 1;
-    idtr.offset = (uint32_t) idt;
+    idtd.size = (256 * 8) - 1;
+    idtd.offset = (uint32_t) idt;
 
-    lidt(&idtr);
+    lidt(&idtd);
 
     sti();
 }

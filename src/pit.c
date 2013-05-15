@@ -1,7 +1,8 @@
 #include <stdint.h>
 #include "pit.h"
-#include "idt.h"
 #include "common.h"
+#include "idt.h"
+#include "panic.h"
 #include "io.h"
 #include "console.h"
 
@@ -10,10 +11,6 @@
 uint64_t ticks;
 uint64_t uptime() {
     return ticks;
-}
-
-static void tick(uint32_t UNUSED(error)) {
-    ticks++;
 }
 
 void play(uint32_t freq) {
@@ -44,14 +41,18 @@ void sleep(uint32_t milis) {
     while(ticks - then < milis) hlt();
 }
 
+static void handle_pit(interrupt_t UNUSED(*interrupt)) {
+    ticks++;
+}
+
 void pit_init(uint32_t freq) {
     uint32_t divisor = PIT_CLOCK / freq;
 
     cli();
+    idt_register(32, handle_pit);
+
     outb(0x43, 0x36);
     outb(0x40, divisor & 0xff);
     outb(0x40, (divisor >> 8) & 0xff);
-
-    idt_register(32, &tick);
     sti();
 }

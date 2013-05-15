@@ -155,11 +155,11 @@ static void dispatch(uint16_t code) {
     }
 }
 
-static void handle_event(uint32_t UNUSED(error)) {
+static void handle_keyboard(interrupt_t UNUSED(*interrupt)) {
     while(inb(0x64) & 2);
     dispatch(inb(0x60));
 }
 
 void keyboard_init() {
-    idt_register(33, &handle_event);
+    idt_register(33, handle_keyboard);
 }

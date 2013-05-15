@@ -1,5 +1,4 @@
 .global loader
-.type   loader, @function
 
 .set ALIGN,    1 << 0                   # align loaded modules on page boundaries
 .set MEMINFO,  1 << 1                   # provide memory map
@@ -15,6 +14,7 @@
 .skip 0x400                             # reserve 16 KiB stack
 stack:
 
+.type loader, @function
 loader:
     movl  $stack, %esp                  # set up the stack, stacks grow downwards
     pushl %ebx                          # multiboot info

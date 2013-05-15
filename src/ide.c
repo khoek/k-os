@@ -316,7 +316,7 @@ uint8_t ide_print_error(uint32_t drive, uint8_t err) {
     return err;
 }
 
-static void handle_irq_primary(uint32_t UNUSED(error)) {
+static void handle_irq_primary(interrupt_t UNUSED(*interrupt)) {
     uint8_t status = ide_read(ATA_PRIMARY, ATA_REG_BMSTATUS);
 
     if(status & ATA_BMSTATUS_ERROR) panic("IDE - Primary Channel Data Transfer Error");
@@ -333,7 +333,7 @@ static void handle_irq_primary(uint32_t UNUSED(error)) {
     }
 }
 
-static void handle_irq_secondary(uint32_t UNUSED(error)) {
+static void handle_irq_secondary(interrupt_t UNUSED(*interrupt)) {
     uint8_t status = ide_read(ATA_SECONDARY, ATA_REG_BMSTATUS);
 
     if(status & ATA_BMSTATUS_ERROR) panic("IDE - Secondary Channel Data Transfer Error");

@@ -1,75 +1,65 @@
 #include <stddef.h>
 #include "gdt.h"
+#include "string.h"
 #include "common.h"
+#include "console.h"
+#include "panic.h"
 
-typedef struct gdtr {
-    unsigned short size;
-    unsigned int offset;
-} PACKED gdtr_t;
+#define GDT_SIZE 5
+
+typedef struct gdtd {
+    uint16_t size;
+    uint32_t offset;
+} PACKED gdtd_t;
 
 typedef struct gdt_entry {
-    unsigned short limit_0_15;
-    unsigned short base_0_15;
-    unsigned char base_16_23;
-    unsigned char access;
-    unsigned char limit_16_19_and_flags;
-    unsigned char base_24_31;
+    uint16_t limit_0_15;
+    uint16_t base_0_15;
+    uint8_t  base_16_23;
+    uint8_t  access;
+    uint8_t  limit_16_19_and_flags;
+    uint8_t  base_24_31;
 } PACKED gdt_entry_t;
 
-gdt_entry_t* gdt = (gdt_entry_t*) 0x71000;
-gdtr_t gdtr;
+static gdtd_t gdtd;
+static gdt_entry_t gdt[GDT_SIZE];
 
-extern int end_of_image;
+#define ACCESS_BASE (1 << 4)
+#define PRESENT     (1 << 7)
+#define RING_KERNEL (0 << 5)
+#define RING_USER   (3 << 5)
+#define TYPE_DATA   (0 << 3)
+#define TYPE_CODE   (1 << 3)
+#define PERM_R      (0 << 1)
+#define PERM_RW     (1 << 1)
+
+#define FLAG_BITS_16 (0 << 6)
+#define FLAG_BITS_32 (1 << 6)
+#define FLAG_GRANULARITY_BYTE (0 << 7)
+#define FLAG_GRANULARITY_PAGE (1 << 7)
+
+void setSelector(uint16_t index, uint32_t base, uint32_t limit, uint8_t type) {
+    gdt[index].limit_0_15 = limit & 0xFFFF;
+    gdt[index].limit_16_19_and_flags |= FLAG_BITS_32 | FLAG_GRANULARITY_PAGE | ((limit >> 16) & 0xF);
+    gdt[index].base_0_15  = base & 0xFFFF;
+    gdt[index].base_16_23 = (base >> 16) & 0x00FF;
+    gdt[index].base_24_31 = base >> 24;
+    gdt[index].access     = (type ? ACCESS_BASE : 0) | type;
+}
 
 void reload_segment_registers();
 
 void gdt_init() {
-     unsigned int code_end = ((unsigned int)&end_of_image + 4095) / 4096;
+    setSelector(0, 0x00000000, 0x00000, 0);
+    setSelector(1, 0x00000000, 0xFFFFF, RING_KERNEL | TYPE_CODE | PERM_RW | PRESENT);
+    setSelector(2, 0x00000000, 0xFFFFF, RING_KERNEL | TYPE_DATA | PERM_RW | PRESENT);
+    setSelector(3, 0x00000000, 0xFFFFF, RING_USER   | TYPE_CODE | PERM_RW | PRESENT);
+    setSelector(4, 0x00000000, 0xFFFFF, RING_USER   | TYPE_DATA | PERM_RW | PRESENT);
 
-     // 0x00 is a null selector:
-     gdt[0].limit_0_15              = 0;
-     gdt[0].base_0_15               = 0;
-     gdt[0].base_16_23              = 0;
-     gdt[0].access                  = 0;
-     gdt[0].limit_16_19_and_flags   = 0;
-     gdt[0].base_24_31              = 0;
+    gdtd.size = (GDT_SIZE * sizeof(gdt_entry_t)) - 1;
+    gdtd.offset = (uint32_t) gdt;
 
-     // 0x08 is a code selector:
-     gdt[1].limit_0_15              = code_end & 0xffff;
-     gdt[1].base_0_15               = 0x0000;
-     gdt[1].base_16_23              = 0x00;
-     gdt[1].access                  = 0x02 /* readable */ | 0x08 /* code segment */ | 0x10 /* reserved */ | 0x80 /* present */;
-     gdt[1].limit_16_19_and_flags   = ((code_end >> 16) & 0xf) | 0x40 /* 32 bit */ | 0x80 /* 4 KiB */;
-     gdt[1].base_24_31              = 0x00;
+    __asm__ volatile("lgdt (%0)" :: "m" (gdtd));
 
-     // 0x10 is a data selector:
-     gdt[2].limit_0_15              = 0xffff;
-     gdt[2].base_0_15               = 0x0000;
-     gdt[2].base_16_23              = 0x00;
-     gdt[2].access                  = 0x02 /* readable */ | 0x10 /* reserved */ | 0x80 /* present */;
-     gdt[2].limit_16_19_and_flags   = 0xf | 0x40 /* 32 bit */ | 0x80 /* 4 KiB */;
-     gdt[2].base_24_31              = 0x00;
-
-     // 0x18 is a 16 bit code selector
-     gdt[3].limit_0_15              = 0xffff;
-     gdt[3].base_0_15               = 0;
-     gdt[3].base_16_23              = 0;
-     gdt[3].access                  = 0x02 /* readable */ | 0x08 /* code segment */ | 0x10 /* reserved */ | 0x80 /* present */;
-     gdt[3].limit_16_19_and_flags   = 0 /* neither 16 bit or 4 KiB */;
-     gdt[3].base_24_31              = 0x00;
-
-     // 0x20 is a 16 bit data selector
-     gdt[4].limit_0_15              = 0xffff;
-     gdt[4].base_0_15               = 0;
-     gdt[4].base_16_23              = 0;
-     gdt[4].access                  = 0x02 /* readable */ | 0x10 /* reserved */ | 0x80 /* present */;
-     gdt[4].limit_16_19_and_flags   = 0 /* neither 16 bit or 4 KiB */;
-     gdt[4].base_24_31              = 0x00;
-
-     gdtr.size = (sizeof(gdt_entry_t) * 5) - 1;
-     gdtr.offset = (unsigned int) gdt;
-
-     __asm__ volatile("lgdt (%0)" :: "m"(gdtr));
-
-     reload_segment_registers();
+    reload_segment_registers();
 }
