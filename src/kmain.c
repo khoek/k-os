@@ -25,19 +25,28 @@ void kmain(uint32_t magic, multiboot_info_t *mbd) {
     elf_init(mbd);
 
     gdt_init();
-    idt_init();
+
+    cli();
 
     kprintf("Parsing Kernel Modules...\n");
     module_init(mbd);
     kprintf("\n");
 
-    kprintf("Registering PS/2 Keyboard Driver...\n");
+    kprintf("Initializing PS/2 Keyboard Driver...\n");
     keyboard_init();
+    kprintf("\n");
+
+    kprintf("Initializing Syscall Handler...\n");
+    syscall_init();
     kprintf("\n");
 
     kprintf("Initializing PIT to %uHz...\n", PIT_FREQ);
     pit_init(PIT_FREQ);
     kprintf("\n");
+
+    idt_init();
+
+    sti();
 
     kprintf("Initializing MM...\n");
     mm_init(mbd);
@@ -49,7 +58,10 @@ void kmain(uint32_t magic, multiboot_info_t *mbd) {
 
     kprintf("Done.");
 
-    die();
+    __asm__ volatile ("mov $0x01, %%eax" ::: "eax");
+    __asm__ volatile ("mov $0xDEADBEEF, %%ebx" ::: "ebx");
+    __asm__ volatile ("int $0x80");
+
     panic("kmain returned!");
 }
 
