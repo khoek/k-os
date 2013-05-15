@@ -1,8 +1,26 @@
 # K-OS
 
-An basic operating system written by Keeley Hoek as a hobby. It was inspired by Charlie Somerville's incredible [JSOS](https://github.com/charliesome/JSOS).
+An operating system written by Keeley Hoek as a hobby. It was inspired by Charlie Somerville's [JSOS](https://github.com/charliesome/JSOS).
 
-It contains some code from [JSOS](https://github.com/charliesome/KOS) which is licensed under the Simplified BSD license.
+## Features
+
+* Multiboot 1 support
+* Basic Text UI support (w/ color)
+* Drivers:
+    * PIT
+    * Keyboard
+    * PATA
+* Tools:
+    * Secure Drive Erasure Tool
+
+## Roadmap
+
+* Tasks and threads
+* Kernel module loading
+* Kernel RAMFS
+* VFS
+* AHCI driver
+* Better PATA driver
 
 ## License
 
