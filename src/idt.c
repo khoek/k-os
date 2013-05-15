@@ -64,7 +64,7 @@ void idt_set_isr(uint32_t gate, uint32_t isr) {
 }
 
 static char* exceptions[32] = {
-     [0] =    "Divide-by-zero Error",
+     [0] =    "Divide-by-zero",
      [1] =    "Debug",
      [2] =    "Non-maskable Interrupt",
      [3] =    "Breakpoint",
@@ -93,7 +93,7 @@ static uint16_t get_reg(uint16_t pic, uint8_t reg) {
 
 void interrupt_dispatch(interrupt_t *interrupt) {
     if (interrupt->vector < PIC_MASTER_OFFSET) {
-        panicf("Exception: Code %u %s - EIP:0x%X 0x%X", interrupt->vector, exceptions[interrupt->vector] ? exceptions[interrupt->vector] : "Unknown", interrupt->eip, interrupt->error);
+        panicf("Exception #%u: %s\nError Code: 0x%X\nEIP: 0x%p", interrupt->vector, exceptions[interrupt->vector] ? exceptions[interrupt->vector] : "Unknown", interrupt->error, interrupt->eip);
     }
 
     if(interrupt->vector == INT_SPURIOUS_MASTER && !(get_reg(MASTER_COMMAND, PIC_REG_IRR) & (1 << IRQ_SPURIOUS))) {
