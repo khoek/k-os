@@ -28,6 +28,8 @@ void kmain(uint32_t magic, multiboot_info_t *mbd) {
 
     cli();
 
+    idt_init();
+
     kprintf("Parsing Kernel Modules...\n");
     module_init(mbd);
     kprintf("\n");
@@ -44,8 +46,6 @@ void kmain(uint32_t magic, multiboot_info_t *mbd) {
     pit_init(PIT_FREQ);
     kprintf("\n");
 
-    idt_init();
-
     sti();
 
     kprintf("Initializing MM...\n");
@@ -58,8 +58,10 @@ void kmain(uint32_t magic, multiboot_info_t *mbd) {
 
     kprintf("Done.");
 
-    __asm__ volatile ("mov $0x01, %%eax" ::: "eax");
-    __asm__ volatile ("mov $0xDEADBEEF, %%ebx" ::: "ebx");
+    uint32_t syscall = 0;
+    int32_t retcode = -1;
+    __asm__ volatile ("mov %0, %%eax" :: "m" (syscall) : "eax");
+    __asm__ volatile ("mov %0, %%ebx" :: "m" (retcode) : "ebx");
     __asm__ volatile ("int $0x80");
 
     panic("kmain returned!");
