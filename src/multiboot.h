@@ -152,9 +152,9 @@ typedef struct multiboot_mmap_entry {
 } PACKED multiboot_memory_map_t;
 
 typedef struct multiboot_mod_list {
-  /* the memory used goes from bytes 'mod_start' to 'mod_end-1' inclusive */
-  multiboot_uint32_t mod_start;
-  multiboot_uint32_t mod_end;
+  /* the memory used goes from bytes 'start' to 'end-1' inclusive */
+  multiboot_uint32_t start;
+  multiboot_uint32_t end;
 
   /* Module command line */
   multiboot_uint32_t cmdline;

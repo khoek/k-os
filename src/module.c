@@ -16,7 +16,7 @@ void module_init(multiboot_info_t *mbd) {
     mods = mbd->mods;
 
     for(uint32_t i = 0; i < mbd->mods_count; i++) {
-        kprintf("    - Module #%u at (0x%08X - 0x%08X) %s\n", i, mods[i].mod_start, mods[i].mod_end, mods[i].cmdline);
+        kprintf("    - Module #%u at (0x%08X - 0x%08X) %s\n", i, mods[i].start, mods[i].end, mods[i].cmdline);
     }
 }
 

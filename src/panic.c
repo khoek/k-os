@@ -30,7 +30,7 @@ void panic(char* message) {
     asm("mov %%ebp, %0" : "=r" (ebp));
     eip = ebp[1];
 
-    for(uint32_t frame = 0; eip != 0 && frame < MAX_FRAMES; frame++) {
+    for(uint32_t frame = 0; eip != 0 && ebp != 0 && frame < MAX_FRAMES; frame++) {
         elf_symbol_t *symbol = elf_lookup_symbol(eip);
         if(symbol == NULL) {
             kprintf("    0x%X\n", eip);

@@ -199,7 +199,7 @@ void mm_init(multiboot_info_t *mbd) {
     kernel_end = (uint32_t) &end_of_image;
 
     for(uint32_t i = 0; i < module_count(); i++) {
-        uint32_t end = module_get(i)->mod_end - 1;
+        uint32_t end = module_get(i)->end - 1;
         if(kernel_end < end) {
             kernel_end = end;
         }
