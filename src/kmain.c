@@ -8,8 +8,8 @@
 #include "idt.h"
 #include "module.h"
 #include "keyboard.h"
-#include "pit.h"
 #include "syscall.h"
+#include "pit.h"
 #include "mm.h"
 #include "pci.h"
 
@@ -38,7 +38,7 @@ void kmain(uint32_t magic, multiboot_info_t *mbd) {
     keyboard_init();
     kprintf("\n");
 
-    kprintf("Initializing Syscall Handler...\n");
+    kprintf("Initializing Syscall Handlers...\n");
     syscall_init();
     kprintf("\n");
 
@@ -56,14 +56,16 @@ void kmain(uint32_t magic, multiboot_info_t *mbd) {
     pci_init();
     kprintf("\n");
 
-    kprintf("Done.");
+    kprintf("Done.\n");
 
-    uint32_t syscall = 0;
+ /* uint32_t syscall = 0;
     int32_t retcode = -1;
     __asm__ volatile ("mov %0, %%eax" :: "m" (syscall) : "eax");
     __asm__ volatile ("mov %0, %%ebx" :: "m" (retcode) : "ebx");
     __asm__ volatile ("int $0x80");
+  */
 
+    die();
     panic("kmain returned!");
 }
 
