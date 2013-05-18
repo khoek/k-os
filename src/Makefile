@@ -6,7 +6,7 @@ CFLAGS=	-Wall -Wextra -Werror -m32 -I. -std=gnu99 \
 OBJS=	loader.o string.o printf.o rand.o \
         kmain.o elf.o panic.o console.o \
         gdt.o registers.o idt.o isr.o \
-        module.o mm.o \
+        module.o mm.o cache.o \
         pit.o syscall.o keyboard.o \
         pci.o ide.o ahci.o vfs.o \
         shell.o erasure_tool.o \

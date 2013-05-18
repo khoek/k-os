@@ -11,6 +11,7 @@
 #include "syscall.h"
 #include "pit.h"
 #include "mm.h"
+#include "cache.h"
 #include "pci.h"
 
 #define PIT_FREQ 100
@@ -50,6 +51,10 @@ void kmain(uint32_t magic, multiboot_info_t *mbd) {
 
     kprintf("Initializing MM...\n");
     mm_init(mbd);
+    kprintf("\n");
+
+    kprintf("Initializing Caches...\n");
+    cache_init();
     kprintf("\n");
 
     kprintf("Probing PCI...\n");

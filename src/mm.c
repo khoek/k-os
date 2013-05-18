@@ -1,6 +1,7 @@
 #include <stddef.h>
 #include <stdbool.h>
 #include <stdint.h>
+#include <limits.h>
 #include "mm.h"
 #include "common.h"
 #include "panic.h"
@@ -90,7 +91,7 @@ page_t * alloc_page(uint32_t UNUSED(flags)) {
         }
     }
 
-    return NULL;
+    panicf("OOM!");
 }
 
 void free_page(page_t *page) {
@@ -135,13 +136,20 @@ void free_page(page_t *page) {
 }
 
 void * page_to_address(page_t *page) {
-  return (void *) ((get_index(page) * PAGE_SIZE) + mem_start);
+    return (void *) ((get_index(page) * PAGE_SIZE) + mem_start);
+}
+
+page_t * address_to_page(void *address) {
+    if(((uint32_t) address) < mem_start || ((uint32_t) address) >= mem_end) panicf("address 0x%p out of bounds (0x%p - 0x%p)", address, mem_start, mem_end);
+
+    return &pages[(((uint32_t) address) - mem_start) / PAGE_SIZE];
 }
 
 static void paging_init() {
     uint32_t page_table_start = mem_start;
+
     //reserve space for the page tables, remaining page aligned, page directory is declared in the BSS
-    mem_start += DIV_UP(8 * NUM_ENTRIES * NUM_ENTRIES, PAGE_SIZE) * PAGE_SIZE;
+    mem_start += DIV_UP(sizeof(size_t) * NUM_ENTRIES * NUM_ENTRIES, PAGE_SIZE) * PAGE_SIZE;
 
     //reserve space for the page_t structs, remaining page aligned
     pages = (page_t *) mem_start;
@@ -149,7 +157,7 @@ static void paging_init() {
     mem_start += DIV_UP(sizeof(page_t) * NUM_ENTRIES * NUM_ENTRIES, PAGE_SIZE) * PAGE_SIZE;
 
     uint32_t total = mem_end - page_table_start;
-    uint32_t paging_overhead = DIV_UP(8 * NUM_ENTRIES * NUM_ENTRIES, PAGE_SIZE) * PAGE_SIZE;
+    uint32_t paging_overhead = DIV_UP(sizeof(size_t) * NUM_ENTRIES * NUM_ENTRIES, PAGE_SIZE) * PAGE_SIZE;
     uint32_t malloc_overhead = DIV_UP(sizeof(page_t) * NUM_ENTRIES * NUM_ENTRIES, PAGE_SIZE) * PAGE_SIZE;
     uint32_t available = mem_end - mem_start;
     kprintf("Total     RAM:   %4u MB (%7u pages)\n", DIV_DOWN(total,           1024 * 1024), DIV_DOWN(total,           PAGE_SIZE));
