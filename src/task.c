@@ -14,13 +14,17 @@ void task_init() {
     init->pid = 1;
 }
 
-void task_loop() {
+void task_start() {
     gdt_set_kernel_stack(kernel_stack);
     enter_usermode();
 }
 
 void task_usermode() {
+    __asm__ volatile("mov $1, %eax");
+    __asm__ volatile("mov $8, %ebx");
+    __asm__ volatile("int $0x80");
+
     __asm__ volatile("mov $0, %eax");
-    __asm__ volatile("mov $1, %ebx");
+    __asm__ volatile("mov $-1, %ebx");
     __asm__ volatile("int $0x80");
 }

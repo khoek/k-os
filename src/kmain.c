@@ -13,6 +13,7 @@
 #include "mm.h"
 #include "cache.h"
 #include "pci.h"
+#include "task.h"
 
 #define PIT_FREQ 100
 
@@ -61,15 +62,12 @@ void kmain(uint32_t magic, multiboot_info_t *mbd) {
     pci_init();
     kprintf("\n");
 
-    kprintf("Done.\n");
+    kprintf("Initializing Multitasking...\n");
+    task_init();
+    kprintf("\n");
 
- /* uint32_t syscall = 0;
-    int32_t retcode = -1;
-    __asm__ volatile ("mov %0, %%eax" :: "m" (syscall) : "eax");
-    __asm__ volatile ("mov %0, %%ebx" :: "m" (retcode) : "ebx");
-    __asm__ volatile ("int $0x80");
-  */
+    kprintf("Entering Usermode...\n\n");
+    task_start();
 
-    die();
     panic("kmain returned!");
 }

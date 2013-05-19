@@ -3,17 +3,20 @@
 #include "gdt.h"
 #include "idt.h"
 #include "panic.h"
+#include "console.h"
 
 #define MAX_SYSCALL 256
 
 typedef void (*syscall_t)(interrupt_t *);
 
 void sys_exit(interrupt_t *interrupt) {
-    panicf("sys_exit: %d", interrupt->registers.ebx);
+    kprintf("sys_exit: %d\n", interrupt->registers.ebx);
+
+    die();
 }
 
 void sys_fork(interrupt_t *interrupt) {
-    panicf("sys_fork: %d", interrupt->registers.ebx);
+    kprintf("sys_fork: %d\n", interrupt->registers.ebx);
 }
 
 syscall_t syscalls[MAX_SYSCALL] = {
