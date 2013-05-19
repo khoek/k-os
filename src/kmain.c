@@ -28,6 +28,14 @@ void kmain(uint32_t magic, multiboot_info_t *mbd) {
 
     gdt_init();
 
+    kprintf("Initializing MM...\n");
+    mm_init(mbd);
+    kprintf("\n");
+
+    kprintf("Initializing Caches...\n");
+    cache_init();
+    kprintf("\n");
+
     cli();
 
     idt_init();
@@ -49,14 +57,6 @@ void kmain(uint32_t magic, multiboot_info_t *mbd) {
     kprintf("\n");
 
     sti();
-
-    kprintf("Initializing MM...\n");
-    mm_init(mbd);
-    kprintf("\n");
-
-    kprintf("Initializing Caches...\n");
-    cache_init();
-    kprintf("\n");
 
     kprintf("Probing PCI...\n");
     pci_init();
