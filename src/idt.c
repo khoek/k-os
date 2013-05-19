@@ -1,31 +1,31 @@
 #include <stddef.h>
-#include "idt.h"
 #include "common.h"
+#include "idt.h"
 #include "gdt.h"
 #include "io.h"
 #include "panic.h"
 #include "console.h"
 
 //command io port of PICs
-#define MASTER_COMMAND    0x20
-#define SLAVE_COMMAND    0xA0
+#define MASTER_COMMAND  0x20
+#define SLAVE_COMMAND   0xA0
 
 //data io port of PICs
-#define MASTER_DATA    0x21
-#define SLAVE_DATA    0xA1
+#define MASTER_DATA     0x21
+#define SLAVE_DATA      0xA1
 
 //interrupt vector offset
-#define PIC_MASTER_OFFSET    0x20
-#define PIC_SLAVE_OFFSET    0x28
+#define PIC_MASTER_OFFSET 0x20
+#define PIC_SLAVE_OFFSET  0x28
 
 //PIC commands
-#define INIT    0x11 //enter "init" mode
-#define EOI    0x20 //end of interrupt handler
+#define INIT 0x11 //enter "init" mode
+#define EOI  0x20 //end of interrupt handler
 
 //Potential spurious vectors
-#define IRQ_SPURIOUS        7
-#define INT_SPURIOUS_MASTER    (PIC_MASTER_OFFSET + IRQ_SPURIOUS)
-#define INT_SPURIOUS_SLAVE    (PIC_SLAVE_OFFSET + IRQ_SPURIOUS)
+#define IRQ_SPURIOUS 7
+#define INT_SPURIOUS_MASTER (PIC_MASTER_OFFSET + IRQ_SPURIOUS)
+#define INT_SPURIOUS_SLAVE  (PIC_SLAVE_OFFSET + IRQ_SPURIOUS)
 
 #define PIC_REG_IRR    0x0A
 #define PIC_REG_ISR    0x0B
@@ -47,18 +47,20 @@ static idtd_t idtd;
 static idt_entry_t idt[256];
 static void (*handlers[256 - PIC_MASTER_OFFSET])(interrupt_t *);
 
-void idt_register(uint32_t vector, void(*handler)(interrupt_t *)) {
-    if (handlers[vector - PIC_MASTER_OFFSET]) {
+void idt_register(uint8_t vector, uint8_t cpl, void(*handler)(interrupt_t *)) {
+    if(handlers[vector - PIC_MASTER_OFFSET]) {
         panicf("Registering second interrupt handler for %u", vector);
-    } else {
-        handlers[vector - PIC_MASTER_OFFSET] = handler;
     }
+
+    handlers[vector - PIC_MASTER_OFFSET] = handler;
+
+    idt[vector].type |= cpl;
 }
 
 void idt_set_isr(uint32_t gate, uint32_t isr) {
     idt[gate].offset_lo = isr & 0xffff;
     idt[gate].offset_hi = (isr >> 16) & 0xffff;
-    idt[gate].selector = SEL_CODE_KERNEL;
+    idt[gate].selector = CPL_KERNEL_CODE;
     idt[gate].zero = 0;
     idt[gate].type = 0x80 /* present */ | 0xe /* 32 bit interrupt gate */;
 }
@@ -93,7 +95,7 @@ static uint16_t get_reg(uint16_t pic, uint8_t reg) {
 
 void interrupt_dispatch(interrupt_t *interrupt) {
     if (interrupt->vector < PIC_MASTER_OFFSET) {
-        panicf("Exception #%u: %s\nError Code: 0x%X\nEIP: 0x%p", interrupt->vector, exceptions[interrupt->vector] ? exceptions[interrupt->vector] : "Unknown", interrupt->error, interrupt->eip);
+        panicf("Exception #%u: %s\nError Code: 0x%X\nEIP: 0x%p", interrupt->vector, exceptions[interrupt->vector] ? exceptions[interrupt->vector] : "Unknown", interrupt->error, interrupt->state.eip);
     }
 
     if(interrupt->vector == INT_SPURIOUS_MASTER && !(get_reg(MASTER_COMMAND, PIC_REG_IRR) & (1 << IRQ_SPURIOUS))) {
@@ -119,8 +121,6 @@ void interrupt_dispatch(interrupt_t *interrupt) {
 extern void isr_init();
 
 void idt_init() {
-    cli();
-
     isr_init();
 
     //send INIT command
@@ -147,6 +147,4 @@ void idt_init() {
     idtd.offset = (uint32_t) idt;
 
     lidt(&idtd);
-
-    sti();
 }

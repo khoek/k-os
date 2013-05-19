@@ -26,4 +26,3 @@ SECTIONS {
         end_of_image = .;
     }
 }
-

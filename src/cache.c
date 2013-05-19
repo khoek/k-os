@@ -156,4 +156,3 @@ void cache_init() {
 
     kprintf("Created %u new object cache(s).\n", NUM_CACHES);
 }
-

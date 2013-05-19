@@ -1,6 +1,7 @@
 #include <stdint.h>
 #include "pit.h"
 #include "common.h"
+#include "gdt.h"
 #include "idt.h"
 #include "panic.h"
 #include "io.h"
@@ -46,7 +47,7 @@ static void handle_pit(interrupt_t UNUSED(*interrupt)) {
 }
 
 void pit_init(uint32_t freq) {
-    idt_register(32, handle_pit);
+    idt_register(32, CPL_KERNEL, handle_pit);
 
     uint32_t divisor = PIT_CLOCK / freq;
     outb(0x43, 0x36);

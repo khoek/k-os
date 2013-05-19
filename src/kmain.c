@@ -73,4 +73,3 @@ void kmain(uint32_t magic, multiboot_info_t *mbd) {
     die();
     panic("kmain returned!");
 }
-

@@ -19,4 +19,3 @@ void module_init(multiboot_info_t *mbd) {
         kprintf("    - Module #%u at (0x%08X - 0x%08X) %s\n", i, mods[i].start, mods[i].end, mods[i].cmdline);
     }
 }
-

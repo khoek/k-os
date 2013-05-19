@@ -1,5 +1,6 @@
 #include <stddef.h>
 #include "syscall.h"
+#include "gdt.h"
 #include "idt.h"
 #include "panic.h"
 
@@ -8,11 +9,11 @@
 typedef void (*syscall_t)(interrupt_t *);
 
 void sys_exit(interrupt_t *interrupt) {
-    panicf("sys_exit: %d", interrupt->ebx);
+    panicf("sys_exit: %d", interrupt->registers.ebx);
 }
 
 void sys_fork(interrupt_t *interrupt) {
-    panicf("sys_fork: %d", interrupt->ebx);
+    panicf("sys_fork: %d", interrupt->registers.ebx);
 }
 
 syscall_t syscalls[MAX_SYSCALL] = {
@@ -21,14 +22,13 @@ syscall_t syscalls[MAX_SYSCALL] = {
 };
 
 static void syscall_handler(interrupt_t *interrupt) {
-    if(interrupt->eax >= MAX_SYSCALL || syscalls[interrupt->eax] == NULL) {
-        panicf("Unregistered Syscall #%u: 0x%X", interrupt->eax, interrupt->ebx);
+    if(interrupt->registers.eax >= MAX_SYSCALL || syscalls[interrupt->registers.eax] == NULL) {
+        panicf("Unregistered Syscall #%u: 0x%X", interrupt->registers.eax, interrupt->registers.ebx);
     } else {
-        syscalls[interrupt->eax](interrupt);
+        syscalls[interrupt->registers.eax](interrupt);
     }
 }
 
 void syscall_init() {
-    idt_register(0x80, syscall_handler);
+    idt_register(0x80, CPL_USER, syscall_handler);
 }
-

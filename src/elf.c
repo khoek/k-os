@@ -60,4 +60,3 @@ const char * elf_symbol_name(elf_symbol_t *symbol) {
     if(symbol == NULL) return NULL;
     return (const char *) ((uint32_t) kernel.strtab + symbol->name);
 }
-

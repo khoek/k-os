@@ -1,4 +1,7 @@
 #include <stdint.h>
+#include <stdbool.h>
+#include "common.h"
+#include "registers.h"
 
 static inline void cli() {
     __asm__ volatile("cli");
@@ -17,12 +20,13 @@ static inline void lidt(void *idtr) {
 }
 
 typedef struct interrupt {
-  uint32_t edi, esi, ebp, esp, ebx, edx, ecx, eax;
+  registers_t registers;
   uint32_t vector, error;
-  uint32_t eip, cs, eflags, oldesp, ss;
-} interrupt_t;
+  state_t state;
+} PACKED interrupt_t;
 
 void idt_init();
-void idt_register(uint32_t vector, void(*handler)(interrupt_t *));
+
+void idt_register(uint8_t vector, uint8_t cpl, void(*handler)(interrupt_t *));
 void idt_set_isr(uint32_t gate, uint32_t isr);
 void interrupt_dispatch(interrupt_t * reg);

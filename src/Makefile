@@ -1,7 +1,9 @@
 -include ../Makefile.local
 
-CFLAGS=	-Wall -Wextra -Werror -m32 -I. -std=gnu99 \
-        -nostdlib -nostartfiles -nodefaultlibs -ffreestanding
+ASFLAGS=	--32 --nocompress-debug-sections -c
+
+CCFLAGS=	-Wall -Wextra -Werror -m32 -I. -std=gnu99 \
+        -nostdlib -nostartfiles -nodefaultlibs -ffreestanding -c
 
 OBJS=	loader.o string.o printf.o rand.o \
         kmain.o elf.o panic.o console.o \
@@ -9,17 +11,17 @@ OBJS=	loader.o string.o printf.o rand.o \
         module.o mm.o cache.o \
         pit.o syscall.o keyboard.o \
         pci.o ide.o ahci.o vfs.o \
-        shell.o erasure_tool.o \
+        task.o shell.o erasure_tool.o \
 
 all: kernel.elf
 
 .s.o:
 	@echo "      as  $<"
-	@$(AS) -o $@ $<
+	@$(AS) $(ASFLAGS) -o $@ $<
 
 %.o: %.c
 	@echo "      cc  $<"
-	@$(CC) $(CFLAGS) -c -o $@ $<
+	@$(CC) $(CCFLAGS) -o $@ $<
 
 kernel.elf: $(OBJS) linker.ld
 	@echo "linking kernel"
@@ -31,4 +33,3 @@ clean:
 	rm -f kernel.elf
 
 .PHONY: all clean
-

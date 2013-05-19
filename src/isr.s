@@ -300,4 +300,3 @@ isr_init:
 
     ret
 .size isr_init, .-isr_init
-

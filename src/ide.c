@@ -513,8 +513,8 @@ static int32_t pata_access(bool write, bool same, uint8_t drive, uint64_t numsec
 }
 
 void ide_init(uint32_t BAR0, uint32_t BAR1, uint32_t BAR2, uint32_t BAR3, uint32_t BAR4) {
-    idt_register(46, handle_irq_primary);
-    idt_register(47, handle_irq_secondary);
+    idt_register(46, false, handle_irq_primary);
+    idt_register(47, false, handle_irq_secondary);
 
     // 1- Detect I/O Ports which interface IDE Controller:
     channels[ATA_PRIMARY  ].base  = (BAR0 & 0xFFFFFFFC) + 0x1F0 * (!BAR0);
@@ -568,7 +568,6 @@ void ide_init(uint32_t BAR0, uint32_t BAR1, uint32_t BAR2, uint32_t BAR3, uint32
                 type = TYPE_PATAPI;
             else
                 continue; // Unknown Type (may not be a device).
-
 
             ide_write(i, ATA_REG_COMMAND, ATA_CMD_IDENTIFY_PACKET);
             sleep(1);
@@ -720,4 +719,3 @@ int32_t ide_write_sectors_same(uint8_t drive, uint64_t numsects, uint32_t lba, v
     else
         panic("IDE - unknown device type");
 }
-

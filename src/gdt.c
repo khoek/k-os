@@ -1,11 +1,11 @@
 #include <stddef.h>
 #include "gdt.h"
 #include "string.h"
-#include "common.h"
 #include "console.h"
 #include "panic.h"
+#include "registers.h"
 
-#define GDT_SIZE 5
+#define GDT_SIZE 6
 
 typedef struct gdtd {
     uint16_t size;
@@ -23,43 +23,47 @@ typedef struct gdt_entry {
 
 static gdtd_t gdtd;
 static gdt_entry_t gdt[GDT_SIZE];
+static tss_t tss;
 
-#define ACCESS_BASE (1 << 4)
 #define PRESENT     (1 << 7)
-#define RING_KERNEL (0 << 5)
-#define RING_USER   (3 << 5)
-#define TYPE_DATA   (0 << 3)
-#define TYPE_CODE   (1 << 3)
-#define PERM_R      (0 << 1)
-#define PERM_RW     (1 << 1)
+#define TSS         (1 << 0)
+#define SEGMENT     (1 << 4)
+#define EXECABLE    (1 << 3)
+#define WRITABLE    (1 << 1)
 
-#define FLAG_BITS_16 (0 << 6)
-#define FLAG_BITS_32 (1 << 6)
+#define FLAG_AVAILABLE        (1 << 4)
+#define FLAG_BITS_32          (1 << 6)
 #define FLAG_GRANULARITY_BYTE (0 << 7)
 #define FLAG_GRANULARITY_PAGE (1 << 7)
 
-void setSelector(uint16_t index, uint32_t base, uint32_t limit, uint8_t type) {
+static void create_selector(uint16_t index, uint32_t base, uint32_t limit, uint8_t access, uint8_t flags) {
     gdt[index].limit_0_15 = limit & 0xFFFF;
-    gdt[index].limit_16_19_and_flags |= FLAG_BITS_32 | FLAG_GRANULARITY_PAGE | ((limit >> 16) & 0xF);
+    gdt[index].limit_16_19_and_flags = flags | ((limit >> 16) & 0xF);
     gdt[index].base_0_15  = base & 0xFFFF;
     gdt[index].base_16_23 = (base >> 16) & 0x00FF;
     gdt[index].base_24_31 = base >> 24;
-    gdt[index].access     = (type ? ACCESS_BASE : 0) | type;
+    gdt[index].access     = access;
 }
 
-void reload_segment_registers();
+void gdt_set_kernel_stack(void *esp) {
+    tss.esp0 = (uint32_t) esp;
+}
 
 void gdt_init() {
-    setSelector(0, 0x00000000, 0x00000, 0);
-    setSelector(1, 0x00000000, 0xFFFFF, RING_KERNEL | TYPE_CODE | PERM_RW | PRESENT);
-    setSelector(2, 0x00000000, 0xFFFFF, RING_KERNEL | TYPE_DATA | PERM_RW | PRESENT);
-    setSelector(3, 0x00000000, 0xFFFFF, RING_USER   | TYPE_CODE | PERM_RW | PRESENT);
-    setSelector(4, 0x00000000, 0xFFFFF, RING_USER   | TYPE_DATA | PERM_RW | PRESENT);
+    create_selector(0, 0x00000000, 0x00000, 0, 0);
+    create_selector(1, 0x00000000, 0xFFFFF,            PRESENT | CPL_KERNEL | WRITABLE | EXECABLE | SEGMENT, FLAG_BITS_32 | FLAG_GRANULARITY_PAGE);
+    create_selector(2, 0x00000000, 0xFFFFF,            PRESENT | CPL_KERNEL | WRITABLE            | SEGMENT, FLAG_BITS_32 | FLAG_GRANULARITY_PAGE);
+    create_selector(3, 0x00000000, 0xFFFFF,            PRESENT | CPL_USER   | WRITABLE | EXECABLE | SEGMENT, FLAG_BITS_32 | FLAG_GRANULARITY_PAGE | FLAG_AVAILABLE);
+    create_selector(4, 0x00000000, 0xFFFFF,            PRESENT | CPL_USER   | WRITABLE            | SEGMENT, FLAG_BITS_32 | FLAG_GRANULARITY_PAGE | FLAG_AVAILABLE);
+    create_selector(5, (uint32_t) &tss, sizeof(tss_t), PRESENT | CPL_KERNEL |            EXECABLE | TSS    , FLAG_BITS_32 | FLAG_GRANULARITY_BYTE);
+
+    tss.ss0 = CPL_KERNEL_DATA;
 
     gdtd.size = (GDT_SIZE * sizeof(gdt_entry_t)) - 1;
     gdtd.offset = (uint32_t) gdt;
 
     __asm__ volatile("lgdt (%0)" :: "m" (gdtd));
 
-    reload_segment_registers();
+    flush_segment_registers();
+    flush_tss();
 }

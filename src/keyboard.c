@@ -2,6 +2,7 @@
 #include <stdbool.h>
 #include "keyboard.h"
 #include "common.h"
+#include "gdt.h"
 #include "idt.h"
 #include "io.h"
 #include "console.h"
@@ -161,5 +162,5 @@ static void handle_keyboard(interrupt_t UNUSED(*interrupt)) {
 }
 
 void keyboard_init() {
-    idt_register(33, handle_keyboard);
+    idt_register(33, CPL_KERNEL, handle_keyboard);
 }
