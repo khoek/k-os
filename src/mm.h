@@ -1,3 +1,6 @@
+#ifndef KERNEL_MM_H
+#define KERNEL_MM_H
+
 #include "multiboot.h"
 
 #define PAGE_SIZE 0x1000
@@ -20,3 +23,5 @@ void free_page(page_t *page);
 
 void * page_to_address(page_t *page);
 page_t * address_to_page(void *address);
+
+#endif

@@ -1,3 +1,6 @@
+#ifndef KERNEL_IDT_H
+#define KERNEL_IDT_H
+
 #include <stdint.h>
 #include <stdbool.h>
 #include "common.h"
@@ -30,3 +33,5 @@ void idt_init();
 void idt_register(uint8_t vector, uint8_t cpl, void(*handler)(interrupt_t *));
 void idt_set_isr(uint32_t gate, uint32_t isr);
 void interrupt_dispatch(interrupt_t * reg);
+
+#endif

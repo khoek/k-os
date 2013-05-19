@@ -1,3 +1,6 @@
+#ifndef KERNEL_PIT_H
+#define KERNEL_PIT_H
+
 #include <stdint.h>
 
 uint64_t uptime();
@@ -9,3 +12,5 @@ void beep();
 void sleep(uint32_t milis);
 
 void pit_init();
+
+#endif

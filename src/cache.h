@@ -1,3 +1,6 @@
+#ifndef KERNEL_CACHE_H
+#define KERNEL_CACHE_H
+
 #include <stdint.h>
 
 #define NUM_CACHES 1
@@ -8,3 +11,5 @@ void cache_init();
 
 void * cache_alloc(uint32_t cache);
 void cache_free(uint32_t cache, void *mem);
+
+#endif

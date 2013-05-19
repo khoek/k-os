@@ -1,3 +1,6 @@
+#ifndef KERNEL_IO_H
+#define KERNEL_IO_H
+
 #include <stdint.h>
 
 static inline void outb(uint16_t port, uint8_t value) {
@@ -35,3 +38,5 @@ static inline void insl(uint16_t port, void * buff, uint32_t size) {
 static inline void outsl(uint16_t port, void * buff, uint32_t size) {
     __asm__ volatile("rep outsl" : "=S" (buff), "=c" (size) : "d" (port), "0" (buff), "1" (size));
 }
+
+#endif

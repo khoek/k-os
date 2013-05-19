@@ -1,3 +1,6 @@
+#ifndef KERNEL_ELF_H
+#define KERNEL_ELF_H
+
 #include <stdint.h>
 #include "multiboot.h"
 
@@ -36,3 +39,5 @@ typedef struct {
 void elf_init(multiboot_info_t *mbd);
 elf_symbol_t * elf_lookup_symbol(uint32_t address);
 const char * elf_symbol_name(elf_symbol_t *symbol);
+
+#endif

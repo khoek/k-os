@@ -1,3 +1,6 @@
+#ifndef KERNEL_GDT_H
+#define KERNEL_GDT_H
+
 #include <stdint.h>
 #include "common.h"
 
@@ -43,3 +46,5 @@ typedef struct tss {
 void gdt_init();
 
 void gdt_set_kernel_stack(void *esp);
+
+#endif

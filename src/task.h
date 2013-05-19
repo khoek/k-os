@@ -1,3 +1,6 @@
+#ifndef KERNEL_TASK_H
+#define KERNEL_TASK_H
+
 #include <stdint.h>
 #include "registers.h"
 
@@ -10,4 +13,6 @@ typedef struct task {
 void task_usermode();
 
 void task_init();
-void task_loop();
+void task_start();
+
+#endif

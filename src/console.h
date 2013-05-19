@@ -1,3 +1,6 @@
+#ifndef KERNEL_CONSOLE_H
+#define KERNEL_CONSOLE_H
+
 #include <stdint.h>
 
 #define CONSOLE_WIDTH	80
@@ -13,3 +16,5 @@ void console_puts(char* s);
 void console_cursor(uint8_t r, uint8_t c);
 
 void kprintf(char* fmt, ...);
+
+#endif

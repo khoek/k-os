@@ -1,3 +1,6 @@
+#ifndef KERNEL_KEYBOARD_H
+#define KERNEL_KEYBOARD_H
+
 #include <stdbool.h>
 
 void keyboard_init();
@@ -6,3 +9,5 @@ void keyboard_register_key_down(void (*handler)(char));
 bool shift_down();
 bool control_down();
 bool alt_down();
+
+#endif

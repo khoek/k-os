@@ -1,5 +1,5 @@
-#ifndef LIBC_STRING_H
-#define LIBC_STRING_H
+#ifndef KERNEL_STRING_H
+#define KERNEL_STRING_H
 
 #include "stdint.h"
 #include "stddef.h"

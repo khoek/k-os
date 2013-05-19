@@ -1,3 +1,6 @@
+#ifndef KERNEL_REGISTERS_H
+#define KERNEL_REGISTERS_H
+
 #include "common.h"
 
 typedef struct registers {
@@ -11,3 +14,5 @@ typedef struct state {
 void flush_segment_registers();
 void flush_tss();
 void enter_usermode();
+
+#endif

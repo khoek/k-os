@@ -1,3 +1,6 @@
+#ifndef KERNEL_IDE_H
+#define KERNEL_IDE_H
+
 #include <stdbool.h>
 #include <stdint.h>
 
@@ -15,3 +18,5 @@ int32_t ide_read_sectors(uint8_t drive, uint64_t numsects, uint32_t lba, void * 
 
 int32_t ide_write_sectors(uint8_t drive, uint64_t numsects, uint32_t lba, void * edi);
 int32_t ide_write_sectors_same(uint8_t drive, uint64_t numsects, uint32_t lba, void * edi);
+
+#endif
