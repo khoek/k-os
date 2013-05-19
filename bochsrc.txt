@@ -1,0 +1,11 @@
+display_library: sdl
+
+romimage: file=/usr/share/bochs/BIOS-bochs-latest
+vgaromimage: file=/usr/share/bochs/VGABIOS-lgpl-latest
+
+magic_break: enabled=1
+port_e9_hack: enabled=1
+
+boot: cdrom
+ata0-master: type=cdrom, path="cdrom.iso", status=inserted
+ata1-master: type=disk, path="hdd.img"
