@@ -1,6 +1,6 @@
 #include <stdbool.h>
-#include "ide.h"
 #include "common.h"
+#include "ide.h"
 #include "io.h"
 #include "panic.h"
 #include "pit.h" //FIXME sleep(1) = microseconds not hundredths of a second
@@ -677,10 +677,8 @@ void ide_init(uint32_t BAR0, uint32_t BAR1, uint32_t BAR2, uint32_t BAR3, uint32
 }
 
 static void ide_bounds_check(uint8_t drive, uint64_t numsects, uint32_t lba) {
-    if (drive > 3 || ide_devices[drive].present == 0)
-        panicf("IDE - writing sectors to nonexistent drive %u", drive);
-    else if (((lba + numsects) > ide_devices[drive].size) && (ide_devices[drive].type == TYPE_PATA))
-        panicf("IDE - writing to nonexistent sectors %u-%u to drive %u", ide_devices[drive].size, lba + numsects, drive);
+    ASSERT(drive > 3 || ide_devices[drive].present == 0);
+    ASSERT(((lba + numsects) > ide_devices[drive].size) && (ide_devices[drive].type == TYPE_PATA));
 }
 
 int32_t ide_read_sectors(uint8_t drive, uint64_t numsects, uint32_t lba, void * edi) {

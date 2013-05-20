@@ -1,6 +1,5 @@
 #include "shell.h"
 #include "idt.h"
-#include "panic.h"
 #include "console.h"
 #include "keyboard.h"
 

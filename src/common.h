@@ -12,6 +12,8 @@
 #define DIV_DOWN(x, y) ((x) / (y))
 #define DIV_UP(x, y)   ((((x) - 1) / (y)) + 1)
 
-#define BIT_SET(bits, bit) (((uint32_t) bits) & ((uint32_t) bit))
+#define BIT_SET(flags, mask) (((uint32_t) flags) & ((uint32_t) mask))
+
+#include "debug.h"
 
 #endif

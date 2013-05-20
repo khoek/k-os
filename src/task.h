@@ -14,5 +14,6 @@ void task_usermode();
 
 void task_init();
 void task_start();
-
+#else
+#error OMG
 #endif

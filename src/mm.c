@@ -2,8 +2,8 @@
 #include <stdbool.h>
 #include <stdint.h>
 #include <limits.h>
-#include "mm.h"
 #include "common.h"
+#include "mm.h"
 #include "panic.h"
 #include "console.h"
 #include "module.h"
@@ -222,11 +222,11 @@ page_t * alloc_page(uint32_t UNUSED(flags)) {
         }
     }
 
-    panicf("OOM!");
+    panic("OOM!");
 }
 
 void free_page(page_t *page) {
-    if(!BIT_SET(page->flags, PAGE_FLAG_USED)) {kprintf("PAGE 0x%p NOT USED! :O", page_to_address(page));die();}
+    ASSERT(!BIT_SET(page->flags, PAGE_FLAG_USED));
 
     page_unset(page, PAGE_FLAG_USED);
 
@@ -271,7 +271,7 @@ void * page_to_address(page_t *page) {
 }
 
 page_t * address_to_page(void *address) {
-    if(((uint32_t) address) < mem_start || ((uint32_t) address) >= mem_end) panicf("address 0x%p out of bounds (0x%p - 0x%p)", address, mem_start, mem_end);
+    ASSERT((((uint32_t) address) < mem_start) || (((uint32_t) address) >= mem_end));
 
     return &pages[(((uint32_t) address) - mem_start) / PAGE_SIZE];
 }
