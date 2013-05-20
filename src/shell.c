@@ -1,6 +1,8 @@
+#include "shell.h"
+#include "idt.h"
+#include "panic.h"
 #include "console.h"
 #include "keyboard.h"
-#include "idt.h"
 
 #define SHELLCOLUMN 2
 
@@ -50,5 +52,5 @@ void run_shell() {
     kprintf("Welcome to K-OS! Written By Keeley Hoek (escortkeel)\n\n$ ");
     prompt_row = console_row();
 
-    while(1) hlt();
+    die();
 }
