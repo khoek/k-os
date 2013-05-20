@@ -4,5 +4,6 @@
 *.iso
 *.img
 *.elf
+*.ld
 build
 Makefile.local

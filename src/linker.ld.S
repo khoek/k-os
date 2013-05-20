@@ -1,3 +1,5 @@
+#include "init.h"
+
 ENTRY (loader)
 
 SECTIONS {
@@ -20,6 +22,26 @@ SECTIONS {
         *(COMMON)
         *(.bss)
         ebss = .;
+    }
+
+    .init.text ALIGN (0x1000) : {
+        init_text_start = .;
+
+        *(.init.text)
+
+        init_text_end = .;
+    }
+
+    .init.data ALIGN (0x1000) : {
+        init_data_start = .;
+
+        *(.init.data)
+
+        initcall_start = .;
+        SECTION_INITCALL_LEVEL(INITCALL)
+        initcall_end = .;
+
+        init_data_end = .;
     }
 
     .end_of_image : {
