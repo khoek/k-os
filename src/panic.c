@@ -21,11 +21,11 @@ void panic(char* message) {
     console_clear();
 
     console_color(0x0C);
-    kprintf("KERNEL PANIC: ");
+    console_puts("KERNEL PANIC: ");
     console_color(0x07);
-    kprintf("%s\n\n", message);
+    console_putsf("%s\n\n", message);
 
-    kprintf("Stack trace:\n");
+    console_puts("Stack trace:\n");
     uint32_t *ebp, eip = -1;
     asm("mov %%ebp, %0" : "=r" (ebp));
     eip = ebp[1];
@@ -33,9 +33,9 @@ void panic(char* message) {
     for(uint32_t frame = 0; eip != 0 && ebp != 0 && frame < MAX_FRAMES; frame++) {
         elf_symbol_t *symbol = elf_lookup_symbol(eip);
         if(symbol == NULL) {
-            kprintf("    0x%X\n", eip);
+            console_putsf("    0x%X\n", eip);
         } else {
-            kprintf("    %s+0x%X\n", elf_symbol_name(symbol), eip - symbol->value);
+            console_putsf("    %s+0x%X\n", elf_symbol_name(symbol), eip - symbol->value);
         }
 
         ebp = (uint32_t *) ebp[0];

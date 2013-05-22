@@ -1,12 +1,12 @@
 #include <stdarg.h>
-#include <string.h>
-#include <printf.h>
+#include "string.h"
+#include "printf.h"
 #include "console.h"
 #include "panic.h"
 #include "io.h"
 
-#define BUFFSIZE    1024
-#define VRAM        ((char *) 0xb8000)
+#define BUFFSIZE 1024
+#define VRAM     ((char *) 0xb8000)
 
 static uint32_t row, col;
 static char color = 0x07;
@@ -19,7 +19,7 @@ uint8_t console_col() {
      return col;
 }
 
-void console_color(char c) {
+void console_color(const char c) {
      color = c;
 }
 
@@ -33,15 +33,15 @@ void console_clear() {
      row = 0;
 }
 
-void console_write(char *s, uint8_t len) {
+void console_write(const char *str, const uint8_t len) {
      for (int i = 0; i < len; i++) {
-          if(s[i] == '\n') {
+          if(str[i] == '\n') {
                 col = 0;
                 row++;
-          } else if(s[i] == '\r') {
+          } else if(str[i] == '\r') {
                 col = 0;
           } else {
-                VRAM[(row * CONSOLE_WIDTH + col) * 2] = s[i];
+                VRAM[(row * CONSOLE_WIDTH + col) * 2] = str[i];
                 VRAM[(row * CONSOLE_WIDTH + col) * 2 + 1] = color;
                 col++;
           }
@@ -66,11 +66,7 @@ void console_write(char *s, uint8_t len) {
      }
 }
 
-void console_puts(char* s) {
-     console_write(s, strlen(s));
-}
-
-void console_cursor(uint8_t r, uint8_t c) {
+void console_cursor(const uint8_t r, const uint8_t c) {
      if (r >= CONSOLE_HEIGHT || c >= CONSOLE_WIDTH) {
           panicf("illegal cursor location %u, %u", r, c);
      }
@@ -87,10 +83,14 @@ void console_cursor(uint8_t r, uint8_t c) {
      outb(base_vga_port + 1, (row * CONSOLE_WIDTH + col) & 0xff);
 }
 
-void kprintf(char* fmt, ...) {
+void console_puts(const char* str) {
+     console_write(str, strlen(str));
+}
+
+static char buff[BUFFSIZE];
+void console_putsf(const char* fmt, ...) {
      va_list va;
      va_start(va, fmt);
-     char buff[BUFFSIZE];
      vsprintf(buff, fmt, va);
      va_end(va);
 

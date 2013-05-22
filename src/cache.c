@@ -3,7 +3,7 @@
 #include "init.h"
 #include "cache.h"
 #include "panic.h"
-#include "console.h"
+#include "log.h"
 #include "mm.h"
 
 //Cache includes
@@ -155,7 +155,7 @@ void cache_free(uint32_t cache, void *mem) {
 INITCALL cache_init() {
     cache_create(CACHE_TASK, CACHE_TASK_SIZE);
 
-    kprintf("Created %u new object cache(s).\n", NUM_CACHES);
+    logf("cache - created %u new object cache(s).", NUM_CACHES);
 
     return 0;
 }

@@ -6,11 +6,10 @@
 #include "idt.h"
 #include "panic.h"
 #include "io.h"
-#include "console.h"
+#include "log.h"
 
 #define PIT_CLOCK 1193180
 #define PIT_FREQ  100
-#define DIVISOR   (PIT_CLOCK / PIT_FREQ)
 
 uint64_t ticks;
 uint64_t uptime() {
@@ -53,8 +52,10 @@ static INITCALL pit_init() {
     idt_register(32, CPL_KERNEL, handle_pit);
 
     outb(0x43, 0x36);
-    outb(0x40, DIVISOR & 0xff);
-    outb(0x40, (DIVISOR >> 8) & 0xff);
+    outb(0x40, (PIT_CLOCK / PIT_FREQ) & 0xff);
+    outb(0x40, ((PIT_CLOCK / PIT_FREQ) >> 8) & 0xff);
+
+    logf("pit - setting freq to %uHZ", PIT_FREQ);
 
     return 0;
 }

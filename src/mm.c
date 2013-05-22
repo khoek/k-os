@@ -5,7 +5,7 @@
 #include "init.h"
 #include "mm.h"
 #include "panic.h"
-#include "console.h"
+#include "log.h"
 #include "cache.h"
 #include "module.h"
 
@@ -162,16 +162,12 @@ static void paging_init() {
     num_pages = DIV_DOWN(mem_end - mem_start, PAGE_SIZE);
     mem_start += DIV_UP(sizeof(page_t) * NUM_ENTRIES * NUM_ENTRIES, PAGE_SIZE) * PAGE_SIZE;
 
-    uint32_t total = mem_end - page_table_offset;
-    uint32_t paging_overhead = DIV_UP(sizeof(uint32_t) * NUM_ENTRIES * NUM_ENTRIES, PAGE_SIZE) * PAGE_SIZE;
-    uint32_t malloc_overhead = DIV_UP(sizeof(page_t) * NUM_ENTRIES * NUM_ENTRIES, PAGE_SIZE) * PAGE_SIZE;
-    uint32_t available = mem_end - mem_start;
-    kprintf("Total     RAM:   %4u MB (%7u pages)\n", DIV_DOWN(total,           1024 * 1024), DIV_DOWN(total,           PAGE_SIZE));
-    kprintf("Available RAM:   %4u MB (%7u pages)\n", DIV_DOWN(available,       1024 * 1024), DIV_DOWN(available,       PAGE_SIZE));
-    kprintf("Paging Overhead: %4u MB (%7u pages)\n", DIV_DOWN(paging_overhead, 1024 * 1024), DIV_DOWN(paging_overhead, PAGE_SIZE));
-    kprintf("MAlloc Overhead: %4u MB (%7u pages)\n", DIV_DOWN(malloc_overhead, 1024 * 1024), DIV_DOWN(malloc_overhead, PAGE_SIZE));
-    kprintf("Physical  Address Space: 0x%08X - 0x%08X\n", page_table_offset, mem_end);
-    kprintf("Available Address Space: 0x%08X - 0x%08X\n", mem_start, mem_end);
+    logf("mm - total: %u MB, paging: %u MB, malloc %u MB, avaliable %u MB",
+    DIV_DOWN(mem_end - page_table_offset, 1024 * 1024),
+    DIV_DOWN(DIV_UP(sizeof(uint32_t) * NUM_ENTRIES * NUM_ENTRIES, PAGE_SIZE) * PAGE_SIZE, 1024 * 1024),
+    DIV_DOWN(DIV_UP(sizeof(page_t) * NUM_ENTRIES * NUM_ENTRIES, PAGE_SIZE) * PAGE_SIZE, 1024 * 1024),
+    DIV_DOWN(mem_end - mem_start,       1024 * 1024));
+    logf("mm - address space: (phys)0x%p/(avail)0x%p - 0x%p", page_table_offset, mem_start, mem_end);
 
     free_page_list[MAX_ORDER] = &pages[0];
 
@@ -224,7 +220,7 @@ static INITCALL mm_init() {
         }
     }
 
-    kprintf("Kernel image ends at 0x%08X\n", kernel_end);
+    logf("mm - kernel image ends at 0x%08X", kernel_end);
 
     multiboot_memory_map_t *mmap = multiboot_info->mmap;
     uint64_t end_addr;
@@ -255,22 +251,6 @@ static INITCALL mm_init() {
              mem_end = aligned_end;
         }
     }
-
-    for(uint32_t i = 0; i < (multiboot_info->mmap_length / sizeof(multiboot_memory_map_t)); i++) {
-        if(idx == i) {
-            console_color(0x0A);
-        } else if(mmap[i].type != MULTIBOOT_MEMORY_AVAILABLE) {
-            console_color(0x0C);
-        } else {
-            console_color(0x0E);
-        }
-
-        kprintf("    - %4u MB (0x%08X - 0x%08X)\n",
-        ((uint32_t) mmap[i].len) / (1024 * 1024),
-        ((uint32_t) mmap[i].addr),
-        ((uint32_t) mmap[i].addr) + ((uint32_t) MIN(mmap[i].len, ADDRESS_SPACE_SIZE - mmap[i].addr - 1)));
-    }
-    console_color(0x07);
 
     if(idx == ((uint32_t) -1)) panic("MM - did not find suitable memory region");
 

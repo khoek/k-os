@@ -32,12 +32,12 @@ static void wait_for_enter() {
 static void print_header() {
     console_clear();
 
-    kprintf("Welcome to the K-OS Secure Data Erasure Tool!\n\nCopyright (c) 2013 Keeley Hoek\nAll rights reserved.\n\n");
+    console_puts("Welcome to the K-OS Secure Data Erasure Tool!\n\nCopyright (c) 2013 Keeley Hoek\nAll rights reserved.\n\n");
 
     console_color(0x0C);
-    kprintf("WARNING: ");
+    console_puts("WARNING: ");
     console_color(0x07);
-    kprintf("This software irreversably and indescriminatley destroys data.\n\n");
+    console_puts("This software irreversably and indescriminatley destroys data.\n\n");
 }
 
 static void print_tech_info() {
@@ -45,19 +45,19 @@ static void print_tech_info() {
     print_header();
 
     console_color(0x0E);
-    kprintf("Technical Information\n");
+    console_puts("Technical Information\n");
     console_color(0x07);
 
-    kprintf("The K-OS Secure Data Erasure Tool works by repeatadly writing over the contents of attached ATA drives. ");
-    kprintf("Normal HDD erasure involves (a maximum of) a single pass over the drive where all bits are set to zero.");
+    console_puts("The K-OS Secure Data Erasure Tool works by repeatadly writing over the contents of attached ATA drives. ");
+    console_puts("Normal HDD erasure involves (a maximum of) a single pass over the drive where all bits are set to zero.");
 
-    kprintf("\n\nIt has been postulated by some that the \"deleted\" bits of the HDD could potentially be recovered, and so this method of deletion is not very secure. ");
-    kprintf("This tool attempts to remedy the problem by providing a simple means of overwriting HDDs using multiple passes. ");
-    kprintf("Simply enter the number of passes that you would like the tool to write, and it will do the rest for you.");
+    console_puts("\n\nIt has been postulated by some that the \"deleted\" bits of the HDD could potentially be recovered, and so this method of deletion is not very secure. ");
+    console_puts("This tool attempts to remedy the problem by providing a simple means of overwriting HDDs using multiple passes. ");
+    console_puts("Simply enter the number of passes that you would like the tool to write, and it will do the rest for you.");
 
-    kprintf("\n\nFor every odd pass, the tool will write zeroes to the disk, and for every even pass, the tool will write ones to the disk.");
+    console_puts("\n\nFor every odd pass, the tool will write zeroes to the disk, and for every even pass, the tool will write ones to the disk.");
 
-    kprintf("\n\n\n\n\nPress \"ENTER\" go back.");
+    console_puts("\n\n\n\n\nPress \"ENTER\" go back.");
 
     wait_for_enter();
 }
@@ -80,7 +80,7 @@ static void run_tool(uint8_t devices) {
         console_clear();
         print_header();
 
-        kprintf("Please select the drives which you would like to erase.\n");
+        console_puts("Please select the drives which you would like to erase.\n");
 
         for (uint8_t i = 0; i < 4; i++) {
             if (ide_device_is_present(i) && ide_device_get_type(i) == 0) {
@@ -92,20 +92,20 @@ static void run_tool(uint8_t devices) {
                 }
 
                 console_color((background << 4) + foreground);
-                kprintf("    - ATA Device %u %7uMB - %s\n", i, ide_device_get_size(i) / 1024 / 2, ide_device_get_string(i, IDE_STRING_MODEL));
+                console_putsf("    - ATA Device %u %7uMB - %s\n", i, ide_device_get_size(i) / 1024 / 2, ide_device_get_string(i, IDE_STRING_MODEL));
                 console_color(0x07);
             }
         }
 
-        for (int i = 0; i < 10 - devices; i++) kprintf("\n");
+        for (int i = 0; i < 10 - devices; i++) console_puts("\n");
 
-        kprintf("Use the \"ARROW KEYS\" to highlight a drive.\n");
-        kprintf("Press \"SPACE\"  to select/deselect the currently highlighted drive.\n\n");
+        console_puts("Use the \"ARROW KEYS\" to highlight a drive.\n");
+        console_puts("Press \"SPACE\"  to select/deselect the currently highlighted drive.\n\n");
 
-        kprintf("NOTE: You must select at least one drive to continue.\n\n");
+        console_puts("NOTE: You must select at least one drive to continue.\n\n");
 
-        kprintf("Press \"ENTER\"  to continue.\n");
-        kprintf("Press \"ESCAPE\" to go back.");
+        console_puts("Press \"ENTER\"  to continue.\n");
+        console_puts("Press \"ESCAPE\" to go back.");
 
         switch (get_key()) {
             case '\n':
@@ -137,7 +137,7 @@ static void run_tool(uint8_t devices) {
     console_clear();
     print_header();
 
-    kprintf("Please select the drives which you would like to erase.\n");
+    console_puts("Please select the drives which you would like to erase.\n");
 
     for (uint8_t i = 0; i < 4; i++) {
         if (ide_device_is_present(i) && ide_device_get_type(i) == 0) {
@@ -145,12 +145,12 @@ static void run_tool(uint8_t devices) {
             if (selected[i]) foreground = 0xC;
 
             console_color((background << 4) + foreground);
-            kprintf("    - ATA Device %u %7uMB - %s\n", i, ide_device_get_size(i) / 1024 / 2, ide_device_get_string(i, IDE_STRING_MODEL));
+            console_putsf("    - ATA Device %u %7uMB - %s\n", i, ide_device_get_size(i) / 1024 / 2, ide_device_get_string(i, IDE_STRING_MODEL));
             console_color(0x07);
         }
     }
 
-    kprintf("\n\nPlease enter the number of passes to be performed (max 99, 0 to cancel): ");
+    console_puts("\n\nPlease enter the number of passes to be performed (max 99, 0 to cancel): ");
 
     uint8_t idx = 0;
     char raw_passes[3];
@@ -162,10 +162,10 @@ static void run_tool(uint8_t devices) {
         if (c == '\x7f' && idx > 0) {
             idx--;
             console_cursor(console_row(), console_col() - 1);
-            kprintf(" ");
+            console_puts(" ");
             console_cursor(console_row(), console_col() - 1);
         } else if (c >= '0' && c <= '9' && idx < 2) {
-            kprintf("%c", c);
+            console_putsf("%c", c);
             raw_passes[idx] = c;
             idx++;
         }
@@ -176,15 +176,15 @@ static void run_tool(uint8_t devices) {
 
     if (passes == 0) return;
 
-    kprintf("\n\nPress \"ENTER\"  to ");
+    console_puts("\n\nPress \"ENTER\"  to ");
     console_color(0x0C);
-    kprintf("WIPE THE ATA DISKS SELECTED ABOVE");
+    console_puts("WIPE THE ATA DISKS SELECTED ABOVE");
     console_color(0x07);
-    kprintf(" in %u pass", passes);
+    console_putsf(" in %u pass", passes);
 
-    if (passes != 1) kprintf("es");
+    if (passes != 1) console_puts("es");
 
-    kprintf(".\nPress \"ESCAPE\" to cancel and go back.\n\n", passes);
+    console_puts(".\nPress \"ESCAPE\" to cancel and go back.\n\n");
 
     bool wait = true;
     while (wait) {
@@ -199,24 +199,24 @@ static void run_tool(uint8_t devices) {
 
     console_clear();
 
-    kprintf("Starting Data Erasure Tool...\n\n");
+    console_puts("Starting Data Erasure Tool...\n\n");
 
     uint8_t *space = (uint8_t *) page_to_address(alloc_page());
     for (uint32_t i = 1; i < 63; i++) {
         alloc_page();
-        kprintf("Initializing... %3u%%\r", ((i + 1) * 100) / 64);
+        console_putsf("Initializing... %3u%%\r", ((i + 1) * 100) / 64);
     }
-    kprintf("Initializing... 100%%\n");
+    console_puts("Initializing... 100%%\n");
 
     uint8_t bit = 0x00;
     for (uint32_t pass = 0; pass < passes; pass++) {
         console_clear();
 
-        kprintf("Starting Data Erasure Tool...\n\n");
+        console_puts("Starting Data Erasure Tool...\n\n");
 
-        kprintf("Initializing... 100%% %d\n", space);
+        console_putsf("Initializing... 100%% %d\n", space);
 
-        kprintf("\nWriting Pass %02u of %02u...\n", pass + 1, passes);
+        console_putsf("\nWriting Pass %02u of %02u...\n", pass + 1, passes);
         for (uint32_t i = 0; i < (64 * 4 * 1024); i++) {
             space[i] = bit;
         }
@@ -228,9 +228,9 @@ static void run_tool(uint8_t devices) {
                 uint32_t written = 0;
                 while(written < ide_device_get_size(i)) {
                     written += ide_write_sectors_same(i, ide_device_get_size(i) - written, written, space) / 512;
-                    kprintf("    - Writing to device %u... %3u%%\r", device, (written * 100) / ide_device_get_size(i));
+                    console_putsf("    - Writing to device %u... %3u%%\r", device, (written * 100) / ide_device_get_size(i));
                 }
-                kprintf("    - Writing to device %u... 100%\n", device);
+                console_putsf("    - Writing to device %u... 100%\n", device);
             }
         }
 
@@ -238,9 +238,9 @@ static void run_tool(uint8_t devices) {
     }
 
     console_color(0x0A);
-    kprintf("\nOperation completed successfully! ");
+    console_puts("\nOperation completed successfully! ");
     console_color(0x07);
-    kprintf("You may now turn the computer off.");
+    console_puts("You may now turn the computer off.");
 
     beep();
     die();
@@ -250,32 +250,32 @@ static void main_menu() {
     while (true) {
         print_header();
 
-        kprintf("It will attempt to completley destory ALL DATA on SELECTED ATA DISKS.\n\n");
+        console_puts("It will attempt to completley destory ALL DATA on SELECTED ATA DISKS.\n\n");
 
-        kprintf("The following devices have been detected:\n");
+        console_puts("The following devices have been detected:\n");
 
         uint8_t devices = 0;
         for (uint8_t i = 0; i < 4; i++) {
             if (ide_device_is_present(i) && ide_device_get_type(i) == 0) {
-                kprintf("    - ATA Device %u %7uMB - %s\n", i, ide_device_get_size(i) / 1024 / 2, ide_device_get_string(i, IDE_STRING_MODEL));
+                console_putsf("    - ATA Device %u %7uMB - %s\n", i, ide_device_get_size(i) / 1024 / 2, ide_device_get_string(i, IDE_STRING_MODEL));
                 devices++;
             }
         }
 
         if (devices == 0) {
             console_color(0x0C);
-            kprintf("\nNo devices have been detected. You cannot run this tool.\n");
+            console_puts("\nNo devices have been detected. You cannot run this tool.\n");
             console_color(0x07);
         }
 
-        for (uint8_t i = 0; i < 12 - devices + 1; i++) kprintf("\n");
+        for (uint8_t i = 0; i < 12 - devices + 1; i++) console_puts("\n");
 
-        kprintf("Press \"i\"      to view technical information.\n");
+        console_puts("Press \"i\"      to view technical information.\n");
 
         if (devices == 0) {
-            kprintf("You may turn the computer off.");
+            console_puts("You may turn the computer off.");
         } else {
-            kprintf("Press \"ENTER\" to continue.");
+            console_puts("Press \"ENTER\" to continue.");
         }
 
         char c = get_key();
@@ -294,22 +294,22 @@ void erasure_tool_run() {
     keyboard_register_key_down(handle_down);
 
     console_clear();
-    kprintf("Welcome to K-OS!\n\nCopyright (c) 2013 Keeley Hoek\nAll rights reserved.\n\n");
+    console_puts("Welcome to K-OS!\n\nCopyright (c) 2013 Keeley Hoek\nAll rights reserved.\n\n");
 
-    kprintf("THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS \"AS IS\" AND\n");
-    kprintf("ANY EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE IMPLIED\n");
-    kprintf("WARRANTIES OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR PURPOSE ARE\n");
-    kprintf("DISCLAIMED. IN NO EVENT SHALL THE COPYRIGHT OWNER OR CONTRIBUTORS BE LIABLE FOR\n");
-    kprintf("ANY DIRECT, INDIRECT, INCIDENTAL, SPECIAL, EXEMPLARY, OR CONSEQUENTIAL DAMAGES\n");
-    kprintf("(INCLUDING, BUT NOT LIMITED TO, PROCUREMENT OF SUBSTITUTE GOODS OR SERVICES;\n");
-    kprintf("LOSS OF USE, DATA, OR PROFITS; OR BUSINESS INTERRUPTION) HOWEVER CAUSED AND\n");
-    kprintf("ON ANY THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT\n");
-    kprintf("(INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS\n");
-    kprintf("SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.\n\n");
+    console_puts("THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS \"AS IS\" AND\n");
+    console_puts("ANY EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE IMPLIED\n");
+    console_puts("WARRANTIES OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR PURPOSE ARE\n");
+    console_puts("DISCLAIMED. IN NO EVENT SHALL THE COPYRIGHT OWNER OR CONTRIBUTORS BE LIABLE FOR\n");
+    console_puts("ANY DIRECT, INDIRECT, INCIDENTAL, SPECIAL, EXEMPLARY, OR CONSEQUENTIAL DAMAGES\n");
+    console_puts("(INCLUDING, BUT NOT LIMITED TO, PROCUREMENT OF SUBSTITUTE GOODS OR SERVICES;\n");
+    console_puts("LOSS OF USE, DATA, OR PROFITS; OR BUSINESS INTERRUPTION) HOWEVER CAUSED AND\n");
+    console_puts("ON ANY THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT\n");
+    console_puts("(INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS\n");
+    console_puts("SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.\n\n");
 
-    kprintf("\n\n\n\n\n\n\n");
-    kprintf("If you do not agree to the above terms TURN THE COMPUTER OFF NOW.\n");
-    kprintf("If you do agree to the above terms press enter to continue.");
+    console_puts("\n\n\n\n\n\n\n");
+    console_puts("If you do not agree to the above terms TURN THE COMPUTER OFF NOW.\n");
+    console_puts("If you do agree to the above terms press enter to continue.");
 
     beep();
 

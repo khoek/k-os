@@ -4,10 +4,10 @@
 #include "ide.h"
 #include "io.h"
 #include "panic.h"
+#include "log.h"
 #include "pit.h" //FIXME sleep(1) = microseconds not hundredths of a second
 #include "idt.h"
 #include "mm.h"
-#include "console.h"
 
 #define TYPE_PATA               0x00
 #define TYPE_PATAPI             0x01
@@ -294,7 +294,7 @@ uint8_t ide_print_error(uint32_t drive, uint8_t err) {
     if (err == 0)
         return err;
 
-    kprintf("IDE:");
+    /*kprintf("IDE:");
     if (err == 1) {kprintf("- Device Fault\n       "); err = 19;}
     else if (err == 2) {
         uint8_t st = ide_read(ide_devices[drive].channel, ATA_REG_ERROR);
@@ -307,9 +307,9 @@ uint8_t ide_print_error(uint32_t drive, uint8_t err) {
         if (st & ATA_ER_UNC)    {kprintf("- Uncorrectable Data Error\n       ");    err = 22;}
         if (st & ATA_ER_BBK)    {kprintf("- Bad Sectors\n       ");          err = 13;}
     } else  if (err == 3)          {kprintf("- Reads Nothing\n       "); err = 23;}
-       else  if (err == 4)  {kprintf("- Write Protected\n       "); err = 8;}
+       else  if (err == 4)  {kprintf("- Write Protected\n       "); err = 8;}*/
 
-    kprintf("- [%s %s] %s\n",
+    logf("ide error - [%s %s] %s",
         (const char *[]){"Primary", "Secondary"}[ide_devices[drive].channel], // Use the channel as an index into the array
         (const char *[]){"Master", "Slave"}[ide_devices[drive].drive], // Same as above, using the drive
         ide_devices[drive].model);
@@ -669,10 +669,9 @@ void __init ide_init(uint32_t BAR0, uint32_t BAR1, uint32_t BAR2, uint32_t BAR3,
     // 4- Print Summary:
     for (uint8_t i = 0; i < 4; i++) {
         if (ide_devices[i].present == 1) {
-        kprintf("    - %s %7uMB model: %s\n",
+        logf("ide - %s %7uMB model: %s",
             (const char *[]){"ATA  ", "ATAPI"}[ide_devices[i].type],
-            ide_devices[i].size / 1024 / 2,
-            ide_devices[i].model);
+            ide_devices[i].size / 1024 / 2);
         }
     }
 }

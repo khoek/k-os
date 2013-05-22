@@ -4,7 +4,7 @@
 #include "io.h"
 #include "ide.h"
 #include "ahci.h"
-#include "console.h"
+#include "log.h"
 
 #define CONFIG_ADDRESS  0xCF8
 #define CONFIG_DATA     0xCFC
@@ -103,7 +103,7 @@ static void probe_function(uint8_t bus, uint8_t device, uint8_t function) {
     uint8_t class = pci_read_byte(bus, device, function, REG_BYTE_CLASS);
     uint8_t subclass = pci_read_byte(bus, device, function, REG_BYTE_SCLASS);
 
-    kprintf("%02X:%02X:%02X %02X:%02X:%02X:%02X %04X:%04X - %s\n",
+    logf("pci - %02X:%02X:%02X %02X:%02X:%02X:%02X %04X:%04X - %s",
         bus, device, function, class, subclass,
         pci_read_byte(bus, device, function, REG_BYTE_PROGID),
         pci_read_byte(bus, device, function, REG_BYTE_REVISN),

@@ -1,6 +1,6 @@
 #include "init.h"
 #include "module.h"
-#include "console.h"
+#include "log.h"
 
 static multiboot_module_t *mods;
 static uint32_t count;
@@ -17,7 +17,7 @@ static INITCALL module_init() {
     mods = multiboot_info->mods;
 
     for(uint32_t i = 0; i < multiboot_info->mods_count; i++) {
-        kprintf("    - Module #%u at (0x%08X - 0x%08X) %s\n", i, mods[i].start, mods[i].end, mods[i].cmdline);
+        logf("detected module #%u at (0x%p - 0x%p) %s\n", i, mods[i].start, mods[i].end, mods[i].cmdline);
     }
 
     return 0;

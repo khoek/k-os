@@ -19,13 +19,14 @@ typedef int (*initcall_t)(void);
 	static initcall_t __initcall_##fn##id \
 	__attribute__((section(".initcall." #id), used)) = fn
 
-#define early_initcall(fn)  DEFINE_INITCALL(0, fn)
-#define pure_initcall(fn)   DEFINE_INITCALL(1, fn)
-#define core_initcall(fn)   DEFINE_INITCALL(2, fn)
-#define arch_initcall(fn)   DEFINE_INITCALL(3, fn)
-#define subsys_initcall(fn) DEFINE_INITCALL(4, fn)
-#define device_initcall(fn) DEFINE_INITCALL(5, fn)
-#define module_initcall(fn) DEFINE_INITCALL(6, fn)
+#define early_initcall(fn)    DEFINE_INITCALL(0, fn)
+#define pure_initcall(fn)     DEFINE_INITCALL(1, fn)
+#define core_initcall(fn)     DEFINE_INITCALL(2, fn)
+#define arch_initcall(fn)     DEFINE_INITCALL(3, fn)
+#define postarch_initcall(fn) DEFINE_INITCALL(4, fn)
+#define subsys_initcall(fn)   DEFINE_INITCALL(5, fn)
+#define device_initcall(fn)   DEFINE_INITCALL(6, fn)
+#define module_initcall(fn)   DEFINE_INITCALL(7, fn)
 
 #endif
 

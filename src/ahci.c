@@ -2,7 +2,7 @@
 #include "string.h"
 #include "init.h"
 #include "ahci.h"
-#include "console.h"
+#include "log.h"
 
 #define AHCI_BASE       0x400000 // 4M
 
@@ -137,12 +137,9 @@ static void start_port(ahci_port *port) {
 }
 
 static void stop_port(ahci_port *port) {
-kprintf("port %X ", port);
-
      // Clear ST (bit0)
      port->cmd &= ~AHCI_FLAG_ST;
 
-kprintf("%u %u %u", port->cmd, port->cmd & AHCI_FLAG_FR, port->cmd & AHCI_FLAG_CR);
      // Wait until FR (bit14), CR (bit15) are cleared
      while((port->cmd & AHCI_FLAG_FR) /*|| (port->cmd & AHCI_FLAG_CR)*/);
 
@@ -207,19 +204,18 @@ void __init ahci_init(void *BAR5) {
           if (abar->ports & (1 << i)) {
                 switch (check_type(&abar->port[i])) {
                      case AHCI_DEV_SATA:
-                          kprintf("SATA drive found at port %d\n", i);
+                          logf("ahci - SATA drive found at port %d", i);
                           break;
                      case AHCI_DEV_SATAPI:
-                          kprintf("SATAPI drive found at port %d\n", i);
+                          logf("ahci - SATAPI drive found at port %d", i);
                           break;
                      case AHCI_DEV_SEMB:
-                          kprintf("SEMB drive found at port %d\n", i);
+                          logf("ahci - SEMB drive found at port %d", i);
                           break;
                      case AHCI_DEV_PM:
-                          kprintf("PM drive found at port %d\n", i);
+                          logf("ahci - PM drive found at port %d", i);
                           break;
                      default:
-                          kprintf("No drive found at port %d\n", i);
                           continue;
                 }
 

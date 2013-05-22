@@ -9,12 +9,11 @@
 uint8_t console_row();
 uint8_t console_col();
 
-void console_color(char c);
+void console_color(const char c);
 void console_clear();
-void console_write(char *s, uint8_t len);
-void console_puts(char* s);
-void console_cursor(uint8_t r, uint8_t c);
-
-void kprintf(char* fmt, ...);
+void console_write(const char *str, const uint8_t len);
+void console_cursor(const uint8_t r, const uint8_t c);
+void console_puts(const char* str);
+void console_putsf(const char* fmt, ...);
 
 #endif
