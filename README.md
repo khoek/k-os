@@ -16,7 +16,7 @@ An operating system written by Keeley Hoek as a hobby. It was inspired by Charli
 
 ## Roadmap
 
-* Tasks and threads
+* Tasks and threads - IN PROGRESS
 * Kernel module loading
 * Kernel RAMFS
 * VFS
