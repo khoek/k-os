@@ -16,8 +16,6 @@ struct page {
     uint32_t cache; //Pointer for quick cache freeing
 };
 
-void mm_init(multiboot_info_t *mbd);
-
 page_t * alloc_page();
 void free_page(page_t *page);
 

@@ -44,6 +44,8 @@ SECTIONS {
         INITCALL_SECTION(2)
         INITCALL_SECTION(3)
         INITCALL_SECTION(4)
+        INITCALL_SECTION(5)
+        INITCALL_SECTION(6)
         initcall_end = .;
 
         init_data_end = .;

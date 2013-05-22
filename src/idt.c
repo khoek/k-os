@@ -1,5 +1,6 @@
 #include <stddef.h>
 #include "common.h"
+#include "init.h"
 #include "idt.h"
 #include "gdt.h"
 #include "io.h"
@@ -62,7 +63,7 @@ void idt_set_isr(uint32_t gate, uint32_t isr) {
     idt[gate].offset_hi = (isr >> 16) & 0xffff;
     idt[gate].selector = CPL_KERNEL_CODE;
     idt[gate].zero = 0;
-    idt[gate].type = 0x80 /* present */ | 0xe /* 32 bit interrupt gate */;
+    idt[gate].type |= 0x80 /* present */ | 0xe /* 32 bit interrupt gate */;
 }
 
 static char* exceptions[32] = {
@@ -120,7 +121,8 @@ void interrupt_dispatch(interrupt_t *interrupt) {
 
 extern void isr_init();
 
-void idt_init() {
+//indirect, invoked by gdt_init()
+INITCALL idt_init() {
     isr_init();
 
     //send INIT command
@@ -147,4 +149,8 @@ void idt_init() {
     idtd.offset = (uint32_t) idt;
 
     lidt(&idtd);
+
+    sti();
+
+    return 0;
 }

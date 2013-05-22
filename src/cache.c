@@ -1,6 +1,7 @@
 #include <stddef.h>
-#include "cache.h"
 #include "common.h"
+#include "init.h"
+#include "cache.h"
 #include "panic.h"
 #include "console.h"
 #include "mm.h"
@@ -150,8 +151,11 @@ void cache_free(uint32_t cache, void *mem) {
     cache_do_free(cache_page, (((uint32_t) mem) - ((uint32_t)cache_page->mem)) / caches[page->cache].size);
 }
 
-void cache_init() {
+//indirect, invoked from mm_init()
+INITCALL cache_init() {
     cache_create(CACHE_TASK, CACHE_TASK_SIZE);
 
     kprintf("Created %u new object cache(s).\n", NUM_CACHES);
+
+    return 0;
 }

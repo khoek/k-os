@@ -1,6 +1,7 @@
 #include <stdint.h>
-#include "pit.h"
 #include "common.h"
+#include "pit.h"
+#include "init.h"
 #include "gdt.h"
 #include "idt.h"
 #include "panic.h"
@@ -8,6 +9,8 @@
 #include "console.h"
 
 #define PIT_CLOCK 1193180
+#define PIT_FREQ  100
+#define DIVISOR   (PIT_CLOCK / PIT_FREQ)
 
 uint64_t ticks;
 uint64_t uptime() {
@@ -46,11 +49,14 @@ static void handle_pit(interrupt_t UNUSED(*interrupt)) {
     ticks++;
 }
 
-void pit_init(uint32_t freq) {
+static INITCALL pit_init() {
     idt_register(32, CPL_KERNEL, handle_pit);
 
-    uint32_t divisor = PIT_CLOCK / freq;
     outb(0x43, 0x36);
-    outb(0x40, divisor & 0xff);
-    outb(0x40, (divisor >> 8) & 0xff);
+    outb(0x40, DIVISOR & 0xff);
+    outb(0x40, (DIVISOR >> 8) & 0xff);
+
+    return 0;
 }
+
+arch_initcall(pit_init);

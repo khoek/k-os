@@ -43,8 +43,6 @@ typedef struct tss {
    uint16_t iomap_base;
 } PACKED tss_t;
 
-void gdt_init();
-
-void gdt_set_kernel_stack(void *esp);
+void set_kernel_stack(void *esp);
 
 #endif

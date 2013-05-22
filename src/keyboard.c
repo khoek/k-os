@@ -1,7 +1,8 @@
 #include <stdint.h>
 #include <stdbool.h>
-#include "keyboard.h"
 #include "common.h"
+#include "init.h"
+#include "keyboard.h"
 #include "gdt.h"
 #include "idt.h"
 #include "io.h"
@@ -161,6 +162,10 @@ static void handle_keyboard(interrupt_t UNUSED(*interrupt)) {
     dispatch(inb(0x60));
 }
 
-void keyboard_init() {
+static INITCALL keyboard_init() {
     idt_register(33, CPL_KERNEL, handle_keyboard);
+
+    return 0;
 }
+
+subsys_initcall(keyboard_init); //FIXME create input subsystem

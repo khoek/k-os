@@ -1,7 +1,7 @@
 #ifndef KERNEL_DEBUG_H
 #define KERNEL_DEBUG_H
 
-#ifndef KERNEL_OPTIMIZE
+#ifndef CONFIG_OPTIMIZE
 
 #include "panic.h"
 #define DEPENDS(m, c) if(!(c)) panic("Dependency assertion on \"%s\" failed!", m)

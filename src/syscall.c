@@ -1,4 +1,5 @@
 #include <stddef.h>
+#include "init.h"
 #include "syscall.h"
 #include "gdt.h"
 #include "idt.h"
@@ -32,6 +33,10 @@ static void syscall_handler(interrupt_t *interrupt) {
     }
 }
 
-void syscall_init() {
+static INITCALL syscall_init() {
     idt_register(0x80, CPL_USER, syscall_handler);
+
+    return 0;
 }
+
+core_initcall(syscall_init);

@@ -1,6 +1,7 @@
 #include <stddef.h>
 #include <stdbool.h>
-#include <string.h>
+#include "string.h"
+#include "init.h"
 #include "elf.h"
 
 typedef struct {
@@ -27,21 +28,9 @@ typedef struct {
 
 static kernel_t kernel;
 
-void elf_init(multiboot_info_t *mbd) {
-    elf_section_header_t *sh = (elf_section_header_t *) mbd->u.elf_sec.addr;
-
-    for (uint32_t i = 0; i < mbd->u.elf_sec.num; i++) {
-        const char *name = (const char *) sh[mbd->u.elf_sec.shndx].addr + sh[i].name;
-        if (!strcmp(name, ".strtab")) {
-            kernel.strtab = (const char *) sh[i].addr;
-            kernel.strtabsz = sh[i].size;
-            kernel.strtabfound = true;
-        } else if (!strcmp(name, ".symtab")) {
-            kernel.symtab = (elf_symbol_t*) sh[i].addr;
-            kernel.symtabsz = sh[i].size;
-            kernel.symtabfound = true;
-        }
-    }
+const char * elf_symbol_name(elf_symbol_t *symbol) {
+    if(symbol == NULL) return NULL;
+    return (const char *) ((uint32_t) kernel.strtab + symbol->name);
 }
 
 elf_symbol_t * elf_lookup_symbol(uint32_t address) {
@@ -56,7 +45,25 @@ elf_symbol_t * elf_lookup_symbol(uint32_t address) {
     return NULL;
 }
 
-const char * elf_symbol_name(elf_symbol_t *symbol) {
-    if(symbol == NULL) return NULL;
-    return (const char *) ((uint32_t) kernel.strtab + symbol->name);
+INITCALL elf_init() {
+    elf_section_header_t *sh = (elf_section_header_t *) multiboot_info->u.elf_sec.addr;
+
+    for (uint32_t i = 0; i < multiboot_info->u.elf_sec.num; i++) {
+        const char *name = (const char *) sh[multiboot_info->u.elf_sec.shndx].addr + sh[i].name;
+        if (!strcmp(name, ".strtab")) {
+            kernel.strtab = (const char *) sh[i].addr;
+            kernel.strtabsz = sh[i].size;
+            kernel.strtabfound = true;
+        } else if (!strcmp(name, ".symtab")) {
+            kernel.symtab = (elf_symbol_t*) sh[i].addr;
+            kernel.symtabsz = sh[i].size;
+            kernel.symtabfound = true;
+        }
+    }
+
+    return 0;
 }
+
+#ifndef CONFIG_OPTIMIZE
+early_initcall(elf_init);
+#endif

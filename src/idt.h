@@ -4,6 +4,7 @@
 #include <stdint.h>
 #include <stdbool.h>
 #include "common.h"
+#include "init.h"
 #include "registers.h"
 
 static inline void cli() {
@@ -28,7 +29,8 @@ typedef struct interrupt {
   state_t state;
 } PACKED interrupt_t;
 
-void idt_init();
+//indirect, invoked by gdt_init()
+INITCALL idt_init();
 
 void idt_register(uint8_t vector, uint8_t cpl, void(*handler)(interrupt_t *));
 void idt_set_isr(uint32_t gate, uint32_t isr);

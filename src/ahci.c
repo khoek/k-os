@@ -1,5 +1,6 @@
 #include <stdint.h>
-#include <string.h>
+#include "string.h"
+#include "init.h"
 #include "ahci.h"
 #include "console.h"
 
@@ -199,7 +200,7 @@ static uint32_t check_type(ahci_port *port) {
      }
 }
 
-void ahci_init(void *BAR5) {
+void __init ahci_init(void *BAR5) {
      achi_abar *abar = (achi_abar *) BAR5;
 
      for (int i = 0; i < 32; i++) {

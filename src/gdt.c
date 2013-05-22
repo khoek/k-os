@@ -1,6 +1,8 @@
 #include <stddef.h>
-#include "gdt.h"
 #include "string.h"
+#include "init.h"
+#include "gdt.h"
+#include "idt.h"
 #include "console.h"
 #include "panic.h"
 #include "registers.h"
@@ -36,6 +38,10 @@ static tss_t tss;
 #define FLAG_GRANULARITY_BYTE (0 << 7)
 #define FLAG_GRANULARITY_PAGE (1 << 7)
 
+void set_kernel_stack(void *esp) {
+    tss.esp0 = (uint32_t) esp;
+}
+
 static void create_selector(uint16_t index, uint32_t base, uint32_t limit, uint8_t access, uint8_t flags) {
     gdt[index].limit_0_15 = limit & 0xFFFF;
     gdt[index].limit_16_19_and_flags = flags | ((limit >> 16) & 0xF);
@@ -45,11 +51,7 @@ static void create_selector(uint16_t index, uint32_t base, uint32_t limit, uint8
     gdt[index].access     = access;
 }
 
-void gdt_set_kernel_stack(void *esp) {
-    tss.esp0 = (uint32_t) esp;
-}
-
-void gdt_init() {
+static INITCALL gdt_init() {
     create_selector(0, 0x00000000, 0x00000, 0, 0);
     create_selector(1, 0x00000000, 0xFFFFF,            PRESENT | CPL_KERNEL | WRITABLE | EXECABLE | SEGMENT, FLAG_BITS_32 | FLAG_GRANULARITY_PAGE);
     create_selector(2, 0x00000000, 0xFFFFF,            PRESENT | CPL_KERNEL | WRITABLE            | SEGMENT, FLAG_BITS_32 | FLAG_GRANULARITY_PAGE);
@@ -66,4 +68,8 @@ void gdt_init() {
 
     flush_segment_registers();
     flush_tss();
+
+    return idt_init();
 }
+
+arch_initcall(gdt_init);

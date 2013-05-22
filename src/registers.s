@@ -2,7 +2,7 @@
 .global flush_tss
 .global enter_usermode
 
-.extern gdt_set_kernel_stack
+.extern set_kernel_stack
 .extern task_usermode
 
 .type flush_segment_registers, @function

@@ -1,3 +1,4 @@
+#include "init.h"
 #include "pci.h"
 #include "panic.h"
 #include "io.h"
@@ -149,11 +150,15 @@ static void probeAllBuses() {
     }
 }
 
-void pci_init() {
+static INITCALL pci_init() {
     outl(CONFIG_ADDRESS, 0x80000000);
     if(inl(CONFIG_ADDRESS) != 0x80000000) {
-        panic("PCI not found");
+        return 1;
     }
 
     probeAllBuses();
+
+    return 0;
 }
+
+subsys_initcall(pci_init);

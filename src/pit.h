@@ -11,6 +11,4 @@ void beep();
 
 void sleep(uint32_t milis);
 
-void pit_init();
-
 #endif
