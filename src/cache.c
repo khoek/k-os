@@ -1,5 +1,4 @@
 #include <stddef.h>
-#include <limits.h>
 #include "cache.h"
 #include "common.h"
 #include "panic.h"
@@ -9,7 +8,7 @@
 //Cache includes
 #include "task.h"
 
-#define FREELIST_END INT_MAX
+#define FREELIST_END (1 << 31)
 
 #define CACHE_TASK_SIZE sizeof(task_t)
 

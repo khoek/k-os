@@ -1,7 +1,6 @@
 #include <stddef.h>
 #include <stdbool.h>
 #include <stdint.h>
-#include <limits.h>
 #include "common.h"
 #include "mm.h"
 #include "panic.h"
@@ -35,7 +34,7 @@ static void paging_init() {
     uint32_t page_table_offset = mem_start;
 
     //reserve space for the page tables, remaining page aligned, page directory is declared in the BSS
-    mem_start += DIV_UP(sizeof(size_t) * NUM_ENTRIES * NUM_ENTRIES, PAGE_SIZE) * PAGE_SIZE;
+    mem_start += DIV_UP(sizeof(uint32_t) * NUM_ENTRIES * NUM_ENTRIES, PAGE_SIZE) * PAGE_SIZE;
 
     //reserve space for the page_t structs, remaining page aligned
     pages = (page_t *) mem_start;
@@ -43,7 +42,7 @@ static void paging_init() {
     mem_start += DIV_UP(sizeof(page_t) * NUM_ENTRIES * NUM_ENTRIES, PAGE_SIZE) * PAGE_SIZE;
 
     uint32_t total = mem_end - page_table_offset;
-    uint32_t paging_overhead = DIV_UP(sizeof(size_t) * NUM_ENTRIES * NUM_ENTRIES, PAGE_SIZE) * PAGE_SIZE;
+    uint32_t paging_overhead = DIV_UP(sizeof(uint32_t) * NUM_ENTRIES * NUM_ENTRIES, PAGE_SIZE) * PAGE_SIZE;
     uint32_t malloc_overhead = DIV_UP(sizeof(page_t) * NUM_ENTRIES * NUM_ENTRIES, PAGE_SIZE) * PAGE_SIZE;
     uint32_t available = mem_end - mem_start;
     kprintf("Total     RAM:   %4u MB (%7u pages)\n", DIV_DOWN(total,           1024 * 1024), DIV_DOWN(total,           PAGE_SIZE));
