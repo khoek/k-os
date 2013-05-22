@@ -1,7 +1,8 @@
 #include "init.h"
 
-ENTRY (loader)
+OUTPUT_FORMAT("elf32-i386")
 
+ENTRY(loader)
 SECTIONS {
     . = 0x00120000;
 
@@ -38,7 +39,11 @@ SECTIONS {
         *(.init.data)
 
         initcall_start = .;
-        SECTION_INITCALL_LEVEL(INITCALL)
+        INITCALL_SECTION(0)
+        INITCALL_SECTION(1)
+        INITCALL_SECTION(2)
+        INITCALL_SECTION(3)
+        INITCALL_SECTION(4)
         initcall_end = .;
 
         init_data_end = .;
