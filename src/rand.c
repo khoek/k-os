@@ -1,5 +1,7 @@
 #include "init.h"
 #include "rand.h"
+#include "tsc.h"
+#include "log.h"
 
 uint32_t holdrand;
 
@@ -12,7 +14,9 @@ uint8_t rand() {
 }
 
 static INITCALL rand_init() {
-    //FIXME seed rand with the time
+    srand((uint32_t) rdtsc());
+
+    logf("rand - seeded unsecure pseudorandom number generator");
 
     return 0;
 }
