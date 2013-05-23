@@ -22,7 +22,7 @@ void kmain(uint32_t magic, multiboot_info_t *mbd) {
 
     logf("running initcalls");
     for(initcall_t *initcall = &initcall_start; initcall < &initcall_end; initcall++) {
-        (*initcall)();
+        if((*initcall)()) panicf("initcall aborted with non-zero exit code");
     }
 
     logf("entering usermode");
