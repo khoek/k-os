@@ -1,6 +1,6 @@
 -include ../Makefile.local
 
-ASFLAGS=--32 --nocompress-debug-sections -c
+ASFLAGS=--32
 
 CCFLAGS=-Wall -Wextra -Werror -m32 -I. -std=gnu99 \
         -nostdlib -nostartfiles -nodefaultlibs -ffreestanding -c
@@ -29,7 +29,7 @@ all: kernel.elf
 	@$(CC) $(CCFLAGS) -o $@ $<
 
 linker.ld: linker.ld.S $(HEADERS)
-	@echo "     cpp  $<"
+	@echo "      pp  $<"
 	@$(CPP) -D__LINKER__ -P linker.ld.S -o linker.ld
 
 kernel.elf: $(OBJS) linker.ld
