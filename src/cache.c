@@ -155,7 +155,7 @@ void cache_free(uint32_t cache, void *mem) {
 INITCALL cache_init() {
     cache_create(CACHE_TASK, CACHE_TASK_SIZE);
 
-    logf("cache - created %u new object cache(s).", NUM_CACHES);
+    logf("cache - created %u new object cache(s)", NUM_CACHES);
 
     return 0;
 }

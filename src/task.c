@@ -2,8 +2,9 @@
 #include "init.h"
 #include "task.h"
 #include "cache.h"
-#include "panic.h"
 #include "gdt.h"
+#include "panic.h"
+#include "log.h"
 
 uint8_t kernel_stack[0x1000];
 task_t *front, back;
@@ -28,6 +29,8 @@ static INITCALL task_init() {
     memset(init, 0, sizeof(task_t));
 
     init->pid = 1;
+
+    logf("task - setup init task");
 
     return 0;
 }

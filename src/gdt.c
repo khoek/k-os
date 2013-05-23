@@ -3,9 +3,9 @@
 #include "init.h"
 #include "gdt.h"
 #include "idt.h"
-#include "console.h"
 #include "panic.h"
 #include "registers.h"
+#include "log.h"
 
 #define GDT_SIZE 6
 
@@ -68,6 +68,8 @@ static INITCALL gdt_init() {
 
     flush_segment_registers();
     flush_tss();
+
+    logf("gdt - gdt and tss are active!");
 
     return idt_init();
 }

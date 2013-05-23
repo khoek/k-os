@@ -2,10 +2,8 @@
 #include "multiboot.h"
 #include "version.h"
 #include "init.h"
-#include "idt.h"
-#include "console.h"
 #include "log.h"
-#include "pit.h"
+#include "console.h"
 #include "panic.h"
 #include "task.h"
 

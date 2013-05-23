@@ -54,7 +54,7 @@ static INITCALL pit_init() {
     outb(0x40, (PIT_CLOCK / TIMER_FREQ) & 0xff);
     outb(0x40, ((PIT_CLOCK / TIMER_FREQ) >> 8) & 0xff);
 
-    logf("pit - setting freq to %uHZ %u", TIMER_FREQ, (PIT_CLOCK / TIMER_FREQ));
+    logf("pit - setting freq to %uHZ", TIMER_FREQ);
 
     return 0;
 }

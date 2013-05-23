@@ -15,10 +15,9 @@ multiboot_module_t * module_get(uint32_t num) {
 
 static INITCALL module_init() {
     mods = multiboot_info->mods;
+    count = multiboot_info->mods_count;
 
-    for(uint32_t i = 0; i < multiboot_info->mods_count; i++) {
-        logf("detected module #%u at (0x%p - 0x%p) %s\n", i, mods[i].start, mods[i].end, mods[i].cmdline);
-    }
+    logf("module - detected %u module(s)", count);
 
     return 0;
 }

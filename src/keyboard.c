@@ -6,7 +6,6 @@
 #include "gdt.h"
 #include "idt.h"
 #include "io.h"
-#include "console.h"
 
 bool keyStates[128];
 char keyMap[] = {

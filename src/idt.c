@@ -5,7 +5,7 @@
 #include "gdt.h"
 #include "io.h"
 #include "panic.h"
-#include "console.h"
+#include "log.h"
 
 //command io port of PICs
 #define MASTER_COMMAND  0x20
@@ -151,6 +151,8 @@ INITCALL idt_init() {
     lidt(&idtd);
 
     sti();
+
+    logf("idt - interrupts are now enabled!");
 
     return 0;
 }
