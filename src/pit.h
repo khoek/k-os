@@ -3,6 +3,8 @@
 
 #include <stdint.h>
 
+#define TIMER_FREQ 1000
+
 uint64_t uptime();
 
 void play(uint32_t freq);

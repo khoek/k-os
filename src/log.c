@@ -1,5 +1,6 @@
 #include "string.h"
 #include "printf.h"
+#include "common.h"
 #include "pit.h"
 #include "console.h"
 
@@ -8,7 +9,7 @@ static char buff[BUFFSIZE];
 
 static void print_time() {
     uint32_t time = uptime();
-    sprintf(buff, "[%5u.%02u] ", time / 100, time % 100);
+    sprintf(buff, "[%5u.%03u] ", time / TIMER_FREQ, time % TIMER_FREQ);
     console_puts(buff);
 }
 

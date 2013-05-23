@@ -8,8 +8,7 @@
 #include "io.h"
 #include "log.h"
 
-#define PIT_CLOCK 1193180
-#define PIT_FREQ  100
+#define PIT_CLOCK 1193182
 
 uint64_t ticks;
 uint64_t uptime() {
@@ -17,7 +16,7 @@ uint64_t uptime() {
 }
 
 void play(uint32_t freq) {
-    uint32_t divisor = 1193180 / freq;
+    uint32_t divisor = PIT_CLOCK / freq;
 
     outb(0x43, 0xB6);
     outb(0x42, divisor & 0xff);
@@ -52,10 +51,10 @@ static INITCALL pit_init() {
     idt_register(32, CPL_KERNEL, handle_pit);
 
     outb(0x43, 0x36);
-    outb(0x40, (PIT_CLOCK / PIT_FREQ) & 0xff);
-    outb(0x40, ((PIT_CLOCK / PIT_FREQ) >> 8) & 0xff);
+    outb(0x40, (PIT_CLOCK / TIMER_FREQ) & 0xff);
+    outb(0x40, ((PIT_CLOCK / TIMER_FREQ) >> 8) & 0xff);
 
-    logf("pit - setting freq to %uHZ", PIT_FREQ);
+    logf("pit - setting freq to %uHZ %u", TIMER_FREQ, (PIT_CLOCK / TIMER_FREQ));
 
     return 0;
 }
