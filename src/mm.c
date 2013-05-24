@@ -15,6 +15,7 @@
 #define NUM_ENTRIES 1024
 
 #define PAGE_FLAG_USED (1 << 0)
+#define PAGE_FLAG_USER (1 << 1)
 
 extern uint32_t end_of_image;
 
@@ -26,6 +27,11 @@ static uint32_t mem_end;
 static uint32_t page_directory[1024] ALIGN(PAGE_SIZE);
 static page_t  *pages;
 static page_t  *free_page_list[MAX_ORDER + 1];
+
+static inline void invlpg(uint32_t addr)
+{
+   asm volatile("invlpg (%0)" ::"r" (addr) : "memory");
+}
 
 static uint32_t get_index(page_t * page) {
     return (((uint32_t) page) - ((uint32_t) pages)) / (sizeof(page_t));
@@ -151,6 +157,17 @@ page_t * address_to_page(void *address) {
 #define CPL_KERNEL  (0 << 2)
 #define CPL_USER    (1 << 2)
 
+void page_protect(page_t *page, bool protect) {
+    if(protect) page_unset(page, PAGE_FLAG_USER);
+    else        page_set(page, PAGE_FLAG_USER);
+
+    uint32_t addr = (uint32_t) page_to_address(page);
+    if(protect) ((uint32_t *) (page_directory[addr / (PAGE_SIZE * 1024)] & ~0xFFF))[(addr % (PAGE_SIZE * 1024)) / PAGE_SIZE] &= ~CPL_USER;
+    else        ((uint32_t *) (page_directory[addr / (PAGE_SIZE * 1024)] & ~0xFFF))[(addr % (PAGE_SIZE * 1024)) / PAGE_SIZE] |= CPL_USER;
+
+    invlpg(addr);
+}
+
 static void paging_init() {
     uint32_t page_table_offset = mem_start;
 
@@ -198,7 +215,7 @@ static void paging_init() {
 
         page_directory[i] = (uint32_t) page_table | PRESENT | WRITABLE | CPL_USER;
         for(uint32_t j = 0; j < NUM_ENTRIES; j++) {
-             page_table[j] = (page_mem_start_addr + j * PAGE_SIZE) | PRESENT | WRITABLE | CPL_USER;
+             page_table[j] = (page_mem_start_addr + j * PAGE_SIZE) | PRESENT | WRITABLE;
         }
     }
 

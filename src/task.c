@@ -4,11 +4,11 @@
 #include "cache.h"
 #include "gdt.h"
 #include "cpl.h"
+#include "mm.h"
 #include "panic.h"
 #include "log.h"
 
 uint8_t kernel_stack[0x1000];
-uint8_t user_stack[0x1000];
 task_t *front, *back;
 
 void task_switch() {
@@ -36,18 +36,28 @@ void task_usermode() {
     __asm__ volatile("mov $0, %eax");
     __asm__ volatile("mov $-1, %ebx");
     __asm__ volatile("int $0x80");
+
+    die();
 }
 
 static INITCALL task_init() {
     front = back = cache_alloc(CACHE_TASK);
     memset(&front->registers, 0, sizeof(registers_t));
 
+    page_t *stack_page = alloc_page();
+    page_protect(stack_page, false);
+
+    page_t *code_page = alloc_page();
+    page_protect(code_page, false);
+
+    memcpy(page_to_address(code_page), task_usermode, 0x1000);
+
     front->pid = 1;
     front->state.cs = CPL_USER_CODE | 3;
     front->state.ss = CPL_USER_DATA | 3;
     front->state.eflags = get_eflags();
-    front->state.esp = (uint32_t) user_stack;
-    front->state.eip = (uint32_t) task_usermode;
+    front->state.esp = ((uint32_t) page_to_address(stack_page)) + PAGE_SIZE - 1;
+    front->state.eip = (uint32_t) page_to_address(code_page);
 
     logf("task - set up init task");
 
