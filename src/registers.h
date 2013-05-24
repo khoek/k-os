@@ -7,12 +7,12 @@ typedef struct registers {
     uint32_t edi, esi, ebp, esp, ebx, edx, ecx, eax; //pusha/popa order
 } PACKED registers_t;
 
-typedef struct state {
+typedef struct task_state {
     uint32_t eip, cs, eflags, esp, ss; //iret pop order
-} PACKED state_t;
+} PACKED task_state_t;
 
 void flush_segment_registers();
 void flush_tss();
-void enter_usermode();
+uint32_t get_eflags();
 
 #endif

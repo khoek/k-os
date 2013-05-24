@@ -1,6 +1,6 @@
 .global flush_segment_registers
 .global flush_tss
-.global enter_usermode
+.global get_eflags
 
 .extern set_kernel_stack
 .extern task_usermode
@@ -28,20 +28,8 @@ flush_tss:
    ret
 .size flush_tss, .-flush_tss
 
-.type enter_usermode, @function
-enter_usermode:
-	mov $0x23, %eax
-	mov %eax, %ds
-	mov %eax, %es
-	mov %eax, %fs
-	mov %eax, %gs
-
-	mov %esp, %eax
-	push $0x23
-	push %eax
-	pushf
-	push $0x1B
-	push $task_usermode
-
-	iret
-.size enter_usermode, .-enter_usermode
+.type get_eflags, @function
+get_eflags:
+    pushf
+    pop %eax
+.size get_eflags, .-get_eflags

@@ -7,11 +7,11 @@
 typedef struct task {
     uint32_t pid;
     registers_t registers;
-    state_t state;
+    task_state_t state;
 } task_t;
 
-void task_usermode();
+void task_switch();
 
-void task_start();
+void task_usermode();
 
 #endif

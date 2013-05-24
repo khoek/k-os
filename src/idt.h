@@ -26,7 +26,7 @@ static inline void lidt(void *idtr) {
 typedef struct interrupt {
   registers_t registers;
   uint32_t vector, error;
-  state_t state;
+  task_state_t state;
 } PACKED interrupt_t;
 
 //indirect, invoked by gdt_init()

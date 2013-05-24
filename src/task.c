@@ -3,15 +3,29 @@
 #include "task.h"
 #include "cache.h"
 #include "gdt.h"
+#include "cpl.h"
 #include "panic.h"
 #include "log.h"
 
 uint8_t kernel_stack[0x1000];
-task_t *front, back;
+uint8_t user_stack[0x1000];
+task_t *front, *back;
 
-void task_start() {
+void task_switch() {
     set_kernel_stack(kernel_stack);
-    enter_usermode();
+
+    /*if(front != back) {
+        task_t *old = front;
+        front = front->next;
+
+        back->next = old;
+        old->prev = back;
+        old->next = NULL;
+
+        back = old;
+    }*/
+
+    cpl_switch(front);
 }
 
 void task_usermode() {
@@ -25,12 +39,17 @@ void task_usermode() {
 }
 
 static INITCALL task_init() {
-    task_t *init = cache_alloc(CACHE_TASK);
-    memset(init, 0, sizeof(task_t));
+    front = back = cache_alloc(CACHE_TASK);
+    memset(&front->registers, 0, sizeof(registers_t));
 
-    init->pid = 1;
+    front->pid = 1;
+    front->state.cs = CPL_USER_CODE | 3;
+    front->state.ss = CPL_USER_DATA | 3;
+    front->state.eflags = get_eflags();
+    front->state.esp = (uint32_t) user_stack;
+    front->state.eip = (uint32_t) task_usermode;
 
-    logf("task - setup init task");
+    logf("task - set up init task");
 
     return 0;
 }
