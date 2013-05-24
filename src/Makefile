@@ -22,7 +22,7 @@ all: kernel.elf
 
 linker.ld: linker.ld.S
 	@echo "      pp  $<"
-	@$(CPP) -D__LINKER__ -P linker.ld.S -o linker.ld
+	@$(PP) -D__LINKER__ -P linker.ld.S -o linker.ld
 
 kernel.elf: $(OBJS) linker.ld
 	@echo "      ld"
