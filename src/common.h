@@ -1,6 +1,9 @@
 #ifndef KERNEL_COMMON_H
 #define KERNEL_COMMON_H
 
+#define STR(s)  #s
+#define XSTR(s) STR(s)
+
 #define ALIGN(a)    __attribute__((aligned((a))))
 #define UNUSED(v) v __attribute__((unused))
 #define NORETURN    __attribute__((noreturn))

@@ -1,4 +1,5 @@
 #include <stdint.h>
+#include "common.h"
 #include "multiboot.h"
 #include "version.h"
 #include "init.h"
@@ -17,7 +18,7 @@ void kmain(uint32_t magic, multiboot_info_t *mbd) {
 
     console_clear();
 
-    logf("starting K-OS (v%u.%u.%u)", MAJOR, MINOR, PATCH);
+    logf("starting K-OS (v" XSTR(MAJOR) "." XSTR(MINOR) "." XSTR(PATCH) ")");
     if (magic != MULTIBOOT_BOOTLOADER_MAGIC)    panic("Kernel Boot Failure - multiboot loader did not pass correct magic number");
     if (!(mbd->flags & MULTIBOOT_INFO_MEM_MAP)) panic("Kernel Boot Failure - multiboot loader did not pass memory map");
 
