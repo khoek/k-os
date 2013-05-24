@@ -25,7 +25,7 @@ An operating system written by Keeley Hoek as a hobby. It was inspired by Charli
 
 ## License
 
-Where not explicitly indicated otherwise, all source code is licensed under the following terms:
+Where not explicitly indicated otherwise, all files are licensed under the following terms:
 
     Copyright (c) 2012-2013, Keeley Hoek
     All rights reserved.
