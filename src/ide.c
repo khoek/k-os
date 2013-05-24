@@ -669,7 +669,7 @@ void __init ide_init(uint32_t BAR0, uint32_t BAR1, uint32_t BAR2, uint32_t BAR3,
     // 4- Print Summary:
     for (uint8_t i = 0; i < 4; i++) {
         if (ide_devices[i].present == 1) {
-        logf("ide - %s %7uMB model: %s",
+        logf("ide - %s %7uMB",
             (const char *[]){"ATA  ", "ATAPI"}[ide_devices[i].type],
             ide_devices[i].size / 1024 / 2);
         }
