@@ -2,7 +2,7 @@
 
 ASFLAGS=--32
 
-CCFLAGS=-Wall -Wextra -Werror -m32 -I. -std=gnu99 \
+CCFLAGS=-Wall -Wextra -Werror -m32 -I../inc -std=gnu99 \
         -nostdlib -nostartfiles -nodefaultlibs -ffreestanding -c
 
 OBJS=	loader.o string.o printf.o rand.o kmain.o elf.o panic.o console.o \
@@ -22,7 +22,7 @@ all: kernel.elf
 
 linker.ld: linker.ld.S
 	@echo "      pp  $<"
-	@$(CPP) -D__LINKER__ -P linker.ld.S -o linker.ld
+	@$(CPP) -I../inc -D__LINKER__ -P linker.ld.S -o linker.ld
 
 kernel.elf: $(OBJS) linker.ld
 	@echo "      ld"
