@@ -214,7 +214,7 @@ static void run_tool(uint8_t devices) {
 
         console_puts("Starting Data Erasure Tool...\n\n");
 
-        console_putsf("Initializing... 100%% %d\n", space);
+        console_putsf("Initializing... 100%%\n", space);
 
         console_putsf("\nWriting Pass %02u of %02u...\n", pass + 1, passes);
         for (uint32_t i = 0; i < (64 * 4 * 1024); i++) {
@@ -268,7 +268,7 @@ static void main_menu() {
             console_color(0x07);
         }
 
-        for (uint8_t i = 0; i < 12 - devices + 1; i++) console_puts("\n");
+        for (uint8_t i = 0; i < 12 - devices + 1 - (devices ? 0 : 2); i++) console_puts("\n");
 
         console_puts("Press \"i\"      to view technical information.\n");
 
@@ -284,7 +284,7 @@ static void main_menu() {
                 print_tech_info();
                 break;
             case '\n':
-                run_tool(devices);
+                if(devices) run_tool(devices);
                 break;
         }
     }

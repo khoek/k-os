@@ -517,7 +517,7 @@ void __init ide_init(uint32_t BAR0, uint32_t BAR1, uint32_t BAR2, uint32_t BAR3,
     static bool once = false;
     if(once) return;
     once = true;
-    
+
     idt_register(46, false, handle_irq_primary);
     idt_register(47, false, handle_irq_secondary);
 
@@ -597,11 +597,11 @@ void __init ide_init(uint32_t BAR0, uint32_t BAR1, uint32_t BAR2, uint32_t BAR3,
                     uint8_t supported = ((uint16_t *) ide_buf)[ATA_IDENT_UDMA];
                     for (mode = 5; mode >= 0; mode--) {
                         if (!(supported & (1 << mode))) continue;
-                        
+
                         ide_write(i, ATA_REG_SECdevice0, ATA_TRANSFER_UDMA + (mode & 0x7));
                         ide_write(i, ATA_REG_FEATURES, ATA_SET_FEATURES_DMA);
                         ide_write(i, ATA_REG_COMMAND, ATA_CMD_SET_FEATURES);
-                
+
                         if(!ide_error(i)) {
                             break;
                         }
