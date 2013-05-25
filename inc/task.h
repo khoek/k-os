@@ -11,6 +11,8 @@ typedef struct task {
 } task_t;
 
 void task_switch();
+void * task_alloc_page(task_t *task, uint32_t vaddr);
+task_t * task_create();
 
 void task_usermode();
 

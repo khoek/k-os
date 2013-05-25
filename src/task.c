@@ -28,6 +28,18 @@ void task_switch() {
     cpl_switch(front);
 }
 
+void * task_alloc_page(task_t UNUSED(*task), uint32_t UNUSED(vaddr)) {
+    page_t *new_page = alloc_page();
+
+    //TODO map new_page to address vaddr in task's address space;
+
+    return page_to_address(new_page);
+}
+
+task_t * task_create() {
+    return cache_alloc(CACHE_TASK); //FIXME do more stuff here
+}
+
 void task_usermode() {
     __asm__ volatile("mov $1, %eax");
     __asm__ volatile("mov $8, %ebx");

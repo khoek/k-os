@@ -1,6 +1,8 @@
-#include "init.h"
-#include "module.h"
-#include "log.h"
+#include <stdint.h>
+#include <init.h>
+#include <module.h>
+#include <log.h>
+#include <binfmt.h>
 
 static multiboot_module_t *mods;
 static uint32_t count;
@@ -18,6 +20,10 @@ static INITCALL module_init() {
     count = multiboot_info->mods_count;
 
     logf("module - detected %u module(s)", count);
+
+    for(uint32_t i = 0; i < count; i++) {
+        logf("binfmt returned %d", binfmt_load_exe((void *) mods[i].start, mods[i].end - mods[i].start));
+    }
 
     return 0;
 }
