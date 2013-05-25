@@ -514,6 +514,10 @@ static int32_t pata_access(bool write, bool same, uint8_t drive, uint64_t numsec
 }
 
 void __init ide_init(uint32_t BAR0, uint32_t BAR1, uint32_t BAR2, uint32_t BAR3, uint32_t BAR4) {
+    static bool once = false;
+    if(once) return;
+    once = true;
+    
     idt_register(46, false, handle_irq_primary);
     idt_register(47, false, handle_irq_secondary);
 
@@ -536,133 +540,131 @@ void __init ide_init(uint32_t BAR0, uint32_t BAR1, uint32_t BAR2, uint32_t BAR3,
     int device = 0;
     for (uint8_t i = 0; i < 2; i++) {
         for (uint8_t j = 0; j < 2; j++) {
+            uint8_t err = 0, type = TYPE_PATA, status;
+            ide_devices[device].present = 0; // Assuming that no drive here.
 
-        uint8_t err = 0, type = TYPE_PATA, status;
-        ide_devices[device].present = 0; // Assuming that no drive here.
+            // (I) Select Drive:
+            ide_write(i, ATA_REG_HDDEVSEL, 0xA0 | (j << 4)); // Select Drive.
+            sleep(1); // Wait 1ms for drive select to work.
 
-        // (I) Select Drive:
-        ide_write(i, ATA_REG_HDDEVSEL, 0xA0 | (j << 4)); // Select Drive.
-        sleep(1); // Wait 1ms for drive select to work.
+            // (II) Send ATA Identify Command:
+            ide_write(i, ATA_REG_COMMAND, ATA_CMD_IDENTIFY);
+            sleep(1); // This function should be implemented in your OS. which waits for 1 ms.
+                     // it is based on System Timer Device Driver.
 
-        // (II) Send ATA Identify Command:
-        ide_write(i, ATA_REG_COMMAND, ATA_CMD_IDENTIFY);
-        sleep(1); // This function should be implemented in your OS. which waits for 1 ms.
-                 // it is based on System Timer Device Driver.
+            // (III) Polling:
+            if (ide_read(i, ATA_REG_STATUS) == 0) continue; // If Status = 0, No Device.
 
-        // (III) Polling:
-        if (ide_read(i, ATA_REG_STATUS) == 0) continue; // If Status = 0, No Device.
+            while(1) {
+                status = ide_read(i, ATA_REG_STATUS);
+                if ((status & ATA_SR_ERR)) {err = 1; break;} // If Err, Device is not ATA.
+                if (!(status & ATA_SR_BSY) && (status & ATA_SR_DRQ)) break; // Everything is right.
+            }
 
-        while(1) {
-            status = ide_read(i, ATA_REG_STATUS);
-            if ((status & ATA_SR_ERR)) {err = 1; break;} // If Err, Device is not ATA.
-            if (!(status & ATA_SR_BSY) && (status & ATA_SR_DRQ)) break; // Everything is right.
-        }
+            // (IV) Probe for ATAPI Devices:
+            if (err != 0) {
+                uint8_t cl = ide_read(i, ATA_REG_LBA1);
+                uint8_t ch = ide_read(i, ATA_REG_LBA2);
 
-        // (IV) Probe for ATAPI Devices:
-        if (err != 0) {
-            uint8_t cl = ide_read(i, ATA_REG_LBA1);
-            uint8_t ch = ide_read(i, ATA_REG_LBA2);
+                if (cl == 0x14 && ch == 0xEB)
+                    type = TYPE_PATAPI;
+                else if (cl == 0x69 && ch == 0x96)
+                    type = TYPE_PATAPI;
+                else
+                    continue; // Unknown Type (may not be a device).
 
-            if (cl == 0x14 && ch == 0xEB)
-                type = TYPE_PATAPI;
-            else if (cl == 0x69 && ch == 0x96)
-                type = TYPE_PATAPI;
-            else
-                continue; // Unknown Type (may not be a device).
+                ide_write(i, ATA_REG_COMMAND, ATA_CMD_IDENTIFY_PACKET);
+                sleep(1);
+            }
 
-            ide_write(i, ATA_REG_COMMAND, ATA_CMD_IDENTIFY_PACKET);
-            sleep(1);
-        }
+            // (V) Read Identification Space of the Device:
+            ide_read_buffer(i, ATA_REG_DATA, ide_buf, 128);
 
-        // (V) Read Identification Space of the Device:
-        ide_read_buffer(i, ATA_REG_DATA, ide_buf, 128);
+            // (VI) Read Device Parameters:
+            ide_devices[device].present     = true;
+            ide_devices[device].type        = type;
+            ide_devices[device].channel     = i;
+            ide_devices[device].drive       = j;
+            ide_devices[device].signature   = *((uint16_t *) (ide_buf + ATA_IDENT_DEVICETYPE));
+            ide_devices[device].features     = *((uint16_t *) (ide_buf + ATA_IDENT_FEATURES));
+            ide_devices[device].commandSets = *((uint32_t *) (ide_buf + ATA_IDENT_COMMANDSETS));
 
-        // (VI) Read Device Parameters:
-        ide_devices[device].present     = true;
-        ide_devices[device].type        = type;
-        ide_devices[device].channel     = i;
-        ide_devices[device].drive       = j;
-        ide_devices[device].signature   = *((uint16_t *) (ide_buf + ATA_IDENT_DEVICETYPE));
-        ide_devices[device].features     = *((uint16_t *) (ide_buf + ATA_IDENT_FEATURES));
-        ide_devices[device].commandSets = *((uint32_t *) (ide_buf + ATA_IDENT_COMMANDSETS));
+            //FIXME make this work! :D (autodecteting the best hdd speeds and setting them
 
-        //FIXME make this work! :D (autodecteting the best hdd speeds and setting them
+            int8_t mode = -1;
+            if (ide_devices[device].features & ATA_FEATURE_DMA) {
+                if ((((uint16_t *) ide_buf)[ATA_IDENT_VALID_IDENT]) & ATA_VALID_IDENT_UDMA) {
+                    uint8_t supported = ((uint16_t *) ide_buf)[ATA_IDENT_UDMA];
+                    for (mode = 5; mode >= 0; mode--) {
+                        if (!(supported & (1 << mode))) continue;
+                        
+                        ide_write(i, ATA_REG_SECdevice0, ATA_TRANSFER_UDMA + (mode & 0x7));
+                        ide_write(i, ATA_REG_FEATURES, ATA_SET_FEATURES_DMA);
+                        ide_write(i, ATA_REG_COMMAND, ATA_CMD_SET_FEATURES);
+                
+                        if(!ide_error(i)) {
+                            break;
+                        }
+                    }
+                }
 
-        //int8_t mode = -1;
+                if(mode < 0) {
+                    if((((uint16_t *) ide_buf)[ATA_IDENT_VALID_IDENT]) & ATA_VALID_IDENT_DMA) {
+                        uint8_t supported = ((uint16_t *) ide_buf)[ATA_IDENT_DMA_MULTI];
+                        for (mode = 2; mode >= 0; mode--) {
+                            if (!(supported & (1 << mode))) continue;
 
-        //if (ide_devices[device].features & ATA_FEATURE_DMA) {
-        //    if ((((uint16_t *) ide_buf)[ATA_IDENT_VALID_IDENT]) & ATA_VALID_IDENT_UDMA) {
-        //        uint8_t supported = ((uint16_t *) ide_buf)[ATA_IDENT_UDMA];
-        //        for (mode = 5; mode >= 0; mode--) {
-        //        if (!(supported & (1 << mode))) continue;
+                            ide_write(i, ATA_REG_SECdevice0, ATA_TRANSFER_DMA_MULTI + (mode & 0x7));
+                            ide_write(i, ATA_REG_FEATURES, ATA_SET_FEATURES_DMA);
+                            ide_write(i, ATA_REG_COMMAND, ATA_CMD_SET_FEATURES);
 
-        //        ide_write(i, ATA_REG_SECdevice0, ATA_TRANSFER_UDMA + (mode & 0x7));
-        //        ide_write(i, ATA_REG_FEATURES, ATA_SET_FEATURES_DMA);
-        //        ide_write(i, ATA_REG_COMMAND, ATA_CMD_SET_FEATURES);
+                            if(!ide_error(i)) {
+                                break;
+                            }
+                        }
+                    }
+                }
 
-        //        if(!ide_error(i)) {
-        //            break;
-        //        }
-        //        }
-        //    }
+                if(mode < 0) {
+                    if((((uint16_t *) ide_buf)[ATA_IDENT_VALID_IDENT]) & ATA_VALID_IDENT_DMA) {
+                        uint8_t supported = ((uint16_t *) ide_buf)[ATA_IDENT_DMA_SINGLE];
+                        for (mode = 2; mode >= 0; mode--) {
+                            if (!(supported & (1 << mode))) continue;
 
-        //    if(mode < 0) {
-        //        if((((uint16_t *) ide_buf)[ATA_IDENT_VALID_IDENT]) & ATA_VALID_IDENT_DMA) {
-        //        uint8_t supported = ((uint16_t *) ide_buf)[ATA_IDENT_DMA_MULTI];
-        //        for (mode = 2; mode >= 0; mode--) {
-        //            if (!(supported & (1 << mode))) continue;
+                            ide_write(i, ATA_REG_SECdevice0, ATA_TRANSFER_DMA_SINGLE + (mode & 0x7));
+                            ide_write(i, ATA_REG_FEATURES, ATA_SET_FEATURES_DMA);
+                            ide_write(i, ATA_REG_COMMAND, ATA_CMD_SET_FEATURES);
 
-        //            ide_write(i, ATA_REG_SECdevice0, ATA_TRANSFER_DMA_MULTI + (mode & 0x7));
-        //            ide_write(i, ATA_REG_FEATURES, ATA_SET_FEATURES_DMA);
-        //            ide_write(i, ATA_REG_COMMAND, ATA_CMD_SET_FEATURES);
+                            if(!ide_error(i)) {
+                                break;
+                            }
+                        }
+                    }
+                }
+            }
 
-        //            if(!ide_error(i)) {
-        //                break;
-        //            }
-        //        }
-        //        }
-        //    }
+            if(mode < 0) {
+                //TODO optimise PIO
+            }
 
-        //    if(mode < 0) {
-        //        if((((uint16_t *) ide_buf)[ATA_IDENT_VALID_IDENT]) & ATA_VALID_IDENT_DMA) {
-        //        uint8_t supported = ((uint16_t *) ide_buf)[ATA_IDENT_DMA_SINGLE];
-        //        for (mode = 2; mode >= 0; mode--) {
-        //            if (!(supported & (1 << mode))) continue;
+            // (VII) Get Size:
+            if (ide_devices[device].commandSets & (1 << 26)) {
+                // Device uses 48-Bit Addressing:
+                ide_devices[device].size = *((uint32_t *)(ide_buf + ATA_IDENT_MAX_LBA_EXT));
+            } else {
+                // Device uses CHS or 28-bit Addressing:
+                ide_devices[device].size = *((uint32_t *)(ide_buf + ATA_IDENT_MAX_LBA));
+            }
 
-        //            ide_write(i, ATA_REG_SECdevice0, ATA_TRANSFER_DMA_SINGLE + (mode & 0x7));
-        //            ide_write(i, ATA_REG_FEATURES, ATA_SET_FEATURES_DMA);
-        //            ide_write(i, ATA_REG_COMMAND, ATA_CMD_SET_FEATURES);
+            // (VIII) String indicates model of device (like Western Digital HDD and SONY DVD-RW...):
+            for(uint8_t k = 0; k < 40; k += 2) {
+                ide_devices[device].model[k] = ide_buf[ATA_IDENT_MODEL + k + 1];
+                ide_devices[device].model[k + 1] = ide_buf[ATA_IDENT_MODEL + k];
+            }
 
-        //            if(!ide_error(i)) {
-        //                break;
-        //            }
-        //        }
-        //        }
-        //    }
-        //}
+            ide_devices[device].model[40] = 0; // Terminate String.
 
-        //if(mode < 0) {
-            //todo optimise PIO
-        //}
-
-        // (VII) Get Size:
-        if (ide_devices[device].commandSets & (1 << 26)) {
-            // Device uses 48-Bit Addressing:
-            ide_devices[device].size = *((uint32_t *)(ide_buf + ATA_IDENT_MAX_LBA_EXT));
-        } else {
-            // Device uses CHS or 28-bit Addressing:
-            ide_devices[device].size = *((uint32_t *)(ide_buf + ATA_IDENT_MAX_LBA));
-        }
-
-        // (VIII) String indicates model of device (like Western Digital HDD and SONY DVD-RW...):
-        for(uint8_t k = 0; k < 40; k += 2) {
-            ide_devices[device].model[k] = ide_buf[ATA_IDENT_MODEL + k + 1];
-            ide_devices[device].model[k + 1] = ide_buf[ATA_IDENT_MODEL + k];
-        }
-
-        ide_devices[device].model[40] = 0; // Terminate String.
-
-        device++;
+            device++;
         }
     }
 
@@ -677,8 +679,8 @@ void __init ide_init(uint32_t BAR0, uint32_t BAR1, uint32_t BAR2, uint32_t BAR3,
 }
 
 static void ide_bounds_check(uint8_t drive, uint64_t numsects, uint32_t lba) {
-    ASSERT(drive > 3 || ide_devices[drive].present == 0);
-    ASSERT(((lba + numsects) > ide_devices[drive].size) && (ide_devices[drive].type == TYPE_PATA));
+    BUG_ON(drive > 3 || ide_devices[drive].present == 0);
+    BUG_ON(((lba + numsects) > ide_devices[drive].size) && (ide_devices[drive].type == TYPE_PATA));
 }
 
 int32_t ide_read_sectors(uint8_t drive, uint64_t numsects, uint32_t lba, void * edi) {
