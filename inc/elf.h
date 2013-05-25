@@ -2,7 +2,6 @@
 #define KERNEL_ELF_H
 
 #include <stdint.h>
-#include "multiboot.h"
 
 #define ELF32_ST_TYPE(i) ((i) & 0xf)
 #define ELF32_ST_BIND(i) ((i) >> 4)
@@ -35,8 +34,5 @@ typedef struct {
   uint8_t other;
   uint16_t shndx;
 } __attribute__((packed)) elf_symbol_t;
-
-elf_symbol_t * elf_lookup_symbol(uint32_t address);
-const char * elf_symbol_name(elf_symbol_t *symbol);
 
 #endif

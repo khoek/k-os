@@ -1,8 +1,9 @@
 #include <stddef.h>
 #include <stdbool.h>
-#include "string.h"
-#include "init.h"
-#include "elf.h"
+#include <string.h>
+#include <init.h>
+#include <debug.h>
+#include <multiboot.h>
 
 typedef struct {
   uint32_t name;
@@ -20,21 +21,19 @@ typedef struct {
 typedef struct {
   const char   *strtab;
   uint32_t      strtabsz;
-  bool          strtabfound;
   elf_symbol_t *symtab;
   uint32_t      symtabsz;
-  bool          symtabfound;
 } kernel_t;
 
 static kernel_t kernel;
 
-const char * elf_symbol_name(elf_symbol_t *symbol) {
+const char * debug_symbol_name(elf_symbol_t *symbol) {
     if(symbol == NULL) return NULL;
     return (const char *) ((uint32_t) kernel.strtab + symbol->name);
 }
 
-elf_symbol_t * elf_lookup_symbol(uint32_t address) {
-    if(!kernel.strtabfound || !kernel.symtabfound) return NULL;
+elf_symbol_t * debug_lookup_symbol(uint32_t address) {
+    if(!kernel.strtabsz || !kernel.symtabsz) return NULL;
 
     for (uint32_t i = 0; i < (kernel.symtabsz / sizeof(elf_symbol_t)); i++) {
         if (ELF32_ST_TYPE(kernel.symtab[i].info) == ELF_TYPE_FUNC && address > kernel.symtab[i].value && address <= kernel.symtab[i].value + kernel.symtab[i].size) {
@@ -45,7 +44,7 @@ elf_symbol_t * elf_lookup_symbol(uint32_t address) {
     return NULL;
 }
 
-INITCALL elf_init() {
+INITCALL debug_init() {
     elf_section_header_t *sh = (elf_section_header_t *) multiboot_info->u.elf_sec.addr;
 
     for (uint32_t i = 0; i < multiboot_info->u.elf_sec.num; i++) {
@@ -53,11 +52,9 @@ INITCALL elf_init() {
         if (!strcmp(name, ".strtab")) {
             kernel.strtab = (const char *) sh[i].addr;
             kernel.strtabsz = sh[i].size;
-            kernel.strtabfound = true;
         } else if (!strcmp(name, ".symtab")) {
             kernel.symtab = (elf_symbol_t*) sh[i].addr;
             kernel.symtabsz = sh[i].size;
-            kernel.symtabfound = true;
         }
     }
 
@@ -65,5 +62,5 @@ INITCALL elf_init() {
 }
 
 #ifndef CONFIG_OPTIMIZE
-early_initcall(elf_init);
+early_initcall(debug_init);
 #endif

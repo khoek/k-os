@@ -5,7 +5,7 @@
 #include <printf.h>
 #include "panic.h"
 #include "idt.h"
-#include "elf.h"
+#include "debug.h"
 #include "console.h"
 
 #define MAX_FRAMES      32
@@ -31,11 +31,11 @@ void panic(char* message) {
     eip = ebp[1];
 
     for(uint32_t frame = 0; eip != 0 && ebp != 0 && frame < MAX_FRAMES; frame++) {
-        elf_symbol_t *symbol = elf_lookup_symbol(eip);
+        elf_symbol_t *symbol = debug_lookup_symbol(eip);
         if(symbol == NULL) {
             console_putsf("    0x%X\n", eip);
         } else {
-            console_putsf("    %s+0x%X\n", elf_symbol_name(symbol), eip - symbol->value);
+            console_putsf("    %s+0x%X/0x%X\n", debug_symbol_name(symbol), eip - symbol->value, eip);
         }
 
         ebp = (uint32_t *) ebp[0];
