@@ -187,6 +187,12 @@ char * ide_device_get_string(uint8_t device, uint8_t string) {
     }
 }
 
+bool ide_device_is_dma_capable(uint8_t device) {
+    ide_device_check(device);
+
+    return (ide_devices[device].features & ATA_FEATURE_LBA) && (ide_devices[device].features & ATA_FEATURE_DMA);
+}
+
 static void ide_write(uint8_t channel, uint8_t reg, uint8_t data) {
     if (reg > 0x07 && reg < 0x0C)
         ide_write(channel, ATA_REG_CONTROL, 0x80 | channels[channel].nIEN);
@@ -413,16 +419,16 @@ static int32_t pata_access(bool write, bool same, uint8_t drive, uint64_t numsec
         uint64_t bytes = sector_size * (numsects == 0 ? 512 : numsects);
         uint64_t i;
         for (i = 0; i < MAX_PRD_ENTRIES && bytes > (64 * 1024); i++) {
-        *(channels[channel].prdt + i) = PRD(edi + (same ? 0 : ((64 * 1024) * i)), 0 /* 64kb */);
-        transfered += 64 * 1024;//FIXME increment and return this after the operation completes WITHOUT AN ERROR
-        bytes -= (64 * 1024);
+            *(channels[channel].prdt + i) = PRD(edi + (same ? 0 : ((64 * 1024) * i)), 0 /* 64kb */);
+            transfered += 64 * 1024;//FIXME increment and return this after the operation completes WITHOUT AN ERROR
+            bytes -= (64 * 1024);
         }
 
         if (bytes > 0 && i < MAX_PRD_ENTRIES) {
-        *(channels[channel].prdt + i) = PRD(edi + (same ? 0 : ((64 * 1024) * i)), bytes);
-        transfered += bytes;
+            *(channels[channel].prdt + i) = PRD(edi + (same ? 0 : ((64 * 1024) * i)), bytes);
+            transfered += bytes;
         } else {
-        i--;
+            i--;
         }
 
         *(channels[channel].prdt + (i == 0 ? 512 : i)) |= 0x8000000000000000; // mark last PRD entry as EOT

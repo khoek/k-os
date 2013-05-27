@@ -11,6 +11,10 @@
 #include "keyboard.h"
 #include "io.h"
 
+static char twirls[] = {
+    '|', '/', '-', '\\'
+};
+
 static char key;
 
 static void handle_down(char code) {
@@ -92,7 +96,7 @@ static void run_tool(uint8_t devices) {
                 }
 
                 console_color((background << 4) + foreground);
-                console_putsf("    - ATA Device %u %7uMB - %s\n", i, ide_device_get_size(i) / 1024 / 2, ide_device_get_string(i, IDE_STRING_MODEL));
+                console_putsf("    - ATA Device %u (%s) %7uMB - %s\n", i, ide_device_is_dma_capable(i) ? "DMA" : "PIO", ide_device_get_size(i) / 1024 / 2, ide_device_get_string(i, IDE_STRING_MODEL));
                 console_color(0x07);
             }
         }
@@ -145,7 +149,7 @@ static void run_tool(uint8_t devices) {
             if (selected[i]) foreground = 0xC;
 
             console_color((background << 4) + foreground);
-            console_putsf("    - ATA Device %u %7uMB - %s\n", i, ide_device_get_size(i) / 1024 / 2, ide_device_get_string(i, IDE_STRING_MODEL));
+            console_putsf("    - ATA Device %u (%s) %7uMB - %s\n", i, ide_device_is_dma_capable(i) ? "DMA" : "PIO", ide_device_get_size(i) / 1024 / 2, ide_device_get_string(i, IDE_STRING_MODEL));
             console_color(0x07);
         }
     }
@@ -225,12 +229,14 @@ static void run_tool(uint8_t devices) {
         for (uint32_t i = 0; i < 4; i++) {
             if (selected[i]) {
                 device++;
+                uint32_t count = 0;
                 uint32_t written = 0;
                 while(written < ide_device_get_size(i)) {
+                    count++;
+                    console_putsf("    - Writing to device %u... %3u%%                                             %c\r", device, (written * 100) / ide_device_get_size(i), twirls[(count / 10) % 4]);
                     written += ide_write_sectors_same(i, ide_device_get_size(i) - written, written, space) / 512;
-                    console_putsf("    - Writing to device %u... %3u%%\r", device, (written * 100) / ide_device_get_size(i));
                 }
-                console_putsf("    - Writing to device %u... 100%\n", device);
+                console_putsf("    - Writing to device %u... 100%%                                              \n", device);
             }
         }
 
@@ -257,7 +263,7 @@ static void main_menu() {
         uint8_t devices = 0;
         for (uint8_t i = 0; i < 4; i++) {
             if (ide_device_is_present(i) && ide_device_get_type(i) == 0) {
-                console_putsf("    - ATA Device %u %7uMB - %s\n", i, ide_device_get_size(i) / 1024 / 2, ide_device_get_string(i, IDE_STRING_MODEL));
+                console_putsf("    - ATA Device %u (%s) %7uMB - %s\n", i, ide_device_is_dma_capable(i) ? "DMA" : "PIO", ide_device_get_size(i) / 1024 / 2, ide_device_get_string(i, IDE_STRING_MODEL));
                 devices++;
             }
         }
