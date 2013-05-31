@@ -6,9 +6,7 @@
 #include "log.h"
 #include "console.h"
 #include "panic.h"
-#include "pit.h"
 #include "task.h"
-#include "erasure_tool.h"
 
 multiboot_info_t *multiboot_info;
 
@@ -29,7 +27,7 @@ void kmain(uint32_t magic, multiboot_info_t *mbd) {
     }
 
     logf("entering usermode");
-    erasure_tool_run();
+    task_switch();
 
     panic("kmain returned!");
 }
