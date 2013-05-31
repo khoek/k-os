@@ -8,6 +8,7 @@
 #include "panic.h"
 #include "log.h"
 
+uint32_t pid = 1;
 uint8_t kernel_stack[0x1000];
 task_t *front, *back;
 
@@ -64,7 +65,7 @@ static INITCALL task_init() {
 
     memcpy(page_to_address(code_page), task_usermode, 0x1000);
 
-    front->pid = 1;
+    front->pid = pid++;
     front->state.cs = CPL_USER_CODE | 3;
     front->state.ss = CPL_USER_DATA | 3;
     front->state.eflags = get_eflags();

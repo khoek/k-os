@@ -5,6 +5,8 @@ OUTPUT_ARCH("i386")
 
 ENTRY(loader)
 SECTIONS {
+    . = 0x00120000;
+
     .text ALIGN (0x1000) : {
         *(.text)
     }
@@ -15,6 +17,13 @@ SECTIONS {
 
     .data ALIGN (0x1000) : {
         *(.data)
+    }
+
+    .bss : {
+        sbss = .;
+        *(COMMON)
+        *(.bss)
+        ebss = .;
     }
 
     .init.text ALIGN (0x1000) : {
@@ -42,13 +51,6 @@ SECTIONS {
         initcall_end = .;
 
         init_data_end = .;
-    }
-
-    .bss : {
-        sbss = .;
-        *(COMMON)
-        *(.bss)
-        ebss = .;
     }
 
     .end_of_image : {

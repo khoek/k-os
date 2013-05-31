@@ -36,7 +36,7 @@ int load_elf_exe(void *start, uint32_t UNUSED(length)) {
 
     Elf32_Phdr *phdr = (Elf32_Phdr *) (((uint32_t) start) + ehdr->e_phoff);
     for(uint32_t i = 0; i < ehdr->e_phnum; i++) {
-        switch(phdr->p_type) { //TODO validate the segments as we are going
+        switch(phdr[i].p_type) { //TODO validate the segments as we are going
             case PT_NULL:
                 break;
             case PT_LOAD: {
@@ -52,6 +52,7 @@ int load_elf_exe(void *start, uint32_t UNUSED(length)) {
                 break;
             }
             default: //Unsupported phdr
+                logf("UNSUP %u", phdr[i].p_type);
                 return -1;
         }
     }
