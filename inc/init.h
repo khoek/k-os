@@ -1,13 +1,16 @@
 #ifndef KERNEL_INIT_H
 #define KERNEL_INIT_H
 
-#define INITCALL int __init
+#define PHYSICAL_BASE 0x00100000
+#define VIRTUAL_BASE  0xC0000000
 
 #ifdef __LINKER__
 
 #define INITCALL_SECTION(id) *(.initcall.##id)
 
 #else
+
+#define INITCALL int __init
 
 #define __init     __attribute__ ((section(".init.text"), cold))
 #define __initdata __attribute__ ((section(".init.data")))

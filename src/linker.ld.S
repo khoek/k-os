@@ -5,28 +5,39 @@ OUTPUT_ARCH("i386")
 
 ENTRY(loader)
 SECTIONS {
-    . = 0x00120000;
+    . = PHYSICAL_BASE;
 
-    .text ALIGN (0x1000) : {
-        *(.text)
+    .image_start : AT(ADDR(.image_start) - VIRTUAL_BASE) {
+        image_start = .;
     }
 
-    .rodata ALIGN (0x1000) : {
+    .header : {
+       *(.header)
+    }
+
+    .loader : {
+       *(.loader)
+    }
+
+    . += VIRTUAL_BASE;
+
+    .text : AT(ADDR(.text) - VIRTUAL_BASE) {
+        *(.text)
         *(.rodata*)
     }
 
-    .data ALIGN (0x1000) : {
+    .data ALIGN (0x1000) : AT(ADDR(.data) - VIRTUAL_BASE) {
         *(.data)
     }
 
-    .bss : {
-        sbss = .;
+    .bss : AT(ADDR(.bss) - VIRTUAL_BASE) {
+        _sbss = .;
         *(COMMON)
         *(.bss)
-        ebss = .;
+        _ebss = .;
     }
 
-    .init.text ALIGN (0x1000) : {
+    .init.text ALIGN (0x1000) : AT(ADDR(.init.text) - VIRTUAL_BASE) {
         init_text_start = .;
 
         *(.init.text)
@@ -34,7 +45,7 @@ SECTIONS {
         init_text_end = .;
     }
 
-    .init.data ALIGN (0x1000) : {
+    .init.data ALIGN (0x1000) : AT(ADDR(.init.data) - VIRTUAL_BASE) {
         init_data_start = .;
 
         *(.init.data)
@@ -53,7 +64,13 @@ SECTIONS {
         init_data_end = .;
     }
 
-    .end_of_image : {
-        end_of_image = .;
+    . -= VIRTUAL_BASE;
+
+    .image_end : AT(ADDR(.image_end) - VIRTUAL_BASE) {
+        image_end = .;
+    }
+
+    /DISCARD/ : {
+        *(.comment)
     }
 }

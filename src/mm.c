@@ -17,8 +17,10 @@
 #define PAGE_FLAG_USED (1 << 0)
 #define PAGE_FLAG_USER (1 << 1)
 
-extern uint32_t end_of_image;
+extern uint32_t image_start;
+extern uint32_t image_end;
 
+static uint32_t kernel_start;
 static uint32_t kernel_end;
 static uint32_t num_pages;
 static uint32_t mem_start;
@@ -207,7 +209,7 @@ static void paging_init() {
         }
     }
 
-    for(uint32_t i = 0; i < NUM_ENTRIES; i++) {
+    /*for(uint32_t i = 0; i < NUM_ENTRIES; i++) {
         uint32_t page_mem_start_addr = i * PAGE_SIZE * 1024;
 
         uint32_t *page_table = (uint32_t *) page_table_offset; //page_table_offset is already page aligned
@@ -225,10 +227,11 @@ static void paging_init() {
     cr0 |= 1 << 31; //enable paging
     cr0 |= 1 << 16; //enable read-only protection in supervisor mode
     __asm__ volatile("mov %0, %%cr0":: "b" (cr0));
-}
+*/}
 
 static INITCALL mm_init() {
-    kernel_end = (uint32_t) &end_of_image;
+    kernel_start = ((uint32_t) &image_start);
+    kernel_end = ((uint32_t) &image_end);
 
     for(uint32_t i = 0; i < module_count(); i++) {
         uint32_t end = module_get(i)->end - 1;
@@ -237,39 +240,55 @@ static INITCALL mm_init() {
         }
     }
 
-    logf("mm - kernel image ends at 0x%08X", kernel_end);
+    logf("mm - kernel image 0x%p-0x%p", kernel_start, kernel_end);
 
     multiboot_memory_map_t *mmap = multiboot_info->mmap;
-    uint64_t end_addr;
-    uint32_t start_addr = ((kernel_end + PAGE_SIZE - 1) / PAGE_SIZE) * PAGE_SIZE, best_len = 0, idx = -1;
+    uint32_t best_len = 0;
     for(uint32_t i = 0; i < (multiboot_info->mmap_length / sizeof(multiboot_memory_map_t)); i++) {
         if(mmap[i].type == MULTIBOOT_MEMORY_AVAILABLE) {
              if(mmap[i].addr >= ADDRESS_SPACE_SIZE) {
                  continue;
              }
-             end_addr = mmap[i].addr + mmap[i].len;
-             if(end_addr > ADDRESS_SPACE_SIZE) {
-                 end_addr = ADDRESS_SPACE_SIZE - 1;
+
+             uint32_t start = mmap[i].addr;
+             uint64_t end = mmap[i].addr + mmap[i].len;
+
+             if(end > ADDRESS_SPACE_SIZE) {
+                end = ADDRESS_SPACE_SIZE - 1ULL;
              }
 
-             if(mmap[i].addr > start_addr) {
-                 start_addr = (uint32_t) mmap[i].addr;
+             if(start <= kernel_start && kernel_start < end) {
+                if(kernel_end < end) {
+                    if(kernel_start - start > end - kernel_end) {
+                        end = kernel_start;
+                    } else {
+                        start = kernel_end;
+                    }
+                } else {
+                    end = kernel_start;
+                }
+             } else if(start <= kernel_end && kernel_end < end) {
+                start = kernel_end;
+             } else if(kernel_start <= start && end <= kernel_end) {
+                continue;
              }
 
-             uint32_t aligned_start = DIV_UP(start_addr, PAGE_SIZE) * PAGE_SIZE, aligned_end = DIV_DOWN(end_addr, PAGE_SIZE) * PAGE_SIZE, len = aligned_end - aligned_start;
-             if(aligned_start > aligned_end || len < best_len) {
-                 continue;
-             }
-             idx = i;
-             best_len = len;
+             start = DIV_UP(start, PAGE_SIZE) * PAGE_SIZE;
+             end = DIV_DOWN(end, PAGE_SIZE) * PAGE_SIZE;
 
-             //page align start_addr and end_addr
-             mem_start = aligned_start;
-             mem_end = aligned_end;
+             if(start >= end) {
+                continue;
+             }
+
+             if(end - start > best_len) {
+                best_len = end - start;
+                mem_start = start;
+                mem_end = end;
+             }
         }
     }
 
-    if(idx == ((uint32_t) -1)) panic("MM - did not find suitable memory region");
+    if(best_len == 0) panic("MM - did not find suitable memory region");
 
     paging_init();
 
