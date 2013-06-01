@@ -14,6 +14,8 @@
 
 #define NUM_ENTRIES 1024
 
+#define KERNEL_TABLES (NUM_ENTRIES / 4)
+
 #define PAGE_FLAG_USED (1 << 0)
 #define PAGE_FLAG_USER (1 << 1)
 
@@ -27,6 +29,7 @@ static uint32_t mem_start;
 static uint32_t mem_end;
 
 static uint32_t page_directory[1024] ALIGN(PAGE_SIZE);
+static uint32_t kernel_page_tables[255][1024] ALIGN(PAGE_SIZE);
 static page_t  *pages;
 static page_t  *free_page_list[MAX_ORDER + 1];
 
@@ -145,13 +148,9 @@ void free_page(page_t *page) {
 }
 
 void * page_to_address(page_t *page) {
-    return (void *) ((get_index(page) * PAGE_SIZE) + mem_start);
-}
+    uint32_t idx = get_index(page);
 
-page_t * address_to_page(void *address) {
-    ASSERT((((uint32_t) address) < mem_start) || (((uint32_t) address) >= mem_end));
-
-    return &pages[(((uint32_t) address) - mem_start) / PAGE_SIZE];
+    return (void *) ((uint32_t *) page_directory[idx / 1024])[idx % 1024];
 }
 
 #define PRESENT     (1 << 0)
@@ -170,23 +169,23 @@ void page_protect(page_t *page, bool protect) {
     invlpg(addr);
 }
 
-static void paging_init() {
-    uint32_t page_table_offset = mem_start;
+void page_build_directory() {
 
-    //reserve space for the page tables, remaining page aligned, page directory is declared in the BSS
-    mem_start += DIV_UP(sizeof(uint32_t) * NUM_ENTRIES * NUM_ENTRIES, PAGE_SIZE) * PAGE_SIZE;
+}
+
+static void paging_init() {
+    uint32_t original_start = mem_start;
 
     //reserve space for the page_t structs, remaining page aligned
     pages = (page_t *) mem_start;
     num_pages = DIV_DOWN(mem_end - mem_start, PAGE_SIZE);
     mem_start += DIV_UP(sizeof(page_t) * NUM_ENTRIES * NUM_ENTRIES, PAGE_SIZE) * PAGE_SIZE;
 
-    logf("mm - total: %u MB, paging: %u MB, malloc %u MB, avaliable %u MB",
-    DIV_DOWN(mem_end - page_table_offset, 1024 * 1024),
+    logf("mm - total: %u MB, malloc %u MB, avaliable %u MB",
     DIV_DOWN(DIV_UP(sizeof(uint32_t) * NUM_ENTRIES * NUM_ENTRIES, PAGE_SIZE) * PAGE_SIZE, 1024 * 1024),
     DIV_DOWN(DIV_UP(sizeof(page_t) * NUM_ENTRIES * NUM_ENTRIES, PAGE_SIZE) * PAGE_SIZE, 1024 * 1024),
     DIV_DOWN(mem_end - mem_start,       1024 * 1024));
-    logf("mm - address space: (phys)0x%p/(avail)0x%p - 0x%p", page_table_offset, mem_start, mem_end);
+    logf("mm - address space: (phys)0x%p/(avail)0x%p - 0x%p", original_start, mem_start, mem_end);
 
     free_page_list[MAX_ORDER] = &pages[0];
 
@@ -209,25 +208,22 @@ static void paging_init() {
         }
     }
 
-    /*for(uint32_t i = 0; i < NUM_ENTRIES; i++) {
-        uint32_t page_mem_start_addr = i * PAGE_SIZE * 1024;
-
-        uint32_t *page_table = (uint32_t *) page_table_offset; //page_table_offset is already page aligned
-        page_table_offset += PAGE_SIZE;
-
-        page_directory[i] = (uint32_t) page_table | PRESENT | WRITABLE | CPL_USER;
+    for(uint32_t i = 0; i < KERNEL_TABLES; i++) {
         for(uint32_t j = 0; j < NUM_ENTRIES; j++) {
-             page_table[j] = (page_mem_start_addr + j * PAGE_SIZE) | PRESENT | WRITABLE;
+            uint32_t phys = ((i * 1024) + j) * PAGE_SIZE;
+            if(phys < kernel_end) {
+                kernel_page_tables[i][j] = phys | WRITABLE | PRESENT;
+            }
         }
     }
 
-    __asm__ volatile("mov %0, %%cr3":: "b" (page_directory));
-    uint32_t cr0;
-    __asm__ volatile("mov %%cr0, %0": "=b" (cr0));
-    cr0 |= 1 << 31; //enable paging
-    cr0 |= 1 << 16; //enable read-only protection in supervisor mode
-    __asm__ volatile("mov %0, %%cr0":: "b" (cr0));
-*/}
+    for(uint32_t i = 0; i < KERNEL_TABLES; i++) {
+        page_directory[i + (VIRTUAL_BASE / PAGE_SIZE / NUM_ENTRIES)] = (((uint32_t) &kernel_page_tables[i]) - VIRTUAL_BASE) | PRESENT | WRITABLE | CPL_USER;
+    }
+
+    __asm__ volatile("xchg %%bx, %%bx" ::);
+    __asm__ volatile("mov %0, %%cr3":: "a" (((uint32_t) page_directory) - VIRTUAL_BASE));
+}
 
 static INITCALL mm_init() {
     kernel_start = ((uint32_t) &image_start);

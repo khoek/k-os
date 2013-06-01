@@ -17,10 +17,11 @@ typedef struct cache_page cache_page_t;
 
 struct cache_page {
     cache_page_t *prev, *next;
-    uint32_t left; // while not neccessary it might be good for stats/debugging or something
+    uint32_t left;
     uint32_t free;
     uint32_t *freelist;
     void *mem;
+    page_t *page;
 };
 
 typedef struct cache {
@@ -36,8 +37,8 @@ cache_t caches[NUM_CACHES];
 static void cache_alloc_page(uint32_t cache) {
     //assume that there are no other empty cache pages
     page_t *page = alloc_page();
-    page->cache = cache;
     caches[cache].empty = (cache_page_t *) page_to_address(page);
+    caches[cache].empty->page = page;
 
     caches[cache].empty->next = NULL;
     caches[cache].empty->prev = NULL;
@@ -139,16 +140,36 @@ void * cache_alloc(uint32_t cache) {
 void cache_free(uint32_t cache, void *mem) {
     if(cache >= NUM_CACHES) panicf("Illegal cache %u", cache);
 
-    page_t *page = address_to_page(mem);
-    cache_page_t *cache_page = (cache_page_t *) page_to_address(page);
-
-    if(cache_page->left + 1 == caches[page->cache].max) {
-        cache_move(cache_page, &caches[page->cache].partial, &caches[page->cache].empty);
-    } else if(!cache_page->left) {
-        cache_move(cache_page, &caches[page->cache].full, &caches[page->cache].partial);
+    cache_page_t *cur;
+    for(cur = caches[cache].full; cur != NULL; cur = cur->next) {
+        uint32_t addr = (uint32_t) page_to_address(cur->page);
+        if((addr >= ((uint32_t) mem)) && (((uint32_t) mem) < addr)) {
+            break;
+        }
     }
 
-    cache_do_free(cache_page, (((uint32_t) mem) - ((uint32_t)cache_page->mem)) / caches[page->cache].size);
+    if(cur == NULL) {
+        for(cur = caches[cache].partial; cur != NULL; cur = cur->next) {
+            uint32_t addr = (uint32_t) page_to_address(cur->page);
+            if((addr >= ((uint32_t) mem)) && (((uint32_t) mem) < addr)) {
+                break;
+            };
+        }
+    }
+
+    if(cur == NULL) {
+        panic("Illegal memzone param to cache_free");
+    }
+
+    cache_page_t *cache_page = (cache_page_t *) page_to_address(cur->page);
+
+    if(cache_page->left + 1 == caches[cache].max) {
+        cache_move(cache_page, &caches[cache].partial, &caches[cache].empty);
+    } else if(!cache_page->left) {
+        cache_move(cache_page, &caches[cache].full, &caches[cache].partial);
+    }
+
+    cache_do_free(cache_page, (((uint32_t) mem) - ((uint32_t)cache_page->mem)) / caches[cache].size);
 }
 
 //indirect, invoked from mm_init()
