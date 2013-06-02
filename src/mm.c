@@ -169,8 +169,10 @@ void page_protect(page_t *page, bool protect) {
     invlpg(addr);
 }
 
-void page_build_directory() {
-
+void page_build_directory(uint32_t directory[]) {
+    for(uint32_t i = 0; i < KERNEL_TABLES; i++) {
+        directory[i + (VIRTUAL_BASE / PAGE_SIZE / NUM_ENTRIES)] = (((uint32_t) &kernel_page_tables[i]) - VIRTUAL_BASE) | PRESENT | WRITABLE | CPL_USER;
+    }
 }
 
 static void paging_init() {
@@ -186,6 +188,14 @@ static void paging_init() {
     DIV_DOWN(DIV_UP(sizeof(page_t) * NUM_ENTRIES * NUM_ENTRIES, PAGE_SIZE) * PAGE_SIZE, 1024 * 1024),
     DIV_DOWN(mem_end - mem_start,       1024 * 1024));
     logf("mm - address space: (phys)0x%p/(avail)0x%p - 0x%p", original_start, mem_start, mem_end);
+
+    for(uint32_t page = 0; page < (kernel_end / PAGE_SIZE); page++) {
+        kernel_page_tables[page / 1024][page % 1024] = (page * PAGE_SIZE) | WRITABLE | PRESENT;
+    }
+
+    page_build_directory(page_directory);
+
+    __asm__ volatile("mov %0, %%cr3":: "a" (((uint32_t) page_directory) - VIRTUAL_BASE));
 
     free_page_list[MAX_ORDER] = &pages[0];
 
@@ -207,22 +217,6 @@ static void paging_init() {
              pages[page].prev = NULL;
         }
     }
-
-    for(uint32_t i = 0; i < KERNEL_TABLES; i++) {
-        for(uint32_t j = 0; j < NUM_ENTRIES; j++) {
-            uint32_t phys = ((i * 1024) + j) * PAGE_SIZE;
-            if(phys < kernel_end) {
-                kernel_page_tables[i][j] = phys | WRITABLE | PRESENT;
-            }
-        }
-    }
-
-    for(uint32_t i = 0; i < KERNEL_TABLES; i++) {
-        page_directory[i + (VIRTUAL_BASE / PAGE_SIZE / NUM_ENTRIES)] = (((uint32_t) &kernel_page_tables[i]) - VIRTUAL_BASE) | PRESENT | WRITABLE | CPL_USER;
-    }
-
-    __asm__ volatile("xchg %%bx, %%bx" ::);
-    __asm__ volatile("mov %0, %%cr3":: "a" (((uint32_t) page_directory) - VIRTUAL_BASE));
 }
 
 static INITCALL mm_init() {
