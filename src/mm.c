@@ -179,7 +179,7 @@ static void paging_init() {
     uint32_t original_start = mem_start;
 
     //reserve space for the page_t structs, remaining page aligned
-    pages = (page_t *) mem_start;
+    pages = (page_t *) (mem_start + VIRTUAL_BASE);
     num_pages = DIV_DOWN(mem_end - mem_start, PAGE_SIZE);
     mem_start += DIV_UP(sizeof(page_t) * NUM_ENTRIES * NUM_ENTRIES, PAGE_SIZE) * PAGE_SIZE;
 
@@ -189,12 +189,23 @@ static void paging_init() {
     DIV_DOWN(mem_end - mem_start,       1024 * 1024));
     logf("mm - address space: (phys)0x%p/(avail)0x%p - 0x%p", original_start, mem_start, mem_end);
 
-    for(uint32_t page = 0; page < (kernel_end / PAGE_SIZE); page++) {
+    //map kernel sections
+    uint32_t kernel_num_pages = (kernel_end / PAGE_SIZE);
+    for(uint32_t page = 0; page < kernel_num_pages; page++) {
         kernel_page_tables[page / 1024][page % 1024] = (page * PAGE_SIZE) | WRITABLE | PRESENT;
     }
 
+    //map the massive page_t struct array
+    uint32_t malloc_num_pages = DIV_UP(sizeof(page_t) * NUM_ENTRIES * NUM_ENTRIES, PAGE_SIZE);
+    for(uint32_t page = kernel_num_pages; page < kernel_num_pages + malloc_num_pages; page++) {
+        kernel_page_tables[page / 1024][page % 1024] = (((uint32_t) pages) + ((page - kernel_num_pages) * PAGE_SIZE)) | WRITABLE | PRESENT;
+    }
+
+    logf("%u 0x%p-0x%p, %u 0x%p-0x%p", kernel_num_pages, 0, (kernel_num_pages - 1) * PAGE_SIZE, malloc_num_pages, pages, (((uint32_t) pages) + ((malloc_num_pages - 1) * PAGE_SIZE)));
+
     page_build_directory(page_directory);
 
+    __asm__ volatile("xchg %%bx, %%bx"::);
     __asm__ volatile("mov %0, %%cr3":: "a" (((uint32_t) page_directory) - VIRTUAL_BASE));
 
     free_page_list[MAX_ORDER] = &pages[0];
@@ -278,7 +289,7 @@ static INITCALL mm_init() {
         }
     }
 
-    if(best_len == 0) panic("MM - did not find suitable memory region");
+    if(best_len < DIV_UP(sizeof(uint32_t) * NUM_ENTRIES * NUM_ENTRIES, PAGE_SIZE) * PAGE_SIZE) panic("MM - could not find sufficiently large continuous memory region");
 
     paging_init();
 
