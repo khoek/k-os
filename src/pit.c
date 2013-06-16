@@ -1,4 +1,5 @@
 #include <stdint.h>
+
 #include "common.h"
 #include "pit.h"
 #include "init.h"

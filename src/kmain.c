@@ -1,4 +1,5 @@
 #include <stdint.h>
+
 #include "common.h"
 #include "multiboot.h"
 #include "version.h"

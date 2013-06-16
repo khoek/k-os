@@ -1,13 +1,14 @@
 #include <stdbool.h>
+
 #include "common.h"
 #include "init.h"
 #include "ide.h"
 #include "io.h"
 #include "panic.h"
-#include "log.h"
 #include "pit.h" //FIXME sleep(1) = microseconds not hundredths of a second
 #include "idt.h"
 #include "mm.h"
+#include "log.h"
 
 #define TYPE_PATA               0x00
 #define TYPE_PATAPI             0x01

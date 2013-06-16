@@ -1,11 +1,12 @@
 #include <stddef.h>
 #include <stdbool.h>
 #include <stdarg.h>
-#include <string.h>
-#include <printf.h>
+
+#include "string.h"
+#include "printf.h"
+#include "debug.h"
 #include "panic.h"
 #include "idt.h"
-#include "debug.h"
 #include "console.h"
 
 #define MAX_FRAMES      32

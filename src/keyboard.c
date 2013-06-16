@@ -1,5 +1,6 @@
 #include <stdint.h>
 #include <stdbool.h>
+
 #include "common.h"
 #include "init.h"
 #include "keyboard.h"

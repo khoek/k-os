@@ -1,13 +1,14 @@
 #include <stddef.h>
 #include <stdbool.h>
 #include <stdint.h>
+
 #include "common.h"
 #include "init.h"
-#include "mm.h"
 #include "panic.h"
-#include "log.h"
+#include "mm.h"
 #include "cache.h"
 #include "module.h"
+#include "log.h"
 
 #define MAX_ORDER 10
 #define ADDRESS_SPACE_SIZE 4294967296ULL

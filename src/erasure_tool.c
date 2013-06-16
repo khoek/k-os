@@ -1,5 +1,6 @@
 #include <stdbool.h>
 #include <string.h>
+
 #include "erasure_tool.h"
 #include "common.h"
 #include "panic.h"

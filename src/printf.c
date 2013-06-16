@@ -33,7 +33,8 @@
  */
 
 #include <stdarg.h>
-#include <string.h>
+
+#include "string.h"
 
 #define NOFLOAT
 
