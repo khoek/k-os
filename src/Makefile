@@ -29,7 +29,7 @@ kernel.elf: $(OBJS) linker.ld
 	@$(LD) -T linker.ld -o kernel.elf $(OBJS)
 
 clean:
-	rm -f *.o
+	find . -name \*.o -type f -delete
 	rm -f linker.ld
 	rm -f kernel.elf
 
