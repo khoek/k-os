@@ -132,7 +132,7 @@ struct {
     uint16_t    base;   // I/O Base.
     uint16_t    ctrl;   // Control Base
     uint16_t    bmide;  // Bus Master IDE
-    uint64_t   *prdt;
+    page_t     *prdt;
     bool        irq;
     uint8_t     nIEN;   // nIEN (No Interrupt);
 } channels[2];
@@ -415,23 +415,24 @@ static int32_t pata_access(bool write, bool same, uint8_t drive, uint64_t numsec
     if (lba_mode > 0 /* There is no CHS (lba_mode == 0) for DMA */ && ide_devices[drive].features & ATA_FEATURE_DMA && 0) {
         dma = true;
         ide_write(channel, ATA_REG_CONTROL, channels[channel].nIEN = ATA_IRQ_ON);
-        ide_write_long(channel, ATA_REG_PRDTABLE, (uint32_t) channels[channel].prdt); //store the address of the PRDT
+        ide_write_long(channel, ATA_REG_PRDTABLE, (uint32_t) page_to_phys(channels[channel].prdt)); //store the address of the PRDT
+        uint64_t *prdt = (uint64_t *) page_to_virt(channels[channel].prdt);
         uint64_t bytes = sector_size * (numsects == 0 ? 512 : numsects);
         uint64_t i;
         for (i = 0; i < MAX_PRD_ENTRIES && bytes > (64 * 1024); i++) {
-            *(channels[channel].prdt + i) = PRD(edi + (same ? 0 : ((64 * 1024) * i)), 0 /* 64kb */);
+            *(prdt + i) = PRD(edi + (same ? 0 : ((64 * 1024) * i)), 0 /* 64kb */);
             transfered += 64 * 1024;//FIXME increment and return this after the operation completes WITHOUT AN ERROR
             bytes -= (64 * 1024);
         }
 
         if (bytes > 0 && i < MAX_PRD_ENTRIES) {
-            *(channels[channel].prdt + i) = PRD(edi + (same ? 0 : ((64 * 1024) * i)), bytes);
+            *(prdt + i) = PRD(edi + (same ? 0 : ((64 * 1024) * i)), bytes);
             transfered += bytes;
         } else {
             i--;
         }
 
-        *(channels[channel].prdt + (i == 0 ? 512 : i)) |= 0x8000000000000000; // mark last PRD entry as EOT
+        *(prdt + (i == 0 ? 512 : i)) |= 0x8000000000000000; // mark last PRD entry as EOT
     } else {
         ide_write(channel, ATA_REG_CONTROL, channels[channel].nIEN = ATA_IRQ_OFF);
     }
@@ -531,12 +532,12 @@ void __init ide_init(uint32_t BAR0, uint32_t BAR1, uint32_t BAR2, uint32_t BAR3,
     channels[ATA_PRIMARY  ].base  = (BAR0 & 0xFFFFFFFC) + 0x1F0 * (!BAR0);
     channels[ATA_PRIMARY  ].ctrl  = (BAR1 & 0xFFFFFFFC) + 0x3F4 * (!BAR1);
     channels[ATA_PRIMARY  ].bmide = (BAR4 & 0xFFFFFFFC) + 0; // Bus Master IDE
-    channels[ATA_PRIMARY  ].prdt  = (uint64_t *) page_to_address(alloc_page()); //FIXME? page is never freed, reserves entire page for PRDT
+    channels[ATA_PRIMARY  ].prdt  = alloc_page(0); //FIXME? page is never freed, reserves entire page for PRDT
 
     channels[ATA_SECONDARY].base  = (BAR2 & 0xFFFFFFFC) + 0x170 * (!BAR2);
     channels[ATA_SECONDARY].ctrl  = (BAR3 & 0xFFFFFFFC) + 0x374 * (!BAR3);
     channels[ATA_SECONDARY].bmide = (BAR4 & 0xFFFFFFFC) + 8; // Bus Master IDE
-    channels[ATA_SECONDARY].prdt  = (uint64_t *) page_to_address(alloc_page()); //FIXME? page is never freed, reserves entire page for PRDT
+    channels[ATA_SECONDARY].prdt  = alloc_page(0); //FIXME? page is never freed, reserves entire page for PRDT
 
     // 2- Disable IRQs:
     ide_write(ATA_PRIMARY  , ATA_REG_CONTROL, ATA_IRQ_OFF);

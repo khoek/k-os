@@ -3,12 +3,17 @@
 #include "printf.h"
 #include "console.h"
 #include "panic.h"
+#include "mm.h"
 #include "io.h"
 
 #define BUFFSIZE 1024
-#define VRAM     ((char *) 0xb8000)
+
+#define VRAM_BASE 0xb8000
+#define PORT_BASE 0x463
 
 static uint32_t row, col;
+static uint16_t *vga_port = ((uint16_t *) PORT_BASE);
+static char *vram = ((char *) VRAM_BASE);
 static char color = 0x07;
 
 uint8_t console_row() {
@@ -26,8 +31,8 @@ void console_color(const char c) {
 void console_clear() {
      unsigned int i;
      for(i = 0; i < (80 * 25) * 2; i += 2) {
-          VRAM[i] = ' ';
-          VRAM[i + 1] = 7;
+          vram[i] = ' ';
+          vram[i + 1] = 7;
      }
      col = 0;
      row = 0;
@@ -41,8 +46,8 @@ void console_write(const char *str, const uint8_t len) {
           } else if(str[i] == '\r') {
                 col = 0;
           } else {
-                VRAM[(row * CONSOLE_WIDTH + col) * 2] = str[i];
-                VRAM[(row * CONSOLE_WIDTH + col) * 2 + 1] = color;
+                vram[(row * CONSOLE_WIDTH + col) * 2] = str[i];
+                vram[(row * CONSOLE_WIDTH + col) * 2 + 1] = color;
                 col++;
           }
 
@@ -52,11 +57,11 @@ void console_write(const char *str, const uint8_t len) {
           }
 
           if(row == CONSOLE_HEIGHT) {
-                memmove(VRAM, VRAM + CONSOLE_WIDTH * 2, (CONSOLE_HEIGHT - 1) * CONSOLE_WIDTH * 2);
+                memmove(vram, vram + CONSOLE_WIDTH * 2, (CONSOLE_HEIGHT - 1) * CONSOLE_WIDTH * 2);
 
                 for(int i = 0; i < 80; i++) {
-                     (VRAM + (CONSOLE_HEIGHT - 1) * CONSOLE_WIDTH * 2)[i * 2] = ' ';
-                     (VRAM + (CONSOLE_HEIGHT - 1) * CONSOLE_WIDTH * 2)[i * 2 + 1] = 7;
+                     (vram + (CONSOLE_HEIGHT - 1) * CONSOLE_WIDTH * 2)[i * 2] = ' ';
+                     (vram + (CONSOLE_HEIGHT - 1) * CONSOLE_WIDTH * 2)[i * 2 + 1] = 7;
                 }
 
                 row = CONSOLE_HEIGHT - 1;
@@ -74,7 +79,7 @@ void console_cursor(const uint8_t r, const uint8_t c) {
      row = r;
      col = c;
 
-     uint16_t base_vga_port = *(uint16_t *) 0x463; // read base vga port from bios data
+     uint16_t base_vga_port = *vga_port; // read base vga port from bios data
 
      outb(base_vga_port, 0x0e);
      outb(base_vga_port + 1, ((row * CONSOLE_WIDTH + col) >> 8) & 0xff);
@@ -95,4 +100,8 @@ void console_putsf(const char* fmt, ...) {
      va_end(va);
 
      console_puts(buff);
+}
+
+void console_relocate_vram() {
+    ;
 }

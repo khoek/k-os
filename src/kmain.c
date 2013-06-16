@@ -11,8 +11,6 @@
 
 multiboot_info_t *multiboot_info;
 
-extern initcall_t initcall_start, initcall_end;
-
 void kmain(uint32_t magic, multiboot_info_t *mbd) {
     multiboot_info = mbd;
 
@@ -28,7 +26,7 @@ void kmain(uint32_t magic, multiboot_info_t *mbd) {
     }
 
     logf("entering usermode");
-    //task_switch();
+    task_switch();
 
     panic("kmain returned!");
 }

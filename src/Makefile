@@ -1,8 +1,8 @@
 -include ../Makefile.local
 
-ASFLAGS=--32
+ASFLAGS=--32 -g
 
-CCFLAGS=-Wall -Wextra -Werror -m32 -I../inc -std=gnu99 \
+CCFLAGS=-Wall -g -Wextra -Werror -m32 -I../inc -std=gnu99 \
         -nostdlib -nostartfiles -nodefaultlibs -ffreestanding -c
 
 OBJS=	loader.o string.o printf.o rand.o kmain.o debug.o panic.o console.o \

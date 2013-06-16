@@ -4,6 +4,7 @@
 #include <init.h>
 #include <debug.h>
 #include <multiboot.h>
+#include <log.h>
 
 typedef struct {
   uint32_t name;
@@ -56,6 +57,18 @@ INITCALL debug_init() {
             kernel.symtab = (elf_symbol_t*) sh[i].addr;
             kernel.symtabsz = sh[i].size;
         }
+    }
+
+    if(kernel.strtabsz)  {
+        logf("debug - strtab is present (0x%p)", kernel.strtab);
+    } else {
+        logf("debug - strtab is not present");
+    }
+
+    if(kernel.symtabsz)  {
+        logf("debug - symtab is present (0x%p)", kernel.symtab);
+    } else {
+        logf("debug - symtab is not present");
     }
 
     return 0;

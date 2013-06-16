@@ -30,11 +30,11 @@ void task_switch() {
 }
 
 void * task_alloc_page(task_t UNUSED(*task), uint32_t UNUSED(vaddr)) {
-    page_t *new_page = alloc_page();
-
+    page_t *new_page = alloc_page(0);
+new_page++;
     //TODO map new_page to address vaddr in task's address space;
 
-    return page_to_address(new_page);
+    return NULL; //page_to_virt(new_page);
 }
 
 task_t * task_create() {
@@ -57,20 +57,20 @@ static INITCALL task_init() {
     front = back = cache_alloc(CACHE_TASK);
     memset(&front->registers, 0, sizeof(registers_t));
 
-    page_t *stack_page = alloc_page();
+    page_t *stack_page = alloc_page(0);
     page_protect(stack_page, false);
 
-    page_t *code_page = alloc_page();
+    page_t *code_page = alloc_page(0);
     page_protect(code_page, false);
 
-    memcpy(page_to_address(code_page), task_usermode, 0x1000);
+    memcpy(page_to_virt(code_page), task_usermode, 0x1000);
 
     front->pid = pid++;
     front->state.cs = CPL_USER_CODE | 3;
     front->state.ss = CPL_USER_DATA | 3;
     front->state.eflags = get_eflags();
-    front->state.esp = ((uint32_t) page_to_address(stack_page)) + PAGE_SIZE - 1;
-    front->state.eip = (uint32_t) page_to_address(code_page);
+    front->state.esp = ((uint32_t) page_to_virt(stack_page)) + PAGE_SIZE - 1;
+    front->state.eip = (uint32_t) page_to_virt(code_page);
 
     logf("task - set up init task");
 

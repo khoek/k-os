@@ -36,8 +36,8 @@ cache_t caches[NUM_CACHES];
 
 static void cache_alloc_page(uint32_t cache) {
     //assume that there are no other empty cache pages
-    page_t *page = alloc_page();
-    caches[cache].empty = (cache_page_t *) page_to_address(page);
+    page_t *page = alloc_page(0);
+    caches[cache].empty = (cache_page_t *) page_to_virt(page);
     caches[cache].empty->page = page;
 
     caches[cache].empty->next = NULL;
@@ -142,7 +142,7 @@ void cache_free(uint32_t cache, void *mem) {
 
     cache_page_t *cur;
     for(cur = caches[cache].full; cur != NULL; cur = cur->next) {
-        uint32_t addr = (uint32_t) page_to_address(cur->page);
+        uint32_t addr = (uint32_t) page_to_virt(cur->page);
         if((addr >= ((uint32_t) mem)) && (((uint32_t) mem) < addr)) {
             break;
         }
@@ -150,7 +150,7 @@ void cache_free(uint32_t cache, void *mem) {
 
     if(cur == NULL) {
         for(cur = caches[cache].partial; cur != NULL; cur = cur->next) {
-            uint32_t addr = (uint32_t) page_to_address(cur->page);
+            uint32_t addr = (uint32_t) page_to_virt(cur->page);
             if((addr >= ((uint32_t) mem)) && (((uint32_t) mem) < addr)) {
                 break;
             };
@@ -161,7 +161,7 @@ void cache_free(uint32_t cache, void *mem) {
         panic("Illegal memzone param to cache_free");
     }
 
-    cache_page_t *cache_page = (cache_page_t *) page_to_address(cur->page);
+    cache_page_t *cache_page = (cache_page_t *) page_to_virt(cur->page);
 
     if(cache_page->left + 1 == caches[cache].max) {
         cache_move(cache_page, &caches[cache].partial, &caches[cache].empty);
@@ -177,6 +177,5 @@ INITCALL cache_init() {
     cache_create(CACHE_TASK, CACHE_TASK_SIZE);
 
     logf("cache - created %u new object cache(s)", NUM_CACHES);
-
     return 0;
 }

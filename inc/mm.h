@@ -10,17 +10,21 @@
 typedef struct page page_t;
 
 struct page {
+    uint32_t addr;
     uint8_t flags;
     uint8_t order;
     page_t *prev;
     page_t *next;
 };
 
-page_t * alloc_page();
-void free_page(page_t *page);
-
-void * page_to_address(page_t *page);
+page_t * alloc_page(uint32_t flags);
+page_t * alloc_page_user(uint32_t flags, uint32_t *dir);
 
 void page_protect(page_t *page, bool protect);
+
+void free_page(page_t *page);
+
+void * page_to_phys(page_t *page);
+void * page_to_virt(page_t *page);
 
 #endif

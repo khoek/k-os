@@ -18,6 +18,8 @@
 
 typedef int (*initcall_t)(void);
 
+extern initcall_t initcall_start, initcall_end;
+
 #define DEFINE_INITCALL(id, fn) \
 	static initcall_t __initcall_##fn##id \
 	__attribute__((section(".initcall." #id), used)) = fn

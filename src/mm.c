@@ -17,25 +17,24 @@
 #define KERNEL_TABLES (NUM_ENTRIES / 4)
 
 #define PAGE_FLAG_USED (1 << 0)
-#define PAGE_FLAG_USER (1 << 1)
+#define PAGE_FLAG_PERM (1 << 1)
+#define PAGE_FLAG_USER (1 << 2)
 
 extern uint32_t image_start;
 extern uint32_t image_end;
 
 static uint32_t kernel_start;
 static uint32_t kernel_end;
-static uint32_t num_pages;
-static uint32_t mem_start;
-static uint32_t mem_end;
+static uint32_t malloc_start;
 
 static uint32_t page_directory[1024] ALIGN(PAGE_SIZE);
 static uint32_t kernel_page_tables[255][1024] ALIGN(PAGE_SIZE);
+static uint32_t kernel_next_page; //page which will next be mapped to kernel addr space on alloc
 static page_t  *pages;
 static page_t  *free_page_list[MAX_ORDER + 1];
 
-static inline void invlpg(uint32_t addr)
-{
-   asm volatile("invlpg (%0)" ::"r" (addr) : "memory");
+static inline void invlpg(uint32_t addr) {
+   asm volatile("invlpg (%0)" :: "r" (addr) : "memory");
 }
 
 static uint32_t get_index(page_t * page) {
@@ -43,28 +42,26 @@ static uint32_t get_index(page_t * page) {
 }
 
 static page_t * get_buddy(page_t * page) {
-    uint32_t index = get_index(page);
-
-    if(index > (num_pages - 1)) {
-        return NULL;
-    }
-
-    if(DIV_DOWN(index, (1 << page->order)) % 2) {
-        return page - (1 << page->order);
-    } else {
-        return page + (1 << page->order);
-    }
+    return page + ((1 << page->order) * ((DIV_DOWN(get_index(page), (1 << page->order)) % 2) ? -1 : 1));
 }
 
-static inline void page_set(page_t *page, int8_t flag) {
+static inline void flag_set(page_t *page, int8_t flag) {
     page->flags |= flag;
 }
 
-static inline void page_unset(page_t *page, int8_t flag) {
+static inline void flag_unset(page_t *page, int8_t flag) {
     page->flags &= ~flag;
 }
 
-page_t * alloc_page(uint32_t UNUSED(flags)) {
+void * page_to_phys(page_t *page) {
+    return (void *) (get_index(page) * PAGE_SIZE);
+}
+
+void * page_to_virt(page_t *page) {
+    return (void *) (page->addr);
+}
+
+static page_t * do_alloc_page(uint32_t UNUSED(flags)) {
     for (uint32_t order = 0; order < MAX_ORDER + 1; order++) {
         if(free_page_list[order] != NULL) {
             for (; order > 0; order--) {
@@ -91,7 +88,7 @@ page_t * alloc_page(uint32_t UNUSED(flags)) {
             }
 
             page_t *alloced = free_page_list[0];
-            page_set(alloced, PAGE_FLAG_USED);
+            flag_set(alloced, PAGE_FLAG_USED);
 
             if(free_page_list[0]->next) {
                 free_page_list[0]->next->prev = NULL;
@@ -106,13 +103,36 @@ page_t * alloc_page(uint32_t UNUSED(flags)) {
     panic("OOM!");
 }
 
-void free_page(page_t *page) {
-    ASSERT(!BIT_SET(page->flags, PAGE_FLAG_USED));
+page_t * alloc_page_user(uint32_t flags, uint32_t *dir) {
+    page_t *alloced = do_alloc_page(flags);
+    alloced+=*dir;
 
-    page_unset(page, PAGE_FLAG_USED);
+    panic("not implemented");
+}
+
+#define PRESENT     (1 << 0)
+#define WRITABLE    (1 << 1)
+#define USER        (1 << 2)
+
+page_t * alloc_page(uint32_t flags) {
+    page_t *page = do_alloc_page(flags);
+
+    page->addr = (kernel_next_page * PAGE_SIZE) + VIRTUAL_BASE;
+    kernel_page_tables[kernel_next_page / 1024][kernel_next_page % 1024] = ((uint32_t) page_to_phys(page)) | WRITABLE | PRESENT;
+
+    kernel_next_page++;
+
+    return page;
+}
+
+void free_page(page_t *page) {
+    BUG_ON(BIT_SET(page->flags, PAGE_FLAG_PERM));
+    BUG_ON(!BIT_SET(page->flags, PAGE_FLAG_USED));
+
+    flag_unset(page, PAGE_FLAG_USED);
 
     page_t *buddy = get_buddy(page);
-    if(buddy != NULL && !BIT_SET(buddy->flags, PAGE_FLAG_USED) && buddy->order == page->order) {
+    while(buddy != NULL && !BIT_SET(buddy->flags, PAGE_FLAG_USED) && buddy->order == page->order) {
         if(buddy->prev) {
             buddy->prev->next = buddy->next;
         } else {
@@ -124,109 +144,40 @@ void free_page(page_t *page) {
         }
 
         uint32_t page_index = get_index(page);
-        page_t *primary_page = &pages[page_index - (page_index % 2)];
-        primary_page->order = page->order + 1;
+        pages[page_index - (page_index % 2)].order = page->order + 1;
+        page = &pages[page_index - (page_index % 2)];
 
-        if(free_page_list[primary_page->order]) {
-             free_page_list[primary_page->order]->prev = primary_page;
-        }
-
-        primary_page->prev = NULL;
-        primary_page->next = free_page_list[primary_page->order];
-
-        free_page_list[primary_page->order] = primary_page;
-    } else {
-        if(free_page_list[page->order]) {
-             free_page_list[page->order]->prev = page;
-        }
-
-        page->prev = NULL;
-        page->next = free_page_list[page->order];
-
-        free_page_list[page->order] = page;
+        buddy = get_buddy(page);
     }
+
+    if(free_page_list[page->order]) {
+        free_page_list[page->order]->prev = page;
+    }
+
+    page->prev = NULL;
+    page->next = free_page_list[page->order];
+
+    free_page_list[page->order] = page;
 }
-
-void * page_to_address(page_t *page) {
-    uint32_t idx = get_index(page);
-
-    return (void *) ((uint32_t *) page_directory[idx / 1024])[idx % 1024];
-}
-
-#define PRESENT     (1 << 0)
-#define WRITABLE    (1 << 1)
-#define CPL_KERNEL  (0 << 2)
-#define CPL_USER    (1 << 2)
 
 void page_protect(page_t *page, bool protect) {
-    if(protect) page_unset(page, PAGE_FLAG_USER);
-    else        page_set(page, PAGE_FLAG_USER);
+    if(protect) flag_unset(page, PAGE_FLAG_USER);
+    else        flag_set(page, PAGE_FLAG_USER);
 
-    uint32_t addr = (uint32_t) page_to_address(page);
-    if(protect) ((uint32_t *) (page_directory[addr / (PAGE_SIZE * 1024)] & ~0xFFF))[(addr % (PAGE_SIZE * 1024)) / PAGE_SIZE] &= ~CPL_USER;
-    else        ((uint32_t *) (page_directory[addr / (PAGE_SIZE * 1024)] & ~0xFFF))[(addr % (PAGE_SIZE * 1024)) / PAGE_SIZE] |= CPL_USER;
+    uint32_t addr = (uint32_t) page_to_virt(page);
+    if(protect) ((uint32_t *) (page_directory[addr / (PAGE_SIZE * 1024)] & ~0xFFF))[(addr % (PAGE_SIZE * 1024)) / PAGE_SIZE] &= ~USER;
+    else        ((uint32_t *) (page_directory[addr / (PAGE_SIZE * 1024)] & ~0xFFF))[(addr % (PAGE_SIZE * 1024)) / PAGE_SIZE] |= USER;
 
     invlpg(addr);
 }
 
 void page_build_directory(uint32_t directory[]) {
+    for(uint32_t i = 0; i < NUM_ENTRIES - KERNEL_TABLES; i++) {
+        directory[i] = (((uint32_t) &kernel_page_tables[i]) - VIRTUAL_BASE) | PRESENT | WRITABLE;
+    }
+
     for(uint32_t i = 0; i < KERNEL_TABLES; i++) {
-        directory[i + (VIRTUAL_BASE / PAGE_SIZE / NUM_ENTRIES)] = (((uint32_t) &kernel_page_tables[i]) - VIRTUAL_BASE) | PRESENT | WRITABLE | CPL_USER;
-    }
-}
-
-static void paging_init() {
-    uint32_t original_start = mem_start;
-
-    //reserve space for the page_t structs, remaining page aligned
-    pages = (page_t *) (mem_start + VIRTUAL_BASE);
-    num_pages = DIV_DOWN(mem_end - mem_start, PAGE_SIZE);
-    mem_start += DIV_UP(sizeof(page_t) * NUM_ENTRIES * NUM_ENTRIES, PAGE_SIZE) * PAGE_SIZE;
-
-    logf("mm - total: %u MB, malloc %u MB, avaliable %u MB",
-    DIV_DOWN(DIV_UP(sizeof(uint32_t) * NUM_ENTRIES * NUM_ENTRIES, PAGE_SIZE) * PAGE_SIZE, 1024 * 1024),
-    DIV_DOWN(DIV_UP(sizeof(page_t) * NUM_ENTRIES * NUM_ENTRIES, PAGE_SIZE) * PAGE_SIZE, 1024 * 1024),
-    DIV_DOWN(mem_end - mem_start,       1024 * 1024));
-    logf("mm - address space: (phys)0x%p/(avail)0x%p - 0x%p", original_start, mem_start, mem_end);
-
-    //map kernel sections
-    uint32_t kernel_num_pages = (kernel_end / PAGE_SIZE);
-    for(uint32_t page = 0; page < kernel_num_pages; page++) {
-        kernel_page_tables[page / 1024][page % 1024] = (page * PAGE_SIZE) | WRITABLE | PRESENT;
-    }
-
-    //map the massive page_t struct array
-    uint32_t malloc_num_pages = DIV_UP(sizeof(page_t) * NUM_ENTRIES * NUM_ENTRIES, PAGE_SIZE);
-    for(uint32_t page = kernel_num_pages; page < kernel_num_pages + malloc_num_pages; page++) {
-        kernel_page_tables[page / 1024][page % 1024] = (((uint32_t) pages) + ((page - kernel_num_pages) * PAGE_SIZE)) | WRITABLE | PRESENT;
-    }
-
-    logf("%u 0x%p-0x%p, %u 0x%p-0x%p", kernel_num_pages, 0, (kernel_num_pages - 1) * PAGE_SIZE, malloc_num_pages, pages, (((uint32_t) pages) + ((malloc_num_pages - 1) * PAGE_SIZE)));
-
-    page_build_directory(page_directory);
-
-    __asm__ volatile("xchg %%bx, %%bx"::);
-    __asm__ volatile("mov %0, %%cr3":: "a" (((uint32_t) page_directory) - VIRTUAL_BASE));
-
-    free_page_list[MAX_ORDER] = &pages[0];
-
-    page_t * last_page = NULL;
-    for (uint32_t page = 0; page < num_pages; page++) {
-        pages[page].flags = 0;
-        pages[page].order = MAX_ORDER;
-
-        pages[page].next = NULL;
-        if (page % (1 << MAX_ORDER) == 0) {
-             pages[page].prev = last_page;
-
-             if (last_page != NULL) {
-                 last_page->next = &pages[page];
-             }
-
-             last_page = &pages[page];
-        } else {
-             pages[page].prev = NULL;
-        }
+        directory[i + (VIRTUAL_BASE / PAGE_SIZE / NUM_ENTRIES)] = (((uint32_t) &kernel_page_tables[i]) - VIRTUAL_BASE) | PRESENT | WRITABLE | USER;
     }
 }
 
@@ -283,15 +234,74 @@ static INITCALL mm_init() {
 
              if(end - start > best_len) {
                 best_len = end - start;
-                mem_start = start;
-                mem_end = end;
+                malloc_start = start;
              }
         }
     }
 
-    if(best_len < DIV_UP(sizeof(uint32_t) * NUM_ENTRIES * NUM_ENTRIES, PAGE_SIZE) * PAGE_SIZE) panic("MM - could not find sufficiently large continuous memory region");
+    if(best_len < DIV_UP(sizeof(uint32_t) * NUM_ENTRIES * NUM_ENTRIES, PAGE_SIZE) * PAGE_SIZE) panic("MM - could not find sufficiently large contiguous memory region");
 
-    paging_init();
+    //reserve space for the page_t structs, remaining page aligned
+    pages = (page_t *) (malloc_start + VIRTUAL_BASE);
+
+    //map kernel sections
+    uint32_t kernel_num_pages = DIV_UP(kernel_end, PAGE_SIZE);
+    for(uint32_t page = 0; page < kernel_num_pages; page++) {
+        kernel_page_tables[page / 1024][page % 1024] = (page * PAGE_SIZE) | WRITABLE | PRESENT;
+    }
+
+    //map the massive page_t struct array
+    uint32_t malloc_num_pages = DIV_UP(sizeof(page_t) * NUM_ENTRIES * NUM_ENTRIES, PAGE_SIZE);
+    for(uint32_t page = kernel_num_pages; page <= kernel_num_pages + malloc_num_pages; page++) {
+        kernel_page_tables[page / 1024][page % 1024] = (malloc_start + ((page - kernel_num_pages) * PAGE_SIZE)) | WRITABLE | PRESENT;
+    }
+
+    kernel_next_page = kernel_num_pages + malloc_num_pages + 1;
+
+    page_build_directory(page_directory);
+
+    __asm__ volatile("mov %0, %%cr3":: "a" (((uint32_t) page_directory) - VIRTUAL_BASE));
+
+    for (uint32_t page = 0; page < NUM_ENTRIES * NUM_ENTRIES; page++) {
+        pages[page].flags = PAGE_FLAG_PERM | PAGE_FLAG_USED;
+        pages[page].order = 0;
+        pages[page].next = NULL;
+        pages[page].prev = NULL;
+    }
+
+    uint32_t available_pages = 0;
+    uint32_t malloc_page_end = DIV_UP(malloc_start, PAGE_SIZE) + malloc_num_pages;
+
+    for(uint32_t i = (multiboot_info->mmap_length / sizeof(multiboot_memory_map_t)); i > 0; i--) {
+        if(mmap[i - 1].type == MULTIBOOT_MEMORY_AVAILABLE) {
+            if(mmap[i - 1].addr >= ADDRESS_SPACE_SIZE) {
+                continue;
+            }
+
+            uint32_t start = mmap[i - 1].addr;
+            uint64_t end = mmap[i - 1].addr + mmap[i - 1].len;
+
+            if(end > ADDRESS_SPACE_SIZE) {
+                end = ADDRESS_SPACE_SIZE - 1ULL;
+            }
+
+            start = start == 0 ? 0 : DIV_UP(start, PAGE_SIZE);
+            end = end == 0 ? 0 : DIV_DOWN(end, PAGE_SIZE);
+
+            for(uint32_t j = end; j > start; j--) {
+                if(j - 1 >= malloc_page_end) {
+                    flag_unset(&pages[j - 1], PAGE_FLAG_PERM);
+                    free_page(&pages[j - 1]);
+                    available_pages++;
+                }
+            }
+        }
+    }
+
+    logf("mm - paging: %u MB, malloc: %u MB, avaliable: %u MB",
+    DIV_DOWN(DIV_UP(sizeof(uint32_t) * NUM_ENTRIES * NUM_ENTRIES, PAGE_SIZE) * PAGE_SIZE, 1024 * 1024),
+    DIV_DOWN(DIV_UP(sizeof(page_t) * NUM_ENTRIES * NUM_ENTRIES, PAGE_SIZE) * PAGE_SIZE, 1024 * 1024),
+    DIV_DOWN(available_pages * PAGE_SIZE, 1024 * 1024));
 
     return cache_init();
 }
