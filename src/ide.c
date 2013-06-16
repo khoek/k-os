@@ -3,9 +3,10 @@
 #include "common.h"
 #include "init.h"
 #include "ide.h"
+#include "pci.h"
 #include "io.h"
 #include "panic.h"
-#include "pit.h" //FIXME sleep(1) = microseconds not hundredths of a second
+#include "pit.h" //FIXME sleep(1) should be microseconds not hundredths of a second
 #include "idt.h"
 #include "mm.h"
 #include "log.h"
@@ -521,7 +522,7 @@ static int32_t pata_access(bool write, bool same, uint8_t drive, uint64_t numsec
     return transfered;
 }
 
-void __init ide_init(uint32_t BAR0, uint32_t BAR1, uint32_t BAR2, uint32_t BAR3, uint32_t BAR4) {
+void __init ide_init(pci_device_t dev) {
     static bool once = false;
     if(once) return;
     once = true;
@@ -530,14 +531,14 @@ void __init ide_init(uint32_t BAR0, uint32_t BAR1, uint32_t BAR2, uint32_t BAR3,
     idt_register(47, false, handle_irq_secondary);
 
     // 1- Detect I/O Ports which interface IDE Controller:
-    channels[ATA_PRIMARY  ].base  = (BAR0 & 0xFFFFFFFC) + 0x1F0 * (!BAR0);
-    channels[ATA_PRIMARY  ].ctrl  = (BAR1 & 0xFFFFFFFC) + 0x3F4 * (!BAR1);
-    channels[ATA_PRIMARY  ].bmide = (BAR4 & 0xFFFFFFFC) + 0; // Bus Master IDE
+    channels[ATA_PRIMARY  ].base  = (BAR_ADDR_32(dev.bar[0])) + 0x1F0 * (!dev.bar[0]);
+    channels[ATA_PRIMARY  ].ctrl  = (BAR_ADDR_32(dev.bar[1])) + 0x3F4 * (!dev.bar[1]);
+    channels[ATA_PRIMARY  ].bmide = BAR_ADDR_32((dev.bar[4])) + 0; // Bus Master IDE
     channels[ATA_PRIMARY  ].prdt  = alloc_page(0); //FIXME? page is never freed, reserves entire page for PRDT
 
-    channels[ATA_SECONDARY].base  = (BAR2 & 0xFFFFFFFC) + 0x170 * (!BAR2);
-    channels[ATA_SECONDARY].ctrl  = (BAR3 & 0xFFFFFFFC) + 0x374 * (!BAR3);
-    channels[ATA_SECONDARY].bmide = (BAR4 & 0xFFFFFFFC) + 8; // Bus Master IDE
+    channels[ATA_SECONDARY].base  = BAR_ADDR_32(dev.bar[2]) + 0x170 * (!dev.bar[2]);
+    channels[ATA_SECONDARY].ctrl  = BAR_ADDR_32(dev.bar[3]) + 0x374 * (!dev.bar[3]);
+    channels[ATA_SECONDARY].bmide = BAR_ADDR_32(dev.bar[4]) + 8; // Bus Master IDE
     channels[ATA_SECONDARY].prdt  = alloc_page(0); //FIXME? page is never freed, reserves entire page for PRDT
 
     // 2- Disable IRQs:

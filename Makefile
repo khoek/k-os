@@ -23,7 +23,7 @@ image: kernel cdrom.iso
 
 run: image hdd.img
 	@echo "running qemu"
-	@$(QEMU) -boot d -cdrom cdrom.iso -hda hdd.img
+	@$(QEMU) -boot d -cdrom cdrom.iso -hda hdd.img -monitor stdio
 
 debug: image hdd.img
 	@echo "running bochs"

@@ -1,6 +1,7 @@
 #include <stddef.h>
 
 #include "common.h"
+#include "debug.h"
 #include "init.h"
 #include "idt.h"
 #include "gdt.h"
@@ -50,12 +51,10 @@ static idt_entry_t idt[256];
 static void (*handlers[256 - PIC_MASTER_OFFSET])(interrupt_t *);
 
 void idt_register(uint8_t vector, uint8_t cpl, void(*handler)(interrupt_t *)) {
-    if(handlers[vector - PIC_MASTER_OFFSET]) {
-        panicf("Registering second interrupt handler for %u", vector);
-    }
+    BUG_ON(vector < PIC_MASTER_OFFSET || vector >= 256 - PIC_MASTER_OFFSET);
+    BUG_ON(handlers[vector - PIC_MASTER_OFFSET]);
 
     handlers[vector - PIC_MASTER_OFFSET] = handler;
-
     idt[vector].type |= cpl;
 }
 

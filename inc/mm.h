@@ -17,6 +17,8 @@ struct page {
     page_t *next;
 };
 
+void * mm_map(uint32_t phys);
+
 page_t * alloc_page(uint32_t flags);
 page_t * alloc_page_user(uint32_t flags, uint32_t *dir);
 

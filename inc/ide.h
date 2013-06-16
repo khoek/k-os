@@ -4,11 +4,12 @@
 #include <stdbool.h>
 #include <stdint.h>
 #include "init.h"
+#include "pci.h"
 
 #define IDE_STRINGS         1
 #define IDE_STRING_MODEL    0
 
-void __init ide_init(uint32_t BAR0, uint32_t BAR1, uint32_t BAR2, uint32_t BAR3, uint32_t BAR4);
+void __init ide_init(pci_device_t dev);
 
 bool ide_device_is_present(uint8_t device);
 int8_t ide_device_get_type(uint8_t device);

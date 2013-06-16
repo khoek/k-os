@@ -104,24 +104,29 @@ static page_t * do_alloc_page(uint32_t UNUSED(flags)) {
     panic("OOM!");
 }
 
-page_t * alloc_page_user(uint32_t flags, uint32_t *dir) {
-    page_t *alloced = do_alloc_page(flags);
-    alloced+=*dir;
-
-    panic("not implemented");
-}
-
 #define PRESENT     (1 << 0)
 #define WRITABLE    (1 << 1)
 #define USER        (1 << 2)
 
+void * mm_map(uint32_t phys) {
+    phys &= 0xFFFFF000;
+
+    kernel_page_tables[kernel_next_page / 1024][kernel_next_page % 1024] = phys | WRITABLE | PRESENT;
+    
+    return (void *) ((kernel_next_page++ * PAGE_SIZE) + VIRTUAL_BASE);
+}
+
+page_t * alloc_page_user(uint32_t flags, uint32_t *dir) {
+    page_t *alloced = do_alloc_page(flags);
+    alloced += *dir;
+
+    panic("not implemented");
+}
+
 page_t * alloc_page(uint32_t flags) {
     page_t *page = do_alloc_page(flags);
 
-    page->addr = (kernel_next_page * PAGE_SIZE) + VIRTUAL_BASE;
-    kernel_page_tables[kernel_next_page / 1024][kernel_next_page % 1024] = ((uint32_t) page_to_phys(page)) | WRITABLE | PRESENT;
-
-    kernel_next_page++;
+    page->addr = (uint32_t) mm_map((uint32_t) page_to_phys(page));
 
     return page;
 }

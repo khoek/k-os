@@ -7,6 +7,8 @@
 #include "init.h"
 #include "registers.h"
 
+#define IRQ_OFFSET 0x20
+
 static inline void cli() {
     __asm__ volatile("cli");
 }

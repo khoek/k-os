@@ -7,7 +7,7 @@ CCFLAGS=-Wall -g -Wextra -Werror -m32 -I../inc -std=gnu99 \
 
 OBJS=	loader.o string.o printf.o rand.o kmain.o debug.o panic.o console.o \
         log.o gdt.o registers.o idt.o isr.o module.o mm.o cache.o pit.o \
-        tsc.o syscall.o keyboard.o pci.o ide.o ahci.o vfs.o task.o cpl.o \
+        tsc.o syscall.o keyboard.o pci.o ide.o ahci.o net.o vfs.o task.o cpl.o \
         binfmt/binfmt.o binfmt/binfmt_elf.o shell.o erasure_tool.o
 
 all: kernel.elf

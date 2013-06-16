@@ -3,6 +3,7 @@
 #include "string.h"
 #include "init.h"
 #include "ahci.h"
+#include "pci.h"
 #include "log.h"
 
 #define AHCI_BASE       0x400000 // 4M
@@ -198,8 +199,8 @@ static uint32_t check_type(ahci_port *port) {
      }
 }
 
-void __init ahci_init(void *BAR5) {
-     achi_abar *abar = (achi_abar *) BAR5;
+void __init ahci_init(pci_device_t dev) {
+     achi_abar *abar = (achi_abar *) BAR_ADDR_32(dev.bar[5]);
 
      for (int i = 0; i < 32; i++) {
           if (abar->ports & (1 << i)) {
