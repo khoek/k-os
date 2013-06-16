@@ -1,6 +1,6 @@
 -include Makefile.local
 
-.PHONY: all kernel image run clean
+.PHONY: all kernel image run debug doc clean
 
 all: kernel cdrom.iso
 
@@ -24,6 +24,14 @@ image: kernel cdrom.iso
 run: image hdd.img
 	@echo "running qemu"
 	@$(QEMU) -boot d -cdrom cdrom.iso -hda hdd.img
+
+debug: image hdd.img
+	@echo "running bochs"
+	@$(BOCHS) -q
+	
+doc:
+	@echo "running doxygen"
+	@doxygen
 
 clean:
 	make -C src clean
