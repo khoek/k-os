@@ -6,4 +6,5 @@
 *.elf
 *.ld
 build
+doc
 Makefile.local
