@@ -14,6 +14,8 @@
 #define REG_ICR     0x000C0 //Interrupt Cause Read register
 #define REG_IMS     0x000D0 //Interrupt Mask Set register
 #define REG_MTA     0x05200 //Multicast Table Array register
+#define REG_RAL     0x05400 //Receive Address Low (MAC filter)
+#define REG_RAH     0x05404 //Receive Address High (MAC filter)
 
 #define REG_LAST    0x1FFFC
 
@@ -36,13 +38,13 @@ static void mmio_write(uint32_t reg, uint32_t value) {
 }
 
 static uint16_t net_eeprom_read(uint8_t addr) {
-	mmio_write(REG_EERD, 1 | ((uint32_t)(addr) << 8));
-	
-	uint32_t tmp = 0;
-	while(!((tmp = mmio_read(REG_EERD)) & (1 << 4)))
-	    sleep(1);
-		
-	return (uint16_t) ((tmp >> 16) & 0xFFFF);
+    mmio_write(REG_EERD, 1 | ((uint32_t)(addr) << 8));
+    
+    uint32_t tmp = 0;
+    while(!((tmp = mmio_read(REG_EERD)) & (1 << 4)))
+        sleep(1);
+        
+    return (uint16_t) ((tmp >> 16) & 0xFFFF);
 }
 
 static void handle_network(interrupt_t UNUSED(*interrupt)) {
@@ -55,7 +57,7 @@ void __init net_825xx_init(pci_device_t dev) {
         return;
     }
     
-	logf("net - 825xx interface detected");
+    logf("net - 825xx interface detected");
     
     mmio = (uint32_t) mm_map(BAR_ADDR_32(dev.bar[0]));
     
@@ -66,28 +68,25 @@ void __init net_825xx_init(pci_device_t dev) {
     
     idt_register(IRQ_OFFSET + dev.interrupt, CPL_KERNEL, handle_network);
 
-	uint16_t mac16 = net_eeprom_read(0);
-	mac[0] = (mac16 & 0xFF);
-	mac[1] = (mac16 >> 8) & 0xFF;
-	mac16 = net_eeprom_read(1);
-	mac[2] = (mac16 & 0xFF);
-	mac[3] = (mac16 >> 8) & 0xFF;
-	mac16 = net_eeprom_read(2);
-	mac[4] = (mac16 & 0xFF);
-	mac[5] = (mac16 >> 8) & 0xFF;
-	
-	logf("net - MAC %X:%X:%X:%X:%X:%X", mac[0], mac[1], mac[2], mac[3], mac[4], mac[5]);
-	    
-	mmio_write(REG_CTRL, mmio_read(REG_CTRL) | CTRL_SLU);
-	
-	logf("net - link is %s", mmio_read(REG_STATUS) & STATUS_LU ? "UP" : "DOWN");
-	
-	for(uint16_t i = 0; i < 128; i++)
-		mmio_write(REG_MTA + (i * 4), 0);
-		
-	//enable all interrupts (and clear existing pending ones)
-	mmio_write(REG_IMS, 0x1F6DC); //this could be a 0xFFFFF but that sets some reserved bits
-	mmio_read(REG_ICR);
-	
-	//TODO enable RX and TX
+    ((uint16_t *) mac)[0] = net_eeprom_read(0);
+    ((uint16_t *) mac)[1] = net_eeprom_read(1);
+    ((uint16_t *) mac)[2] = net_eeprom_read(2);
+    
+    logf("net - MAC %X:%X:%X:%X:%X:%X", mac[0], mac[1], mac[2], mac[3], mac[4], mac[5]);
+        
+    mmio_write(REG_CTRL, mmio_read(REG_CTRL) | CTRL_SLU);
+    
+    logf("net - link is %s", mmio_read(REG_STATUS) & STATUS_LU ? "UP" : "DOWN");
+    
+    for(uint16_t i = 0; i < 128; i++) {
+        mmio_write(REG_MTA + (i * 4), 0);
+    }
+        
+    //enable all interrupts (and clear existing pending ones)
+    mmio_write(REG_IMS, 0x1F6DC); //this could be a 0xFFFFF but that sets some reserved bits
+    mmio_read(REG_ICR);
+    
+    //TODO enable RX and TX
+    mmio_write(REG_RAL, ((uint16_t *) mac)[0] | ((((uint32_t)((uint16_t *) mac)[1]) << 16) & 0xFFFF));
+    mmio_write(REG_RAH, ((uint16_t *) mac)[2] | (1 << 31));
 }
