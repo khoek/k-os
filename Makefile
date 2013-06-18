@@ -36,5 +36,6 @@ doc:
 clean:
 	make -C src clean
 	rm -rf build
+	rm -rf doc
 	rm -f cdrom.iso
 	rm -f hdd.img
