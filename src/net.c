@@ -115,6 +115,14 @@
 #define RX_DESC_STATUS_DD   (1 << 0) //Descriptor Done
 #define RX_DESC_STATUS_EOP  (1 << 1) //End Of Packet
 
+//TX Descriptor Command Flags
+#define TX_DESC_CMD_EOP     (1 << 0) //End Of Packet
+#define TX_DESC_CMD_IFCS    (1 << 1) //Insert FCS/CRC
+#define TX_DESC_CMD_RS      (1 << 3) //Report Status
+
+//TX Descriptor Status Flags
+#define TX_DESC_STATUS_DD   (1 << 0) //Descriptor Done
+
 typedef struct rx_desc {
 	uint64_t    address;
 	uint16_t    length;
@@ -186,6 +194,14 @@ static void handle_network(interrupt_t UNUSED(*interrupt)) {
         logf("net - link status change! (device is now %s)", mmio_read(REG_STATUS) & STATUS_LU ? "UP" : "DOWN");
     }
 
+    if(icr & ICR_TXDW) {
+        logf("net - tx descriptor writeback");
+    }
+
+    if(icr & ICR_TXQE) {
+        logf("net - tx queue empty");
+    }
+
     if(icr & ICR_RXT) {
         net_rx_poll();
     }
@@ -193,6 +209,22 @@ static void handle_network(interrupt_t UNUSED(*interrupt)) {
     if(icr & ICR_PHY) {
         logf("net - PHY int");
     }
+}
+
+int32_t net_send(void *packet, uint16_t length) {
+	tx_desc[tx_front].address = (uint32_t) packet;
+	tx_desc[tx_front].length = length;
+	tx_desc[tx_front].cmd = TX_DESC_CMD_EOP | TX_DESC_CMD_IFCS | TX_DESC_CMD_RS;
+
+	uint32_t old_tx_front = tx_front;
+
+	tx_front = (tx_front + 1) % NUM_TX_DESCS;
+	mmio_write(REG_TDT, tx_front);
+
+	while(!(tx_desc[old_tx_front].sta & 0xF))
+	    sleep(1);
+
+	return tx_desc[old_tx_front].sta & TX_DESC_STATUS_DD ? 0 : -1;
 }
 
 void __init net_825xx_init(pci_device_t dev) {
@@ -274,7 +306,8 @@ void __init net_825xx_init(pci_device_t dev) {
     tx_front = 0;
 
     for(uint32_t i = 0; i < NUM_RX_DESCS; i++) {
-        memset(&tx_desc[i], 0, sizeof(tx_desc_t));
+        tx_desc[i].address = 0;
+        tx_desc[i].cmd = 0;
     }
 
     mmio_write(REG_TDBAL, (uint32_t) page_to_phys(tx_page));
