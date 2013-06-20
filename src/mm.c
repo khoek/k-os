@@ -112,7 +112,7 @@ void * mm_map(uint32_t phys) {
     phys &= 0xFFFFF000;
 
     kernel_page_tables[kernel_next_page / 1024][kernel_next_page % 1024] = phys | WRITABLE | PRESENT;
-    
+
     return (void *) ((kernel_next_page++ * PAGE_SIZE) + VIRTUAL_BASE);
 }
 

@@ -28,7 +28,7 @@ run: image hdd.img
 debug: image hdd.img
 	@echo "running bochs"
 	@$(BOCHS) -q
-	
+
 doc:
 	@echo "running doxygen"
 	@doxygen
