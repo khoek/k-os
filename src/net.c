@@ -8,6 +8,7 @@
 #include "gdt.h"
 #include "idt.h"
 #include "pit.h" //FIXME sleep(1) should be microseconds not hundredths of a second
+#include "ethernet.h"
 #include "log.h"
 
 #define NUM_RX_DESCS    (PAGE_SIZE / sizeof(rx_desc_t))
@@ -177,8 +178,7 @@ static void net_rx_poll() {
         } else if(rx_desc[rx_front].length < 60) {
             logf("net - rx: short packet (%u bytes)", rx_desc[rx_front].length);
         } else {
-            logf("net - packet of len %u bytes successfully recieved!", rx_desc[rx_front].length);
-            //TODO pass the packet up for processing
+            ethernet_handle(rx_buff[rx_front], rx_desc[rx_front].length);
         }
 
         rx_desc[rx_front].status = 0;

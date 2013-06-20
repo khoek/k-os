@@ -26,7 +26,7 @@ void kmain(uint32_t magic, multiboot_info_t *mbd) {
         if((*initcall)()) panic("Kernel Boot Failure - initcall aborted with non-zero exit code");
     }
 
-    logf("entering usermode");
+    //logf("entering usermode");
     //task_switch();
 
     while(1);
