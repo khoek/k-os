@@ -90,7 +90,7 @@ void ethernet_handle(uint8_t *packet, uint16_t length) {
                         udp_header_t *udp = (udp_header_t *) packet;
                         packet += sizeof(udp_header_t);
                         length -= sizeof(udp_header_t);
-                        
+
                         logf("ethernet - udp packet detected");
                         logf("ethernet - src %u.%u.%u.%u port %u dst %u.%u.%u.%u port %u",
                             ip->src[0], ip->src[1], ip->src[2], ip->src[3], swap_uint16(udp->src_port),
