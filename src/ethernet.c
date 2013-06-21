@@ -1,4 +1,5 @@
 #include "common.h"
+#include "swap.h"
 #include "ethernet.h"
 #include "log.h"
 
@@ -34,6 +35,20 @@ typedef struct ip_header {
     uint8_t dst[4];
 } PACKED ip_header_t;
 
+#define TCP_DATA_OFF(x) ((x & 0xF000) >> 4)
+#define TCP_FLAGS(x)    ((x & 0x0FFF) >> 4)
+
+typedef struct tcp_header {
+    uint16_t src_port;
+    uint16_t dst_port;
+    uint32_t seq_num;
+    uint32_t ack_num;
+    uint16_t data_off_flags;
+    uint16_t window_size;
+    uint16_t checksum;
+    uint16_t urgent;
+} PACKED tcp_header_t;
+
 typedef struct udp_header {
     uint16_t src_port;
     uint16_t dst_port;
@@ -63,8 +78,8 @@ void ethernet_handle(uint8_t *packet, uint16_t length) {
 
                         logf("ethernet - tcp packet detected");
                         logf("ethernet - src %u.%u.%u.%u port %u dst %u.%u.%u.%u port %u",
-                            ip->src[0], ip->src[1], ip->src[2], ip->src[3], tcp->src_port,
-                            ip->dst[0], ip->dst[1], ip->dst[2], ip->dst[3], tcp->dst_port
+                            ip->src[0], ip->src[1], ip->src[2], ip->src[3], swap_uint16(tcp->src_port),
+                            ip->dst[0], ip->dst[1], ip->dst[2], ip->dst[3], swap_uint16(tcp->dst_port)
                         );
 
                         logf("payload: %u", length);
@@ -78,8 +93,8 @@ void ethernet_handle(uint8_t *packet, uint16_t length) {
                         
                         logf("ethernet - udp packet detected");
                         logf("ethernet - src %u.%u.%u.%u port %u dst %u.%u.%u.%u port %u",
-                            ip->src[0], ip->src[1], ip->src[2], ip->src[3], udp->src_port,
-                            ip->dst[0], ip->dst[1], ip->dst[2], ip->dst[3], udp->dst_port
+                            ip->src[0], ip->src[1], ip->src[2], ip->src[3], swap_uint16(udp->src_port),
+                            ip->dst[0], ip->dst[1], ip->dst[2], ip->dst[3], swap_uint16(udp->dst_port)
                         );
                         break;
                     }
