@@ -5,14 +5,19 @@ An operating system written by Keeley Hoek as a hobby. It was inspired by Charli
 
 ## Features
 
-* Multiboot 1 support
-* Basic Text UI support (w/ color)
-* Drivers:
+* Multiboot 1
+* Text UI
+* Memory Managment Suite
+    * Page Frame Allocator
+    * Cache Allocator
+    * Page Mapping Manipulation
+* Drivers
     * PIT
     * Keyboard
     * PATA
+    * E1000 (Intel 825xx) Ethernet Driver
 * Tools:
-    * Secure Drive Erasure Tool
+    * Secure Disk Erasure Tool
 
 ## Roadmap
 
