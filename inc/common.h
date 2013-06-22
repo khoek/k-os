@@ -17,6 +17,14 @@
 
 #define BIT_SET(flags, mask) (((uint32_t) flags) & ((uint32_t) mask))
 
+#ifndef offsetof
+#define offsetof(type, member) ((unsigned int) &(((type *) 0)->member))
+#endif
+
+#define containerof(ptr, type, member) ({                      \
+         const typeof( ((type *)0)->member ) *__mptr = (ptr);    \
+         (type *)( (char *)__mptr - offsetof(type, member) );})
+
 #include "debug.h"
 
 #endif
