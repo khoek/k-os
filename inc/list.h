@@ -1,6 +1,8 @@
 #ifndef KERNEL_LIST_H
 #define KERNEL_LIST_H
 
+#include <stdbool.h>
+
 #include "common.h"
 
 typedef struct list_head list_head_t;
@@ -10,6 +12,7 @@ struct list_head {
 };
 
 #define list_entry(ptr, type, member) containerof(ptr, type, member)
+#define list_first(ptr, type, member) list_entry((ptr)->next, type, member)
 
 static inline void list_init(list_head_t *list) {
 	list->next = list;
@@ -38,6 +41,10 @@ static inline void list_join(list_head_t *first, list_head_t *second) {
 
 static inline void list_rm(list_head_t *old) {
     list_join(old->prev, old->next);
+}
+
+static inline bool list_empty(const list_head_t *head) {
+	return head->next == head;
 }
 
 #define LIST_MAKE_HEAD(name) {&(name), &(name)}

@@ -15,7 +15,7 @@
 typedef struct cache_page cache_page_t;
 
 struct cache_page {
-    cache_page_t *prev, *next;
+    list_head_t list;
     uint32_t left;
     uint32_t free;
     uint32_t *freelist;
@@ -25,79 +25,43 @@ struct cache_page {
 
 struct cache {
     list_head_t list;
-    uint32_t flags;
     uint32_t size;
     uint32_t max; // while not neccessary it might be good for stats/debugging or something
-    cache_page_t *full;
-    cache_page_t *partial;
-    cache_page_t *empty;
+    uint32_t flags;
+    list_head_t full;
+    list_head_t partial;
+    list_head_t empty;
 };
 
 cache_t meta_cache = {
     .size = sizeof(cache_t),
     .max = (PAGE_SIZE - sizeof(cache_page_t)) / (sizeof(cache_t) + sizeof(uint32_t)),
-    .flags = CACHE_FLAG_PERM
+    .flags = CACHE_FLAG_PERM,
+    .full = LIST_MAKE_HEAD(meta_cache.full),
+    .partial = LIST_MAKE_HEAD(meta_cache.partial),
+    .empty = LIST_MAKE_HEAD(meta_cache.empty)
 };
 
 LIST_HEAD(caches);
 
 static void cache_alloc_page(cache_t *cache) {
-    //assume that there are no other empty cache pages
     page_t *page = alloc_page(0);
-    cache->empty = (cache_page_t *) page_to_virt(page);
-    cache->empty->page = page;
+    cache_page_t *cache_page = (cache_page_t *) page_to_virt(page);
+    cache_page->page = page;
+    cache_page->left = cache->max;
+    
+    list_add(&cache_page->list, &cache->empty);
 
-    cache->empty->next = NULL;
-    cache->empty->prev = NULL;
-    cache->empty->left = cache->max;
+    if(!cache_page->left) panicf("0 objects left in a new cache page!");
 
-    if(!cache->empty->left) panicf("0 objects left in a new cache page!");
-
-    cache->empty->free = 0;
-    cache->empty->freelist = (uint32_t *) (((uint8_t *) cache->empty) + sizeof(cache_page_t));
-    for(uint32_t i = 0; i < cache->empty->left; i++) {
-        cache->empty->freelist[i] = i + 1;
+    cache_page->free = 0;
+    cache_page->freelist = (uint32_t *) (((uint8_t *) cache_page) + sizeof(cache_page_t));
+    for(uint32_t i = 0; i < cache_page->left; i++) {
+        cache_page->freelist[i] = i + 1;
     }
-    cache->empty->freelist[cache->empty->left - 1] = FREELIST_END;
+    cache_page->freelist[cache_page->left - 1] = FREELIST_END;
 
-    cache->empty->mem = cache->empty->freelist + cache->empty->left;
-}
-
-static void cache_pop(cache_page_t **s, cache_page_t **d) {
-    cache_page_t *page = *s;
-
-    *s = page->next;
-    if(*s) {
-        (*s)->prev = NULL;
-    }
-
-    page->next = *d;
-    page->prev = NULL;
-
-    if(*d) {
-        (*d)->prev = page;
-    }
-    *d = page;
-}
-
-static void cache_move(cache_page_t *page, cache_page_t **s, cache_page_t **d) {
-    if(page->prev) {
-        page->prev->next = page->next;
-    } else {
-        *s = page->next;
-    }
-
-    if(page->next) {
-        page->next->prev = page->prev;
-    }
-
-    page->next = *d;
-    page->prev = NULL;
-
-    if(*d) {
-        (*d)->prev = page;
-    }
-    *d = page;
+    cache_page->mem = cache_page->freelist + cache_page->left;
 }
 
 static void cache_do_alloc(cache_page_t *cache_page) {
@@ -112,33 +76,40 @@ static void cache_do_free(cache_page_t *cache_page, uint32_t free_idx) {
 }
 
 void * cache_alloc(cache_t *cache) {
-    if(cache->partial == NULL && cache->empty == NULL) cache_alloc_page(cache);
+    if(list_empty(&cache->partial) && list_empty(&cache->empty)) cache_alloc_page(cache);
 
     void *alloced = NULL;
-    if(cache->partial != NULL) {
-        alloced = ((uint8_t *) cache->partial->mem) + (cache->partial->free * cache->size);
-        cache_do_alloc(cache->partial);
-        if(!cache->partial->left) {
-            cache_pop(&cache->partial, &cache->full);
+    if(!list_empty(&cache->partial)) {
+        cache_page_t *page = list_first(&cache->partial, cache_page_t, list);
+        alloced = ((uint8_t *) page->mem) + (page->free * cache->size);
+        cache_do_alloc(page);
+        if(page->left) {
+            list_rm(&page->list);
+            list_add(&page->list, &cache->full);
         }
-    } else if(cache->empty != NULL) {
-        alloced = ((uint8_t *) cache->empty->mem) + (cache->empty->free * cache->size);
-        cache_do_alloc(cache->empty);
-        if(cache->empty->left == 0) {
-            cache_pop(&cache->empty, &cache->full);
+    } else if(!list_empty(&cache->empty)) {
+        cache_page_t *page = list_first(&cache->empty, cache_page_t, list);
+        alloced = ((uint8_t *) page->mem) + (page->free * cache->size);
+        cache_do_alloc(page);
+        
+        list_rm(&page->list);
+        if(page->left == 0) {
+            list_add(&page->list, &cache->full);
         } else {
-            cache_pop(&cache->empty, &cache->partial);
+            list_add(&page->list, &cache->partial);
         }
     } else {
-        panicf("cache_alloc_page() failed to alloc new cache_page_t");
+        panicf("cache_alloc_page() failed to alloc a new page");
     }
 
     return alloced;
 }
 
 void cache_free(cache_t *cache, void *mem) {
+    //FIXME this is absurdly slow, make it faster by an order of complexity somehow :P
+    
     cache_page_t *cur;
-    for(cur = cache->full; cur != NULL; cur = cur->next) {
+    LIST_FOR_EACH_ENTRY(cur, &cache->full, list) {
         uint32_t addr = (uint32_t) page_to_virt(cur->page);
         if((addr >= ((uint32_t) mem)) && (((uint32_t) mem) < addr)) {
             break;
@@ -146,7 +117,7 @@ void cache_free(cache_t *cache, void *mem) {
     }
 
     if(cur == NULL) {
-        for(cur = cache->partial; cur != NULL; cur = cur->next) {
+        LIST_FOR_EACH_ENTRY(cur, &cache->partial, list) {
             uint32_t addr = (uint32_t) page_to_virt(cur->page);
             if((addr >= ((uint32_t) mem)) && (((uint32_t) mem) < addr)) {
                 break;
@@ -155,18 +126,20 @@ void cache_free(cache_t *cache, void *mem) {
     }
 
     if(cur == NULL) {
-        panic("Illegal memzone param to cache_free");
+        panic("Illegal mem ptr passed to cache_free");
     }
 
     cache_page_t *cache_page = (cache_page_t *) page_to_virt(cur->page);
 
     if(cache_page->left + 1 == cache->max) {
-        cache_move(cache_page, &cache->partial, &cache->empty);
+        list_rm(&cache_page->list);
+        list_add(&cache_page->list, &cache->empty);
     } else if(!cache_page->left) {
-        cache_move(cache_page, &cache->full, &cache->partial);
+        list_rm(&cache_page->list);
+        list_add(&cache_page->list, &cache->partial);
     }
 
-    cache_do_free(cache_page, (((uint32_t) mem) - ((uint32_t)cache_page->mem)) / cache->size);
+    cache_do_free(cache_page, (((uint32_t) mem) - ((uint32_t) cache_page->mem)) / cache->size);
 }
 
 cache_t * cache_create(uint32_t size) {
@@ -175,6 +148,11 @@ cache_t * cache_create(uint32_t size) {
 
     new->size = size;
     new->max = (PAGE_SIZE - sizeof(cache_page_t)) / (size + sizeof(uint32_t));
+    new->flags = 0;
+    
+    list_init(&new->empty);
+    list_init(&new->partial);
+    list_init(&new->full);    
 
     return new;
 }
