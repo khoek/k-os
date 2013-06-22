@@ -22,12 +22,8 @@ hdd.img:
 image: kernel cdrom.iso
 
 run: image hdd.img
-	@echo "running qemu"
-	@$(QEMU) -boot d -cdrom cdrom.iso -hda hdd.img -monitor stdio
-
-debug: image hdd.img
 	@echo "running bochs"
-	@echo "c" | $(BOCHS) -q
+	@sudo sh -c "echo "c" | $(BOCHS) -q"
 
 doc:
 	@echo "running doxygen"
