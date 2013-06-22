@@ -146,7 +146,6 @@ typedef struct tx_desc {
 static uint8_t mac[6];
 static uint32_t mmio, rx_front, tx_front;
 static uint8_t *rx_buff[NUM_RX_DESCS];
-//static uint8_t *tx_buff[NUM_TX_DESCS];
 static page_t *rx_page, *tx_page;
 static rx_desc_t *rx_desc;
 static tx_desc_t *tx_desc;

@@ -19,10 +19,8 @@ void die() {
 void panic(char* message) {
     cli();
 
-    console_clear();
-
     console_color(0x0C);
-    console_puts("KERNEL PANIC: ");
+    console_puts("\nKERNEL PANIC: ");
     console_color(0x07);
     console_putsf("%s\n\n", message);
 

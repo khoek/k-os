@@ -3,7 +3,7 @@
 
 #ifndef CONFIG_OPTIMIZE
 
-#include <panic.h>
+#include "panic.h"
 #define DEPENDS(m, c) if(!(c)) panic("Dependency assertion on \"%s\" failed!", m)
 #define ASSERT(c)     if(!(c)) panic("Assertion failed!")
 #define BUG_ON(c)     if((c))  panic("Bug!")
