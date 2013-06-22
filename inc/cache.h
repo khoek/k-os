@@ -4,12 +4,11 @@
 #include <stdint.h>
 #include "init.h"
 
-#define NUM_CACHES 1
+typedef struct cache cache_t;
 
-#define CACHE_TASK 0
-
-void * cache_alloc(uint32_t cache);
-void cache_free(uint32_t cache, void *mem);
+cache_t * cache_create(uint32_t size);
+void * cache_alloc(cache_t *cache);
+void cache_free(cache_t *cache, void *mem);
 
 //indirect, invoked from mm_init()
 INITCALL cache_init();

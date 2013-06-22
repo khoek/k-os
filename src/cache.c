@@ -1,18 +1,16 @@
 #include <stddef.h>
 
 #include "common.h"
+#include "list.h"
 #include "init.h"
 #include "cache.h"
 #include "panic.h"
 #include "log.h"
 #include "mm.h"
 
-//Cache includes
-#include "task.h"
-
 #define FREELIST_END (1 << 31)
 
-#define CACHE_TASK_SIZE sizeof(task_t)
+#define CACHE_FLAG_PERM (1 << 0)
 
 typedef struct cache_page cache_page_t;
 
@@ -25,42 +23,44 @@ struct cache_page {
     page_t *page;
 };
 
-typedef struct cache {
+struct cache {
+    list_head_t list;
+    uint32_t flags;
     uint32_t size;
     uint32_t max; // while not neccessary it might be good for stats/debugging or something
     cache_page_t *full;
     cache_page_t *partial;
     cache_page_t *empty;
-} cache_t;
+};
 
-cache_t caches[NUM_CACHES];
+cache_t meta_cache = {
+    .size = sizeof(cache_t),
+    .max = (PAGE_SIZE - sizeof(cache_page_t)) / (sizeof(cache_t) + sizeof(uint32_t)),
+    .flags = CACHE_FLAG_PERM
+};
 
-static void cache_alloc_page(uint32_t cache) {
+LIST_HEAD(caches);
+
+static void cache_alloc_page(cache_t *cache) {
     //assume that there are no other empty cache pages
     page_t *page = alloc_page(0);
-    caches[cache].empty = (cache_page_t *) page_to_virt(page);
-    caches[cache].empty->page = page;
+    cache->empty = (cache_page_t *) page_to_virt(page);
+    cache->empty->page = page;
 
-    caches[cache].empty->next = NULL;
-    caches[cache].empty->prev = NULL;
-    caches[cache].empty->left = caches[cache].max;
+    cache->empty->next = NULL;
+    cache->empty->prev = NULL;
+    cache->empty->left = cache->max;
 
-    if(!caches[cache].empty->left) panicf("0 objects left in a new cache page!");
+    if(!cache->empty->left) panicf("0 objects left in a new cache page!");
 
-    caches[cache].empty->free = 0;
-    caches[cache].empty->freelist = (uint32_t *) (((uint8_t *) caches[cache].empty) + sizeof(cache_page_t));
-    for(uint32_t i = 0; i < caches[cache].empty->left; i++) {
-        caches[cache].empty->freelist[i] = i + 1;
+    cache->empty->free = 0;
+    cache->empty->freelist = (uint32_t *) (((uint8_t *) cache->empty) + sizeof(cache_page_t));
+    for(uint32_t i = 0; i < cache->empty->left; i++) {
+        cache->empty->freelist[i] = i + 1;
     }
-    caches[cache].empty->freelist[caches[cache].empty->left - 1] = FREELIST_END;
+    cache->empty->freelist[cache->empty->left - 1] = FREELIST_END;
 
-    caches[cache].empty->mem = caches[cache].empty->freelist + caches[cache].empty->left;
-}
-
-static void cache_create(uint32_t cache, uint32_t size) {
-    caches[cache].size = size;
-    caches[cache].max = (PAGE_SIZE - sizeof(cache_page_t)) / (caches[cache].size + sizeof(uint32_t));
-    cache_alloc_page(cache);
+    cache->empty->mem = cache->empty->freelist + cache->empty->left;
 }
 
 static void cache_pop(cache_page_t **s, cache_page_t **d) {
@@ -111,25 +111,23 @@ static void cache_do_free(cache_page_t *cache_page, uint32_t free_idx) {
     cache_page->free = free_idx;
 }
 
-void * cache_alloc(uint32_t cache) {
-    if(cache >= NUM_CACHES) panicf("Illegal cache %u", cache);
-
-    if(caches[cache].partial == NULL && caches[cache].empty == NULL) cache_alloc_page(cache);
+void * cache_alloc(cache_t *cache) {
+    if(cache->partial == NULL && cache->empty == NULL) cache_alloc_page(cache);
 
     void *alloced = NULL;
-    if(caches[cache].partial != NULL) {
-        alloced = ((uint8_t *) caches[cache].partial->mem) + (caches[cache].partial->free * caches[cache].size);
-        cache_do_alloc(caches[cache].partial);
-        if(!caches[cache].partial->left) {
-            cache_pop(&caches[cache].partial, &caches[cache].full);
+    if(cache->partial != NULL) {
+        alloced = ((uint8_t *) cache->partial->mem) + (cache->partial->free * cache->size);
+        cache_do_alloc(cache->partial);
+        if(!cache->partial->left) {
+            cache_pop(&cache->partial, &cache->full);
         }
-    } else if(caches[cache].empty != NULL) {
-        alloced = ((uint8_t *) caches[cache].empty->mem) + (caches[cache].empty->free * caches[cache].size);
-        cache_do_alloc(caches[cache].empty);
-        if(caches[cache].empty->left == 0) {
-            cache_pop(&caches[cache].empty, &caches[cache].full);
+    } else if(cache->empty != NULL) {
+        alloced = ((uint8_t *) cache->empty->mem) + (cache->empty->free * cache->size);
+        cache_do_alloc(cache->empty);
+        if(cache->empty->left == 0) {
+            cache_pop(&cache->empty, &cache->full);
         } else {
-            cache_pop(&caches[cache].empty, &caches[cache].partial);
+            cache_pop(&cache->empty, &cache->partial);
         }
     } else {
         panicf("cache_alloc_page() failed to alloc new cache_page_t");
@@ -138,11 +136,9 @@ void * cache_alloc(uint32_t cache) {
     return alloced;
 }
 
-void cache_free(uint32_t cache, void *mem) {
-    if(cache >= NUM_CACHES) panicf("Illegal cache %u", cache);
-
+void cache_free(cache_t *cache, void *mem) {
     cache_page_t *cur;
-    for(cur = caches[cache].full; cur != NULL; cur = cur->next) {
+    for(cur = cache->full; cur != NULL; cur = cur->next) {
         uint32_t addr = (uint32_t) page_to_virt(cur->page);
         if((addr >= ((uint32_t) mem)) && (((uint32_t) mem) < addr)) {
             break;
@@ -150,7 +146,7 @@ void cache_free(uint32_t cache, void *mem) {
     }
 
     if(cur == NULL) {
-        for(cur = caches[cache].partial; cur != NULL; cur = cur->next) {
+        for(cur = cache->partial; cur != NULL; cur = cur->next) {
             uint32_t addr = (uint32_t) page_to_virt(cur->page);
             if((addr >= ((uint32_t) mem)) && (((uint32_t) mem) < addr)) {
                 break;
@@ -164,19 +160,30 @@ void cache_free(uint32_t cache, void *mem) {
 
     cache_page_t *cache_page = (cache_page_t *) page_to_virt(cur->page);
 
-    if(cache_page->left + 1 == caches[cache].max) {
-        cache_move(cache_page, &caches[cache].partial, &caches[cache].empty);
+    if(cache_page->left + 1 == cache->max) {
+        cache_move(cache_page, &cache->partial, &cache->empty);
     } else if(!cache_page->left) {
-        cache_move(cache_page, &caches[cache].full, &caches[cache].partial);
+        cache_move(cache_page, &cache->full, &cache->partial);
     }
 
-    cache_do_free(cache_page, (((uint32_t) mem) - ((uint32_t)cache_page->mem)) / caches[cache].size);
+    cache_do_free(cache_page, (((uint32_t) mem) - ((uint32_t)cache_page->mem)) / cache->size);
+}
+
+cache_t * cache_create(uint32_t size) {
+    cache_t *new = (cache_t *) cache_alloc(&meta_cache);
+    list_add(&new->list, &caches);
+
+    new->size = size;
+    new->max = (PAGE_SIZE - sizeof(cache_page_t)) / (size + sizeof(uint32_t));
+
+    return new;
 }
 
 //indirect, invoked from mm_init()
 INITCALL cache_init() {
-    cache_create(CACHE_TASK, CACHE_TASK_SIZE);
+    list_add(&meta_cache.list, &caches);
 
-    logf("cache - created %u new object cache(s)", NUM_CACHES);
+    logf("cache - metacache initialized");
+
     return 0;
 }

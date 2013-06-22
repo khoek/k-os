@@ -8,6 +8,8 @@
 #include "panic.h"
 #include "log.h"
 
+cache_t *task_cache;
+
 uint32_t pid = 1;
 uint8_t kernel_stack[0x1000];
 task_t *front, *back;
@@ -38,7 +40,7 @@ new_page++;
 }
 
 task_t * task_create() {
-    return cache_alloc(CACHE_TASK); //FIXME do more stuff here
+    return cache_alloc(task_cache); //FIXME do more stuff here
 }
 
 void task_usermode() {
@@ -54,7 +56,9 @@ void task_usermode() {
 }
 
 static INITCALL task_init() {
-    front = back = cache_alloc(CACHE_TASK);
+    task_cache = cache_create(sizeof(task_t));
+
+    front = back = cache_alloc(task_cache);
     memset(&front->registers, 0, sizeof(registers_t));
 
     page_t *stack_page = alloc_page(0);
