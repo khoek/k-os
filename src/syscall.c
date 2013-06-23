@@ -13,8 +13,6 @@ typedef void (*syscall_t)(interrupt_t *);
 
 void sys_exit(interrupt_t *interrupt) {
     logf("sys_exit: %d", interrupt->registers.ebx);
-
-    die();
 }
 
 void sys_fork(interrupt_t *interrupt) {

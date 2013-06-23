@@ -2,17 +2,17 @@
 
 .type cpl_switch, @function
 cpl_switch:
-	mov 4(%esp), %eax
-	mov 52(%eax), %ds
-	mov 52(%eax), %es
-	mov 52(%eax), %fs
-	mov 52(%eax), %gs
+	mov 56(%esp), %eax
+	mov %eax, %ds
+	mov %eax, %es
+	mov %eax, %fs
+	mov %eax, %gs
 
-	push 52(%eax)
-	push 48(%eax)
-	push 44(%eax)
-	push 40(%eax)
-	push 36(%eax)
+    add $4, %esp
 
+    pop %eax
+    mov %eax, %cr3
+
+    popa
 	iret
 .size cpl_switch, .-cpl_switch

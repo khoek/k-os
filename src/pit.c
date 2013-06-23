@@ -1,4 +1,4 @@
-#include <stdint.h>
+#include "int.h"
 
 #include "common.h"
 #include "pit.h"
@@ -6,7 +6,7 @@
 #include "gdt.h"
 #include "idt.h"
 #include "panic.h"
-#include "io.h"
+#include "asm.h"
 #include "log.h"
 
 #define PIT_CLOCK 1193182

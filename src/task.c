@@ -1,5 +1,6 @@
 #include "string.h"
 #include "init.h"
+#include "list.h"
 #include "task.h"
 #include "cache.h"
 #include "gdt.h"
@@ -12,38 +13,10 @@ cache_t *task_cache;
 
 uint32_t pid = 1;
 uint8_t kernel_stack[0x1000];
-task_t *front, *back;
 
-void task_switch() {
-    set_kernel_stack(kernel_stack);
+LIST_HEAD(tasks);
 
-    /*if(front != back) {
-        task_t *old = front;
-        front = front->next;
-
-        back->next = old;
-        old->prev = back;
-        old->next = NULL;
-
-        back = old;
-    }*/
-
-    cpl_switch(front);
-}
-
-void * task_alloc_page(task_t UNUSED(*task), uint32_t UNUSED(vaddr)) {
-    page_t *new_page = alloc_page(0);
-new_page++;
-    //TODO map new_page to address vaddr in task's address space;
-
-    return NULL; //page_to_virt(new_page);
-}
-
-task_t * task_create() {
-    return cache_alloc(task_cache); //FIXME do more stuff here
-}
-
-void task_usermode() {
+static void task_usermode() {
     __asm__ volatile("mov $1, %eax");
     __asm__ volatile("mov $8, %ebx");
     __asm__ volatile("int $0x80");
@@ -52,29 +25,54 @@ void task_usermode() {
     __asm__ volatile("mov $-1, %ebx");
     __asm__ volatile("int $0x80");
 
-    die();
+    __asm__ volatile("loop:");
+    __asm__ volatile("jmp loop");
+}
+
+void task_switch() {
+    set_kernel_stack(kernel_stack);
+    list_rotate_left(&tasks);
+
+    task_t *task = list_first(&tasks, task_t, list);
+    cpl_switch(task->cr3, task->registers, task->state);
+}
+
+void task_add_page(task_t UNUSED(*task), page_t UNUSED(*page)) {
+    //TODO add this to the list of pages for the task
+}
+
+task_t * task_create() {
+    task_t *task = (task_t *) cache_alloc(task_cache);
+    task->pid = pid++;
+
+    memset(&task->registers, 0, sizeof(registers_t));
+
+    task->state.eflags = get_eflags();
+    task->state.cs = CPL_USER_CODE | 3;
+    task->state.ss = CPL_USER_DATA | 3;
+
+    page_t *page = alloc_page(0);
+    task->directory = page_to_virt(page);
+    task->cr3 = (uint32_t) page_to_phys(page);
+    page_build_directory(task->directory);
+
+    return task;
+}
+
+void task_schedule(task_t *task, void *eip, void *esp) {
+    task->state.esp = (uint32_t) esp;
+    task->state.eip = (uint32_t) eip;
+
+    list_add(&task->list, &tasks);
 }
 
 static INITCALL task_init() {
     task_cache = cache_create(sizeof(task_t));
 
-    front = back = cache_alloc(task_cache);
-    memset(&front->registers, 0, sizeof(registers_t));
-
-    page_t *stack_page = alloc_page(0);
-    page_protect(stack_page, false);
-
-    page_t *code_page = alloc_page(0);
-    page_protect(code_page, false);
-
-    memcpy(page_to_virt(code_page), task_usermode, 0x1000);
-
-    front->pid = pid++;
-    front->state.cs = CPL_USER_CODE | 3;
-    front->state.ss = CPL_USER_DATA | 3;
-    front->state.eflags = get_eflags();
-    front->state.esp = ((uint32_t) page_to_virt(stack_page)) + PAGE_SIZE - 1;
-    front->state.eip = (uint32_t) page_to_virt(code_page);
+    task_t *task = task_create();
+    memcpy(alloc_page_user(0, task, 0x10000), task_usermode, 0x1000);
+    alloc_page_user(0, task, 0x11000);
+    task_schedule(task, (void *) 0x10000, (void *) (0x11000 + PAGE_SIZE - 1));
 
     logf("task - set up init task");
 

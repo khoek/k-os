@@ -1,7 +1,7 @@
 #ifndef KERNEL_CACHE_H
 #define KERNEL_CACHE_H
 
-#include <stdint.h>
+#include "int.h"
 #include "init.h"
 
 typedef struct cache cache_t;

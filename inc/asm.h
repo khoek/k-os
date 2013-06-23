@@ -1,7 +1,23 @@
 #ifndef KERNEL_IO_H
 #define KERNEL_IO_H
 
-#include <stdint.h>
+#include "int.h"
+
+static inline void cli() {
+    __asm__ volatile("cli");
+}
+
+static inline void sti() {
+    __asm__ volatile("sti");
+}
+
+static inline void hlt() {
+    __asm__ volatile("hlt");
+}
+
+static inline void lidt(void *idtr) {
+   __asm__ volatile("lidt (%0)" :: "p" (idtr));
+}
 
 static inline void outb(uint16_t port, uint8_t value) {
 	__asm__ volatile("outb %0, %1" : : "a"(value), "Nd"(port) );

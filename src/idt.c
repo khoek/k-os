@@ -5,7 +5,7 @@
 #include "init.h"
 #include "idt.h"
 #include "gdt.h"
-#include "io.h"
+#include "asm.h"
 #include "panic.h"
 #include "log.h"
 

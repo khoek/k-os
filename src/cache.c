@@ -26,7 +26,7 @@ struct cache_page {
 struct cache {
     list_head_t list;
     uint32_t size;
-    uint32_t max; // while not neccessary it might be good for stats/debugging or something
+    uint32_t max; //while not neccessary it might be good for stats/debugging or something
     uint32_t flags;
     list_head_t full;
     list_head_t partial;
@@ -49,7 +49,7 @@ static void cache_alloc_page(cache_t *cache) {
     cache_page_t *cache_page = (cache_page_t *) page_to_virt(page);
     cache_page->page = page;
     cache_page->left = cache->max;
-    
+
     list_add(&cache_page->list, &cache->empty);
 
     if(!cache_page->left) panicf("0 objects left in a new cache page!");
@@ -91,7 +91,7 @@ void * cache_alloc(cache_t *cache) {
         cache_page_t *page = list_first(&cache->empty, cache_page_t, list);
         alloced = ((uint8_t *) page->mem) + (page->free * cache->size);
         cache_do_alloc(page);
-        
+
         list_rm(&page->list);
         if(page->left == 0) {
             list_add(&page->list, &cache->full);
@@ -107,7 +107,7 @@ void * cache_alloc(cache_t *cache) {
 
 void cache_free(cache_t *cache, void *mem) {
     //FIXME this is absurdly slow, make it faster by an order of complexity somehow :P
-    
+
     cache_page_t *cur;
     LIST_FOR_EACH_ENTRY(cur, &cache->full, list) {
         uint32_t addr = (uint32_t) page_to_virt(cur->page);
@@ -149,10 +149,10 @@ cache_t * cache_create(uint32_t size) {
     new->size = size;
     new->max = (PAGE_SIZE - sizeof(cache_page_t)) / (size + sizeof(uint32_t));
     new->flags = 0;
-    
+
     list_init(&new->empty);
     list_init(&new->partial);
-    list_init(&new->full);    
+    list_init(&new->full);
 
     return new;
 }

@@ -1,7 +1,7 @@
 #ifndef KERNEL_ELF_H
 #define KERNEL_ELF_H
 
-#include <stdint.h>
+#include "int.h"
 #include <common.h>
 
 typedef uint32_t Elf32_Addr;
@@ -11,7 +11,7 @@ typedef int32_t  Elf32_Sword;
 typedef uint32_t Elf32_Word;
 
 #define EI_NIDENT	16
-#define	EI_MAG0		0		/* e_ident[] indexes */
+#define	EI_MAG0		0
 #define	EI_MAG1		1
 #define	EI_MAG2		2
 #define	EI_MAG3		3
@@ -21,7 +21,7 @@ typedef uint32_t Elf32_Word;
 #define	EI_OSABI	7
 #define	EI_PAD		8
 
-#define	ELFMAG0		0x7f		/* EI_MAG */
+#define	ELFMAG0		0x7f
 #define	ELFMAG1		'E'
 #define	ELFMAG2		'L'
 #define	ELFMAG3		'F'
@@ -53,7 +53,7 @@ typedef struct elf32_hdr {
   Elf32_Half	e_type;
   Elf32_Half	e_machine;
   Elf32_Word	e_version;
-  Elf32_Addr	e_entry;  /* Entry point */
+  Elf32_Addr	e_entry;
   Elf32_Off	e_phoff;
   Elf32_Off	e_shoff;
   Elf32_Word	e_flags;

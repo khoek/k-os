@@ -1,9 +1,9 @@
 #ifndef KERNEL_CPL_H
 #define KERNEL_CPL_H
 
-#include <stdint.h>
-#include "task.h"
+#include "int.h"
+#include "registers.h"
 
-void cpl_switch(task_t *task);
+void cpl_switch(uint32_t cr3, registers_t registers, task_state_t state);
 
 #endif

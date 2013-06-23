@@ -5,17 +5,22 @@
 #include "console.h"
 #include "panic.h"
 #include "mm.h"
-#include "io.h"
+#include "asm.h"
 
 #define BUFFSIZE 1024
 
-#define VRAM_BASE 0xb8000
+#define VRAM_PHYS 0xb8000
 #define PORT_BASE 0x463
 
 static uint32_t row, col;
 static uint16_t *vga_port = ((uint16_t *) PORT_BASE);
-static char *vram = ((char *) VRAM_BASE);
+static char *vram = ((char *) VRAM_PHYS);
 static char color = 0x07;
+
+void console_map_virtual() {
+    vga_port = mm_map(vga_port);
+    vram = mm_map(vram);
+}
 
 uint8_t console_row() {
      return row;

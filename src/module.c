@@ -1,4 +1,4 @@
-#include <stdint.h>
+#include "int.h"
 
 #include "init.h"
 #include "module.h"

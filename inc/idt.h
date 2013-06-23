@@ -1,29 +1,13 @@
 #ifndef KERNEL_IDT_H
 #define KERNEL_IDT_H
 
-#include <stdint.h>
 #include <stdbool.h>
+#include "int.h"
 #include "common.h"
 #include "init.h"
 #include "registers.h"
 
 #define IRQ_OFFSET 0x20
-
-static inline void cli() {
-    __asm__ volatile("cli");
-}
-
-static inline void sti() {
-    __asm__ volatile("sti");
-}
-
-static inline void hlt() {
-    __asm__ volatile("hlt");
-}
-
-static inline void lidt(void *idtr) {
-   __asm__ volatile("lidt (%0)" :: "p" (idtr));
-}
 
 typedef struct interrupt {
   registers_t registers;

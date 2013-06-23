@@ -1,7 +1,7 @@
 #include "init.h"
 #include "pci.h"
 #include "panic.h"
-#include "io.h"
+#include "asm.h"
 #include "ide.h"
 #include "ahci.h"
 #include "net.h"

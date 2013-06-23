@@ -1,9 +1,10 @@
 #ifndef KERNEL_STRING_H
 #define KERNEL_STRING_H
 
-#include "stdint.h"
-#include "stddef.h"
-#include "stdarg.h"
+#include <stddef.h>
+#include <stdarg.h>
+
+#include "int.h"
 
 int isdigit(char c);
 

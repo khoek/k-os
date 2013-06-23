@@ -1,7 +1,7 @@
 #ifndef KERNEL_PIT_H
 #define KERNEL_PIT_H
 
-#include <stdint.h>
+#include "int.h"
 
 #define TIMER_FREQ 1000
 

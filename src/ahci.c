@@ -1,4 +1,4 @@
-#include <stdint.h>
+#include "int.h"
 
 #include "string.h"
 #include "init.h"
@@ -28,27 +28,20 @@
 #define TYPE_PM     0x96690101 // Port multiplier
 
 typedef struct {
-    uint32_t    dba;        // Data base address
-    uint32_t    dbau;        // Data base address upper 32 bits
-    uint32_t    rsv0;        // Reserved
+    uint32_t    dba;    // Data base address
+    uint32_t    dbau;   // Data base address upper 32 bits
+    uint32_t    rsv0;   // Reserved
 
     // DW3
-    uint32_t    dbc:22;        // uint8_t count, 4M max
-    uint32_t    rsv1:9;        // Reserved
-    uint32_t    i:1;        // Interrupt on completion
+    uint32_t    dbc:22; // uint8_t count, 4M max
+    uint32_t    rsv1:9; // Reserved
+    uint32_t    i:1;    // Interrupt on completion
 } ahci_prdt_entry;
 
 typedef struct {
-    // 0x00
     uint8_t    cfis[64];    // Command FIS
-
-    // 0x40
     uint8_t    acmd[16];    // ATAPI command, 12 or 16 uint8_ts
-
-    // 0x50
     uint8_t    rsv[48];    // Reserved
-
-    // 0x80
     ahci_prdt_entry    prdt_entry[1];    // Physical region descriptor table entries, 0 ~ 65535
 } achi_cmd_table;
 

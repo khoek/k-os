@@ -1,4 +1,4 @@
-#include <stdint.h>
+#include "int.h"
 
 static inline int16_t swap_int16(int16_t val) {
     return (val << 8) | ((val >> 8) & 0xFF);

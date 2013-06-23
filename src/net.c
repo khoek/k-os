@@ -2,7 +2,7 @@
 #include "init.h"
 #include "string.h"
 #include "net.h"
-#include "io.h"
+#include "asm.h"
 #include "mm.h"
 #include "pci.h"
 #include "gdt.h"
@@ -234,11 +234,11 @@ void __init net_825xx_init(pci_device_t dev) {
 
     logf("net - 825xx interface detected");
 
-    mmio = (uint32_t) mm_map(BAR_ADDR_32(dev.bar[0]));
+    mmio = (uint32_t) mm_map((void *) BAR_ADDR_32(dev.bar[0]));
 
     //FIXME this assumes that mm_map will map the pages configuously, this should not be relied upon!
     for(uint32_t addr = PAGE_SIZE; addr < (DIV_DOWN(REG_LAST, PAGE_SIZE) * PAGE_SIZE); addr += PAGE_SIZE) {
-        mm_map(addr + BAR_ADDR_32(dev.bar[0]));
+        mm_map((void *) (addr + BAR_ADDR_32(dev.bar[0])));
     }
 
     idt_register(IRQ_OFFSET + dev.interrupt, CPL_KERNEL, handle_network);

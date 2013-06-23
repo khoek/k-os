@@ -1,4 +1,4 @@
-#include <stdint.h>
+#include "int.h"
 
 #include "common.h"
 #include "multiboot.h"
@@ -26,8 +26,8 @@ void kmain(uint32_t magic, multiboot_info_t *mbd) {
         if((*initcall)()) panic("Kernel Boot Failure - initcall aborted with non-zero exit code");
     }
 
-    //logf("entering usermode");
-    //task_switch();
+    logf("entering usermode");
+    task_switch();
 
     while(1);
 

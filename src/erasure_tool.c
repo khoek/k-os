@@ -10,7 +10,7 @@
 #include "ide.h"
 #include "console.h"
 #include "keyboard.h"
-#include "io.h"
+#include "asm.h"
 
 static char twirls[] = {
     '|', '/', '-', '\\'

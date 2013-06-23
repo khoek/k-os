@@ -12,10 +12,6 @@
 #define MAX_FRAMES      32
 #define BUFFSIZE        512
 
-void die() {
-    while(true) hlt();
-}
-
 void panic(char* message) {
     cli();
 
@@ -30,7 +26,7 @@ void panic(char* message) {
     eip = ebp[1];
 
     for(uint32_t frame = 0; eip != 0 && ebp != 0 && frame < MAX_FRAMES; frame++) {
-        elf_symbol_t *symbol = debug_lookup_symbol(eip);
+        const elf_symbol_t *symbol = debug_lookup_symbol(eip);
         if(symbol == NULL) {
             console_putsf("    0x%X\n", eip);
         } else {
@@ -39,6 +35,11 @@ void panic(char* message) {
 
         ebp = (uint32_t *) ebp[0];
         eip = ebp[1];
+
+        if(frame == 2) {
+
+        die();
+        }
     }
 
     die();

@@ -1,13 +1,15 @@
 #ifndef KERNEL_CONSOLE_H
 #define KERNEL_CONSOLE_H
 
-#include <stdint.h>
+#include "int.h"
 
 #define CONSOLE_WIDTH	80
 #define CONSOLE_HEIGHT	25
 
 uint8_t console_row();
 uint8_t console_col();
+
+void console_map_virtual();
 
 void console_color(const char c);
 void console_clear();

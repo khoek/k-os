@@ -1,7 +1,7 @@
 #ifndef KERNEL_MODULE_H
 #define KERNEL_MODULE_H
 
-#include <stdint.h>
+#include "int.h"
 #include "multiboot.h"
 
 uint32_t module_count();

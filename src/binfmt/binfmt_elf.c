@@ -1,4 +1,4 @@
-#include <stdint.h>
+#include "int.h"
 #include <stdbool.h>
 
 #include "string.h"
@@ -44,7 +44,7 @@ int load_elf_exe(void *start, uint32_t UNUSED(length)) {
                 uint32_t page_num = 0;
                 uint32_t bytes_left = phdr[i].p_memsz;
                 while(bytes_left) {
-                    void *new_page = task_alloc_page(task, phdr[i].p_vaddr + (page_num * PAGE_SIZE));
+                    void *new_page = alloc_page_user(0, task, phdr[i].p_vaddr + (page_num * PAGE_SIZE));
                     page_num++;
 
                     memcpy(new_page, (void *) (((uint32_t) start) + phdr[i].p_offset), MIN(bytes_left, PAGE_SIZE));

@@ -1,7 +1,7 @@
 #ifndef KERNEL_GDT_H
 #define KERNEL_GDT_H
 
-#include <stdint.h>
+#include "int.h"
 #include "common.h"
 
 #define CPL_KERNEL (0 << 5)

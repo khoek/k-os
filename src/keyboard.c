@@ -1,12 +1,12 @@
-#include <stdint.h>
 #include <stdbool.h>
 
+#include "int.h"
 #include "common.h"
 #include "init.h"
 #include "keyboard.h"
 #include "gdt.h"
 #include "idt.h"
-#include "io.h"
+#include "asm.h"
 
 bool keyStates[128];
 char keyMap[] = {

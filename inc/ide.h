@@ -2,7 +2,7 @@
 #define KERNEL_IDE_H
 
 #include <stdbool.h>
-#include <stdint.h>
+#include "int.h"
 #include "init.h"
 #include "pci.h"
 
