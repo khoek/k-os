@@ -30,7 +30,7 @@ static void task_usermode() {
 }
 
 void task_switch() {
-    set_kernel_stack(kernel_stack);
+    set_kernel_stack((void *) (((uint32_t) kernel_stack) + sizeof(kernel_stack) - 1));
     list_rotate_left(&tasks);
 
     task_t *task = list_first(&tasks, task_t, list);
