@@ -123,13 +123,11 @@ void * mm_map(const void *phys) {
 }
 
 void page_build_directory(uint32_t directory[]) {
-    //FIXME remove this loop, it is a massive hack for not having to relocate the bios text ui area and multiboot header
     for (uint32_t i = 0; i < NUM_ENTRIES - KERNEL_TABLES; i++) {
         directory[i] = 0;
-        //directory[i] = (((uint32_t) & kernel_page_tables[i]) - VIRTUAL_BASE) | PRESENT | WRITABLE | USER;
     }
 
-    for (uint32_t i = 0; i < KERNEL_TABLES; i++) {
+    for (uint32_t i = NUM_ENTRIES - KERNEL_TABLES; i < NUM_ENTRIES; i++) {
         directory[i + (VIRTUAL_BASE / PAGE_SIZE / NUM_ENTRIES)] = (((uint32_t) &kernel_page_tables[i]) - VIRTUAL_BASE) | PRESENT | WRITABLE;
     }
 }
