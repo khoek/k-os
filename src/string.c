@@ -6,9 +6,9 @@ int isdigit(char c) {
      return c >= '0' && c <= '9';
 }
 
-char* itoa(int value, char* buff, int base) {
-     char* charset = "0123456789abcdefghijklmnopqrstuvwxyz";
-     char* ret = buff;
+char *itoa(int value, char *buff, int base) {
+     char *charset = "0123456789abcdefghijklmnopqrstuvwxyz";
+     char *ret = buff;
      char scratch[64];
      int idx = 0;
      if(value < 0) {
@@ -31,7 +31,7 @@ char* itoa(int value, char* buff, int base) {
      return ret;
 }
 
-int atoi(char* str) {
+int atoi(char *str) {
      int i = 0;
      int factor = 1;
      if(*str == '-') {
@@ -48,13 +48,13 @@ int atoi(char* str) {
      return i * factor;
 }
 
-size_t strlen(const char* str) {
+size_t strlen(const char *str) {
      size_t len = 0;
      while(*str++) len++;
      return len;
 }
 
-const char* strchr(const char* str, const char c) {
+const char * strchr(const char *str, const char c) {
      while(*str++) {
           if(*str == c) {
                 return str;
@@ -64,7 +64,7 @@ const char* strchr(const char* str, const char c) {
      return NULL;
 }
 
-int strcmp(const char* a, const char* b) {
+int strcmp(const char *a, const char *b) {
      while(1) {
           if(*a == 0 && *b == 0) {
                 return 0;
@@ -77,8 +77,17 @@ int strcmp(const char* a, const char* b) {
      }
 }
 
-void* memset(void* ptr, char c, size_t bytes) {
-     char* p = (char*)ptr;
+char * strcpy(char *dest, const char *src) {
+    char *ret = dest;
+
+    while ((*dest++ = *src++) != '\0')
+        continue;
+
+    return ret;
+}
+
+void * memset(void* ptr, char c, size_t bytes) {
+     char *p = (char*)ptr;
      size_t i;
      for(i = 0; i < bytes; i++) {
           p[i] = c;
@@ -86,9 +95,9 @@ void* memset(void* ptr, char c, size_t bytes) {
      return ptr;
 }
 
-void* memcpy(void* dest, const void* source, size_t bytes) {
-     char* d = (char*)dest;
-     const char* s = (const void*)source;
+void * memcpy(void* dest, const void* source, size_t bytes) {
+     char *d = (char*)dest;
+     const char *s = (const void*)source;
      size_t i;
      for(i = 0; i < bytes; i++) {
           d[i] = s[i];
@@ -96,9 +105,9 @@ void* memcpy(void* dest, const void* source, size_t bytes) {
      return dest;
 }
 
-void* memmove(void* dest, const void* source, size_t bytes) {
-     char* d = (char*)dest;
-     const char* s = (const void*)source;
+void * memmove(void* dest, const void* source, size_t bytes) {
+     char *d = (char*)dest;
+     const char *s = (const void*)source;
      size_t i;
      if(d < s) {
           for(i = 0; i < bytes; i++) {
@@ -113,8 +122,8 @@ void* memmove(void* dest, const void* source, size_t bytes) {
 }
 
 int memcmp(const void* a, const void* b, size_t bytes) {
-     const char* ca = (const char*)a;
-     const char* cb = (const char*)b;
+     const char *ca = (const char*)a;
+     const char *cb = (const char*)b;
      size_t i;
      for(i = 0; i < bytes; i++) {
           if(ca[i] != cb[i]) {
@@ -124,7 +133,7 @@ int memcmp(const void* a, const void* b, size_t bytes) {
      return 0;
 }
 
-void* memchr(void* ptr, int value, size_t bytes) {
+void * memchr(void* ptr, int value, size_t bytes) {
      size_t i;
      uint8_t* p = (uint8_t*)ptr;
      uint8_t c = (uint8_t)value;
