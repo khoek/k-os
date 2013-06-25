@@ -1,5 +1,6 @@
 #include <stddef.h>
 
+#include "math.h"
 #include "common.h"
 #include "list.h"
 #include "init.h"
@@ -11,6 +12,10 @@
 #define FREELIST_END (1 << 31)
 
 #define CACHE_FLAG_PERM (1 << 0)
+
+#define KALLOC_SHIFT_MIN 3
+#define KALLOC_SHIFT_MAX 11
+#define KALLOC_CACHES (KALLOC_SHIFT_MAX + 1)
 
 typedef struct cache_page cache_page_t;
 
@@ -83,7 +88,7 @@ void * cache_alloc(cache_t *cache) {
         cache_page_t *page = list_first(&cache->partial, cache_page_t, list);
         alloced = ((uint8_t *) page->mem) + (page->free * cache->size);
         cache_do_alloc(page);
-        if(page->left) {
+        if(!page->left) {
             list_rm(&page->list);
             list_add(&page->list, &cache->full);
         }
@@ -93,7 +98,7 @@ void * cache_alloc(cache_t *cache) {
         cache_do_alloc(page);
 
         list_rm(&page->list);
-        if(page->left == 0) {
+        if(!page->left) {
             list_add(&page->list, &cache->full);
         } else {
             list_add(&page->list, &cache->partial);
@@ -108,24 +113,26 @@ void * cache_alloc(cache_t *cache) {
 void cache_free(cache_t *cache, void *mem) {
     //FIXME this is absurdly slow, make it faster by an order of complexity somehow :P
 
-    cache_page_t *cur;
+    cache_page_t *cur, *target = NULL;
     LIST_FOR_EACH_ENTRY(cur, &cache->full, list) {
         uint32_t addr = (uint32_t) page_to_virt(cur->page);
-        if((addr >= ((uint32_t) mem)) && (((uint32_t) mem) < addr)) {
+        if((((uint32_t) mem) >= addr) && (((uint32_t) mem) < (addr + PAGE_SIZE))) {
+            target = cur;
             break;
         }
     }
 
-    if(cur == NULL) {
+    if(target == NULL) {
         LIST_FOR_EACH_ENTRY(cur, &cache->partial, list) {
             uint32_t addr = (uint32_t) page_to_virt(cur->page);
-            if((addr >= ((uint32_t) mem)) && (((uint32_t) mem) < addr)) {
+            if((((uint32_t) mem) >= addr) && (((uint32_t) mem) < (addr + PAGE_SIZE))) {
+                target = cur;
                 break;
             };
         }
     }
 
-    if(cur == NULL) {
+    if(target == NULL) {
         panic("Illegal mem ptr passed to cache_free");
     }
 
@@ -157,11 +164,41 @@ cache_t * cache_create(uint32_t size) {
     return new;
 }
 
+static cache_t *kalloc_cache[KALLOC_CACHES];
+
+static uint32_t kalloc_cache_index(uint32_t size) {
+    for (uint32_t i = KALLOC_SHIFT_MIN; i < KALLOC_SHIFT_MAX; i++) {
+        if (size <= (1ULL << i)) {
+            return i;
+        }
+    }
+
+    return 0;
+}
+
+void * kmalloc(uint32_t size) {
+    uint32_t index = kalloc_cache_index(size);
+    if(!index) return NULL;
+
+    return cache_alloc(kalloc_cache[index]);
+}
+
+void kfree(void *mem, uint32_t size) {
+    uint32_t index = kalloc_cache_index(size);
+    if(!index) return;
+
+    cache_free(kalloc_cache[index], mem);
+}
+
 //indirect, invoked from mm_init()
 INITCALL cache_init() {
     list_add(&meta_cache.list, &caches);
 
-    logf("cache - metacache initialized");
+    for(uint32_t i = KALLOC_SHIFT_MIN; i < KALLOC_SHIFT_MAX; i++) {
+        kalloc_cache[i] = cache_create(1 << i);
+    }
+
+    logf("cache - metacache and kmalloc caches initialized");
 
     return 0;
 }
