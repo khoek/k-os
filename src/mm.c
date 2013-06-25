@@ -127,7 +127,7 @@ void page_build_directory(uint32_t directory[]) {
         directory[i] = 0;
     }
 
-    for (uint32_t i = NUM_ENTRIES - KERNEL_TABLES; i < NUM_ENTRIES; i++) {
+    for (uint32_t i = 0; i < KERNEL_TABLES; i++) {
         directory[i + (VIRTUAL_BASE / PAGE_SIZE / NUM_ENTRIES)] = (((uint32_t) &kernel_page_tables[i]) - VIRTUAL_BASE) | PRESENT | WRITABLE;
     }
 }
