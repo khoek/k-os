@@ -1,5 +1,11 @@
 #ifndef KERNEL_INT_H
-#define	KERNEL_INT_H
+#define KERNEL_INT_H
+
+#define MIN_INT (-2147483648)
+#define MAX_INT 2147483647
+
+#define MIN_UINT 0
+#define MAX_UINT 4294967295
 
 typedef signed char             int8_t;
 typedef signed short            int16_t;
