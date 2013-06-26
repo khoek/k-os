@@ -1,9 +1,12 @@
 #include <stddef.h>
 
+#include "int.h"
 #include "string.h"
+#include "printf.h"
 #include "list.h"
 #include "init.h"
 #include "device.h"
+#include "cache.h"
 #include "log.h"
 
 static node_t root = {
@@ -11,6 +14,11 @@ static node_t root = {
     .parent = NULL,
     .children = LIST_MAKE_HEAD(root.children)
 };
+
+LIST_HEAD(buses);
+
+static uint32_t next_id = 0;
+static const char *generic_name = "dev";
 
 static inline void node_init(node_t *node) {
     list_init(&node->children);
@@ -28,25 +36,50 @@ void register_bus(bus_t *bus, char *name) {
 
     list_init(&bus->drivers);
     list_init(&bus->devices);
+    
+    list_add(&bus->list, &buses);
 }
 
 void register_driver(driver_t *driver) {
     list_add(&driver->list, &driver->bus->drivers);
+    
+    bus_t *bus;
+    LIST_FOR_EACH_ENTRY(bus, &buses, list) {
+        device_t *device;
+        LIST_FOR_EACH_ENTRY(device, &bus->unident_devices, list) {
+            if(device->bus->match(device, driver)) {        
+                device->driver = driver;
+                device->node.name = device->driver->name(device);
+                list_move(&device->list, &device->bus->devices);
+                
+                driver->enable(device);
+            }    
+        }
+    }
 }
 
 void register_device(device_t *device, node_t *parent) {
     node_init(&device->node);
     node_add(&device->node, parent);
-
-    list_add(&device->list, &device->bus->devices);
     
-    device->driver = device->bus->match(device);
+    device->driver = NULL;
 
-    if(device->driver) {
-        device->node.name = device->driver->name(device);
-        device->driver->enable(device);
-    } else {
-        //TODO handle unidentified devices
+    driver_t *driver;
+    LIST_FOR_EACH_ENTRY(driver, &device->bus->drivers, list) {
+        if(device->bus->match(device, driver)) {        
+            device->driver = driver;
+            device->node.name = device->driver->name(device);
+            list_add(&device->list, &device->bus->devices);
+            
+            driver->enable(device);
+        }    
+    }
+    
+    if(!device->driver) {
+        device->node.name = kmalloc(STRLEN(generic_name) + STRLEN(STR(MAX_UINT)) + 1);
+        sprintf(device->node.name, "%s%u", generic_name, next_id++);
+        
+        list_add(&device->list, &device->bus->unident_devices);
     }
 }
 
@@ -69,34 +102,10 @@ static void traverse_log(node_t *node, uint32_t depth) {
     }
 }
 
-static void traverse_enable(node_t *node) {
-    device_t *device = containerof(node, device_t, node);
-    device->driver = device->bus->match(device);
-
-    if(device->driver) {
-        device->node.name = device->driver->name(device);
-        device->driver->enable(device);
-    } else {
-        //TODO handle unidentified devices
-    }
-
-    node_t *child;
-    LIST_FOR_EACH_ENTRY(child, &node->children, list) {
-        traverse_enable(child);
-    }
-}
-
 static INITCALL device_init() {
-    node_t *bus;
-    LIST_FOR_EACH_ENTRY(bus, &root.children, list) {
-        node_t *device;
-        LIST_FOR_EACH_ENTRY(device, &bus->children, list) {
-            traverse_enable(device);
-        }
-    }
-
-    logf("device - list:");
+    logf("device - list start");
     traverse_log(&root, 1);
+    logf("device - list end");
 
     return 0;
 }

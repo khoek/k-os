@@ -1,6 +1,8 @@
 #ifndef KERNEL_DEVICE_H
 #define KERNEL_DEVICE_H
 
+#include <stdbool.h>
+
 #include "list.h"
 
 typedef struct node node_t;
@@ -20,8 +22,9 @@ struct bus {
     node_t node;
     list_head_t drivers;
     list_head_t devices;
+    list_head_t unident_devices;
 
-    driver_t * (*match)(device_t *);
+    bool (*match)(device_t *, driver_t *);
 
     list_head_t list;
 };
