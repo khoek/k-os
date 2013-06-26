@@ -1,5 +1,6 @@
 #include <stddef.h>
 
+#include "string.h"
 #include "list.h"
 #include "init.h"
 #include "device.h"
@@ -10,8 +11,6 @@ static node_t root = {
     .parent = NULL,
     .children = LIST_MAKE_HEAD(root.children)
 };
-
-LIST_HEAD(buses);
 
 static inline void node_init(node_t *node) {
     list_init(&node->children);
@@ -29,8 +28,6 @@ void register_bus(char *name, bus_t *bus) {
 
     list_init(&bus->drivers);
     list_init(&bus->devices);
-
-    list_add(&bus->list, &buses);
 }
 
 void register_driver(driver_t *driver) {
@@ -44,21 +41,53 @@ void register_device(device_t *device) {
     list_add(&device->list, &device->bus->devices);
 }
 
-static INITCALL device_init() {
-    bus_t *bus;
-    LIST_FOR_EACH_ENTRY(bus, &buses, list) {
-        device_t *device;
-        LIST_FOR_EACH_ENTRY(device, &bus->devices, list) {
-            device->driver = bus->match(device);
+static void traverse_log(node_t *node, uint32_t depth) {
+    uint32_t bufflen = depth + strlen(node->name) + 1;
+    char buff[bufflen];
+    char *ptr = buff;
 
-            if(device->driver) {
-                device->node.name = device->driver->name(device);
-                device->driver->enable(device);
-            } else {
-                //TODO handle unidentified devices
-            }
-        };
-    };
+    for(uint32_t i = 0; i < depth; i++) {
+        *ptr++ = '-';
+    }
+
+    strcpy(ptr, node->name);
+    buff[bufflen] = '\0';
+    log(buff);
+
+    node_t *child;
+    LIST_FOR_EACH_ENTRY(child, &node->children, list) {
+        traverse_log(child, depth + 1);
+    }
+}
+
+static void traverse_enable(node_t *node) {
+    device_t *device = containerof(node, device_t, node);
+    device->driver = device->bus->match(device);
+
+    if(device->driver) {
+        device->node.name = device->driver->name(device);
+        device->driver->enable(device);
+    } else {
+        //TODO handle unidentified devices
+    }
+
+    node_t *child;
+    LIST_FOR_EACH_ENTRY(child, &node->children, list) {
+        traverse_enable(child);
+    }
+}
+
+static INITCALL device_init() {
+    node_t *bus;
+    LIST_FOR_EACH_ENTRY(bus, &root.children, list) {
+        node_t *device;
+        LIST_FOR_EACH_ENTRY(device, &bus->children, list) {
+            traverse_enable(device);
+        }
+    }
+
+    logf("device - list:");
+    traverse_log(&root, 1);
 
     return 0;
 }
