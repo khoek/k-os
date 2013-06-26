@@ -17,6 +17,8 @@
 
 #define BIT_SET(flags, mask) (((uint32_t) flags) & ((uint32_t) mask))
 
+#define STRLEN(s) ((sizeof(s) / sizeof(s[0])) - 1)
+
 #ifndef offsetof
 #define offsetof(type, member) ((unsigned int) &(((type *) 0)->member))
 #endif
