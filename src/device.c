@@ -21,7 +21,7 @@ static inline void node_add(node_t *child, node_t *parent) {
     child->parent = parent;
 }
 
-void register_bus(char *name, bus_t *bus) {
+void register_bus(bus_t *bus, char *name) {
     bus->node.name = name;
     node_init(&bus->node);
     node_add(&bus->node, &root);
@@ -34,11 +34,20 @@ void register_driver(driver_t *driver) {
     list_add(&driver->list, &driver->bus->drivers);
 }
 
-void register_device(device_t *device) {
+void register_device(device_t *device, node_t *parent) {
     node_init(&device->node);
-    node_add(&device->node, &device->bus->node);
+    node_add(&device->node, parent);
 
     list_add(&device->list, &device->bus->devices);
+    
+    device->driver = device->bus->match(device);
+
+    if(device->driver) {
+        device->node.name = device->driver->name(device);
+        device->driver->enable(device);
+    } else {
+        //TODO handle unidentified devices
+    }
 }
 
 static void traverse_log(node_t *node, uint32_t depth) {

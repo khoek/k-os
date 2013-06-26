@@ -46,8 +46,13 @@ struct device {
     list_head_t list;
 };
 
-void register_bus(char *name, bus_t *bus);
+//requires valid device.match
+void register_bus(bus_t *bus, char *name);
+
+//requires valid driver.bus, driver.enable, driver.disable, driver.destroy
 void register_driver(driver_t *driver);
-void register_device(device_t *device);
+
+//requires valid device.bus
+void register_device(device_t *device, node_t *parent);
 
 #endif
