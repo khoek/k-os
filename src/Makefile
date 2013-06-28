@@ -5,10 +5,23 @@ ASFLAGS=--32 -g
 CCFLAGS=-Wall -g -Wextra -Werror -m32 -I../inc -std=gnu99 \
         -nostdlib -nostartfiles -nodefaultlibs -ffreestanding -c
 
-OBJS=	loader.o string.o printf.o rand.o kmain.o debug.o panic.o console.o \
-        log.o gdt.o registers.o idt.o isr.o module.o mm.o cache.o device.o pit.o \
-        tsc.o syscall.o keyboard.o pci.o ide.o ahci.o net.o ethernet.o vfs.o task.o cpl.o \
-        binfmt/binfmt.o binfmt/binfmt_elf.o shell.o erasure_tool.o
+OBJS=	loader.o \
+        init/kmain.o init/module.o \
+        lib/string.o lib/printf.o lib/rand.o \
+        bug/debug.o bug/panic.o \
+        out/console.o out/log.o \
+        arch/gdt.o arch/registers.o arch/idt.o arch/isr.o arch/pit.o arch/tsc.o arch/cpl.o \
+        mm/mm.o mm/cache.o \
+        device/device.o \
+        task/task.o task/syscall.o \
+        net/ethernet.o \
+        fs/vfs.o \
+        fs/binfmt/binfmt.o fs/binfmt/binfmt_elf.o \
+        driver/bus/pci.o \
+        driver/input/keyboard.o \
+        driver/disk/ide.o driver/disk/ahci.o \
+        driver/net/e1000.o \
+        misc/shell.o misc/erasure_tool.o
 
 all: kernel.elf
 
