@@ -14,7 +14,7 @@
 #define CACHE_FLAG_PERM (1 << 0)
 
 #define KALLOC_SHIFT_MIN 3
-#define KALLOC_SHIFT_MAX 11
+#define KALLOC_SHIFT_MAX 12
 #define KALLOC_CACHES (KALLOC_SHIFT_MAX + 1)
 
 typedef struct cache_page cache_page_t;
