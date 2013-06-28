@@ -18,9 +18,14 @@ typedef struct pci_ident {
     uint16_t vendor, device;
 } pci_ident_t;
 
+typedef struct pci_loc {
+    uint8_t bus, device, function;
+} pci_loc_t;
+
 typedef struct pci_device {
     device_t device;
     pci_ident_t ident;
+    pci_loc_t loc;
     uint8_t interrupt;
     uint32_t bar[6];
 } pci_device_t;

@@ -1,4 +1,5 @@
 #include "common.h"
+#include "printf.h"
 #include "init.h"
 #include "pci.h"
 #include "panic.h"
@@ -85,7 +86,7 @@ static bool pci_match(device_t *device, driver_t *driver) {
     return false;
 }
 
-static bus_t pci_bus = {
+bus_t pci_bus = {
     .match = pci_match
 };
 
@@ -117,6 +118,10 @@ static void probe_device(uint8_t bus, uint8_t device) {
 static void probe_function(uint8_t bus, uint8_t device, uint8_t function) {
     pci_device_t *dev = kmalloc(sizeof(pci_device_t));
 
+    dev->loc.bus = bus;
+    dev->loc.device = device;
+    dev->loc.function = function;
+    
     dev->device.bus = &pci_bus;
 
     dev->ident.vendor = pci_read_word(bus, device, function, REG_WORD_VENDOR);
@@ -141,8 +146,59 @@ static void probe_function(uint8_t bus, uint8_t device, uint8_t function) {
     register_device(&dev->device, &pci_bus.node);
 }
 
+static char * bridge_name(device_t UNUSED(*device)) {
+    static int next_id = 0;
+
+    char *name = kmalloc(STRLEN("bridge") + STRLEN(STR(MAX_UINT)) + 1);
+    sprintf(name, "bridge%u", next_id++);
+        
+    return name;
+}
+
+static bool bridge_probe(device_t *UNUSED(device)) {
+    return true;
+}
+
+static void bridge_enable(device_t *device) {
+    pci_device_t *pci_device = containerof(device, pci_device_t, device);
+        
+    probe_bus(pci_read_byte(pci_device->loc.bus, pci_device->loc.device, pci_device->loc.function, REG_BYTE_2NDBUS));
+}
+
+static void bridge_disable(device_t UNUSED(*device)) {
+}
+
+static void bridge_destroy(device_t UNUSED(*device)) {
+}
+
+static pci_ident_t bridge_idents[] = {
+    {
+        .vendor =     PCI_ID_ANY,
+        .device =     PCI_ID_ANY,
+        .class  =     0x06040000,
+        .class_mask = 0xFFFF0000
+    }    
+};
+
+static pci_driver_t bridge_driver = {
+    .driver = {  
+        .bus = &pci_bus,
+      
+        .name = bridge_name,
+        .probe = bridge_probe,
+        
+        .enable = bridge_enable,
+        .disable = bridge_disable,
+        .destroy = bridge_destroy
+    },
+    
+    .supported = bridge_idents,
+    .supported_len = sizeof(bridge_idents) / sizeof(pci_ident_t)
+};
+
 static INITCALL pci_init() {
     register_bus(&pci_bus, "pci_bus");
+    register_driver(&bridge_driver.driver);
 
     return 0;
 }
