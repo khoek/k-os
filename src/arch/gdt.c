@@ -75,4 +75,4 @@ static INITCALL gdt_init() {
     return idt_init();
 }
 
-postarch_initcall(gdt_init);
+arch_initcall(gdt_init);

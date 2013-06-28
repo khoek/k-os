@@ -106,9 +106,7 @@ void interrupt_dispatch(interrupt_t *interrupt) {
         return;
     }
 
-    if (handlers[interrupt->vector - PIC_MASTER_OFFSET] == NULL) {
-        panicf("no registered handler for interrupt %u", interrupt->vector);
-    } else {
+    if (handlers[interrupt->vector - PIC_MASTER_OFFSET]) {
         handlers[interrupt->vector - PIC_MASTER_OFFSET](interrupt);
     }
 
