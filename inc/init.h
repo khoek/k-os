@@ -27,11 +27,12 @@ extern initcall_t initcall_start, initcall_end;
 #define early_initcall(fn)    DEFINE_INITCALL(0, fn)
 #define pure_initcall(fn)     DEFINE_INITCALL(1, fn)
 #define core_initcall(fn)     DEFINE_INITCALL(2, fn)
-#define arch_initcall(fn)     DEFINE_INITCALL(3, fn)
-#define postarch_initcall(fn) DEFINE_INITCALL(4, fn)
-#define subsys_initcall(fn)   DEFINE_INITCALL(5, fn)
-#define device_initcall(fn)   DEFINE_INITCALL(6, fn)
-#define module_initcall(fn)   DEFINE_INITCALL(7, fn)
+#define postcore_initcall(fn) DEFINE_INITCALL(3, fn)
+#define arch_initcall(fn)     DEFINE_INITCALL(4, fn)
+#define postarch_initcall(fn) DEFINE_INITCALL(5, fn)
+#define subsys_initcall(fn)   DEFINE_INITCALL(6, fn)
+#define device_initcall(fn)   DEFINE_INITCALL(7, fn)
+#define module_initcall(fn)   DEFINE_INITCALL(8, fn)
 
 #endif
 
