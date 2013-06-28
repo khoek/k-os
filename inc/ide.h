@@ -9,8 +9,6 @@
 #define IDE_STRINGS         1
 #define IDE_STRING_MODEL    0
 
-void __init ide_init(pci_device_t dev);
-
 bool ide_device_is_present(uint8_t device);
 int8_t ide_device_get_type(uint8_t device);
 uint32_t ide_device_get_size(uint8_t device);

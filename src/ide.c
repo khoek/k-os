@@ -2,14 +2,17 @@
 
 #include "common.h"
 #include "debug.h"
+#include "printf.h"
 #include "init.h"
 #include "ide.h"
 #include "pci.h"
 #include "asm.h"
 #include "panic.h"
+#include "device.h"
 #include "pit.h" //FIXME sleep(1) should be microseconds not hundredths of a second
 #include "idt.h"
 #include "mm.h"
+#include "cache.h"
 #include "log.h"
 
 #define TYPE_PATA               0x00
@@ -523,7 +526,66 @@ static int32_t pata_access(bool write, bool same, uint8_t drive, uint64_t numsec
     return transfered;
 }
 
-void __init ide_init(pci_device_t dev) {
+static void ide_bounds_check(uint8_t drive, uint64_t numsects, uint32_t lba) {
+    BUG_ON(drive > 3 || ide_devices[drive].present == 0);
+    BUG_ON(((lba + numsects) > ide_devices[drive].size) && (ide_devices[drive].type == TYPE_PATA));
+}
+
+int32_t ide_read_sectors(uint8_t drive, uint64_t numsects, uint32_t lba, void * edi) {
+    ide_bounds_check(drive, numsects, lba);
+    if (ide_devices[drive].type == TYPE_PATA)
+        return pata_access(ATA_READ, false, drive, numsects, lba, edi);
+    else if (ide_devices[drive].type == TYPE_PATAPI)
+        //for (i = 0; i < numsects; i++)
+        return 0;
+    else
+        panic("IDE - unknown device type");
+        //panic("IDE ATAPI read not supported");
+        //err = patapi_access_read(drive, lba + i, 1, es, edi + (i*2048));
+}
+
+int32_t ide_write_sectors(uint8_t drive, uint64_t numsects, uint32_t lba, void * edi) {
+    ide_bounds_check(drive, numsects, lba);
+
+    if (ide_devices[drive].type == TYPE_PATA)
+        return pata_access(ATA_WRITE, false, drive, numsects, lba, edi);
+    else if (ide_devices[drive].type == TYPE_PATAPI)
+        return 0;
+        //panic("IDE ATAPI write not supported");
+    else
+        panic("IDE - unknown device type");
+}
+
+int32_t ide_write_sectors_same(uint8_t drive, uint64_t numsects, uint32_t lba, void * edi) {
+    ide_bounds_check(drive, numsects, lba);
+
+    if (ide_devices[drive].type == TYPE_PATA)
+        return pata_access(ATA_WRITE, true, drive, numsects, lba, edi);
+    else if (ide_devices[drive].type == TYPE_PATAPI)
+        return 0;
+        //panic("IDE ATAPI write not supported");
+    else
+        panic("IDE - unknown device type");
+}
+
+static char * bridge_name_prefix = "ide";
+
+static char * ide_name(device_t UNUSED(*device)) {
+    static int next_id = 0;
+
+    char *name = kmalloc(STRLEN(bridge_name_prefix) + STRLEN(STR(MAX_UINT)) + 1);
+    sprintf(name, "%s%u", bridge_name_prefix, next_id++);
+        
+    return name;
+}
+
+static bool ide_probe(device_t *UNUSED(device)) {
+    return true;
+}
+
+static void ide_enable(device_t *device) {
+    pci_device_t *pci_device = containerof(device, pci_device_t, device);
+        
     static bool once = false;
     if(once) return;
     once = true;
@@ -532,14 +594,14 @@ void __init ide_init(pci_device_t dev) {
     idt_register(47, false, handle_irq_secondary);
 
     // 1- Detect I/O Ports which interface IDE Controller:
-    channels[ATA_PRIMARY  ].base  = (BAR_ADDR_32(dev.bar[0])) + 0x1F0 * (!dev.bar[0]);
-    channels[ATA_PRIMARY  ].ctrl  = (BAR_ADDR_32(dev.bar[1])) + 0x3F4 * (!dev.bar[1]);
-    channels[ATA_PRIMARY  ].bmide = BAR_ADDR_32((dev.bar[4])) + 0; // Bus Master IDE
+    channels[ATA_PRIMARY  ].base  = (BAR_ADDR_32(pci_device->bar[0])) + 0x1F0 * (!pci_device->bar[0]);
+    channels[ATA_PRIMARY  ].ctrl  = (BAR_ADDR_32(pci_device->bar[1])) + 0x3F4 * (!pci_device->bar[1]);
+    channels[ATA_PRIMARY  ].bmide = BAR_ADDR_32((pci_device->bar[4])) + 0; // Bus Master IDE
     channels[ATA_PRIMARY  ].prdt  = alloc_page(0); //FIXME? page is never freed, reserves entire page for PRDT
 
-    channels[ATA_SECONDARY].base  = BAR_ADDR_32(dev.bar[2]) + 0x170 * (!dev.bar[2]);
-    channels[ATA_SECONDARY].ctrl  = BAR_ADDR_32(dev.bar[3]) + 0x374 * (!dev.bar[3]);
-    channels[ATA_SECONDARY].bmide = BAR_ADDR_32(dev.bar[4]) + 8; // Bus Master IDE
+    channels[ATA_SECONDARY].base  = BAR_ADDR_32(pci_device->bar[2]) + 0x170 * (!pci_device->bar[2]);
+    channels[ATA_SECONDARY].ctrl  = BAR_ADDR_32(pci_device->bar[3]) + 0x374 * (!pci_device->bar[3]);
+    channels[ATA_SECONDARY].bmide = BAR_ADDR_32(pci_device->bar[4]) + 8; // Bus Master IDE
     channels[ATA_SECONDARY].prdt  = alloc_page(0); //FIXME? page is never freed, reserves entire page for PRDT
 
     // 2- Disable IRQs:
@@ -547,11 +609,11 @@ void __init ide_init(pci_device_t dev) {
     ide_write(ATA_SECONDARY, ATA_REG_CONTROL, ATA_IRQ_OFF);
 
     // 3- Detect ATA-ATAPI Devices:
-    int device = 0;
+    int d = 0;
     for (uint8_t i = 0; i < 2; i++) {
         for (uint8_t j = 0; j < 2; j++) {
             uint8_t err = 0, type = TYPE_PATA, status;
-            ide_devices[device].present = 0; // Assuming that no drive here.
+            ide_devices[d].present = false; // Assuming that no drive here.
 
             // (I) Select Drive:
             ide_write(i, ATA_REG_HDDEVSEL, 0xA0 | (j << 4)); // Select Drive.
@@ -561,10 +623,10 @@ void __init ide_init(pci_device_t dev) {
             ide_write(i, ATA_REG_COMMAND, ATA_CMD_IDENTIFY);
             sleep(1); // This function should be implemented in your OS. which waits for 1 ms.
                      // it is based on System Timer Device Driver.
-
+                     
             // (III) Polling:
             if (ide_read(i, ATA_REG_STATUS) == 0) continue; // If Status = 0, No Device.
-
+            
             while(1) {
                 status = ide_read(i, ATA_REG_STATUS);
                 if ((status & ATA_SR_ERR)) {err = 1; break;} // If Err, Device is not ATA.
@@ -591,18 +653,18 @@ void __init ide_init(pci_device_t dev) {
             ide_read_buffer(i, ATA_REG_DATA, ide_buf, 128);
 
             // (VI) Read Device Parameters:
-            ide_devices[device].present     = true;
-            ide_devices[device].type        = type;
-            ide_devices[device].channel     = i;
-            ide_devices[device].drive       = j;
-            ide_devices[device].signature   = *((uint16_t *) (ide_buf + ATA_IDENT_DEVICETYPE));
-            ide_devices[device].features     = *((uint16_t *) (ide_buf + ATA_IDENT_FEATURES));
-            ide_devices[device].commandSets = *((uint32_t *) (ide_buf + ATA_IDENT_COMMANDSETS));
+            ide_devices[d].present     = true;
+            ide_devices[d].type        = type;
+            ide_devices[d].channel     = i;
+            ide_devices[d].drive       = j;
+            ide_devices[d].signature   = *((uint16_t *) (ide_buf + ATA_IDENT_DEVICETYPE));
+            ide_devices[d].features     = *((uint16_t *) (ide_buf + ATA_IDENT_FEATURES));
+            ide_devices[d].commandSets = *((uint32_t *) (ide_buf + ATA_IDENT_COMMANDSETS));
 
             //FIXME make this work! :D (autodecteting the best hdd speeds and setting them
 
             int8_t mode = -1;
-            if (ide_devices[device].features & ATA_FEATURE_DMA) {
+            if (ide_devices[d].features & ATA_FEATURE_DMA) {
                 if ((((uint16_t *) ide_buf)[ATA_IDENT_VALID_IDENT]) & ATA_VALID_IDENT_UDMA) {
                     uint8_t supported = ((uint16_t *) ide_buf)[ATA_IDENT_UDMA];
                     for (mode = 5; mode >= 0; mode--) {
@@ -658,23 +720,23 @@ void __init ide_init(pci_device_t dev) {
             }
 
             // (VII) Get Size:
-            if (ide_devices[device].commandSets & (1 << 26)) {
+            if (ide_devices[d].commandSets & (1 << 26)) {
                 // Device uses 48-Bit Addressing:
-                ide_devices[device].size = *((uint32_t *)(ide_buf + ATA_IDENT_MAX_LBA_EXT));
+                ide_devices[d].size = *((uint32_t *)(ide_buf + ATA_IDENT_MAX_LBA_EXT));
             } else {
                 // Device uses CHS or 28-bit Addressing:
-                ide_devices[device].size = *((uint32_t *)(ide_buf + ATA_IDENT_MAX_LBA));
+                ide_devices[d].size = *((uint32_t *)(ide_buf + ATA_IDENT_MAX_LBA));
             }
 
             // (VIII) String indicates model of device (like Western Digital HDD and SONY DVD-RW...):
             for(uint8_t k = 0; k < 40; k += 2) {
-                ide_devices[device].model[k] = ide_buf[ATA_IDENT_MODEL + k + 1];
-                ide_devices[device].model[k + 1] = ide_buf[ATA_IDENT_MODEL + k];
+                ide_devices[d].model[k] = ide_buf[ATA_IDENT_MODEL + k + 1];
+                ide_devices[d].model[k + 1] = ide_buf[ATA_IDENT_MODEL + k];
             }
 
-            ide_devices[device].model[40] = 0; // Terminate String.
+            ide_devices[d].model[40] = 0; // Terminate String.
 
-            device++;
+            d++;
         }
     }
 
@@ -688,44 +750,41 @@ void __init ide_init(pci_device_t dev) {
     }
 }
 
-static void ide_bounds_check(uint8_t drive, uint64_t numsects, uint32_t lba) {
-    BUG_ON(drive > 3 || ide_devices[drive].present == 0);
-    BUG_ON(((lba + numsects) > ide_devices[drive].size) && (ide_devices[drive].type == TYPE_PATA));
+static void ide_disable(device_t UNUSED(*device)) {
 }
 
-int32_t ide_read_sectors(uint8_t drive, uint64_t numsects, uint32_t lba, void * edi) {
-    ide_bounds_check(drive, numsects, lba);
-    if (ide_devices[drive].type == TYPE_PATA)
-        return pata_access(ATA_READ, false, drive, numsects, lba, edi);
-    else if (ide_devices[drive].type == TYPE_PATAPI)
-        //for (i = 0; i < numsects; i++)
-        return 0;
-    else
-        panic("IDE - unknown device type");
-        //panic("IDE ATAPI read not supported");
-        //err = patapi_access_read(drive, lba + i, 1, es, edi + (i*2048));
+static void ide_destroy(device_t UNUSED(*device)) {
 }
 
-int32_t ide_write_sectors(uint8_t drive, uint64_t numsects, uint32_t lba, void * edi) {
-    ide_bounds_check(drive, numsects, lba);
+static pci_ident_t ide_idents[] = {
+    {
+        .vendor =     PCI_ID_ANY,
+        .device =     PCI_ID_ANY,
+        .class  =     0x01010000,
+        .class_mask = 0xFFFF0000
+    }    
+};
 
-    if (ide_devices[drive].type == TYPE_PATA)
-        return pata_access(ATA_WRITE, false, drive, numsects, lba, edi);
-    else if (ide_devices[drive].type == TYPE_PATAPI)
-        return 0;
-        //panic("IDE ATAPI write not supported");
-    else
-        panic("IDE - unknown device type");
+static pci_driver_t ide_driver = {
+    .driver = {  
+        .bus = &pci_bus,
+      
+        .name = ide_name,
+        .probe = ide_probe,
+        
+        .enable = ide_enable,
+        .disable = ide_disable,
+        .destroy = ide_destroy
+    },
+    
+    .supported = ide_idents,
+    .supported_len = sizeof(ide_idents) / sizeof(pci_ident_t)
+};
+
+static INITCALL ide_init() {
+    register_driver(&ide_driver.driver);
+
+    return 0;
 }
 
-int32_t ide_write_sectors_same(uint8_t drive, uint64_t numsects, uint32_t lba, void * edi) {
-    ide_bounds_check(drive, numsects, lba);
-
-    if (ide_devices[drive].type == TYPE_PATA)
-        return pata_access(ATA_WRITE, true, drive, numsects, lba, edi);
-    else if (ide_devices[drive].type == TYPE_PATAPI)
-        return 0;
-        //panic("IDE ATAPI write not supported");
-    else
-        panic("IDE - unknown device type");
-}
+postcore_initcall(ide_init);
