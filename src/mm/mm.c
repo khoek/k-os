@@ -198,11 +198,11 @@ void free_page(page_t *page) {
 }
 
 static INITCALL mm_init() {
-    kernel_start = ((uint32_t) & image_start);
-    kernel_end = ((uint32_t) & image_end);
+    kernel_start = ((uint32_t) &image_start);
+    kernel_end = ((uint32_t) &image_end);
 
-    for (uint32_t i = 0; i < module_count(); i++) {
-        uint32_t end = module_get(i)->end - 1;
+    for (uint32_t i = 0; i < multiboot_info->mods_count; i++) {
+        uint32_t end = multiboot_info->mods[i].end - 1;
         if (kernel_end < end) {
             kernel_end = end;
         }
@@ -280,6 +280,7 @@ static INITCALL mm_init() {
     console_map_virtual();
     debug_map_virtual();
     multiboot_info = (multiboot_info_t *) mm_map(multiboot_info);
+    multiboot_info->mods = (multiboot_module_t *) mm_map(multiboot_info->mods);
     mmap = (multiboot_memory_map_t *) mm_map(mmap);
 
     for (uint32_t page = 0; page < NUM_ENTRIES * NUM_ENTRIES; page++) {

@@ -72,10 +72,9 @@ binfmt_t elf = {
 };
 
 INITCALL elf_register_binfmt() {
-    asm volatile ("xchg %%bx, %%bx"::);
-    //binfmt_register(&elf);
+    binfmt_register(&elf);
 
     return 0;
 }
 
-//core_initcall(elf_register_binfmt);
+core_initcall(elf_register_binfmt);
