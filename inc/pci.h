@@ -28,7 +28,7 @@ typedef struct pci_device {
     pci_loc_t loc;
     uint8_t interrupt;
     uint32_t bar[6];
-    
+
     void *private;
 } pci_device_t;
 

@@ -178,7 +178,7 @@ static uint16_t net_eeprom_read(net_825xx_t *net_device, uint8_t addr) {
     return (uint16_t) ((tmp >> 16) & 0xFFFF);
 }
 
-static void net_825xx_rx_poll(net_825xx_t *net_device) {    
+static void net_825xx_rx_poll(net_825xx_t *net_device) {
     while(net_device->rx_desc[net_device->rx_front].status & RX_DESC_STATUS_DD) {
         if(!(net_device->rx_desc[net_device->rx_front].status & RX_DESC_STATUS_EOP)) {
             logf("net - rx: no EOP support, dropping");
@@ -198,7 +198,7 @@ static void net_825xx_rx_poll(net_825xx_t *net_device) {
 
 static void handle_network(interrupt_t UNUSED(*interrupt)) {
     net_825xx_t *net_device;
-    LIST_FOR_EACH_ENTRY(net_device, &net_825xx_devices, list) { 
+    LIST_FOR_EACH_ENTRY(net_device, &net_825xx_devices, list) {
         uint32_t icr = mmio_read(net_device, REG_ICR);
 
         if(icr & ICR_LSC) {
@@ -226,7 +226,7 @@ static void handle_network(interrupt_t UNUSED(*interrupt)) {
 int32_t net_825xx_send(device_t *device, void *packet, uint16_t length) {
     pci_device_t *pci_device = containerof(device, pci_device_t, device);
     net_825xx_t *net_device = pci_device->private;
-    
+
 	net_device->tx_desc[net_device->tx_front].address = (uint32_t) packet;
 	net_device->tx_desc[net_device->tx_front].length = length;
 	net_device->tx_desc[net_device->tx_front].cmd = TX_DESC_CMD_EOP | TX_DESC_CMD_IFCS | TX_DESC_CMD_RS;
@@ -249,20 +249,20 @@ static char * net_825xx_name(device_t UNUSED(*device)) {
 
     char *name = kmalloc(STRLEN(net_825xx_name_prefix) + STRLEN(STR(MAX_UINT)) + 1);
     sprintf(name, "%s%u", net_825xx_name_prefix, next_id++);
-        
+
     return name;
 }
 
 static bool net_825xx_probe(device_t *device) {
-    pci_device_t *pci_device = containerof(device, pci_device_t, device);  
-    
+    pci_device_t *pci_device = containerof(device, pci_device_t, device);
+
     if(pci_device->bar[0] == 0) {
         logf("net - 825xx: invalid BAR0");
         return false;
     }
 
-    logf("net - 825xx interface detected");  
-    
+    logf("net - 825xx interface detected");
+
     net_825xx_t *net_device = kmalloc(sizeof(net_825xx_t));
     pci_device->private = net_device;
 
@@ -354,9 +354,9 @@ static bool net_825xx_probe(device_t *device) {
 static void net_825xx_enable(device_t *device) {
     pci_device_t *pci_device = containerof(device, pci_device_t, device);
     net_825xx_t *net_device = pci_device->private;
-    
+
     list_add(&net_device->list, &net_825xx_devices); //FIXME this is probably not thread-safe
-        
+
     mmio_write(net_device, REG_TCTL, mmio_read(net_device, REG_TCTL) | TCTL_EN | TCTL_PSP);
 	mmio_write(net_device, REG_RCTL, mmio_read(net_device, REG_RCTL) | RCTL_EN);
 }
@@ -364,9 +364,9 @@ static void net_825xx_enable(device_t *device) {
 static void net_825xx_disable(device_t *device) {
     pci_device_t *pci_device = containerof(device, pci_device_t, device);
     net_825xx_t *net_device = pci_device->private;
-    
+
     list_rm(&net_device->list); //FIXME this is probably not thread-safe
-    
+
     mmio_write(net_device, REG_TCTL, mmio_read(net_device, REG_TCTL) & ~(TCTL_EN | TCTL_PSP));
 	mmio_write(net_device, REG_RCTL, mmio_read(net_device, REG_RCTL) & ~(RCTL_EN));
 }
@@ -381,21 +381,21 @@ static pci_ident_t net_825xx_idents[] = {
         .device =     PCI_ID_ANY,
         .class  =     0x02000000,
         .class_mask = 0xFFFF0000
-    }    
+    }
 };
 
 static pci_driver_t net_825xx_driver = {
-    .driver = {  
+    .driver = {
         .bus = &pci_bus,
-      
+
         .name = net_825xx_name,
         .probe = net_825xx_probe,
-        
+
         .enable = net_825xx_enable,
         .disable = net_825xx_disable,
         .destroy = net_825xx_destroy
     },
-    
+
     .supported = net_825xx_idents,
     .supported_len = sizeof(net_825xx_idents) / sizeof(pci_ident_t)
 };

@@ -575,7 +575,7 @@ static char * ide_name(device_t UNUSED(*device)) {
 
     char *name = kmalloc(STRLEN(bridge_name_prefix) + STRLEN(STR(MAX_UINT)) + 1);
     sprintf(name, "%s%u", bridge_name_prefix, next_id++);
-        
+
     return name;
 }
 
@@ -585,7 +585,7 @@ static bool ide_probe(device_t *UNUSED(device)) {
 
 static void ide_enable(device_t *device) {
     pci_device_t *pci_device = containerof(device, pci_device_t, device);
-        
+
     static bool once = false;
     if(once) return;
     once = true;
@@ -623,10 +623,10 @@ static void ide_enable(device_t *device) {
             ide_write(i, ATA_REG_COMMAND, ATA_CMD_IDENTIFY);
             sleep(1); // This function should be implemented in your OS. which waits for 1 ms.
                      // it is based on System Timer Device Driver.
-                     
+
             // (III) Polling:
             if (ide_read(i, ATA_REG_STATUS) == 0) continue; // If Status = 0, No Device.
-            
+
             while(1) {
                 status = ide_read(i, ATA_REG_STATUS);
                 if ((status & ATA_SR_ERR)) {err = 1; break;} // If Err, Device is not ATA.
@@ -762,21 +762,21 @@ static pci_ident_t ide_idents[] = {
         .device =     PCI_ID_ANY,
         .class  =     0x01010000,
         .class_mask = 0xFFFF0000
-    }    
+    }
 };
 
 static pci_driver_t ide_driver = {
-    .driver = {  
+    .driver = {
         .bus = &pci_bus,
-      
+
         .name = ide_name,
         .probe = ide_probe,
-        
+
         .enable = ide_enable,
         .disable = ide_disable,
         .destroy = ide_destroy
     },
-    
+
     .supported = ide_idents,
     .supported_len = sizeof(ide_idents) / sizeof(pci_ident_t)
 };

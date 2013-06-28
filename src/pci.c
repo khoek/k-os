@@ -77,7 +77,7 @@ static bool pci_match(device_t *device, driver_t *driver) {
     for(uint32_t i = 0; i < pci_driver->supported_len; i++)  {
         pci_ident_t *ident = &pci_driver->supported[i];
 
-        if((pci_device->ident.vendor == ident->vendor || ident->vendor == PCI_ID_ANY) 
+        if((pci_device->ident.vendor == ident->vendor || ident->vendor == PCI_ID_ANY)
             && (pci_device->ident.device == ident->device || ident->device == PCI_ID_ANY)
             && !((pci_device->ident.class ^ ident->class) & ident->class_mask)) {
             return true;
@@ -122,7 +122,7 @@ static void probe_function(uint8_t bus, uint8_t device, uint8_t function) {
     dev->loc.bus = bus;
     dev->loc.device = device;
     dev->loc.function = function;
-    
+
     dev->device.bus = &pci_bus;
 
     dev->ident.vendor = pci_read_word(bus, device, function, REG_WORD_VENDOR);
@@ -154,7 +154,7 @@ static char * bridge_name(device_t UNUSED(*device)) {
 
     char *name = kmalloc(STRLEN(bridge_name_prefix) + STRLEN(STR(MAX_UINT)) + 1);
     sprintf(name, "%s%u", bridge_name_prefix, next_id++);
-        
+
     return name;
 }
 
@@ -164,7 +164,7 @@ static bool bridge_probe(device_t *UNUSED(device)) {
 
 static void bridge_enable(device_t *device) {
     pci_device_t *pci_device = containerof(device, pci_device_t, device);
-        
+
     probe_bus(pci_read_byte(pci_device->loc.bus, pci_device->loc.device, pci_device->loc.function, REG_BYTE_2NDBUS));
 }
 
@@ -180,21 +180,21 @@ static pci_ident_t bridge_idents[] = {
         .device =     PCI_ID_ANY,
         .class  =     0x06040000,
         .class_mask = 0xFFFF0000
-    }    
+    }
 };
 
 static pci_driver_t bridge_driver = {
-    .driver = {  
+    .driver = {
         .bus = &pci_bus,
-      
+
         .name = bridge_name,
         .probe = bridge_probe,
-        
+
         .enable = bridge_enable,
         .disable = bridge_disable,
         .destroy = bridge_destroy
     },
-    
+
     .supported = bridge_idents,
     .supported_len = sizeof(bridge_idents) / sizeof(pci_ident_t)
 };

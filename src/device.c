@@ -32,7 +32,7 @@ static inline void node_add(node_t *child, node_t *parent) {
 
 void register_bus(bus_t *bus, char *name) {
     BUG_ON(!bus->match);
-    
+
     bus->node.name = name;
     node_init(&bus->node);
     node_add(&bus->node, &root);
@@ -51,7 +51,7 @@ void register_driver(driver_t *driver) {
     BUG_ON(!driver->enable);
     BUG_ON(!driver->disable);
     BUG_ON(!driver->destroy);
-    
+
     list_add(&driver->list, &driver->bus->drivers);
 
     bus_t *bus;
