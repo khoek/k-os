@@ -66,7 +66,7 @@ void register_device(device_t *device, node_t *parent) {
 
     driver_t *driver;
     LIST_FOR_EACH_ENTRY(driver, &device->bus->drivers, list) {
-        if(device->bus->match(device, driver)) {        
+        if(device->bus->match(device, driver) && driver->probe(device)) {        
             device->driver = driver;
             device->node.name = device->driver->name(device);
             list_add(&device->list, &device->bus->devices);

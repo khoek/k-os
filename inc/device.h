@@ -33,6 +33,8 @@ struct driver {
     bus_t *bus;
 
     char * (*name)(device_t *);
+    
+    bool (*probe)(device_t *);
 
     void (*enable)(device_t *);
     void (*disable)(device_t *);
