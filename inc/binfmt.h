@@ -6,7 +6,7 @@
 
 typedef struct binfmt {
     list_head_t list;
-    
+
     int (*load_exe)(void *start, uint32_t length);
     int (*load_lib)(void *start, uint32_t length);
 } binfmt_t;

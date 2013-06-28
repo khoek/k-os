@@ -28,7 +28,12 @@ static bool elf_header_valid(Elf32_Ehdr *ehdr) {
         && ehdr->e_machine == EM_386;
 }
 
-int load_elf_exe(void *start, uint32_t UNUSED(length)) {
+int load_elf_exe(void *start, uint32_t length) {
+    start = mm_map(start);
+    for(uint32_t mapped = PAGE_SIZE; mapped < length; mapped += PAGE_SIZE) {
+        mm_map((void *) (((uint32_t) start) + mapped));
+    }
+
     Elf32_Ehdr *ehdr = (Elf32_Ehdr *) start;
 
     if(!elf_header_valid(ehdr)) return -1;

@@ -13,10 +13,10 @@ void binfmt_register(binfmt_t *binfmt) {
 
 int binfmt_load_exe(void *start, uint32_t length) {
     binfmt_t *binfmt;
-    LIST_FOR_EACH_ENTRY(binfmt, &binfmts, list) {    
+    LIST_FOR_EACH_ENTRY(binfmt, &binfmts, list) {
         if(!(*binfmt->load_exe)(start, length)) return 0;
     }
-    
+
     return -1;
 }
 
