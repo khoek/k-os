@@ -31,4 +31,6 @@ typedef struct pci_driver {
     uint32_t supported_len;
 } pci_driver_t;
 
+extern bus_t pci_bus;
+
 #endif
