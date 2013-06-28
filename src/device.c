@@ -36,6 +36,7 @@ void register_bus(bus_t *bus, char *name) {
 
     list_init(&bus->drivers);
     list_init(&bus->devices);
+    list_init(&bus->unident_devices);
     
     list_add(&bus->list, &buses);
 }
