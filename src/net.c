@@ -1,9 +1,13 @@
+#include "list.h"
+#include "string.h"
+#include "printf.h"
 #include "common.h"
 #include "init.h"
-#include "string.h"
 #include "net.h"
 #include "asm.h"
 #include "mm.h"
+#include "cache.h"
+#include "device.h"
 #include "pci.h"
 #include "gdt.h"
 #include "idt.h"
@@ -143,180 +147,263 @@ typedef struct tx_desc {
 	uint16_t    special;
 } PACKED tx_desc_t;
 
-static uint8_t mac[6];
-static uint32_t mmio, rx_front, tx_front;
-static uint8_t *rx_buff[NUM_RX_DESCS];
-static page_t *rx_page, *tx_page;
-static rx_desc_t *rx_desc;
-static tx_desc_t *tx_desc;
+typedef struct net_825xx {
+    list_head_t list;
 
-static uint32_t mmio_read(uint32_t reg) {
-    return *(uint32_t *)(mmio + reg);
+    uint8_t mac[6];
+    uint32_t mmio, rx_front, tx_front;
+    uint8_t *rx_buff[NUM_RX_DESCS];
+    page_t *rx_page, *tx_page;
+    rx_desc_t *rx_desc;
+    tx_desc_t *tx_desc;
+} PACKED net_825xx_t;
+
+LIST_HEAD(net_825xx_devices);
+
+static uint32_t mmio_read(net_825xx_t *net_device, uint32_t reg) {
+    return *(uint32_t *)(net_device->mmio + reg);
 }
 
-static void mmio_write(uint32_t reg, uint32_t value) {
-     *(uint32_t *)(mmio + reg) = value;
+static void mmio_write(net_825xx_t *net_device, uint32_t reg, uint32_t value) {
+     *(uint32_t *)(net_device->mmio + reg) = value;
 }
 
-static uint16_t net_eeprom_read(uint8_t addr) {
-    mmio_write(REG_EERD, EERD_START | (((uint32_t) (addr)) << 8));
+static uint16_t net_eeprom_read(net_825xx_t *net_device, uint8_t addr) {
+    mmio_write(net_device, REG_EERD, EERD_START | (((uint32_t) (addr)) << 8));
 
     uint32_t tmp = 0;
-    while(!((tmp = mmio_read(REG_EERD)) & EERD_DONE))
+    while(!((tmp = mmio_read(net_device, REG_EERD)) & EERD_DONE))
         sleep(1);
 
     return (uint16_t) ((tmp >> 16) & 0xFFFF);
 }
 
-static void net_rx_poll() {
-    while(rx_desc[rx_front].status & RX_DESC_STATUS_DD) {
-        if(!(rx_desc[rx_front].status & RX_DESC_STATUS_EOP)) {
+static void net_825xx_rx_poll(net_825xx_t *net_device) {    
+    while(net_device->rx_desc[net_device->rx_front].status & RX_DESC_STATUS_DD) {
+        if(!(net_device->rx_desc[net_device->rx_front].status & RX_DESC_STATUS_EOP)) {
             logf("net - rx: no EOP support, dropping");
-        } else if(rx_desc[rx_front].error) {
-            logf("net - rx: descriptor error (0x%X), dropping", rx_desc[rx_front].error);
-        } else if(rx_desc[rx_front].length < 60) {
-            logf("net - rx: short packet (%u bytes)", rx_desc[rx_front].length);
+        } else if(net_device->rx_desc[net_device->rx_front].error) {
+            logf("net - rx: descriptor error (0x%X), dropping", net_device->rx_desc[net_device->rx_front].error);
+        } else if(net_device->rx_desc[net_device->rx_front].length < 60) {
+            logf("net - rx: short packet (%u bytes)", net_device->rx_desc[net_device->rx_front].length);
         } else {
-            ethernet_handle(rx_buff[rx_front], rx_desc[rx_front].length);
+            ethernet_handle(net_device->rx_buff[net_device->rx_front], net_device->rx_desc[net_device->rx_front].length);
         }
 
-        rx_desc[rx_front].status = 0;
-        rx_front = (rx_front + 1) % NUM_RX_DESCS;
-		mmio_write(REG_RDT, rx_front);
+        net_device->rx_desc[net_device->rx_front].status = 0;
+        net_device->rx_front = (net_device->rx_front + 1) % NUM_RX_DESCS;
+		mmio_write(net_device, REG_RDT, net_device->rx_front);
     }
 }
 
 static void handle_network(interrupt_t UNUSED(*interrupt)) {
-    uint32_t icr = mmio_read(REG_ICR);
+    net_825xx_t *net_device;
+    LIST_FOR_EACH_ENTRY(net_device, &net_825xx_devices, list) { 
+        uint32_t icr = mmio_read(net_device, REG_ICR);
 
-    if(icr & ICR_LSC) {
-        logf("net - link status change! (device is now %s)", mmio_read(REG_STATUS) & STATUS_LU ? "UP" : "DOWN");
-    }
+        if(icr & ICR_LSC) {
+            logf("net - link status change! (device is now %s)", mmio_read(net_device, REG_STATUS) & STATUS_LU ? "UP" : "DOWN");
+        }
 
-    if(icr & ICR_TXDW) {
-        logf("net - tx descriptor writeback");
-    }
+        if(icr & ICR_TXDW) {
+            logf("net - tx descriptor writeback");
+        }
 
-    if(icr & ICR_TXQE) {
-        logf("net - tx queue empty");
-    }
+        if(icr & ICR_TXQE) {
+            logf("net - tx queue empty");
+        }
 
-    if(icr & ICR_RXT) {
-        net_rx_poll();
-    }
+        if(icr & ICR_RXT) {
+            net_825xx_rx_poll(net_device);
+        }
 
-    if(icr & ICR_PHY) {
-        logf("net - PHY int");
+        if(icr & ICR_PHY) {
+            logf("net - PHY int");
+        }
     }
 }
 
-int32_t net_send(void *packet, uint16_t length) {
-	tx_desc[tx_front].address = (uint32_t) packet;
-	tx_desc[tx_front].length = length;
-	tx_desc[tx_front].cmd = TX_DESC_CMD_EOP | TX_DESC_CMD_IFCS | TX_DESC_CMD_RS;
+int32_t net_825xx_send(device_t *device, void *packet, uint16_t length) {
+    pci_device_t *pci_device = containerof(device, pci_device_t, device);
+    net_825xx_t *net_device = pci_device->private;
+    
+	net_device->tx_desc[net_device->tx_front].address = (uint32_t) packet;
+	net_device->tx_desc[net_device->tx_front].length = length;
+	net_device->tx_desc[net_device->tx_front].cmd = TX_DESC_CMD_EOP | TX_DESC_CMD_IFCS | TX_DESC_CMD_RS;
 
-	uint32_t old_tx_front = tx_front;
+	uint32_t old_tx_front = net_device->tx_front;
 
-	tx_front = (tx_front + 1) % NUM_TX_DESCS;
-	mmio_write(REG_TDT, tx_front);
+	net_device->tx_front = (net_device->tx_front + 1) % NUM_TX_DESCS;
+	mmio_write(net_device, REG_TDT, net_device->tx_front);
 
-	while(!(tx_desc[old_tx_front].sta & 0xF))
+	while(!(net_device->tx_desc[old_tx_front].sta & 0xF))
 	    sleep(1);
 
-	return tx_desc[old_tx_front].sta & TX_DESC_STATUS_DD ? 0 : -1;
+	return net_device->tx_desc[old_tx_front].sta & TX_DESC_STATUS_DD ? 0 : -1;
 }
 
-void __init net_825xx_init(pci_device_t dev) {
-    if(dev.bar[0] == 0) {
-        logf("net: 825xx - invalid BAR0");
-        return;
+static char * net_825xx_name_prefix = "net_825xx_";
+
+static char * net_825xx_name(device_t UNUSED(*device)) {
+    static int next_id = 0;
+
+    char *name = kmalloc(STRLEN(net_825xx_name_prefix) + STRLEN(STR(MAX_UINT)) + 1);
+    sprintf(name, "%s%u", net_825xx_name_prefix, next_id++);
+        
+    return name;
+}
+
+static bool net_825xx_probe(device_t *device) {
+    pci_device_t *pci_device = containerof(device, pci_device_t, device);  
+    
+    if(pci_device->bar[0] == 0) {
+        logf("net - 825xx: invalid BAR0");
+        return false;
     }
 
-    logf("net - 825xx interface detected");
+    logf("net - 825xx interface detected");  
+    
+    net_825xx_t *net_device = kmalloc(sizeof(net_825xx_t));
+    pci_device->private = net_device;
 
-    mmio = (uint32_t) mm_map((void *) BAR_ADDR_32(dev.bar[0]));
+    net_device->mmio = (uint32_t) mm_map((void *) BAR_ADDR_32(pci_device->bar[0]));
 
     //FIXME this assumes that mm_map will map the pages configuously, this should not be relied upon!
     for(uint32_t addr = PAGE_SIZE; addr < (DIV_DOWN(REG_LAST, PAGE_SIZE) * PAGE_SIZE); addr += PAGE_SIZE) {
-        mm_map((void *) (addr + BAR_ADDR_32(dev.bar[0])));
+        mm_map((void *) (addr + BAR_ADDR_32(pci_device->bar[0])));
     }
 
-    idt_register(IRQ_OFFSET + dev.interrupt, CPL_KERNEL, handle_network);
+    idt_register(IRQ_OFFSET + pci_device->interrupt, CPL_KERNEL, handle_network);
 
-    ((uint16_t *) mac)[0] = net_eeprom_read(0);
-    ((uint16_t *) mac)[1] = net_eeprom_read(1);
-    ((uint16_t *) mac)[2] = net_eeprom_read(2);
+    ((uint16_t *) net_device->mac)[0] = net_eeprom_read(net_device, 0);
+    ((uint16_t *) net_device->mac)[1] = net_eeprom_read(net_device, 1);
+    ((uint16_t *) net_device->mac)[2] = net_eeprom_read(net_device, 2);
 
-    logf("net - MAC %X:%X:%X:%X:%X:%X", mac[0], mac[1], mac[2], mac[3], mac[4], mac[5]);
+    logf("net - MAC %X:%X:%X:%X:%X:%X", net_device->mac[0], net_device->mac[1], net_device->mac[2], net_device->mac[3], net_device->mac[4], net_device->mac[5]);
 
-    if(!(mmio_read(REG_STATUS) & STATUS_LU)) {
-        mmio_write(REG_CTRL, mmio_read(REG_CTRL) | CTRL_SLU);
+    if(!(mmio_read(net_device, REG_STATUS) & STATUS_LU)) {
+        mmio_write(net_device, REG_CTRL, mmio_read(net_device, REG_CTRL) | CTRL_SLU);
     }
 
     sleep(1);
 
-    logf("net - link is %s", mmio_read(REG_STATUS) & STATUS_LU ? "UP" : "DOWN");
+    logf("net - link is %s", mmio_read(net_device, REG_STATUS) & STATUS_LU ? "UP" : "DOWN");
 
     for(uint16_t i = 0; i < 128; i++) {
-        mmio_write(REG_MTA + (i * 4), 0);
+        mmio_write(net_device, REG_MTA + (i * 4), 0);
     }
 
     //enable all interrupts (and clear existing pending ones)
-    mmio_write(REG_IMS, 0x1F6DC); //this could be a 0xFFFFF but that sets some reserved bits
-    mmio_read(REG_ICR);
+    mmio_write(net_device, REG_IMS, 0x1F6DC); //this could be a 0xFFFFF but that sets some reserved bits
+    mmio_read(net_device, REG_ICR);
 
     //set mac address filter
-    mmio_write(REG_RAL, ((uint16_t *) mac)[0] | ((((uint32_t)((uint16_t *) mac)[1]) << 16) & 0xFFFF));
-    mmio_write(REG_RAH, ((uint16_t *) mac)[2] | (1 << 31));
+    mmio_write(net_device, REG_RAL, ((uint16_t *) net_device->mac)[0] | ((((uint32_t)((uint16_t *) net_device->mac)[1]) << 16) & 0xFFFF));
+    mmio_write(net_device, REG_RAH, ((uint16_t *) net_device->mac)[2] | (1 << 31));
 
     //init RX
-    rx_page = alloc_page(0);
-    rx_desc = (rx_desc_t *) page_to_virt(rx_page);
-    rx_front = 0;
+    net_device->rx_page = alloc_page(0);
+    net_device->rx_desc = (rx_desc_t *) page_to_virt(net_device->rx_page);
+    net_device->rx_front = 0;
 
     for(uint32_t i = 0; i < NUM_RX_DESCS; i++) {
         page_t *page = alloc_page(0);
 
-        rx_desc[i].address = (uint32_t) page_to_phys(page);
-        rx_desc[i].status = 0;
+        net_device->rx_desc[i].address = (uint32_t) page_to_phys(page);
+        net_device->rx_desc[i].status = 0;
 
-        rx_buff[i] = (uint8_t *) page_to_virt(page);
+        net_device->rx_buff[i] = (uint8_t *) page_to_virt(page);
     }
 
-    mmio_write(REG_RDBAL, (uint32_t) page_to_phys(rx_page));
-    mmio_write(REG_RDBAH, 0);
-    mmio_write(REG_RDLEN, NUM_RX_DESCS * sizeof(rx_desc_t));
+    mmio_write(net_device, REG_RDBAL, (uint32_t) page_to_phys(net_device->rx_page));
+    mmio_write(net_device, REG_RDBAH, 0);
+    mmio_write(net_device, REG_RDLEN, NUM_RX_DESCS * sizeof(rx_desc_t));
 
-	mmio_write(REG_RDH, 0);
-	mmio_write(REG_RDT, NUM_RX_DESCS);
+	mmio_write(net_device, REG_RDH, 0);
+	mmio_write(net_device, REG_RDT, NUM_RX_DESCS);
 
-	mmio_write(REG_RCTL,
-	RCTL_BAM            |
-	RCTL_BSEX           |
-	RCTL_SECRC          |
-	RCTL_LPE            |
-	RCTL_LBM_OFF        |
-	RCTL_RDMTS_HALF     |
-	RCTL_MO_SHIFT_ZERO);
+	mmio_write(net_device, REG_RCTL,
+	    RCTL_BAM            |
+	    RCTL_BSEX           |
+	    RCTL_SECRC          |
+	    RCTL_LPE            |
+	    RCTL_LBM_OFF        |
+	    RCTL_RDMTS_HALF     |
+	    RCTL_MO_SHIFT_ZERO);
 
     //init TX
-    tx_page = alloc_page(0);
-    tx_desc = (tx_desc_t *) page_to_virt(tx_page);
-    tx_front = 0;
+    net_device->tx_page = alloc_page(0);
+    net_device->tx_desc = (tx_desc_t *) page_to_virt(net_device->tx_page);
+    net_device->tx_front = 0;
 
     for(uint32_t i = 0; i < NUM_RX_DESCS; i++) {
-        tx_desc[i].address = 0;
-        tx_desc[i].cmd = 0;
+        net_device->tx_desc[i].address = 0;
+        net_device->tx_desc[i].cmd = 0;
     }
 
-    mmio_write(REG_TDBAL, (uint32_t) page_to_phys(tx_page));
-    mmio_write(REG_TDBAH, 0);
-    mmio_write(REG_TDLEN, NUM_TX_DESCS * sizeof(tx_desc_t));
+    mmio_write(net_device, REG_TDBAL, (uint32_t) page_to_phys(net_device->tx_page));
+    mmio_write(net_device, REG_TDBAH, 0);
+    mmio_write(net_device, REG_TDLEN, NUM_TX_DESCS * sizeof(tx_desc_t));
 
-	mmio_write(REG_TDH, 0);
-	mmio_write(REG_TDT, NUM_TX_DESCS);
+	mmio_write(net_device, REG_TDH, 0);
+	mmio_write(net_device, REG_TDT, NUM_TX_DESCS);
 
-    //enable tx then rx
-    mmio_write(REG_TCTL, mmio_read(REG_TCTL) | TCTL_EN | TCTL_PSP);
-	mmio_write(REG_RCTL, mmio_read(REG_RCTL) | RCTL_EN);
+    return true;
 }
+
+static void net_825xx_enable(device_t *device) {
+    pci_device_t *pci_device = containerof(device, pci_device_t, device);
+    net_825xx_t *net_device = pci_device->private;
+    
+    list_add(&net_device->list, &net_825xx_devices); //FIXME this is probably not thread-safe
+        
+    mmio_write(net_device, REG_TCTL, mmio_read(net_device, REG_TCTL) | TCTL_EN | TCTL_PSP);
+	mmio_write(net_device, REG_RCTL, mmio_read(net_device, REG_RCTL) | RCTL_EN);
+}
+
+static void net_825xx_disable(device_t *device) {
+    pci_device_t *pci_device = containerof(device, pci_device_t, device);
+    net_825xx_t *net_device = pci_device->private;
+    
+    list_rm(&net_device->list); //FIXME this is probably not thread-safe
+    
+    mmio_write(net_device, REG_TCTL, mmio_read(net_device, REG_TCTL) & ~(TCTL_EN | TCTL_PSP));
+	mmio_write(net_device, REG_RCTL, mmio_read(net_device, REG_RCTL) & ~(RCTL_EN));
+}
+
+static void net_825xx_destroy(device_t UNUSED(*device)) {
+    //TODO clean up
+}
+
+static pci_ident_t net_825xx_idents[] = {
+    {
+        .vendor =     PCI_ID_ANY,
+        .device =     PCI_ID_ANY,
+        .class  =     0x02000000,
+        .class_mask = 0xFFFF0000
+    }    
+};
+
+static pci_driver_t net_825xx_driver = {
+    .driver = {  
+        .bus = &pci_bus,
+      
+        .name = net_825xx_name,
+        .probe = net_825xx_probe,
+        
+        .enable = net_825xx_enable,
+        .disable = net_825xx_disable,
+        .destroy = net_825xx_destroy
+    },
+    
+    .supported = net_825xx_idents,
+    .supported_len = sizeof(net_825xx_idents) / sizeof(pci_ident_t)
+};
+
+static INITCALL net_825xx_init() {
+    register_driver(&net_825xx_driver.driver);
+
+    return 0;
+}
+
+postcore_initcall(net_825xx_init);
