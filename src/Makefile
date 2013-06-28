@@ -9,7 +9,7 @@ OBJS=	loader.o \
         init/kmain.o init/module.o \
         lib/string.o lib/printf.o lib/rand.o \
         bug/debug.o bug/panic.o \
-        out/console.o out/log.o \
+        video/console.o video/log.o \
         arch/gdt.o arch/registers.o arch/idt.o arch/isr.o arch/pit.o arch/tsc.o arch/cpl.o \
         mm/mm.o mm/cache.o \
         device/device.o \
