@@ -197,7 +197,7 @@ void free_page(page_t *page) {
     free_page_list[page->order] = page;
 }
 
-static INITCALL mm_init() {
+void mm_init() {
     kernel_start = ((uint32_t) &image_start);
     kernel_end = ((uint32_t) &image_end);
 
@@ -325,8 +325,4 @@ static INITCALL mm_init() {
             DIV_DOWN(DIV_UP(sizeof (uint32_t) * NUM_ENTRIES * NUM_ENTRIES, PAGE_SIZE) * PAGE_SIZE, 1024 * 1024),
             DIV_DOWN(DIV_UP(sizeof (page_t) * NUM_ENTRIES * NUM_ENTRIES, PAGE_SIZE) * PAGE_SIZE, 1024 * 1024),
             DIV_DOWN(available_pages * PAGE_SIZE, 1024 * 1024));
-
-    return cache_init();
 }
-
-core_initcall(mm_init);

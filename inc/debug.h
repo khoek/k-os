@@ -24,4 +24,6 @@ void debug_map_virtual();
 const elf_symbol_t * debug_lookup_symbol(uint32_t address);
 const char * debug_symbol_name(const elf_symbol_t *symbol);
 
+void debug_init();
+
 #endif

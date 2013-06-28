@@ -33,4 +33,6 @@ void * page_to_virt(page_t *page);
 
 void * alloc_page_user(uint32_t flags, task_t *task, uint32_t vaddr);
 
+void mm_init();
+
 #endif

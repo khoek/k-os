@@ -62,7 +62,7 @@ const elf_symbol_t * debug_lookup_symbol(uint32_t address) {
     return NULL;
 }
 
-static INITCALL debug_init() {
+void debug_init() {
     elf_section_header_t *sh = (elf_section_header_t *) multiboot_info->u.elf_sec.addr;
 
     for (uint32_t i = 0; i < multiboot_info->u.elf_sec.num; i++) {
@@ -87,10 +87,4 @@ static INITCALL debug_init() {
     } else {
         logf("debug - symtab is not present");
     }
-
-    return 0;
 }
-
-#ifndef CONFIG_OPTIMIZE
-early_initcall(debug_init);
-#endif

@@ -190,8 +190,7 @@ void kfree(void *mem, uint32_t size) {
     cache_free(kalloc_cache[index], mem);
 }
 
-//indirect, invoked from mm_init()
-INITCALL cache_init() {
+void cache_init() {
     list_add(&meta_cache.list, &caches);
 
     for(uint32_t i = KALLOC_SHIFT_MIN; i < KALLOC_SHIFT_MAX; i++) {
@@ -199,6 +198,4 @@ INITCALL cache_init() {
     }
 
     logf("cache - metacache and kmalloc caches initialized");
-
-    return 0;
 }

@@ -13,7 +13,6 @@ void cache_free(cache_t *cache, void *mem);
 void * kmalloc(uint32_t size);
 void kfree(void *mem, uint32_t size);
 
-//indirect, invoked from mm_init()
-INITCALL cache_init();
+void cache_init();
 
 #endif
