@@ -54,7 +54,7 @@ struct device {
 //requires valid device.match
 void register_bus(bus_t *bus, char *name);
 
-//requires valid driver.bus, driver.probe, driver.enable, driver.disable, driver.destroy
+//requires valid driver.bus, driver.name, driver.probe, driver.enable, driver.disable, driver.destroy
 void register_driver(driver_t *driver);
 
 //requires valid device.bus
