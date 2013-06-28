@@ -77,8 +77,8 @@ static bool pci_match(device_t *device, driver_t *driver) {
     for(uint32_t i = 0; i < pci_driver->supported_len; i++)  {
         pci_ident_t *ident = &pci_driver->supported[i];
 
-        if((pci_device->ident.vendor == ident->vendor || pci_device->ident.vendor == PCI_ID_ANY)
-            && (pci_device->ident.device == ident->device || pci_device->ident.device == PCI_ID_ANY)
+        if((pci_device->ident.vendor == ident->vendor || ident->vendor == PCI_ID_ANY) 
+            && (pci_device->ident.device == ident->device || ident->device == PCI_ID_ANY)
             && !((pci_device->ident.class ^ ident->class) & ident->class_mask)) {
             return true;
         }
@@ -147,11 +147,13 @@ static void probe_function(uint8_t bus, uint8_t device, uint8_t function) {
     register_device(&dev->device, &pci_bus.node);
 }
 
+static char * bridge_name_prefix = "bridge";
+
 static char * bridge_name(device_t UNUSED(*device)) {
     static int next_id = 0;
 
-    char *name = kmalloc(STRLEN("bridge") + STRLEN(STR(MAX_UINT)) + 1);
-    sprintf(name, "bridge%u", next_id++);
+    char *name = kmalloc(STRLEN(bridge_name_prefix) + STRLEN(STR(MAX_UINT)) + 1);
+    sprintf(name, "%s%u", bridge_name_prefix, next_id++);
         
     return name;
 }
