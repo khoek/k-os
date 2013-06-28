@@ -1,28 +1,22 @@
 #include <stddef.h>
 
+#include "list.h"
 #include "common.h"
 #include "binfmt.h"
+#include "log.h"
 
-binfmt_t *binfmt_front, *binfmt_back;
+LIST_HEAD(binfmts);
 
 void binfmt_register(binfmt_t *binfmt) {
-    binfmt->next = NULL;
-
-    if(!binfmt_front) {
-        binfmt->prev = NULL;
-        binfmt_front = binfmt_back = binfmt;
-    } else {
-        binfmt->prev = binfmt_back;
-        binfmt_back->next = binfmt;
-        binfmt_back = binfmt;
-    }
+    list_add(&binfmt->list, &binfmts);
 }
 
 int binfmt_load_exe(void *start, uint32_t length) {
-    for(binfmt_t *binfmt = binfmt_front; binfmt != NULL; binfmt = binfmt->next) {
+    binfmt_t *binfmt;
+    LIST_FOR_EACH_ENTRY(binfmt, &binfmts, list) {    
         if(!(*binfmt->load_exe)(start, length)) return 0;
     }
-
+    
     return -1;
 }
 
