@@ -1,8 +1,9 @@
-#include "int.h"
 #include <stdbool.h>
 
+#include "int.h"
 #include "string.h"
 #include "common.h"
+#include "debug.h"
 #include "init.h"
 #include "binfmt.h"
 #include "elf.h"

@@ -1,6 +1,7 @@
 #include <stdbool.h>
 
 #include "common.h"
+#include "debug.h"
 #include "init.h"
 #include "ide.h"
 #include "pci.h"

@@ -1,4 +1,5 @@
 #include "common.h"
+#include "debug.h"
 #include "printf.h"
 #include "init.h"
 #include "pci.h"

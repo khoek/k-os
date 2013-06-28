@@ -1,6 +1,8 @@
 #ifndef KERNEL_BINFMT_H
 #define KERNEL_BINFMT_H
 
+#include "int.h"
+
 typedef struct binfmt binfmt_t;
 
 struct binfmt {

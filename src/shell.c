@@ -1,5 +1,7 @@
+#include "int.h"
 #include "shell.h"
-#include "idt.h"
+#include "asm.h"
+#include "panic.h"
 #include "console.h"
 #include "keyboard.h"
 

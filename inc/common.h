@@ -27,6 +27,4 @@
          const typeof( ((type *)0)->member ) *__mptr = (ptr);    \
          (type *)( (char *)__mptr - offsetof(type, member) );})
 
-#include "debug.h"
-
 #endif
