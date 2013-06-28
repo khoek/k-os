@@ -48,7 +48,7 @@ void register_driver(driver_t *driver) {
     LIST_FOR_EACH_ENTRY(bus, &buses, list) {
         device_t *device;
         LIST_FOR_EACH_ENTRY(device, &bus->unident_devices, list) {
-            if(device->bus->match(device, driver)) {
+            if(device->bus->match(device, driver) && driver->probe(device)) {
                 device->driver = driver;
                 device->node.name = device->driver->name(device);
                 list_move(&device->list, &device->bus->devices);
