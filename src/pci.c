@@ -71,17 +71,17 @@ static uint8_t pci_read_byte(uint16_t bus, uint16_t slot, uint16_t func, uint16_
 static bool pci_match(device_t *device, driver_t *driver) {
     pci_device_t *pci_device = containerof(device, pci_device_t, device);
     pci_driver_t *pci_driver = containerof(driver, pci_driver_t, driver);
-    
+
     for(uint32_t i = 0; i < pci_driver->supported_len; i++)  {
         pci_ident_t *ident = &pci_driver->supported[i];
-        
+
         if((pci_device->ident.vendor == ident->vendor || pci_device->ident.vendor == PCI_ID_ANY)
             && (pci_device->ident.device == ident->device || pci_device->ident.device == PCI_ID_ANY)
             && !((pci_device->ident.class ^ ident->class) & ident->class_mask)) {
             return true;
         }
     }
-    
+
     return false;
 }
 
@@ -116,7 +116,7 @@ static void probe_device(uint8_t bus, uint8_t device) {
 
 static void probe_function(uint8_t bus, uint8_t device, uint8_t function) {
     pci_device_t *dev = kmalloc(sizeof(pci_device_t));
-    
+
     dev->device.bus = &pci_bus;
 
     dev->ident.vendor = pci_read_word(bus, device, function, REG_WORD_VENDOR);
@@ -125,7 +125,7 @@ static void probe_function(uint8_t bus, uint8_t device, uint8_t function) {
                     | (((uint32_t) pci_read_byte(bus, device, function, REG_BYTE_SCLASS)) << 16)
                     | (((uint32_t) pci_read_byte(bus, device, function, REG_BYTE_PROGIF)) << 8)
                     | (((uint32_t) pci_read_byte(bus, device, function, REG_BYTE_REVISN)));
-                    
+
     dev->bar[0] = pci_read(bus, device, function, REG_FULL_BAR0);
     dev->bar[1] = pci_read(bus, device, function, REG_FULL_BAR1);
     dev->bar[2] = pci_read(bus, device, function, REG_FULL_BAR2);
@@ -137,19 +137,19 @@ static void probe_function(uint8_t bus, uint8_t device, uint8_t function) {
     logf("pci - %02X:%02X:%02X %08X %04X:%04X - %s",
         bus, device, function, dev->ident.class, dev->ident.vendor, dev->ident.device,
         (classes[(dev->ident.class >> 24)] ? classes[(dev->ident.class >> 24)] : "Unknown Type"));
-        
+
     register_device(&dev->device, &pci_bus.node);
 }
 
-static INITCALL pci_init() {    
+static INITCALL pci_init() {
     register_bus(&pci_bus, "pci_bus");
-    
+
     return 0;
 }
 
 static INITCALL pci_probe() {
     outl(CONFIG_ADDRESS, 0x80000000);
-    if(inl(CONFIG_ADDRESS) == 0x80000000) { //does PCI exist?    
+    if(inl(CONFIG_ADDRESS) == 0x80000000) { //does PCI exist?
         if((pci_read_byte(0, 0, 0, REG_BYTE_HEADER) & 0x80) == 0) {
             //Single PCI host controller
             probe_bus(0);

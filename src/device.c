@@ -37,24 +37,24 @@ void register_bus(bus_t *bus, char *name) {
     list_init(&bus->drivers);
     list_init(&bus->devices);
     list_init(&bus->unident_devices);
-    
+
     list_add(&bus->list, &buses);
 }
 
 void register_driver(driver_t *driver) {
     list_add(&driver->list, &driver->bus->drivers);
-    
+
     bus_t *bus;
     LIST_FOR_EACH_ENTRY(bus, &buses, list) {
         device_t *device;
         LIST_FOR_EACH_ENTRY(device, &bus->unident_devices, list) {
-            if(device->bus->match(device, driver)) {        
+            if(device->bus->match(device, driver)) {
                 device->driver = driver;
                 device->node.name = device->driver->name(device);
                 list_move(&device->list, &device->bus->devices);
-                
+
                 driver->enable(device);
-            }    
+            }
         }
     }
 }
@@ -62,24 +62,24 @@ void register_driver(driver_t *driver) {
 void register_device(device_t *device, node_t *parent) {
     node_init(&device->node);
     node_add(&device->node, parent);
-    
+
     device->driver = NULL;
 
     driver_t *driver;
     LIST_FOR_EACH_ENTRY(driver, &device->bus->drivers, list) {
-        if(device->bus->match(device, driver) && driver->probe(device)) {        
+        if(device->bus->match(device, driver) && driver->probe(device)) {
             device->driver = driver;
             device->node.name = device->driver->name(device);
             list_add(&device->list, &device->bus->devices);
-            
+
             driver->enable(device);
-        }    
+        }
     }
-    
+
     if(!device->driver) {
         device->node.name = kmalloc(STRLEN(generic_name) + STRLEN(STR(MAX_UINT)) + 1);
         sprintf(device->node.name, "%s%u", generic_name, next_id++);
-        
+
         list_add(&device->list, &device->bus->unident_devices);
     }
 }
