@@ -23,7 +23,7 @@ image: kernel cdrom.iso
 
 run: image hdd.img
 	@echo "running bochs"
-	@sudo $(BOCHS) -q
+	@sudo sh -c "echo c | $(BOCHS) -q"
 
 doc:
 	@echo "running doxygen"
