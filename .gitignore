@@ -5,6 +5,7 @@
 *.img
 *.elf
 *.ld
+*.mod
 build
 doc
 nbproject
