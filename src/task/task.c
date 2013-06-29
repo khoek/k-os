@@ -1,3 +1,4 @@
+#include "int.h"
 #include "string.h"
 #include "init.h"
 #include "list.h"
@@ -24,12 +25,16 @@ static void task_usermode() {
     __asm__ volatile("mov $8, %ebx");
     __asm__ volatile("int $0x80");
 
-    __asm__ volatile("mov $0, %eax");
-    __asm__ volatile("mov $-1, %ebx");
-    __asm__ volatile("int $0x80");
-
     __asm__ volatile("loop:");
     __asm__ volatile("jmp loop");
+}
+
+void task_exit(task_t *task, int32_t code) {
+    //TODO propagate the exit code
+    
+    list_rm(&task->list);
+    
+    task_switch();
 }
 
 void task_run() {
@@ -46,6 +51,10 @@ void task_save(interrupt_t *interrupt) {
 }
 
 void task_switch() {
+    if(list_empty(&tasks)) {
+        panicf("I have nothing to do!");
+    }
+
     list_rotate_left(&tasks);
 
     current = list_first(&tasks, task_t, list);

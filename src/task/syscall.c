@@ -5,6 +5,7 @@
 #include "gdt.h"
 #include "idt.h"
 #include "panic.h"
+#include "task.h"
 #include "log.h"
 
 #define MAX_SYSCALL 256
@@ -13,6 +14,8 @@ typedef void (*syscall_t)(interrupt_t *);
 
 void sys_exit(interrupt_t *interrupt) {
     logf("sys_exit: %d", interrupt->registers.ebx);
+    
+    task_exit(current, interrupt->registers.ebx);
 }
 
 void sys_fork(interrupt_t *interrupt) {
