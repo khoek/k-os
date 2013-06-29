@@ -18,6 +18,8 @@ typedef struct task {
 
 #include "mm.h"
 
+extern task_t *current;
+
 task_t * task_create();
 void task_schedule(task_t *task, void *eip, void *esp);
 void task_add_page(task_t *task, page_t *page);

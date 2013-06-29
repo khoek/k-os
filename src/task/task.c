@@ -12,13 +12,12 @@
 #include "asm.h"
 #include "log.h"
 
-static cache_t *task_cache;
+task_t *current;
 
+static cache_t *task_cache;
 static uint32_t pid = 1;
 static bool tasking_up = false;
-
 static LIST_HEAD(tasks);
-static task_t *current;
 
 static void task_usermode() {
     __asm__ volatile("mov $1, %eax");
