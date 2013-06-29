@@ -2,7 +2,7 @@
 #define KERNEL_ELF_H
 
 #include "int.h"
-#include <common.h>
+#include "common.h"
 
 typedef uint32_t Elf32_Addr;
 typedef uint16_t Elf32_Half;
@@ -49,21 +49,21 @@ typedef uint32_t Elf32_Word;
 #define EM_MIPS  8
 
 typedef struct elf32_hdr {
-  unsigned char	e_ident[EI_NIDENT];
-  Elf32_Half	e_type;
-  Elf32_Half	e_machine;
-  Elf32_Word	e_version;
-  Elf32_Addr	e_entry;
-  Elf32_Off	e_phoff;
-  Elf32_Off	e_shoff;
-  Elf32_Word	e_flags;
-  Elf32_Half	e_ehsize;
-  Elf32_Half	e_phentsize;
-  Elf32_Half	e_phnum;
-  Elf32_Half	e_shentsize;
-  Elf32_Half	e_shnum;
-  Elf32_Half	e_shstrndx;
-} Elf32_Ehdr;
+  unsigned char e_ident[EI_NIDENT];
+  Elf32_Half    e_type;
+  Elf32_Half    e_machine;
+  Elf32_Word    e_version;
+  Elf32_Addr    e_entry;
+  Elf32_Off	    e_phoff;
+  Elf32_Off	    e_shoff;
+  Elf32_Word    e_flags;
+  Elf32_Half    e_ehsize;
+  Elf32_Half    e_phentsize;
+  Elf32_Half    e_phnum;
+  Elf32_Half    e_shentsize;
+  Elf32_Half    e_shnum;
+  Elf32_Half    e_shstrndx;
+} PACKED Elf32_Ehdr;
 
 #define PT_NULL    0
 #define PT_LOAD    1
@@ -91,7 +91,7 @@ typedef struct elf32_phdr {
   Elf32_Word	p_memsz;
   Elf32_Word	p_flags;
   Elf32_Word	p_align;
-} Elf32_Phdr;
+} PACKED Elf32_Phdr;
 
 #define ELF32_ST_TYPE(i) ((i) & 0xf)
 #define ELF32_ST_BIND(i) ((i) >> 4)
@@ -120,9 +120,9 @@ typedef struct {
   uint32_t name;
   uint32_t value;
   uint32_t size;
-  uint8_t info;
-  uint8_t other;
+  uint8_t  info;
+  uint8_t  other;
   uint16_t shndx;
-} __attribute__((packed)) elf_symbol_t;
+} PACKED elf_symbol_t;
 
 #endif
