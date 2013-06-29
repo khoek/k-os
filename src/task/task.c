@@ -79,4 +79,4 @@ static INITCALL task_init() {
     return 0;
 }
 
-module_initcall(task_init);
+core_initcall(task_init);
