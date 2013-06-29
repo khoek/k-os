@@ -2,7 +2,7 @@
 
 ASFLAGS=--32 -g
 
-CCFLAGS=-Wall -g -Wextra -Werror -m32 -I../inc -std=gnu99 \
+CCFLAGS=-Wall -g -Wextra -Werror -Wno-unused-parameter -m32 -I../inc -std=gnu99 \
         -nostdlib -nostartfiles -nodefaultlibs -ffreestanding -c
 
 OBJS=	loader.o \
@@ -12,6 +12,7 @@ OBJS=	loader.o \
         video/console.o video/log.o \
         arch/gdt.o arch/registers.o arch/idt.o arch/isr.o arch/pit.o arch/tsc.o arch/cpl.o \
         mm/mm.o mm/cache.o \
+        time/clock.o \
         device/device.o \
         task/task.o task/syscall.o \
         net/ethernet.o \

@@ -11,7 +11,7 @@
 #include "pci.h"
 #include "gdt.h"
 #include "idt.h"
-#include "pit.h" //FIXME sleep(1) should be microseconds not hundredths of a second
+#include "clock.h" //FIXME sleep(1) should be microseconds not hundredths of a second
 #include "ethernet.h"
 #include "log.h"
 

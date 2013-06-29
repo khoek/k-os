@@ -9,7 +9,7 @@
 #include "asm.h"
 #include "panic.h"
 #include "device.h"
-#include "pit.h" //FIXME sleep(1) should be microseconds not hundredths of a second
+#include "clock.h" //FIXME sleep(1) should be microseconds not hundredths of a second
 #include "idt.h"
 #include "mm.h"
 #include "cache.h"
