@@ -12,7 +12,6 @@
 cache_t *task_cache;
 
 uint32_t pid = 1;
-uint8_t kernel_stack[0x1000];
 
 LIST_HEAD(tasks);
 
@@ -30,7 +29,6 @@ static void task_usermode() {
 }
 
 void task_switch() {
-    set_kernel_stack((void *) (((uint32_t) kernel_stack) + sizeof(kernel_stack) - 1));
     list_rotate_left(&tasks);
 
     task_t *task = list_first(&tasks, task_t, list);
@@ -47,9 +45,9 @@ task_t * task_create() {
 
     memset(&task->registers, 0, sizeof(registers_t));
 
-    task->state.eflags = get_eflags();
-    task->state.cs = CPL_USER_CODE | 3;
-    task->state.ss = CPL_USER_DATA | 3;
+    task->state.eflags = get_eflags() | EFLAGS_IF;
+    task->state.cs = SEL_USER_CODE | SPL_USER;
+    task->state.ss = SEL_USER_DATA | SPL_USER;
 
     page_t *page = alloc_page(0);
     task->directory = page_to_virt(page);

@@ -4,19 +4,22 @@
 #include "int.h"
 #include "common.h"
 
-#define CPL_KERNEL (0 << 5)
-#define CPL_USER   (3 << 5)
+#define SPL_KERNEL (0x0)
+#define SPL_USER   (0x3)
 
-#define CPL_KERNEL_CODE 0x08
-#define CPL_KERNEL_DATA 0x10
-#define CPL_USER_CODE   0x18
-#define CPL_USER_DATA   0x20
-#define CPL_USER_TSS    0x28
+#define CPL_KERNEL (0x0 << 5)
+#define CPL_USER   (0x3 << 5)
+
+#define SEL_KERNEL_CODE 0x08
+#define SEL_KERNEL_DATA 0x10
+#define SEL_USER_CODE   0x18
+#define SEL_USER_DATA   0x20
+#define SEL_TSS         0x28
 
 typedef struct tss {
    uint32_t prev_tss;   // Obsolete
    uint32_t esp0;       // Stack pointer
-   uint32_t ss0;        // Stack Segment
+   uint32_t ss0;        // Stack segment
    uint32_t esp1;       // Obsolete from here down
    uint32_t ss1;
    uint32_t esp2;
@@ -42,7 +45,5 @@ typedef struct tss {
    uint16_t trap;
    uint16_t iomap_base;
 } PACKED tss_t;
-
-void set_kernel_stack(void *esp);
 
 #endif

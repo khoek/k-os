@@ -61,7 +61,7 @@ void idt_register(uint8_t vector, uint8_t cpl, void(*handler)(interrupt_t *)) {
 void idt_set_isr(uint32_t gate, uint32_t isr) {
     idt[gate].offset_lo = isr & 0xffff;
     idt[gate].offset_hi = (isr >> 16) & 0xffff;
-    idt[gate].selector = CPL_KERNEL_CODE;
+    idt[gate].selector = SEL_KERNEL_CODE;
     idt[gate].zero = 0;
     idt[gate].type |= 0x80 /* present */ | 0xe /* 32 bit interrupt gate */;
 }

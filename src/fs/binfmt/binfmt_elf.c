@@ -64,6 +64,9 @@ int load_elf_exe(void *start, uint32_t length) {
         }
     }
 
+    alloc_page_user(0, task, 0x10000);
+    task_schedule(task, (void *) ehdr->e_entry, (void *) 0x10000);
+
     return 0;
 }
 

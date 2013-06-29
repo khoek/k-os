@@ -8,6 +8,7 @@
 #include "panic.h"
 #include "asm.h"
 #include "log.h"
+#include "task.h"
 
 #define PIT_CLOCK 1193182
 

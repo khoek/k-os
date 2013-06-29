@@ -28,6 +28,8 @@ static gdtd_t gdtd;
 static gdt_entry_t gdt[GDT_SIZE];
 static tss_t tss;
 
+static uint8_t kernel_stack[0x1000];
+
 #define PRESENT     (1 << 7)
 #define TSS         (1 << 0)
 #define SEGMENT     (1 << 4)
@@ -38,10 +40,6 @@ static tss_t tss;
 #define FLAG_BITS_32          (1 << 6)
 #define FLAG_GRANULARITY_BYTE (0 << 7)
 #define FLAG_GRANULARITY_PAGE (1 << 7)
-
-void set_kernel_stack(void *esp) {
-    tss.esp0 = (uint32_t) esp;
-}
 
 static void create_selector(uint16_t index, uint32_t base, uint32_t limit, uint8_t access, uint8_t flags) {
     gdt[index].limit_0_15 = limit & 0xFFFF;
@@ -60,7 +58,8 @@ static INITCALL gdt_init() {
     create_selector(4, 0x00000000, 0xFFFFF,            PRESENT | CPL_USER   | WRITABLE            | SEGMENT, FLAG_BITS_32 | FLAG_GRANULARITY_PAGE | FLAG_AVAILABLE);
     create_selector(5, (uint32_t) &tss, sizeof(tss_t), PRESENT | CPL_KERNEL |            EXECABLE | TSS    , FLAG_BITS_32 | FLAG_GRANULARITY_BYTE);
 
-    tss.ss0 = CPL_KERNEL_DATA;
+    tss.ss0 = SEL_KERNEL_DATA;
+    tss.esp0 = ((uint32_t) kernel_stack) + sizeof(kernel_stack) - 1;
 
     gdtd.size = (GDT_SIZE * sizeof(gdt_entry_t)) - 1;
     gdtd.offset = (uint32_t) gdt;
@@ -68,7 +67,8 @@ static INITCALL gdt_init() {
     __asm__ volatile("lgdt (%0)" :: "m" (gdtd));
 
     flush_segment_registers();
-    flush_tss();
+
+    __asm__ volatile("ltr %%ax" :: "a" (SEL_TSS | SPL_USER));
 
     logf("gdt - gdt and tss are active!");
 

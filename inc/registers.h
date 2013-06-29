@@ -12,7 +12,9 @@ typedef struct task_state {
 } PACKED task_state_t;
 
 void flush_segment_registers();
-void flush_tss();
+
+#define EFLAGS_IF (1 << 9)
+
 uint32_t get_eflags();
 
 #endif
