@@ -7,10 +7,12 @@ all: kernel cdrom.iso
 kernel:
 	make -C src all
 
-cdrom.iso: src/kernel.elf build/boot/grub/grub.cfg
+cdrom.iso: src/kernel.elf build/boot/grub/grub.cfg build/kernel.elf
 	@echo "creating image"
-	@cp src/kernel.elf build/kernel.elf
 	@grub-mkrescue -o cdrom.iso build
+
+build/kernel.elf: src/kernel.elf
+	@cp src/kernel.elf build/kernel.elf
 
 build/boot/grub/grub.cfg: boot/grub/grub.cfg
 	@mkdir -p build/boot/grub/
