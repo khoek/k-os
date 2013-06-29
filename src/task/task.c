@@ -4,16 +4,21 @@
 #include "task.h"
 #include "cache.h"
 #include "gdt.h"
+#include "idt.h"
 #include "cpl.h"
 #include "mm.h"
 #include "panic.h"
+#include "clock.h"
+#include "asm.h"
 #include "log.h"
 
-cache_t *task_cache;
+static cache_t *task_cache;
 
-uint32_t pid = 1;
+static uint32_t pid = 1;
+static bool tasking_up = false;
 
-LIST_HEAD(tasks);
+static LIST_HEAD(tasks);
+static task_t *current;
 
 static void task_usermode() {
     __asm__ volatile("mov $1, %eax");
@@ -28,11 +33,24 @@ static void task_usermode() {
     __asm__ volatile("jmp loop");
 }
 
+void task_run() {
+    tasking_up = true;
+    
+    while(1) hlt();
+}
+
+void task_save(interrupt_t *interrupt) {
+    if(current) {
+        memcpy(&current->registers, &interrupt->registers, sizeof(registers_t));
+        memcpy(&current->state, &interrupt->state, sizeof(task_state_t));
+    }
+}
+
 void task_switch() {
     list_rotate_left(&tasks);
 
-    task_t *task = list_first(&tasks, task_t, list);
-    cpl_switch(task->cr3, task->registers, task->state);
+    current = list_first(&tasks, task_t, list);
+    cpl_switch(current->cr3, current->registers, current->state);
 }
 
 void task_add_page(task_t UNUSED(*task), page_t UNUSED(*page)) {
@@ -64,6 +82,14 @@ void task_schedule(task_t *task, void *eip, void *esp) {
     list_add(&task->list, &tasks);
 }
 
+static void time_tick(clock_event_source_t *source) {
+    if(tasking_up) task_switch();
+}
+
+static clock_event_listener_t clock_listener = {
+    .handle = time_tick
+};
+
 static INITCALL task_init() {
     task_cache = cache_create(sizeof(task_t));
 
@@ -71,6 +97,8 @@ static INITCALL task_init() {
     memcpy(alloc_page_user(0, task, 0x10000), task_usermode, 0x1000);
     alloc_page_user(0, task, 0x11000);
     task_schedule(task, (void *) 0x10000, (void *) (0x11000 + PAGE_SIZE - 1));
+    
+    register_clock_event_listener(&clock_listener);
 
     logf("task - set up init task");
 

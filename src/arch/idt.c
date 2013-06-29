@@ -7,6 +7,7 @@
 #include "gdt.h"
 #include "asm.h"
 #include "panic.h"
+#include "task.h"
 #include "log.h"
 
 //command io port of PICs
@@ -104,6 +105,10 @@ void interrupt_dispatch(interrupt_t *interrupt) {
     } else if (interrupt->vector == INT_SPURIOUS_SLAVE && !(get_reg(SLAVE_COMMAND, PIC_REG_IRR) & (1 << IRQ_SPURIOUS))) {
         outb(MASTER_COMMAND, EOI);
         return;
+    }
+    
+    if(idt[interrupt->vector].type & CPL_USER) {
+        task_save(interrupt);
     }
 
     if (handlers[interrupt->vector - PIC_MASTER_OFFSET]) {
