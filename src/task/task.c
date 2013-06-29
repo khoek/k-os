@@ -30,9 +30,12 @@ static void task_usermode() {
 }
 
 void task_exit(task_t *task, int32_t code) {
-    //TODO propagate the exit code
-    
+    //TODO propagate the exit code somehow    
     list_rm(&task->list);
+    
+    cache_free(task_cache, task);
+    
+    //TODO free task page directory, iterate through it and free all of the non-kernel page tables
     
     task_switch();
 }
