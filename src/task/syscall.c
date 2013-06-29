@@ -31,6 +31,7 @@ static void syscall_handler(interrupt_t *interrupt) {
     if(interrupt->registers.eax >= MAX_SYSCALL || syscalls[interrupt->registers.eax] == NULL) {
         panicf("Unregistered Syscall #%u: 0x%X", interrupt->registers.eax, interrupt->registers.ebx);
     } else {
+        sti();
         syscalls[interrupt->registers.eax](interrupt);
     }
 }
