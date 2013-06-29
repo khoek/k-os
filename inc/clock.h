@@ -31,7 +31,7 @@ struct clock_event_source {
 typedef struct clock_event_listener {
     list_head_t list;
     
-    void (*event)(clock_event_source_t *);
+    void (*handle)(clock_event_source_t *);
 } clock_event_listener_t;
 
 void register_clock(clock_t *clock);

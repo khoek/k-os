@@ -16,7 +16,7 @@ static clock_event_source_t *active_event_source;
 static void handle_clock_event(clock_event_source_t *clock_event_source) {
     clock_event_listener_t *listener;
     LIST_FOR_EACH_ENTRY(listener, &clock_event_listeners, list) {    
-        listener->event(clock_event_source);
+        listener->handle(clock_event_source);
     }
 }
 
