@@ -23,13 +23,14 @@ flush_data_segments:
 
 .type flush_tss, @function
 flush_tss:
-   mov $0x2B, %ax
-   ltr %ax
-   ret
+    mov $0x2B, %ax
+    ltr %ax
+    ret
 .size flush_tss, .-flush_tss
 
 .type get_eflags, @function
 get_eflags:
     pushf
     pop %eax
+    ret
 .size get_eflags, .-get_eflags
