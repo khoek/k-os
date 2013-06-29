@@ -18,7 +18,10 @@ task_t *current;
 static cache_t *task_cache;
 static uint32_t pid = 1;
 static bool tasking_up = false;
+
 static LIST_HEAD(tasks);
+static LIST_HEAD(sleeping_tasks);
+static LIST_HEAD(blocking_tasks);
 
 static void task_usermode() {
     __asm__ volatile("mov $1, %eax");
@@ -27,6 +30,21 @@ static void task_usermode() {
 
     __asm__ volatile("loop:");
     __asm__ volatile("jmp loop");
+}
+
+void task_block(task_t *task) {
+    task->state = TASK_BLOCKING;
+    list_move_before(&task->list, &blocking_tasks);
+}
+
+void task_sleep(task_t *task) {
+    task->state = TASK_SLEEPING;
+    list_move_before(&task->list, &sleeping_tasks);
+}
+
+void task_wake(task_t *task) {
+    task->state = TASK_AWAKE;
+    list_move_before(&task->list, &tasks);
 }
 
 void task_exit(task_t *task, int32_t code) {
@@ -49,7 +67,7 @@ void task_run() {
 void task_save(interrupt_t *interrupt) {
     if(current) {
         memcpy(&current->registers, &interrupt->registers, sizeof(registers_t));
-        memcpy(&current->state, &interrupt->state, sizeof(task_state_t));
+        memcpy(&current->proc, &interrupt->proc, sizeof(proc_state_t));
     }
 }
 
@@ -61,7 +79,7 @@ void task_switch() {
     list_rotate_left(&tasks);
 
     current = list_first(&tasks, task_t, list);
-    cpl_switch(current->cr3, current->registers, current->state);
+    cpl_switch(current->cr3, current->registers, current->proc);
 }
 
 void task_add_page(task_t UNUSED(*task), page_t UNUSED(*page)) {
@@ -73,10 +91,12 @@ task_t * task_create() {
     task->pid = pid++;
 
     memset(&task->registers, 0, sizeof(registers_t));
+    
+    task->state = TASK_NONE;
 
-    task->state.eflags = get_eflags() | EFLAGS_IF;
-    task->state.cs = SEL_USER_CODE | SPL_USER;
-    task->state.ss = SEL_USER_DATA | SPL_USER;
+    task->proc.eflags = get_eflags() | EFLAGS_IF;
+    task->proc.cs = SEL_USER_CODE | SPL_USER;
+    task->proc.ss = SEL_USER_DATA | SPL_USER;
 
     page_t *page = alloc_page(0);
     task->directory = page_to_virt(page);
@@ -87,10 +107,12 @@ task_t * task_create() {
 }
 
 void task_schedule(task_t *task, void *eip, void *esp) {
-    task->state.esp = (uint32_t) esp;
-    task->state.eip = (uint32_t) eip;
+    task->proc.esp = (uint32_t) esp;
+    task->proc.eip = (uint32_t) eip;
+    
+    task->state = TASK_AWAKE;
 
-    list_add(&task->list, &tasks);
+    list_add_before(&task->list, &tasks);
 }
 
 static void time_tick(clock_event_source_t *source) {

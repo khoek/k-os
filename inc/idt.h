@@ -2,6 +2,7 @@
 #define KERNEL_IDT_H
 
 #include <stdbool.h>
+
 #include "int.h"
 #include "common.h"
 #include "init.h"
@@ -12,7 +13,7 @@
 typedef struct interrupt {
   registers_t registers;
   uint32_t vector, error;
-  task_state_t state;
+  proc_state_t proc;
 } PACKED interrupt_t;
 
 //indirect, invoked by gdt_init()

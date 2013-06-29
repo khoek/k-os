@@ -1,15 +1,16 @@
 #ifndef KERNEL_REGISTERS_H
 #define KERNEL_REGISTERS_H
 
+#include "int.h"
 #include "common.h"
 
 typedef struct registers {
     uint32_t edi, esi, ebp, esp, ebx, edx, ecx, eax; //pusha/popa order
 } PACKED registers_t;
 
-typedef struct task_state {
+typedef struct proc_state {
     uint32_t eip, cs, eflags, esp, ss; //iret pop order
-} PACKED task_state_t;
+} PACKED proc_state_t;
 
 void flush_segment_registers();
 
