@@ -3,7 +3,6 @@
 #include "string.h"
 #include "printf.h"
 #include "console.h"
-#include "panic.h"
 #include "mm.h"
 #include "asm.h"
 
@@ -79,11 +78,12 @@ void console_write(const char *str, const uint8_t len) {
 
 void console_cursor(const uint8_t r, const uint8_t c) {
      if (r >= CONSOLE_HEIGHT || c >= CONSOLE_WIDTH) {
-          panicf("illegal cursor location %u, %u", r, c);
+         row = 0;
+         col = 0;
+     } else {
+         row = r;
+         col = c;
      }
-
-     row = r;
-     col = c;
 
      uint16_t base_vga_port = *vga_port; // read base vga port from bios data
 
