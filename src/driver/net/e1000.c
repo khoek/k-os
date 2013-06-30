@@ -377,8 +377,8 @@ static void net_825xx_destroy(device_t UNUSED(*device)) {
 
 static pci_ident_t net_825xx_idents[] = {
     {
-        .vendor =     PCI_ID_ANY,
-        .device =     PCI_ID_ANY,
+        .vendor =     0x8086,
+        .device =     0x100E,
         .class  =     0x02000000,
         .class_mask = 0xFFFF0000
     }
