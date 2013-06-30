@@ -23,4 +23,7 @@ typedef struct spinlock {
 void spin_lock(spinlock_t *lock);
 void spin_unlock(spinlock_t *lock);
 
+void spin_lock_irq(spinlock_t *lock);
+void spin_unlock_irq(spinlock_t *lock);
+
 #endif

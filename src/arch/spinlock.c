@@ -1,5 +1,6 @@
 #include "compiler.h"
 #include "spinlock.h"
+#include "asm.h"
 #include "log.h"
 
 #include "atomic_ops.h"
@@ -15,4 +16,14 @@ void spin_lock(spinlock_t *lock) {
 
 void spin_unlock(spinlock_t *lock) {
     add(&lock->tickets.head, 1);
+}
+
+void spin_lock_irq(spinlock_t *lock) {
+    cli(); //TODO SMP fix
+    spin_lock(lock);
+}
+
+void spin_unlock_irq(spinlock_t *lock) {
+    spin_unlock(lock);
+    sti(); //TODO SMP fix
 }
