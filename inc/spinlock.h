@@ -7,8 +7,11 @@
 
 typedef uint16_t ticket_t;
 
+//Must be strictly in this order, or else head will overflow into tail
+//This ordering will arrange a DWORD in memory like (0xTTTTHHHH)
 typedef struct ticket_pair {
-    ticket_t tail, head;
+    ticket_t head;
+    ticket_t tail;
 } PACKED ticket_pair_t;
 
 typedef struct spinlock {
@@ -25,5 +28,8 @@ void spin_unlock(spinlock_t *lock);
 
 void spin_lock_irq(spinlock_t *lock);
 void spin_unlock_irq(spinlock_t *lock);
+
+void spin_lock_irqsave(spinlock_t *lock, uint32_t *flags);
+void spin_unlock_irqstore(spinlock_t *lock, uint32_t flags);
 
 #endif
