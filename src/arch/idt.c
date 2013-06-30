@@ -106,7 +106,7 @@ void interrupt_dispatch(interrupt_t *interrupt) {
         outb(MASTER_COMMAND, EOI);
         return;
     }
-    
+
     if(idt[interrupt->vector].type & CPL_USER) {
         task_save(interrupt);
     }

@@ -15,7 +15,7 @@ static clock_event_source_t *active_event_source;
 
 static void handle_clock_event(clock_event_source_t *clock_event_source) {
     clock_event_listener_t *listener;
-    LIST_FOR_EACH_ENTRY(listener, &clock_event_listeners, list) {    
+    LIST_FOR_EACH_ENTRY(listener, &clock_event_listeners, list) {
         listener->handle(clock_event_source);
     }
 }
@@ -25,7 +25,7 @@ static void handle_clock_nop(clock_event_source_t *clock_event_source) {
 
 void register_clock(clock_t *clock) {
     if(!active || active->rating < clock->rating) {
-        active = clock;        
+        active = clock;
     }
 
     list_add(&clock->list, &clocks);
@@ -55,11 +55,11 @@ void sleep(uint32_t milis) {
     while(uptime() - then < milis) hlt(); //FIXME hlt might not work here (or will definitely be inaccurate)
 }
 
-static INITCALL init_clock() {  
+static INITCALL init_clock() {
     if(!active_event_source) panicf("No registered clock event source");
-  
+
     active_event_source->event = handle_clock_event;
-    
+
     return 0;
 }
 

@@ -48,19 +48,19 @@ void task_wake(task_t *task) {
 }
 
 void task_exit(task_t *task, int32_t code) {
-    //TODO propagate the exit code somehow    
+    //TODO propagate the exit code somehow
     list_rm(&task->list);
-    
+
     cache_free(task_cache, task);
-    
+
     //TODO free task page directory, iterate through it and free all of the non-kernel page tables
-    
+
     task_switch();
 }
 
 void task_run() {
     tasking_up = true;
-    
+
     while(1) hlt();
 }
 
@@ -91,7 +91,7 @@ task_t * task_create() {
     task->pid = pid++;
 
     memset(&task->registers, 0, sizeof(registers_t));
-    
+
     task->state = TASK_NONE;
 
     task->proc.eflags = get_eflags() | EFLAGS_IF;
@@ -109,7 +109,7 @@ task_t * task_create() {
 void task_schedule(task_t *task, void *eip, void *esp) {
     task->proc.esp = (uint32_t) esp;
     task->proc.eip = (uint32_t) eip;
-    
+
     task->state = TASK_AWAKE;
 
     list_add_before(&task->list, &tasks);
@@ -130,7 +130,7 @@ static INITCALL task_init() {
     memcpy(alloc_page_user(0, task, 0x10000), task_usermode, 0x1000);
     alloc_page_user(0, task, 0x11000);
     task_schedule(task, (void *) 0x10000, (void *) (0x11000 + PAGE_SIZE - 1));
-    
+
     register_clock_event_listener(&clock_listener);
 
     logf("task - set up init task");

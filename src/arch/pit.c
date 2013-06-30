@@ -16,12 +16,12 @@
 
 /*
     The following code shuts down the PIT,
-    it will probably be useful at some point.    
-    
-    idt_unregister(32);        
+    it will probably be useful at some point.
+
+    idt_unregister(32);
     outb_pit(0x43, 0x30);
     outb_pit(0x40, 0);
-    outb_pit(0x40, 0);    
+    outb_pit(0x40, 0);
 */
 
 static uint64_t ticks;
@@ -34,14 +34,14 @@ static void handle_pit(interrupt_t UNUSED(*interrupt));
 static clock_t pit_clock = {
     .name = "pit",
     .rating = 5,
-    
+
     .read = pit_read
 };
 
 static clock_event_source_t pit_clock_event_source = {
     .name = "pit",
     .rating = 10,
-    
+
     .freq = TIMER_FREQ
 };
 
@@ -70,20 +70,20 @@ void beep() {
 
 static void handle_pit(interrupt_t UNUSED(*interrupt)) {
     ticks++;
-    
+
     pit_clock_event_source.event(&pit_clock_event_source);
 }
 
 static INITCALL pit_init() {
     register_clock(&pit_clock);
     register_clock_event_source(&pit_clock_event_source);
-    
+
     idt_register(32, CPL_KERNEL, handle_pit);
     //outb(0x43, 0x36);
     //outb(0x40, (PIT_CLOCK / TIMER_FREQ) & 0xff);
-    //outb(0x40, ((PIT_CLOCK / TIMER_FREQ) >> 8) & 0xff); 
+    //outb(0x40, ((PIT_CLOCK / TIMER_FREQ) >> 8) & 0xff);
 
-    logf("pit - setting freq to %uHZ", TIMER_FREQ);    
+    logf("pit - setting freq to %uHZ", TIMER_FREQ);
 
     return 0;
 }

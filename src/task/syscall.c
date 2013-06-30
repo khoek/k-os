@@ -14,7 +14,7 @@ typedef void (*syscall_t)(interrupt_t *);
 
 void sys_exit(interrupt_t *interrupt) {
     logf("sys_exit: %d", interrupt->registers.ebx);
-    
+
     task_exit(current, interrupt->registers.ebx);
 }
 

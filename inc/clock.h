@@ -10,9 +10,9 @@ typedef struct clock {
     list_head_t list;
 
     char *name;
-    uint32_t rating;    
+    uint32_t rating;
     uint32_t freq;
-    
+
     uint64_t (*read)(void);
 } clock_t;
 
@@ -22,15 +22,15 @@ struct clock_event_source {
     list_head_t list;
 
     char *name;
-    uint32_t rating;    
+    uint32_t rating;
     uint32_t freq;
-    
+
     void (*event)(clock_event_source_t *);
 };
 
 typedef struct clock_event_listener {
     list_head_t list;
-    
+
     void (*handle)(clock_event_source_t *);
 } clock_event_listener_t;
 

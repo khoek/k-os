@@ -15,13 +15,13 @@ typedef enum task_state {
 
 typedef struct task {
     list_head_t list;
-    
+
     uint32_t pid;
     registers_t registers;
     proc_state_t proc;
     uint32_t cr3;
     uint32_t *directory;
-    
+
     task_state_t state;
 } task_t;
 
