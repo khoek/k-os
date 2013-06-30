@@ -30,6 +30,7 @@ void free_page(page_t *page);
 
 void * page_to_phys(page_t *page);
 void * page_to_virt(page_t *page);
+page_t * phys_to_page(void *addr);
 
 void * alloc_page_user(uint32_t flags, task_t *task, uint32_t vaddr);
 
