@@ -3,6 +3,7 @@
 #include "clock.h"
 #include "cache.h"
 #include "spinlock.h"
+#include "registers.h"
 #include "log.h"
 
 typedef struct timer {
@@ -27,7 +28,8 @@ void timer_create(uint32_t millis, void (*callback)(void *), void *data) {
     new->callback = callback;
     new->data = data;
 
-    spin_lock_irq(&active_lock);
+    uint32_t flags;
+    spin_lock_irqsave(&active_lock, &flags);
 
     if(list_empty(&active_timers)) {
         list_add(&new->list, &active_timers);
@@ -45,13 +47,14 @@ void timer_create(uint32_t millis, void (*callback)(void *), void *data) {
         list_add_before(&new->list, &timer->list);
     }
 
-    spin_unlock_irq(&active_lock);
+    spin_unlock_irqstore(&active_lock, flags);
 }
 
 static void time_tick(clock_event_source_t *source) {
     if(list_empty(&active_timers)) return;
 
-    spin_lock_irq(&active_lock);
+    uint32_t flags;
+    spin_lock_irqsave(&active_lock, &flags);
     spin_lock_irq(&dispatch_lock);
 
     timer_t *timer = list_first(&active_timers, timer_t, list);
@@ -61,7 +64,7 @@ static void time_tick(clock_event_source_t *source) {
         timer = list_first(&active_timers, timer_t, list);
     }
 
-    spin_unlock_irq(&active_lock);
+    spin_unlock(&active_lock);
 
     LIST_FOR_EACH_ENTRY(timer, &dispatch_timers, list) {
         timer->callback(timer->data);
@@ -71,7 +74,7 @@ static void time_tick(clock_event_source_t *source) {
 
     list_init(&dispatch_timers);
 
-    spin_unlock_irq(&dispatch_lock);
+    spin_unlock_irqstore(&dispatch_lock, flags);
 }
 
 static clock_event_listener_t clock_listener = {
