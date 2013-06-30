@@ -1,17 +1,19 @@
 #include "string.h"
 #include "printf.h"
-
 #include "common.h"
 #include "clock.h"
 #include "console.h"
+#include "panic.h"
+#include "registers.h"
 
 #define BUFFSIZE 1024
-static char buff[BUFFSIZE];
-
+static char time_buff[BUFFSIZE];
 static void print_time() {
     uint32_t time = uptime();
-    sprintf(buff, "[%5u.%03u] ", time / MSEC_IN_SEC, time % MSEC_IN_SEC);
-    console_puts(buff);
+    
+    sprintf(time_buff, "[%5u.%03u] ", time / MSEC_IN_SEC, time % MSEC_IN_SEC);
+    
+    console_puts(time_buff);
 }
 
 void log(const char *str) {
@@ -21,14 +23,12 @@ void log(const char *str) {
     console_puts("\n");
 }
 
+static char log_buff[BUFFSIZE];
 void logf(const char *fmt, ...) {
-    print_time();
-
     va_list va;
     va_start(va, fmt);
-    vsprintf(buff, fmt, va);
+    vsprintf(log_buff, fmt, va);
     va_end(va);
 
-    console_puts(buff);
-    console_puts("\n");
+    log(log_buff);
 }
