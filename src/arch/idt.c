@@ -8,6 +8,7 @@
 #include "asm.h"
 #include "panic.h"
 #include "task.h"
+#include "cpl.h"
 #include "log.h"
 
 //command io port of PICs
@@ -120,6 +121,8 @@ void interrupt_dispatch(interrupt_t *interrupt) {
     }
 
     outb(MASTER_COMMAND, EOI);
+    
+    if(current) cpl_switch(current->cr3, current->registers, current->proc);
 }
 
 extern void isr_init();
