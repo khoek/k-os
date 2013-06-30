@@ -3,7 +3,7 @@
 #include "tsc.h"
 #include "log.h"
 
-uint32_t holdrand;
+static uint32_t holdrand;
 
 void srand(uint32_t seed) {
     holdrand = seed;

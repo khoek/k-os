@@ -134,16 +134,16 @@
 #define MAX_PRD_ENTRIES         PAGE_SIZE / 8
 #define PRD(address, count)     ((((((uint64_t) (count)) & 0xFFFE) << 32) | (((uint32_t) (address)) & 0xFFFFFFFE)))
 
-struct {
+typedef struct ide_channel {
     uint16_t    base;   // I/O Base.
     uint16_t    ctrl;   // Control Base
     uint16_t    bmide;  // Bus Master IDE
     page_t     *prdt;
     bool        irq;
     uint8_t     nIEN;   // nIEN (No Interrupt);
-} channels[2];
+} ide_channel_t;
 
-struct {
+typedef struct ide_device {
     bool        present;       // 0 (Empty) or 1 (This Drive really exists).
     uint8_t     channel;       // 0 (Primary Channel) or 1 (Secondary Channel).
     uint8_t     drive;        // 0 (Master Drive) or 1 (Slave Drive).
@@ -154,9 +154,12 @@ struct {
     uint32_t    commandSets;    // Command Sets Supported.
     uint32_t    size;         // Size in Sectors.
     char        model[41];     // Model in string.
-} ide_devices[4];
+} ide_device_t;
 
-uint8_t ide_buf[2048] = {0};
+static ide_channel_t channels[2];
+static ide_device_t ide_devices[4];
+
+static uint8_t ide_buf[2048] = {0};
 //static uint8_t atapi_packet[12] = {0xA8, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0};
 
 static void ide_device_check(uint8_t device) {

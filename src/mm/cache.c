@@ -38,7 +38,7 @@ struct cache {
     list_head_t empty;
 };
 
-cache_t meta_cache = {
+static cache_t meta_cache = {
     .size = sizeof(cache_t),
     .max = (PAGE_SIZE - sizeof(cache_page_t)) / (sizeof(cache_t) + sizeof(uint32_t)),
     .flags = CACHE_FLAG_PERM,

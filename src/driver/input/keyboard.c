@@ -8,8 +8,8 @@
 #include "idt.h"
 #include "asm.h"
 
-bool keyStates[128];
-char keyMap[] = {
+static bool key_state[128];
+static const char key_map[] = {
           // 0x00
           0, 0,
           '\1', '\1',
@@ -108,8 +108,8 @@ char keyMap[] = {
           0, 0
 };
 
-void (*keyup)(char);
-void (*keydown)(char);
+static void (*keyup)(char);
+static void (*keydown)(char);
 
 void keyboard_register_key_up(void (*handler)(char)) {
     keyup = handler;
@@ -120,36 +120,36 @@ void keyboard_register_key_down(void (*handler)(char)) {
 }
 
 bool shift_down() {
-    return keyStates[42] || keyStates[54];
+    return key_state[42] || key_state[54];
 }
 
 bool control_down() {
-    return keyStates[29];
+    return key_state[29];
 }
 
 bool alt_down() {
-    return keyStates[56];
+    return key_state[56];
 }
 
 static char translate_code(uint16_t code) {
     bool shift = shift_down();
-    if(keyStates[58]) {
+    if(key_state[58]) {
         shift = !shift;
     }
 
-    return keyMap[code * 2 + (shift ? 1 : 0)];
+    return key_map[code * 2 + (shift ? 1 : 0)];
 }
 
 static void dispatch(uint16_t code) {
     if(((uint32_t) code) >> 7) {
         code -= 128;
-        keyStates[code] = false;
+        key_state[code] = false;
 
         if(keyup != 0) {
             (*keyup)(translate_code(code));
         }
     } else {
-        keyStates[code] = true;
+        key_state[code] = true;
 
         if(keydown != 0) {
             (*keydown)(translate_code(code));
