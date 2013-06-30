@@ -24,30 +24,6 @@ static LIST_HEAD(tasks);
 static LIST_HEAD(sleeping_tasks);
 static LIST_HEAD(blocking_tasks);
 
-static void task_usermode() {
-    while(1) {    
-        __asm__ volatile("mov $1, %eax");
-        __asm__ volatile("mov $8, %ebx");
-        __asm__ volatile("int $0x80");
-
-        __asm__ volatile("mov $2, %eax");
-        __asm__ volatile("mov $5000, %ebx");
-        __asm__ volatile("int $0x80");
-
-        __asm__ volatile("mov $1, %eax");
-        __asm__ volatile("mov $5, %ebx");
-        __asm__ volatile("int $0x80");
-
-        __asm__ volatile("mov $2, %eax");
-        __asm__ volatile("mov $5000, %ebx");
-        __asm__ volatile("int $0x80");
-    }
-}
-
-static void task_usermode2() {
-    while(1);
-}
-
 void task_block(task_t *task) {
     task->state = TASK_BLOCKING;
     list_move_before(&task->list, &blocking_tasks);
@@ -143,16 +119,6 @@ static clock_event_listener_t clock_listener = {
 
 static INITCALL task_init() {
     task_cache = cache_create(sizeof(task_t));
-
-    task_t *task = task_create();
-    memcpy(alloc_page_user(0, task, 0x10000), task_usermode, 0x1000);
-    alloc_page_user(0, task, 0x11000);
-    task_schedule(task, (void *) 0x10000, (void *) (0x11000 + PAGE_SIZE - 1));
-    
-    task = task_create();
-    memcpy(alloc_page_user(0, task, 0x10000), task_usermode2, 0x1000);
-    alloc_page_user(0, task, 0x11000);
-    task_schedule(task, (void *) 0x10000, (void *) (0x11000 + PAGE_SIZE - 1));
 
     register_clock_event_listener(&clock_listener);
 
