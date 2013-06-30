@@ -121,7 +121,7 @@ void interrupt_dispatch(interrupt_t *interrupt) {
     }
 
     outb(MASTER_COMMAND, EOI);
-    
+
     if(current) cpl_switch(current->cr3, current->registers, current->proc);
 }
 

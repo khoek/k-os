@@ -51,7 +51,7 @@ void debug_map_virtual() {
             mm_map((void *)(((uint32_t) strtab) + i));
         }
         strtab = strtab_reloc;
-          
+
         const elf_symbol_t *symtab_reloc = mm_map(symtab);
         for(uint32_t i = PAGE_SIZE; i < symtabsz; i += PAGE_SIZE) {
             mm_map((void *)(((uint32_t) symtab) + i));

@@ -30,7 +30,7 @@ static void wake_task(task_t *task) {
     task_wake(task);
 }
 
-static void sys_sleep(interrupt_t *interrupt) {    
+static void sys_sleep(interrupt_t *interrupt) {
     task_sleep(current);
     timer_create(interrupt->registers.ebx, (void (*)(void *)) wake_task, current);
     task_switch();
@@ -40,12 +40,12 @@ static void sys_log(interrupt_t *interrupt) {
     if(interrupt->registers.ecx > 1023) {
         logf("syscall - task log string too long!");
     } else {
-        char *buff = kmalloc(interrupt->registers.ecx + 1);    
+        char *buff = kmalloc(interrupt->registers.ecx + 1);
         memcpy(buff, (void *) interrupt->registers.ebx, interrupt->registers.ecx);
         buff[interrupt->registers.ecx] = '\0';
-        
+
         log(buff);
-        
+
         kfree(buff, interrupt->registers.ecx + 1);
     }
 }

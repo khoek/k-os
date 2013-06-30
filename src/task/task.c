@@ -41,7 +41,7 @@ void task_wake(task_t *task) {
 
 void task_exit(task_t *task, int32_t code) {
     //TODO propagate the exit code somehow
-    
+
     list_rm(&task->list);
 
     cache_free(task_cache, task);
@@ -72,7 +72,7 @@ void task_switch() {
     list_rotate_left(&tasks);
 
     current = list_first(&tasks, task_t, list);
-    
+
     BUG_ON(current->state != TASK_AWAKE);
 }
 

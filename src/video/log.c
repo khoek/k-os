@@ -10,9 +10,9 @@
 static char time_buff[BUFFSIZE];
 static void print_time() {
     uint32_t time = uptime();
-    
+
     sprintf(time_buff, "[%5u.%03u] ", time / MSEC_IN_SEC, time % MSEC_IN_SEC);
-    
+
     console_puts(time_buff);
 }
 
