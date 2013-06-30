@@ -21,29 +21,10 @@ typedef struct {
     uint32_t entsize;
 } __attribute__((packed)) elf_section_header_t;
 
-const char *strtab;
-uint32_t strtabsz;
-const elf_symbol_t *symtab;
-uint32_t symtabsz;
-
-void debug_map_virtual() {
-    //FIXME this assumes that the pages will be mapped contiguously, which may not be the case
-    if (strtabsz) {
-        strtab = (const char *) mm_map(strtab);
-
-        for(uint32_t offset = PAGE_SIZE; offset <= (DIV_UP(strtabsz, PAGE_SIZE) * PAGE_SIZE); offset += PAGE_SIZE) {
-            mm_map((void *) (((uint32_t) strtab) + offset));
-        }
-    }
-
-    if (symtabsz) {
-        symtab = (const elf_symbol_t *) mm_map(symtab);
-
-        for(uint32_t offset = PAGE_SIZE; offset <= (DIV_UP(symtabsz, PAGE_SIZE) * PAGE_SIZE); offset += PAGE_SIZE) {
-            mm_map((void *) (((uint32_t) symtab) + offset));
-        }
-    }
-}
+static const char *strtab;
+static uint32_t strtabsz;
+static const elf_symbol_t *symtab;
+static uint32_t symtabsz;
 
 const char * debug_symbol_name(const elf_symbol_t *symbol) {
     if (symbol == NULL) return NULL;
@@ -60,6 +41,23 @@ const elf_symbol_t * debug_lookup_symbol(uint32_t address) {
     }
 
     return NULL;
+}
+
+void debug_map_virtual() {
+    //FIXME this assumes that the pages will be mapped contiguously, which may not be the case
+    if(strtabsz && symtabsz) {
+        const char *strtab_reloc = mm_map(strtab);
+        for(uint32_t i = PAGE_SIZE; i < strtabsz; i += PAGE_SIZE) {
+            mm_map((void *)(((uint32_t) strtab) + i));
+        }
+        strtab = strtab_reloc;
+          
+        const elf_symbol_t *symtab_reloc = mm_map(symtab);
+        for(uint32_t i = PAGE_SIZE; i < symtabsz; i += PAGE_SIZE) {
+            mm_map((void *)(((uint32_t) symtab) + i));
+        }
+        symtab = symtab_reloc;
+    }
 }
 
 void debug_init() {

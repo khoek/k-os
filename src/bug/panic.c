@@ -23,7 +23,7 @@ void panic(char* message) {
     console_puts("Stack trace:\n");
     uint32_t *ebp, eip = -1;
     asm("mov %%ebp, %0" : "=r" (ebp));
-    eip = ebp[1];
+    eip = ebp[1] - 1;
 
     for(uint32_t frame = 0; eip != 0 && ebp != 0 && frame < MAX_FRAMES; frame++) {
         const elf_symbol_t *symbol = debug_lookup_symbol(eip);
@@ -34,11 +34,10 @@ void panic(char* message) {
         }
 
         ebp = (uint32_t *) ebp[0];
-        eip = ebp[1];
+        eip = ebp[1] - 1;
 
         if(frame == 2) {
-
-        die();
+            die();
         }
     }
 

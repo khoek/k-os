@@ -66,7 +66,7 @@ void task_save(interrupt_t *interrupt) {
 
 void task_switch() {
     if(list_empty(&tasks)) {
-        panicf("I have nothing to do!");
+        panicf("All processes have exited!");
     }
 
     list_rotate_left(&tasks);
