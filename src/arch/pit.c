@@ -79,9 +79,9 @@ static INITCALL pit_init() {
     register_clock_event_source(&pit_clock_event_source);
 
     idt_register(32, CPL_KERNEL, handle_pit);
-    //outb(0x43, 0x36);
-    //outb(0x40, (PIT_CLOCK / TIMER_FREQ) & 0xff);
-    //outb(0x40, ((PIT_CLOCK / TIMER_FREQ) >> 8) & 0xff);
+    outb(0x43, 0x36);
+    outb(0x40, (PIT_CLOCK / TIMER_FREQ) & 0xff);
+    outb(0x40, ((PIT_CLOCK / TIMER_FREQ) >> 8) & 0xff);
 
     logf("pit - setting freq to %uHZ", TIMER_FREQ);
 
