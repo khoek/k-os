@@ -10,7 +10,7 @@ OBJS=	loader.o \
         lib/string.o lib/printf.o lib/rand.o \
         bug/debug.o bug/panic.o \
         video/console.o video/log.o \
-        arch/gdt.o arch/registers.o arch/idt.o arch/isr.o arch/pit.o arch/tsc.o arch/cpl.o \
+        arch/gdt.o arch/registers.o arch/idt.o arch/isr.o arch/pit.o arch/tsc.o arch/cpl.o arch/atomic.o arch/spinlock.o \
         mm/mm.o mm/cache.o \
         time/clock.o \
         device/device.o \
