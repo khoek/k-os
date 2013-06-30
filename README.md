@@ -16,13 +16,19 @@ An operating system written by Keeley Hoek as a hobby. It was inspired by Charli
     * Keyboard
     * PATA
     * E1000 (Intel 825xx) Ethernet Driver
+* Time
+    * Clock and Timer APIs
+* Devices
+    * Bus, Device and Driver APIs
+* Tasks and Threads
+    * Multitasking
+    * Scheduler
+    * System Calls (exit, fork, sleep, log)
 * Tools:
     * Secure Disk Erasure Tool
 
 ## Roadmap
 
-* Tasks and threads - IN PROGRESS
-* Kernel module loading
 * Kernel RAMFS
 * VFS
 * AHCI driver
