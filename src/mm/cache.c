@@ -47,7 +47,7 @@ cache_t meta_cache = {
     .empty = LIST_MAKE_HEAD(meta_cache.empty)
 };
 
-LIST_HEAD(caches);
+static LIST_HEAD(caches);
 
 static void cache_alloc_page(cache_t *cache) {
     page_t *page = alloc_page(0);
@@ -190,7 +190,7 @@ void kfree(void *mem, uint32_t size) {
     cache_free(kalloc_cache[index], mem);
 }
 
-void cache_init() {
+void __init cache_init() {
     list_add(&meta_cache.list, &caches);
 
     for(uint32_t i = KALLOC_SHIFT_MIN; i < KALLOC_SHIFT_MAX; i++) {

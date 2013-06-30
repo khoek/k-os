@@ -28,7 +28,7 @@ static bool elf_header_valid(Elf32_Ehdr *ehdr) {
         && ehdr->e_machine == EM_386;
 }
 
-int load_elf_exe(void *start, uint32_t length) {
+static int load_elf_exe(void *start, uint32_t length) {
     start = mm_map(start);
     for(uint32_t mapped = PAGE_SIZE; mapped < length; mapped += PAGE_SIZE) {
         mm_map((void *) (((uint32_t) start) + mapped));
@@ -70,16 +70,16 @@ int load_elf_exe(void *start, uint32_t length) {
     return 0;
 }
 
-int load_elf_lib(void UNUSED(*start), uint32_t UNUSED(length)) {
+static int load_elf_lib(void UNUSED(*start), uint32_t UNUSED(length)) {
     return 1;
 }
 
-binfmt_t elf = {
+static binfmt_t elf = {
     .load_exe = load_elf_exe,
     .load_lib = load_elf_lib
 };
 
-INITCALL elf_register_binfmt() {
+static INITCALL elf_register_binfmt() {
     binfmt_register(&elf);
 
     return 0;

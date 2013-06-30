@@ -197,7 +197,7 @@ void free_page(page_t *page) {
     free_page_list[page->order] = page;
 }
 
-void mm_init() {
+void __init mm_init() {
     kernel_start = ((uint32_t) &image_start);
     kernel_end = ((uint32_t) &image_end);
 

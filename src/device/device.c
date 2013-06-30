@@ -16,7 +16,7 @@ static node_t root = {
     .children = LIST_MAKE_HEAD(root.children)
 };
 
-LIST_HEAD(buses);
+static LIST_HEAD(buses);
 
 static uint32_t next_id = 0;
 static const char *generic_name = "dev";

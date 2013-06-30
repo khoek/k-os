@@ -158,7 +158,7 @@ typedef struct net_825xx {
     tx_desc_t *tx_desc;
 } PACKED net_825xx_t;
 
-LIST_HEAD(net_825xx_devices);
+static LIST_HEAD(net_825xx_devices);
 
 static uint32_t mmio_read(net_825xx_t *net_device, uint32_t reg) {
     return *(uint32_t *)(net_device->mmio + reg);

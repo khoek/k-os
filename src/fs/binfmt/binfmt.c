@@ -5,7 +5,7 @@
 #include "binfmt.h"
 #include "log.h"
 
-LIST_HEAD(binfmts);
+static LIST_HEAD(binfmts);
 
 void binfmt_register(binfmt_t *binfmt) {
     list_add(&binfmt->list, &binfmts);
