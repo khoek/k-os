@@ -18,7 +18,7 @@ typedef struct spinlock {
 #define SPINLOCK_LOCKED   {.tickets = {.head = 0, .tail = 1}}
 #define SPINLOCK_UNLOCKED {.tickets = {.head = 0, .tail = 0}}
 
-#define SPINLOCK_INIT(name) spinlock_t name = SPINLOCK_LOCKED
+#define SPINLOCK_INIT(name) spinlock_t name = SPINLOCK_UNLOCKED
 
 void spin_lock(spinlock_t *lock);
 void spin_unlock(spinlock_t *lock);
