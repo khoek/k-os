@@ -11,8 +11,6 @@
 #include "task.h"
 #include "log.h"
 
-#define ENSURE(c) if(!(c)) return -1;
-
 static bool elf_header_valid(Elf32_Ehdr *ehdr) {
     return ehdr->e_ident[EI_MAG0] == ELFMAG0
         && ehdr->e_ident[EI_MAG1] == ELFMAG1
@@ -39,7 +37,8 @@ static int load_elf_exe(void *start, uint32_t length) {
     if(!elf_header_valid(ehdr)) return -1;
     if(ehdr->e_phoff == 0) return -1;
 
-    task_t *task = task_create();
+    task_t *task = task_create(true, (void *) ehdr->e_entry, (void *) (0x10000 + PAGE_SIZE - 1));
+    alloc_page_user(0, task, 0x10000); //alloc stack
 
     Elf32_Phdr *phdr = (Elf32_Phdr *) (((uint32_t) start) + ehdr->e_phoff);
     for(uint32_t i = 0; i < ehdr->e_phnum; i++) {
@@ -64,8 +63,7 @@ static int load_elf_exe(void *start, uint32_t length) {
         }
     }
 
-    alloc_page_user(0, task, 0x10000);
-    task_schedule(task, (void *) ehdr->e_entry, (void *) 0x10000);
+    task_schedule(task);
 
     return 0;
 }

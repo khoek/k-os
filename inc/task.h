@@ -16,12 +16,13 @@ typedef enum task_state {
 typedef struct task {
     list_head_t list;
 
-    uint32_t pid;
     registers_t registers;
     proc_state_t proc;
     uint32_t cr3;
     uint32_t *directory;
 
+    uint32_t pid;
+    uint32_t flags;
     task_state_t state;
 } task_t;
 
@@ -29,8 +30,8 @@ typedef struct task {
 
 extern task_t *current;
 
-task_t * task_create();
-void task_schedule(task_t *task, void *eip, void *esp);
+task_t * task_create(bool kernel, void *eip, void *esp);
+void task_schedule(task_t *task);
 void task_add_page(task_t *task, page_t *page);
 
 void task_exit(task_t *task, int32_t code);

@@ -1,3 +1,5 @@
+#include <stdbool.h>
+
 #include "int.h"
 #include "list.h"
 #include "string.h"
@@ -66,12 +68,11 @@ void task_save(interrupt_t *interrupt) {
 
 void task_switch() {
     if(list_empty(&tasks)) {
-        panicf("All processes have exited!");
+        panic("All processes have exited!");
+    } else {
+        current = list_first(&tasks, task_t, list);
+        list_rotate_left(&tasks);
     }
-
-    list_rotate_left(&tasks);
-
-    current = list_first(&tasks, task_t, list);
 
     BUG_ON(current->state != TASK_AWAKE);
 }
@@ -80,17 +81,32 @@ void task_add_page(task_t UNUSED(*task), page_t UNUSED(*page)) {
     //TODO add this to the list of pages for the task
 }
 
-task_t * task_create() {
+#define FLAG_KERNEL (1 << 0)
+
+task_t * task_create(bool kernel, void *eip, void *esp) {
     task_t *task = (task_t *) cache_alloc(task_cache);
     task->pid = pid++;
 
     memset(&task->registers, 0, sizeof(registers_t));
 
-    task->state = TASK_NONE;
+    task->proc.esp = (uint32_t) esp;
+    task->proc.eip = (uint32_t) eip;
+
+    task->state = TASK_AWAKE;
 
     task->proc.eflags = get_eflags() | EFLAGS_IF;
-    task->proc.cs = SEL_USER_CODE | SPL_USER;
-    task->proc.ss = SEL_USER_DATA | SPL_USER;
+
+    if(kernel) {
+        task->flags = FLAG_KERNEL;
+
+        task->proc.cs = SEL_KERNEL_CODE | SPL_KERNEL;
+        task->proc.ss = SEL_KERNEL_DATA | SPL_KERNEL;
+    } else {
+        task->flags = 0;
+
+        task->proc.cs = SEL_USER_CODE | SPL_USER;
+        task->proc.ss = SEL_USER_DATA | SPL_USER;
+    }
 
     page_t *page = alloc_page(0);
     task->directory = page_to_virt(page);
@@ -100,13 +116,10 @@ task_t * task_create() {
     return task;
 }
 
-void task_schedule(task_t *task, void *eip, void *esp) {
-    task->proc.esp = (uint32_t) esp;
-    task->proc.eip = (uint32_t) eip;
-
-    task->state = TASK_AWAKE;
-
+void task_schedule(task_t *task) {
     list_add_before(&task->list, &tasks);
+
+    if(list_is_singular(&tasks)) task_switch(); //cancel idle task
 }
 
 static void time_tick(clock_event_source_t *source) {
