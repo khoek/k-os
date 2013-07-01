@@ -5,6 +5,7 @@
 #include "console.h"
 #include "mm.h"
 #include "asm.h"
+#include "spinlock.h"
 
 #define BUFFSIZE 1024
 
@@ -15,6 +16,9 @@ static uint32_t row, col;
 static uint16_t *vga_port = ((uint16_t *) PORT_BASE);
 static char *vram = ((char *) VRAM_PHYS);
 static char color = 0x07;
+
+static SPINLOCK_INIT(vram_lock);
+static SPINLOCK_INIT(buffer_lock);
 
 void console_map_virtual() {
     vga_port = mm_map(vga_port);
@@ -34,80 +38,95 @@ void console_color(const char c) {
 }
 
 void console_clear() {
-     unsigned int i;
-     for(i = 0; i < (80 * 25) * 2; i += 2) {
-          vram[i] = ' ';
-          vram[i + 1] = 7;
-     }
-     col = 0;
-     row = 0;
+    uint32_t flags;
+    spin_lock_irqsave(&vram_lock, &flags);
+    
+    for(uint32_t i = 0; i < CONSOLE_WIDTH * CONSOLE_HEIGHT; i++) {
+        vram[i * 2] = ' ';
+        vram[i * 2 + 1] = 0x7;
+    }
+    col = 0;
+    row = 0;
+     
+    spin_unlock_irqstore(&vram_lock, flags);
 }
 
 void console_write(const char *str, const uint8_t len) {
-     for (int i = 0; i < len; i++) {
-          if(str[i] == '\n') {
-                col = 0;
-                row++;
-          } else if(str[i] == '\r') {
-                col = 0;
-          } else {
-                vram[(row * CONSOLE_WIDTH + col) * 2] = str[i];
-                vram[(row * CONSOLE_WIDTH + col) * 2 + 1] = color;
-                col++;
-          }
+    uint32_t flags;
+    spin_lock_irqsave(&vram_lock, &flags);
 
-          if(col == CONSOLE_WIDTH) {
-                col = 0;
-                row++;
-          }
+    for (int i = 0; i < len; i++) {
+        if(str[i] == '\n') {
+            col = 0;
+            row++;
+        } else if(str[i] == '\r') {
+        col =    0;
+        } else {
+            vram[(row * CONSOLE_WIDTH + col) * 2] = str[i];
+            vram[(row * CONSOLE_WIDTH + col) * 2 + 1] = color;
+            col++;
+        }
 
-          if(row == CONSOLE_HEIGHT) {
-                memmove(vram, vram + CONSOLE_WIDTH * 2, (CONSOLE_HEIGHT - 1) * CONSOLE_WIDTH * 2);
+        if(col == CONSOLE_WIDTH) {
+            col = 0;
+            row++;
+        }
 
-                for(int i = 0; i < 80; i++) {
-                     (vram + (CONSOLE_HEIGHT - 1) * CONSOLE_WIDTH * 2)[i * 2] = ' ';
-                     (vram + (CONSOLE_HEIGHT - 1) * CONSOLE_WIDTH * 2)[i * 2 + 1] = 7;
-                }
+        if(row == CONSOLE_HEIGHT) {
+            memmove(vram, vram + CONSOLE_WIDTH * 2, (CONSOLE_HEIGHT - 1) * CONSOLE_WIDTH * 2);
 
-                row = CONSOLE_HEIGHT - 1;
-          }
+            for(int i = 0; i < 80; i++) {
+                (vram + (CONSOLE_HEIGHT - 1) * CONSOLE_WIDTH * 2)[i * 2] = ' ';
+                (vram + (CONSOLE_HEIGHT - 1) * CONSOLE_WIDTH * 2)[i * 2 + 1] = 7;
+            }
 
-          console_cursor(row, col);
-     }
+            row = CONSOLE_HEIGHT - 1;
+        }
+    }
+     
+    spin_unlock_irqstore(&vram_lock, flags);
+
+    console_cursor(row, col);
 }
 
 void console_cursor(const uint8_t r, const uint8_t c) {
-     if (r >= CONSOLE_HEIGHT || c >= CONSOLE_WIDTH) {
-         row = 0;
-         col = 0;
-     } else {
-         row = r;
-         col = c;
-     }
+    if (r >= CONSOLE_HEIGHT || c >= CONSOLE_WIDTH) {
+        row = 0;
+        col = 0;
+    } else {
+        row = r;
+        col = c;
+    }
+    
+    uint16_t base_vga_port = *vga_port; // read base vga port from bios data
 
-     uint16_t base_vga_port = *vga_port; // read base vga port from bios data
+    uint32_t flags;
+    spin_lock_irqsave(&vram_lock, &flags);
 
-     outb(base_vga_port, 0x0e);
-     outb(base_vga_port + 1, ((row * CONSOLE_WIDTH + col) >> 8) & 0xff);
+    outb(base_vga_port, 0x0e);
+    outb(base_vga_port + 1, ((row * CONSOLE_WIDTH + col) >> 8) & 0xff);
 
-     outb(base_vga_port, 0x0f);
-     outb(base_vga_port + 1, (row * CONSOLE_WIDTH + col) & 0xff);
+    outb(base_vga_port, 0x0f);
+    outb(base_vga_port + 1, (row * CONSOLE_WIDTH + col) & 0xff);
+     
+    spin_unlock_irqstore(&vram_lock, flags);
 }
 
 void console_puts(const char* str) {
-     console_write(str, strlen(str));
+    console_write(str, strlen(str));
 }
 
 static char buff[BUFFSIZE];
 void console_putsf(const char* fmt, ...) {
-     va_list va;
-     va_start(va, fmt);
-     vsprintf(buff, fmt, va);
-     va_end(va);
+    uint32_t flags;
+    spin_lock_irqsave(&buffer_lock, &flags);
+    
+    va_list va;
+    va_start(va, fmt);
+    vsprintf(buff, fmt, va);
+    va_end(va);
 
-     console_puts(buff);
-}
-
-void console_relocate_vram() {
-    ;
+    console_puts(buff);
+    
+    spin_unlock_irqstore(&buffer_lock, flags);
 }
