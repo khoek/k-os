@@ -23,6 +23,10 @@ static inline bool list_empty(const list_head_t *head) {
 	return head->next == head;
 }
 
+static inline bool list_is_singular(const list_head_t *head) {
+	return !list_empty(head) && (head->next == head->prev);
+}
+
 static inline void list_insert(list_head_t *new, list_head_t *prev, list_head_t *next) {
 	next->prev = new;
 	new->next = next;
