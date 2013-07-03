@@ -11,8 +11,8 @@
 #define IRQ_OFFSET 0x20
 
 typedef struct interrupt {
-  registers_t registers;
   uint32_t vector, error;
+  registers_t registers;
   proc_state_t proc;
 } PACKED interrupt_t;
 

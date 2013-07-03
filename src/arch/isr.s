@@ -5,12 +5,10 @@
 
 .type isr_common, @function
 isr_common:
-    pusha
     pushl %esp
     call interrupt_dispatch
-    addl $4, %esp
+    addl $12, %esp
     popa
-    addl $8, %esp
     sti
     iret
 .size isr_common, .-isr_common
@@ -21,6 +19,7 @@ isr_common:
     .type isr_\vector, @function
     isr_\vector:
         cli
+        pusha
     .if !\error
         pushl $0
     .endif
