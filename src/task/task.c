@@ -59,10 +59,10 @@ void task_run() {
     while(1) hlt();
 }
 
-void task_save(interrupt_t *interrupt) {
+void task_save(cpu_state_t *cpu) {
     if(current) {
-        memcpy(&current->registers, &interrupt->registers, sizeof(registers_t));
-        memcpy(&current->proc, &interrupt->proc, sizeof(proc_state_t));
+        memcpy(&current->cpu.reg, &cpu->reg, sizeof(registers_t));
+        memcpy(&current->cpu.exec, &cpu->exec, sizeof(exec_state_t));
     }
 }
 
@@ -78,9 +78,11 @@ static void task_switch() {
 }
 
 void task_reschedule() {
+    if(!tasking_up) return;
+
     task_switch();
 
-    cpl_switch(current->cr3, current->registers, current->proc);
+    cpl_switch(current->cr3, current->cpu.reg, current->cpu.exec);
 }
 
 void task_run_scheduler() {
@@ -99,25 +101,25 @@ task_t * task_create(bool kernel, void *eip, void *esp) {
     task_t *task = (task_t *) cache_alloc(task_cache);
     task->pid = pid++;
 
-    memset(&task->registers, 0, sizeof(registers_t));
+    memset(&task->cpu.reg, 0, sizeof(registers_t));
 
-    task->proc.esp = (uint32_t) esp;
-    task->proc.eip = (uint32_t) eip;
+    task->cpu.exec.esp = (uint32_t) esp;
+    task->cpu.exec.eip = (uint32_t) eip;
 
     task->state = TASK_AWAKE;
 
-    task->proc.eflags = get_eflags() | EFLAGS_IF;
+    task->cpu.exec.eflags = get_eflags() | EFLAGS_IF;
 
     if(kernel) {
         task->flags = FLAG_KERNEL;
 
-        task->proc.cs = SEL_KERNEL_CODE | SPL_KERNEL;
-        task->proc.ss = SEL_KERNEL_DATA | SPL_KERNEL;
+        task->cpu.exec.cs = SEL_KERNEL_CODE | SPL_KERNEL;
+        task->cpu.exec.ss = SEL_KERNEL_DATA | SPL_KERNEL;
     } else {
         task->flags = 0;
 
-        task->proc.cs = SEL_USER_CODE | SPL_USER;
-        task->proc.ss = SEL_USER_DATA | SPL_USER;
+        task->cpu.exec.cs = SEL_USER_CODE | SPL_USER;
+        task->cpu.exec.ss = SEL_USER_DATA | SPL_USER;
     }
 
     page_t *page = alloc_page(0);

@@ -11,9 +11,8 @@
 #define IRQ_OFFSET 0x20
 
 typedef struct interrupt {
-  uint32_t vector, error;
-  registers_t registers;
-  proc_state_t proc;
+    uint32_t vector, error;
+    cpu_state_t cpu;
 } PACKED interrupt_t;
 
 //indirect, invoked by gdt_init()

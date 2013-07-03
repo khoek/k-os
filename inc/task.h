@@ -16,8 +16,7 @@ typedef enum task_state {
 typedef struct task {
     list_head_t list;
 
-    registers_t registers;
-    proc_state_t proc;
+    cpu_state_t cpu;
     uint32_t cr3;
     uint32_t *directory;
 
@@ -40,7 +39,7 @@ void task_block(task_t *task);
 void task_sleep(task_t *task);
 void task_wake(task_t *task);
 
-void task_save(interrupt_t *interrupt);
+void task_save(cpu_state_t *cpu);
 
 void task_reschedule();
 void task_run_scheduler();

@@ -98,7 +98,7 @@ static uint16_t get_reg(uint16_t pic, uint8_t reg) {
 
 void interrupt_dispatch(interrupt_t *interrupt) {
     if (interrupt->vector < PIC_MASTER_OFFSET) {
-        panicf("Exception #%u: %s\nError Code: 0x%X\nEIP: 0x%p", interrupt->vector, exceptions[interrupt->vector] ? exceptions[interrupt->vector] : "Unknown", interrupt->error, interrupt->proc.eip);
+        panicf("Exception #%u: %s\nError Code: 0x%X\nEIP: 0x%p", interrupt->vector, exceptions[interrupt->vector] ? exceptions[interrupt->vector] : "Unknown", interrupt->error, interrupt->cpu.exec.eip);
     }
 
     if(interrupt->vector == INT_SPURIOUS_MASTER && !(get_reg(MASTER_COMMAND, PIC_REG_IRR) & (1 << IRQ_SPURIOUS))) {
@@ -107,9 +107,9 @@ void interrupt_dispatch(interrupt_t *interrupt) {
         outb(MASTER_COMMAND, EOI);
         return;
     }
-    
+
     if(idt[interrupt->vector].type & CPL_USER) {
-        task_save(interrupt);
+        task_save(&interrupt->cpu);
     }
 
     if (handlers[interrupt->vector - PIC_MASTER_OFFSET]) {
