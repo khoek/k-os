@@ -40,14 +40,14 @@ void console_color(const char c) {
 void console_clear() {
     uint32_t flags;
     spin_lock_irqsave(&vram_lock, &flags);
-    
+
     for(uint32_t i = 0; i < CONSOLE_WIDTH * CONSOLE_HEIGHT; i++) {
         vram[i * 2] = ' ';
         vram[i * 2 + 1] = 0x7;
     }
     col = 0;
     row = 0;
-     
+
     spin_unlock_irqstore(&vram_lock, flags);
 }
 
@@ -83,7 +83,7 @@ void console_write(const char *str, const uint8_t len) {
             row = CONSOLE_HEIGHT - 1;
         }
     }
-     
+
     spin_unlock_irqstore(&vram_lock, flags);
 
     console_cursor(row, col);
@@ -97,7 +97,7 @@ void console_cursor(const uint8_t r, const uint8_t c) {
         row = r;
         col = c;
     }
-    
+
     uint16_t base_vga_port = *vga_port; // read base vga port from bios data
 
     uint32_t flags;
@@ -108,7 +108,7 @@ void console_cursor(const uint8_t r, const uint8_t c) {
 
     outb(base_vga_port, 0x0f);
     outb(base_vga_port + 1, (row * CONSOLE_WIDTH + col) & 0xff);
-     
+
     spin_unlock_irqstore(&vram_lock, flags);
 }
 
@@ -120,13 +120,13 @@ static char buff[BUFFSIZE];
 void console_putsf(const char* fmt, ...) {
     uint32_t flags;
     spin_lock_irqsave(&buffer_lock, &flags);
-    
+
     va_list va;
     va_start(va, fmt);
     vsprintf(buff, fmt, va);
     va_end(va);
 
     console_puts(buff);
-    
+
     spin_unlock_irqstore(&buffer_lock, flags);
 }

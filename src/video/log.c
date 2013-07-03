@@ -21,13 +21,13 @@ static void print_time() {
 
 void log(const char *str) {
     uint32_t flags;
-    spin_lock_irqsave(&log_lock, &flags);    
+    spin_lock_irqsave(&log_lock, &flags);
 
     print_time();
 
     console_puts(str);
     console_puts("\n");
-    
+
     spin_unlock_irqstore(&log_lock, flags);
 }
 
@@ -41,6 +41,6 @@ void logf(const char *fmt, ...) {
     va_end(va);
 
     log(buff);
-    
+
     spin_unlock_irqstore(&buff_lock, flags);
 }
