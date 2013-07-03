@@ -54,15 +54,16 @@ void task_exit(task_t *task, int32_t code) {
 }
 
 void task_run() {
+    cli();
+
     tasking_up = true;
 
-    while(1) hlt();
+    task_reschedule();
 }
 
 void task_save(cpu_state_t *cpu) {
-    if(current) {
-        memcpy(&current->cpu.reg, &cpu->reg, sizeof(registers_t));
-        memcpy(&current->cpu.exec, &cpu->exec, sizeof(exec_state_t));
+    if(current && tasking_up) {
+        current->cpu = (uint32_t) cpu;
     }
 }
 
@@ -82,7 +83,7 @@ void task_reschedule() {
 
     task_switch();
 
-    cpl_switch(current->cr3, current->cpu.reg, current->cpu.exec);
+    cpl_switch(current->cr3, current->cpu);
 }
 
 void task_run_scheduler() {
@@ -97,35 +98,38 @@ void task_add_page(task_t UNUSED(*task), page_t UNUSED(*page)) {
 
 #define FLAG_KERNEL (1 << 0)
 
-task_t * task_create(bool kernel, void *eip, void *esp) {
+task_t * task_create(bool kernel, void *ip, void *sp) {
     task_t *task = (task_t *) cache_alloc(task_cache);
     task->pid = pid++;
-
-    memset(&task->cpu.reg, 0, sizeof(registers_t));
-
-    task->cpu.exec.esp = (uint32_t) esp;
-    task->cpu.exec.eip = (uint32_t) eip;
-
     task->state = TASK_AWAKE;
-
-    task->cpu.exec.eflags = get_eflags() | EFLAGS_IF;
-
-    if(kernel) {
-        task->flags = FLAG_KERNEL;
-
-        task->cpu.exec.cs = SEL_KERNEL_CODE | SPL_KERNEL;
-        task->cpu.exec.ss = SEL_KERNEL_DATA | SPL_KERNEL;
-    } else {
-        task->flags = 0;
-
-        task->cpu.exec.cs = SEL_USER_CODE | SPL_USER;
-        task->cpu.exec.ss = SEL_USER_DATA | SPL_USER;
-    }
 
     page_t *page = alloc_page(0);
     task->directory = page_to_virt(page);
     task->cr3 = (uint32_t) page_to_phys(page);
     page_build_directory(task->directory);
+
+    //FIXME the address 0x11000 is hardcoded
+    cpu_state_t *cpu = (void *) (((uint32_t) alloc_page_user(0, task, 0x11000)) + PAGE_SIZE - (sizeof(cpu_state_t) + 1));
+    task->cpu = 0x11000 + PAGE_SIZE - (sizeof(cpu_state_t) + 1);
+
+    memset(&cpu->reg, 0, sizeof(registers_t));
+
+    cpu->exec.eip = (uint32_t) ip;
+    cpu->exec.esp = (uint32_t) sp;
+
+    cpu->exec.eflags = get_eflags() | EFLAGS_IF;
+
+    if(kernel) {
+        task->flags = FLAG_KERNEL;
+
+        cpu->exec.cs = SEL_KERNEL_CODE | SPL_KERNEL;
+        cpu->exec.ss = SEL_KERNEL_DATA | SPL_KERNEL;
+    } else {
+        task->flags = 0;
+
+        cpu->exec.cs = SEL_USER_CODE | SPL_USER;
+        cpu->exec.ss = SEL_USER_DATA | SPL_USER;
+    }
 
     return task;
 }

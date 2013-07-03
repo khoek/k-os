@@ -2,16 +2,17 @@
 
 .type cpl_switch, @function
 cpl_switch:
-	mov 56(%esp), %eax
-	mov %eax, %ds
-	mov %eax, %es
-	mov %eax, %fs
-	mov %eax, %gs
+    add $4, %esp #Discard return address (the entire contents of this stack up to the last interrupt is about to be lost)
 
-    add $4, %esp
+    pop %eax #new cr3
+    pop %ecx #top of new stack (new esp)
 
-    pop %eax
     mov %eax, %cr3
+    mov %ecx, %esp
+
+	#FIXME change the segment registers depending on the value of ss
+
+    #The next two instructions should load all registers off the new stack and then perform a task switch, regardless of whether we are going to kernel or user mode
 
     popa
 	iret

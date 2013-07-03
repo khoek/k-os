@@ -16,7 +16,7 @@ typedef enum task_state {
 typedef struct task {
     list_head_t list;
 
-    cpu_state_t cpu;
+    uint32_t cpu; //On the top of the kernel stack, updated every interrupt
     uint32_t cr3;
     uint32_t *directory;
 

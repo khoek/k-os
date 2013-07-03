@@ -108,9 +108,7 @@ void interrupt_dispatch(interrupt_t *interrupt) {
         return;
     }
 
-    if(idt[interrupt->vector].type & CPL_USER) {
-        task_save(&interrupt->cpu);
-    }
+    task_save(&interrupt->cpu);
 
     if (handlers[interrupt->vector - PIC_MASTER_OFFSET]) {
         handlers[interrupt->vector - PIC_MASTER_OFFSET](interrupt);
