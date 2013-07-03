@@ -50,7 +50,7 @@ void task_exit(task_t *task, int32_t code) {
 
     //TODO free task page directory, iterate through it and free all of the non-kernel page tables
 
-    task_switch();
+    task_reschedule();
 }
 
 void task_run() {
@@ -66,7 +66,7 @@ void task_save(interrupt_t *interrupt) {
     }
 }
 
-void task_switch() {
+static void task_switch() {
     if(list_empty(&tasks)) {
         panic("All processes have exited!");
     } else {
@@ -75,6 +75,18 @@ void task_switch() {
     }
 
     BUG_ON(current->state != TASK_AWAKE);
+}
+
+void task_reschedule() {
+    task_switch();
+
+    cpl_switch(current->cr3, current->registers, current->proc);
+}
+
+void task_run_scheduler() {
+    //TODO descide whether or not to switch tasks
+
+    task_reschedule();
 }
 
 void task_add_page(task_t UNUSED(*task), page_t UNUSED(*page)) {

@@ -107,7 +107,7 @@ void interrupt_dispatch(interrupt_t *interrupt) {
         outb(MASTER_COMMAND, EOI);
         return;
     }
-
+    
     if(idt[interrupt->vector].type & CPL_USER) {
         task_save(interrupt);
     }
@@ -122,7 +122,7 @@ void interrupt_dispatch(interrupt_t *interrupt) {
 
     outb(MASTER_COMMAND, EOI);
 
-    if(current) cpl_switch(current->cr3, current->registers, current->proc);
+    task_run_scheduler();
 }
 
 extern void isr_init();

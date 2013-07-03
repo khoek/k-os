@@ -41,7 +41,10 @@ void task_sleep(task_t *task);
 void task_wake(task_t *task);
 
 void task_save(interrupt_t *interrupt);
-void task_switch();
+
+void task_reschedule();
+void task_run_scheduler();
+
 void task_run();
 
 #endif

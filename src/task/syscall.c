@@ -33,7 +33,7 @@ static void wake_task(task_t *task) {
 static void sys_sleep(interrupt_t *interrupt) {
     task_sleep(current);
     timer_create(interrupt->registers.ebx, (void (*)(void *)) wake_task, current);
-    task_switch();
+    task_reschedule();
 }
 
 static void sys_log(interrupt_t *interrupt) {
