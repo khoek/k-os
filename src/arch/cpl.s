@@ -10,7 +10,11 @@ cpl_switch:
     mov %eax, %cr3
     mov %ecx, %esp
 
-	#FIXME change the segment registers depending on the value of ss
+    mov 48(%esp), %eax
+    mov %eax, %ds
+    mov %eax, %es
+    mov %eax, %fs
+    mov %eax, %gs
 
     #The next two instructions should load all registers off the new stack and then perform a task switch, regardless of whether we are going to kernel or user mode
 

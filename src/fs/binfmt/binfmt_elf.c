@@ -37,8 +37,8 @@ static int load_elf_exe(void *start, uint32_t length) {
     if(!elf_header_valid(ehdr)) return -1;
     if(ehdr->e_phoff == 0) return -1;
 
-    task_t *task = task_create(true, (void *) ehdr->e_entry, (void *) (0x10000 + PAGE_SIZE - 1));
-    alloc_page_user(0, task, 0x10000); //alloc stack
+    task_t *task = task_create(false, (void *) ehdr->e_entry, (void *) (0x10000 + PAGE_SIZE - 1));
+    alloc_page_user(0, task, 0x10000); //alloc stack, FIXME hardcoded, might overlap with an elf segment
 
     Elf32_Phdr *phdr = (Elf32_Phdr *) (((uint32_t) start) + ehdr->e_phoff);
     for(uint32_t i = 0; i < ehdr->e_phnum; i++) {
