@@ -2,20 +2,24 @@
 
 .type cpl_switch, @function
 cpl_switch:
-    add $4, %esp #Discard return address (the entire contents of this stack up to the last interrupt is about to be lost)
+    # Discard return address
+    add $4, %esp
 
+    # Load parameters
     pop %eax #new cr3
-    pop %ecx #top of new stack (new esp)
+    pop %esp
 
+    # Switch page tables
     mov %eax, %cr3
-    mov %ecx, %esp
 
+    # Load the new CS into eax and test whether we are going to usermode
+    # (by masking the bottom 3 bits). If we are, load the segment registers
+    # (all but CS, SS) with the SS
     mov 36(%esp), %eax
 
     and $0x7, %eax
-    test %eax, %eax
 
-    jz return
+    jz finish
 
     mov 48(%esp), %eax
     mov %eax, %ds
@@ -23,8 +27,9 @@ cpl_switch:
     mov %eax, %fs
     mov %eax, %gs
 
-return:
-    #The next two instructions should load all registers off the new stack and then perform a task switch, regardless of whether we are going to kernel or user mode
+finish:
+    # The next two instructions should load all registers off the new stack and then perform a task
+    # switch, regardless of whether we are going to kernel or user mode
 
     popa
 	iret
