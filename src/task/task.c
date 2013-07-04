@@ -22,9 +22,15 @@ static cache_t *task_cache;
 static uint32_t pid = 1;
 static bool tasking_up = false;
 
+static task_t *idle_task;
+
 static LIST_HEAD(tasks);
 static LIST_HEAD(sleeping_tasks);
 static LIST_HEAD(blocking_tasks);
+
+static void idle_loop() {
+    while(1) hlt();
+}
 
 void task_block(task_t *task) {
     task->state = TASK_BLOCKING;
@@ -69,7 +75,7 @@ void task_save(cpu_state_t *cpu) {
 
 static void task_switch() {
     if(list_empty(&tasks)) {
-        panic("All processes have exited!");
+        current = idle_task;
     } else {
         current = list_first(&tasks, task_t, list);
         list_rotate_left(&tasks);
@@ -150,6 +156,8 @@ static clock_event_listener_t clock_listener = {
 
 static INITCALL task_init() {
     task_cache = cache_create(sizeof(task_t));
+
+    idle_task = task_create(true, idle_loop, NULL);
 
     register_clock_event_listener(&clock_listener);
 
