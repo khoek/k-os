@@ -10,12 +10,20 @@ cpl_switch:
     mov %eax, %cr3
     mov %ecx, %esp
 
+    mov 36(%esp), %eax
+
+    and $0x7, %eax
+    test %eax, %eax
+
+    jz return
+
     mov 48(%esp), %eax
     mov %eax, %ds
     mov %eax, %es
     mov %eax, %fs
     mov %eax, %gs
 
+return:
     #The next two instructions should load all registers off the new stack and then perform a task switch, regardless of whether we are going to kernel or user mode
 
     popa
