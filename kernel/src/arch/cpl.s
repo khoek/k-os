@@ -28,8 +28,9 @@ cpl_switch:
     mov %eax, %gs
 
 finish:
-    # The next two instructions should load all registers off the new stack and then perform a task
-    # switch, regardless of whether we are going to kernel or user mode
+    # The next two instructions should load all registers off the new stack
+    # and then perform a task switch, regardless of whether we are going to
+    # kernel or user mode
 
     popa
 	iret
