@@ -108,7 +108,7 @@ task_t * task_create(bool kernel, void *ip, void *sp) {
     task_t *task = (task_t *) cache_alloc(task_cache);
     task->pid = pid++;
     task->state = TASK_AWAKE;
-    
+
     task->ret = 0;
 
     page_t *page = alloc_page(0);

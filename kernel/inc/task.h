@@ -19,7 +19,7 @@ typedef struct task {
     uint32_t cpu; //On the top of the kernel stack, updated every interrupt
     uint32_t cr3;
     uint32_t *directory;
-    
+
     uint64_t ret; //Return value (for syscalls)
 
     uint32_t pid;

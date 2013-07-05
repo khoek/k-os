@@ -33,7 +33,7 @@ finish:
     # Preserve eax and edx after popa
     mov %eax, 28(%esp)
     mov %edx, 20(%esp)
-    
+
     # The next two instructions should load all registers off the new stack
     # and then perform a task switch, regardless of whether we are going to
     # kernel or user mode
