@@ -89,7 +89,7 @@ void task_reschedule() {
 
     task_switch();
 
-    cpl_switch(current->cr3, current->cpu);
+    cpl_switch(current->cr3, (uint32_t) (current->ret & 0xFFFFFFFF), (uint32_t) (current->ret >> 32), current->cpu);
 }
 
 void task_run_scheduler() {
@@ -108,6 +108,8 @@ task_t * task_create(bool kernel, void *ip, void *sp) {
     task_t *task = (task_t *) cache_alloc(task_cache);
     task->pid = pid++;
     task->state = TASK_AWAKE;
+    
+    task->ret = 0;
 
     page_t *page = alloc_page(0);
     task->directory = page_to_virt(page);
