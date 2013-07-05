@@ -70,6 +70,7 @@ void task_run() {
 void task_save(cpu_state_t *cpu) {
     if(current && tasking_up) {
         current->cpu = (uint32_t) cpu;
+        current->ret = (((uint64_t) cpu->reg.edx) << 32) | ((uint64_t) cpu->reg.eax);
     }
 }
 
