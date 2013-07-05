@@ -17,13 +17,13 @@
 typedef void (*syscall_t)(interrupt_t *);
 
 static void sys_exit(interrupt_t *interrupt) {
-    logf("sys_exit: %d", interrupt->cpu.reg.ebx);
+    logf("sys_exit: %d", interrupt->cpu.reg.ecx);
 
-    task_exit(current, interrupt->cpu.reg.ebx);
+    task_exit(current, interrupt->cpu.reg.ecx);
 }
 
 static void sys_fork(interrupt_t *interrupt) {
-    logf("sys_fork: %d", interrupt->cpu.reg.ebx);
+    logf("sys_fork: %d", interrupt->cpu.reg.ecx);
 }
 
 static void wake_task(task_t *task) {
@@ -32,21 +32,21 @@ static void wake_task(task_t *task) {
 
 static void sys_sleep(interrupt_t *interrupt) {
     task_sleep(current);
-    timer_create(interrupt->cpu.reg.ebx, (void (*)(void *)) wake_task, current);
+    timer_create(interrupt->cpu.reg.ecx, (void (*)(void *)) wake_task, current);
     task_reschedule();
 }
 
 static void sys_log(interrupt_t *interrupt) {
-    if(interrupt->cpu.reg.ecx > 1023) {
+    if(interrupt->cpu.reg.edx > 1023) {
         logf("syscall - task log string too long!");
     } else {
-        char *buff = kmalloc(interrupt->cpu.reg.ecx + 1);
-        memcpy(buff, (void *) interrupt->cpu.reg.ebx, interrupt->cpu.reg.ecx);
-        buff[interrupt->cpu.reg.ecx] = '\0';
+        char *buff = kmalloc(interrupt->cpu.reg.edx + 1);
+        memcpy(buff, (void *) interrupt->cpu.reg.ecx, interrupt->cpu.reg.edx);
+        buff[interrupt->cpu.reg.edx] = '\0';
 
         log(buff);
 
-        kfree(buff, interrupt->cpu.reg.ecx + 1);
+        kfree(buff, interrupt->cpu.reg.edx + 1);
     }
 }
 
@@ -59,7 +59,7 @@ static syscall_t syscalls[MAX_SYSCALL] = {
 
 static void syscall_handler(interrupt_t *interrupt) {
     if(interrupt->cpu.reg.eax >= MAX_SYSCALL || syscalls[interrupt->cpu.reg.eax] == NULL) {
-        panicf("Unregistered Syscall #%u: 0x%X", interrupt->cpu.reg.eax, interrupt->cpu.reg.ebx);
+        panicf("Unregistered Syscall #%u: 0x%X", interrupt->cpu.reg.eax, interrupt->cpu.reg.ecx);
     } else {
         syscalls[interrupt->cpu.reg.eax](interrupt);
     }
