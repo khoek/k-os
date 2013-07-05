@@ -22,8 +22,8 @@ static void sys_exit(interrupt_t *interrupt) {
     task_exit(current, interrupt->cpu.reg.ecx);
 }
 
-static void sys_fork(interrupt_t *interrupt) {
-    logf("sys_fork: %d", interrupt->cpu.reg.ecx);
+static void sys_fork(interrupt_t *interrupt) {    
+    current->ret = ~interrupt->cpu.reg.ecx;
 }
 
 static void wake_task(task_t *task) {
