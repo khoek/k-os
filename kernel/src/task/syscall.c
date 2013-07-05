@@ -9,6 +9,7 @@
 #include "asm.h"
 #include "task.h"
 #include "timer.h"
+#include "clock.h"
 #include "cache.h"
 #include "log.h"
 
@@ -50,11 +51,16 @@ static void sys_log(interrupt_t *interrupt) {
     }
 }
 
+static void sys_uptime(interrupt_t *interrupt) {
+    current->ret = uptime();
+}
+
 static syscall_t syscalls[MAX_SYSCALL] = {
     [0] = sys_exit,
     [1] = sys_fork,
     [2] = sys_sleep,
-    [3] = sys_log
+    [3] = sys_log,
+    [4] = sys_uptime
 };
 
 static void syscall_handler(interrupt_t *interrupt) {

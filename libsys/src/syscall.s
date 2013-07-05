@@ -2,6 +2,7 @@
 .global sys_fork
 .global sys_sleep
 .global sys_log
+.global sys_uptime
 
 sys_exit:
     mov 4(%esp), %ecx
@@ -28,6 +29,12 @@ sys_log:
     mov 8(%esp), %edx
     mov 4(%esp), %ecx
     mov $3, %eax
+    int $0x80
+
+    ret
+
+sys_uptime:
+    mov $4, %eax
     int $0x80
 
     ret
