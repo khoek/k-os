@@ -1,31 +1,31 @@
-.global sys_exit
-.global sys_fork
-.global sys_sleep
-.global sys_log
-.global sys_uptime
+.global _exit
+.global _fork
+.global _sleep
+.global _log
+.global _uptime
 
-sys_exit:
+_exit:
     mov 4(%esp), %ecx
     mov $0, %eax
     int $0x80
 
     ret
 
-sys_fork:
+_fork:
     mov 4(%esp), %ecx
     mov $1, %eax
     int $0x80
 
     ret
 
-sys_sleep:
+_sleep:
     mov 4(%esp), %ecx
     mov $2, %eax
     int $0x80
 
     ret
 
-sys_log:
+_log:
     mov 8(%esp), %edx
     mov 4(%esp), %ecx
     mov $3, %eax
@@ -33,7 +33,7 @@ sys_log:
 
     ret
 
-sys_uptime:
+_uptime:
     mov $4, %eax
     int $0x80
 
