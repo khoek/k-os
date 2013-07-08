@@ -89,6 +89,8 @@ void task_reschedule() {
     if(!tasking_up) return;
 
     task_switch();
+    
+    tss_set_stack(current->kernel_stack);
 
     cpl_switch(current->cr3, (uint32_t) (current->ret & 0xFFFFFFFF), (uint32_t) (current->ret >> 32), current->cpu);
 }
@@ -119,7 +121,8 @@ task_t * task_create(bool kernel, void *ip, void *sp) {
 
     //FIXME the address 0x11000 is hardcoded
     cpu_state_t *cpu = (void *) (((uint32_t) alloc_page_user(0, task, 0x11000)) + PAGE_SIZE - (sizeof(cpu_state_t) + 1));
-    task->cpu = 0x11000 + PAGE_SIZE - (sizeof(cpu_state_t) + 1);
+    task->kernel_stack = 0x11000 + PAGE_SIZE - 1;
+    task->cpu = task->kernel_stack - sizeof(cpu_state_t);
 
     memset(&cpu->reg, 0, sizeof(registers_t));
 

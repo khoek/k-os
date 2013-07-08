@@ -50,6 +50,10 @@ static void create_selector(uint16_t index, uint32_t base, uint32_t limit, uint8
     gdt[index].access     = access;
 }
 
+void tss_set_stack(uint32_t sp) {
+    tss.esp0 = sp;
+}
+
 static INITCALL gdt_init() {
     create_selector(0, 0x00000000, 0x00000, 0, 0);
     create_selector(1, 0x00000000, 0xFFFFF,            PRESENT | CPL_KERNEL | WRITABLE | EXECABLE | SEGMENT, FLAG_BITS_32 | FLAG_GRANULARITY_PAGE);
@@ -59,7 +63,8 @@ static INITCALL gdt_init() {
     create_selector(5, (uint32_t) &tss, sizeof(tss_t), PRESENT | CPL_KERNEL |            EXECABLE | TSS    , FLAG_BITS_32 | FLAG_GRANULARITY_BYTE);
 
     tss.ss0 = SEL_KERNEL_DATA;
-    tss.esp0 = ((uint32_t) kernel_stack) + sizeof(kernel_stack) - 1;
+    
+    tss_set_stack(((uint32_t) kernel_stack) + sizeof(kernel_stack) - 1);
 
     gdtd.size = (GDT_SIZE * sizeof(gdt_entry_t)) - 1;
     gdtd.offset = (uint32_t) gdt;
