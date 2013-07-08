@@ -10,6 +10,7 @@
 #include "debug.h"
 #include "mm.h"
 #include "cache.h"
+#include "net.h"
 #include "pit.h"
 #include "task.h"
 
@@ -38,6 +39,6 @@ void kmain(uint32_t magic, multiboot_info_t *mbd) {
 
     logf("entering usermode");
     task_run();
-
+    
     panic("kmain returned!");
 }
