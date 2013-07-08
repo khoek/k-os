@@ -19,17 +19,23 @@ An operating system written by Keeley Hoek as a hobby. It was inspired by Charli
 * Time
     * Clock and Timer APIs
 * Devices
-    * Bus, Device and Driver APIs
-* Tasks and Threads
+    * Unified Bus, Device and Driver APIs
+* Networking (incomplete, in progress)
+    * DHCP support
+    * 3 layer packet switch
+        * Link layer (Ethernet)
+        * Network layer (IP, ARP)
+        * Transport layer (TCP, UDP)
+* Tasks and Threads (functional, in progress)
     * Multitasking
     * Scheduler
-    * System Calls (exit, fork, sleep, log)
+    * System Calls (exit, fork, sleep, log, uptime)
 * Tools:
     * Secure Disk Erasure Tool
 
 ## Roadmap
 
-* Kernel RAMFS
+* ACPI parsing
 * VFS
 * AHCI driver
 * Better PATA driver
