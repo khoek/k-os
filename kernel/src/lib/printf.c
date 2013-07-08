@@ -34,7 +34,7 @@
 
 #include <stdarg.h>
 
-#include "string.h"
+#include "lib/string.h"
 
 #define NOFLOAT
 

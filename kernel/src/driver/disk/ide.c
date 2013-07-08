@@ -1,19 +1,18 @@
 #include <stdbool.h>
 
-#include "common.h"
-#include "debug.h"
-#include "printf.h"
-#include "init.h"
-#include "ide.h"
-#include "pci.h"
-#include "asm.h"
-#include "panic.h"
-#include "device.h"
-#include "clock.h" //FIXME sleep(1) should be microseconds not hundredths of a second
-#include "idt.h"
-#include "mm.h"
-#include "cache.h"
-#include "log.h"
+#include "lib/printf.h"
+#include "common/asm.h"
+#include "common/init.h"
+#include "bug/debug.h"
+#include "bug/panic.h"
+#include "arch/idt.h"
+#include "mm/mm.h"
+#include "mm/cache.h"
+#include "time/clock.h" //FIXME sleep(1) should be microseconds not hundredths of a second
+#include "device/device.h"
+#include "driver/disk/ide.h"
+#include "driver/bus/pci.h"
+#include "video/log.h"
 
 #define TYPE_PATA               0x00
 #define TYPE_PATAPI             0x01

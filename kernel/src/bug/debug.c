@@ -1,12 +1,12 @@
 #include <stddef.h>
 #include <stdbool.h>
 
-#include "string.h"
-#include "init.h"
-#include "debug.h"
-#include "multiboot.h"
-#include "mm.h"
-#include "log.h"
+#include "boot/multiboot.h"
+#include "lib/string.h"
+#include "common/init.h"
+#include "bug/debug.h"
+#include "mm/mm.h"
+#include "video/log.h"
 
 typedef struct {
     uint32_t name;

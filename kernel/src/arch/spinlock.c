@@ -1,8 +1,7 @@
-#include "compiler.h"
-#include "spinlock.h"
-#include "asm.h"
-#include "registers.h"
-#include "log.h"
+#include "common/compiler.h"
+#include "common/asm.h"
+#include "atomic/spinlock.h"
+#include "arch/registers.h"
 
 #include "atomic_ops.h"
 

@@ -1,9 +1,9 @@
-#include "int.h"
+#include "lib/int.h"
 
-#include "init.h"
-#include "module.h"
-#include "binfmt.h"
-#include "log.h"
+#include "common/init.h"
+#include "boot/module.h"
+#include "fs/binfmt.h"
+#include "video/log.h"
 
 static INITCALL module_init() {
     uint32_t count = multiboot_info->mods_count;

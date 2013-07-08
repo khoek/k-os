@@ -1,5 +1,5 @@
-#include "init.h"
-#include "vfs.h"
+#include "common/init.h"
+#include "fs/vfs.h"
 
 static INITCALL vfs_init() {
     return 0;

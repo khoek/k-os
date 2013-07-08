@@ -1,9 +1,9 @@
 #include <stddef.h>
 
-#include "list.h"
-#include "common.h"
-#include "binfmt.h"
-#include "log.h"
+#include "common/list.h"
+#include "common/compiler.h"
+#include "fs/binfmt.h"
+#include "video/log.h"
 
 static LIST_HEAD(binfmts);
 

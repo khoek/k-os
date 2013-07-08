@@ -2,12 +2,12 @@
 #include <stdbool.h>
 #include <stdarg.h>
 
-#include "string.h"
-#include "printf.h"
-#include "debug.h"
-#include "panic.h"
-#include "idt.h"
-#include "console.h"
+#include "lib/string.h"
+#include "lib/printf.h"
+#include "bug/debug.h"
+#include "bug/panic.h"
+#include "arch/idt.h"
+#include "video/console.h"
 
 #define MAX_FRAMES      32
 #define BUFFSIZE        512

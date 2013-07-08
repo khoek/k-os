@@ -1,14 +1,14 @@
 #include <stddef.h>
 
-#include "int.h"
-#include "string.h"
-#include "printf.h"
-#include "debug.h"
-#include "list.h"
-#include "init.h"
-#include "device.h"
-#include "cache.h"
-#include "log.h"
+#include "lib/int.h"
+#include "lib/string.h"
+#include "lib/printf.h"
+#include "common/list.h"
+#include "common/init.h"
+#include "bug/debug.h"
+#include "device/device.h"
+#include "mm/cache.h"
+#include "video/log.h"
 
 static node_t root = {
     .name = "/",

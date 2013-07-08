@@ -1,15 +1,15 @@
 #include <stddef.h>
 
-#include "common.h"
-#include "debug.h"
-#include "init.h"
-#include "idt.h"
-#include "gdt.h"
-#include "asm.h"
-#include "panic.h"
-#include "task.h"
-#include "cpl.h"
-#include "log.h"
+#include "common/compiler.h"
+#include "common/init.h"
+#include "common/asm.h"
+#include "bug/debug.h"
+#include "bug/panic.h"
+#include "arch/idt.h"
+#include "arch/gdt.h"
+#include "arch/cpl.h"
+#include "task/task.h"
+#include "video/log.h"
 
 //command io port of PICs
 #define MASTER_COMMAND  0x20

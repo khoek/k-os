@@ -1,5 +1,5 @@
-#include "compiler.h"
-#include "atomic.h"
+#include "common/compiler.h"
+#include "atomic/atomic.h"
 
 #include "atomic_ops.h"
 

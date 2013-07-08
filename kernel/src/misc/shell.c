@@ -1,9 +1,9 @@
-#include "int.h"
-#include "shell.h"
-#include "asm.h"
-#include "panic.h"
-#include "console.h"
-#include "keyboard.h"
+#include "lib/int.h"
+#include "common/asm.h"
+#include "bug/panic.h"
+#include "input/keyboard.h"
+#include "video/console.h"
+#include "misc/shell.h"
 
 #define SHELLCOLUMN 2
 

@@ -1,19 +1,21 @@
-#include "list.h"
-#include "string.h"
-#include "printf.h"
-#include "common.h"
-#include "init.h"
-#include "net.h"
-#include "asm.h"
-#include "mm.h"
-#include "cache.h"
-#include "device.h"
-#include "pci.h"
-#include "gdt.h"
-#include "idt.h"
-#include "swap.h"
-#include "clock.h" //FIXME sleep(1) should be microseconds not hundredths of a second
-#include "log.h"
+#include "lib/string.h"
+#include "lib/printf.h"
+#include "common/list.h"
+#include "common/compiler.h"
+#include "common/math.h"
+#include "common/swap.h"
+#include "common/init.h"
+#include "common/asm.h"
+#include "arch/gdt.h"
+#include "arch/idt.h"
+#include "mm/mm.h"
+#include "mm/cache.h"
+#include "time/clock.h" //FIXME sleep(1) should be microseconds not hundredths of a second
+#include "device/device.h"
+#include "driver/bus/pci.h"
+#include "net/interface.h"
+#include "net/layer.h"
+#include "video/log.h"
 
 //FIXME change these back to -> (PAGE_SIZE / sizeof(rx_desc_t)) after a better kmalloc is implemented
 #define NUM_RX_DESCS    128
@@ -192,7 +194,7 @@ static void net_825xx_rx_poll(net_interface_t *interface) {
         } else if(net_device->rx_desc[net_device->rx_front].length < 60) {
             logf("net - rx: short packet (%u bytes)", net_device->rx_desc[net_device->rx_front].length);
         } else {
-            net_recv(interface, net_device->rx_buff[net_device->rx_front], net_device->rx_desc[net_device->rx_front].length);
+            recv_link_eth(interface, net_device->rx_buff[net_device->rx_front], net_device->rx_desc[net_device->rx_front].length);
         }
 
         net_device->rx_desc[net_device->rx_front].status = 0;

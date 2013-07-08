@@ -1,11 +1,10 @@
-#include "string.h"
-#include "swap.h"
-#include "common.h"
-#include "dhcp.h"
-#include "net.h"
-#include "rand.h"
-#include "cache.h"
-#include "log.h"
+#include "lib/string.h"
+#include "lib/rand.h"
+#include "common/swap.h"
+#include "net/dhcp.h"
+#include "net/layer.h"
+#include "mm/cache.h"
+#include "video/log.h"
 
 #define END_PADDING 28
 
@@ -76,13 +75,13 @@ void dhcp_send_packet(net_interface_t *interface, uint32_t xid, uint8_t *opts, u
     
     memcpy(dhcp + 1, opts, sizeof(opts));    
 
-    net_packet_t *packet = net_packet(dhcp, sizeof(dhcp_packet_t) + sizeof(opts) + END_PADDING);
+    net_packet_t *packet = packet_alloc(dhcp, sizeof(dhcp_packet_t) + sizeof(opts) + END_PADDING);
         
-    packet_tran_udp(packet, interface->ip, IP_BROADCAST, DHCP_PORT_CLIENT, DHCP_PORT_SERVER);
-    packet_net_ip(packet, IP_PROT_UDP, interface->ip, IP_BROADCAST);
-    packet_link_eth(packet, ETH_TYPE_IP, interface->mac, MAC_BROADCAST);
+    layer_tran_udp(packet, interface->ip, IP_BROADCAST, DHCP_PORT_CLIENT, DHCP_PORT_SERVER);
+    layer_net_ip(packet, IP_PROT_UDP, interface->ip, IP_BROADCAST);
+    layer_link_eth(packet, ETH_TYPE_IP, interface->mac, MAC_BROADCAST);
     
-    net_send(interface, packet);
+    packet_send(interface, packet);
     
     kfree(dhcp, sizeof(dhcp_packet_t) + sizeof(opts) + END_PADDING);
 }

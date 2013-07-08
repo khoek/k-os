@@ -1,7 +1,7 @@
-#include "init.h"
-#include "rand.h"
-#include "tsc.h"
-#include "log.h"
+#include "common/init.h"
+#include "lib/rand.h"
+#include "arch/tsc.h"
+#include "video/log.h"
 
 static uint32_t holdrand;
 

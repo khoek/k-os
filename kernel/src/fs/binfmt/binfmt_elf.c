@@ -1,15 +1,15 @@
 #include <stdbool.h>
 
-#include "int.h"
-#include "string.h"
-#include "common.h"
-#include "debug.h"
-#include "init.h"
-#include "binfmt.h"
-#include "elf.h"
-#include "mm.h"
-#include "task.h"
-#include "log.h"
+#include "lib/int.h"
+#include "lib/string.h"
+#include "common/math.h"
+#include "common/init.h"
+#include "bug/debug.h"
+#include "mm/mm.h"
+#include "task/task.h"
+#include "fs/binfmt.h"
+#include "fs/elf.h"
+#include "video/log.h"
 
 static bool elf_header_valid(Elf32_Ehdr *ehdr) {
     return ehdr->e_ident[EI_MAG0] == ELFMAG0

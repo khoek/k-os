@@ -1,11 +1,11 @@
 #include <stdarg.h>
 
-#include "string.h"
-#include "printf.h"
-#include "console.h"
-#include "mm.h"
-#include "asm.h"
-#include "spinlock.h"
+#include "lib/string.h"
+#include "lib/printf.h"
+#include "common/asm.h"
+#include "atomic/spinlock.h"
+#include "mm/mm.h"
+#include "video/console.h"
 
 #define BUFFSIZE 1024
 

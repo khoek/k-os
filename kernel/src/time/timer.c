@@ -1,10 +1,10 @@
-#include "list.h"
-#include "timer.h"
-#include "clock.h"
-#include "cache.h"
-#include "spinlock.h"
-#include "registers.h"
-#include "log.h"
+#include "common/list.h"
+#include "atomic/spinlock.h"
+#include "arch/registers.h"
+#include "time/timer.h"
+#include "time/clock.h"
+#include "mm/cache.h"
+#include "video/log.h"
 
 typedef struct timer {
     list_head_t list;

@@ -1,10 +1,8 @@
-#include "int.h"
-
-#include "string.h"
-#include "init.h"
-#include "ahci.h"
-#include "pci.h"
-#include "log.h"
+#include "lib/int.h"
+#include "lib/string.h"
+#include "common/init.h"
+#include "driver/bus/pci.h"
+#include "video/log.h"
 
 #define AHCI_BASE       0x400000 // 4M
 

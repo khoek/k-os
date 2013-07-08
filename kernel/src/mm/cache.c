@@ -1,13 +1,12 @@
 #include <stddef.h>
 
-#include "math.h"
-#include "common.h"
-#include "list.h"
-#include "init.h"
-#include "cache.h"
-#include "panic.h"
-#include "log.h"
-#include "mm.h"
+#include "common/math.h"
+#include "common/list.h"
+#include "common/init.h"
+#include "bug/panic.h"
+#include "mm/mm.h"
+#include "mm/cache.h"
+#include "video/log.h"
 
 #define FREELIST_END (1 << 31)
 

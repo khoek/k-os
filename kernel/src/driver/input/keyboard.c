@@ -1,12 +1,11 @@
 #include <stdbool.h>
 
-#include "int.h"
-#include "common.h"
-#include "init.h"
-#include "keyboard.h"
-#include "gdt.h"
-#include "idt.h"
-#include "asm.h"
+#include "lib/int.h"
+#include "common/init.h"
+#include "common/asm.h"
+#include "arch/gdt.h"
+#include "arch/idt.h"
+#include "input/keyboard.h"
 
 static bool key_state[128];
 static const char key_map[] = {

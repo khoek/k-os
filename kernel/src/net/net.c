@@ -1,14 +1,15 @@
-#include "list.h"
-#include "swap.h"
-#include "string.h"
-#include "init.h"
-#include "common.h"
-#include "net.h"
-#include "spinlock.h"
-#include "dhcp.h"
-#include "cache.h"
-#include "clock.h"
-#include "log.h"
+#include "lib/string.h"
+#include "common/list.h"
+#include "common/swap.h"
+#include "common/init.h"
+#include "common/compiler.h"
+#include "atomic/spinlock.h"
+#include "mm/cache.h"
+#include "time/clock.h"
+#include "net/types.h"
+#include "net/layer.h"
+#include "net/dhcp.h"
+#include "video/log.h"
 
 static LIST_HEAD(interfaces);
 static SPINLOCK_INIT(interface_lock);
@@ -102,7 +103,7 @@ void unregister_net_interface(net_interface_t *interface) {
     spin_unlock_irqstore(&interface_lock, flags);
 }
 
-void net_recv(net_interface_t *interface, void *packet, uint16_t length) {
+void recv_link_eth(net_interface_t *interface, void *packet, uint16_t length) {
     ethernet_header_t *header = (ethernet_header_t *) packet;
     packet += sizeof(ethernet_header_t);
     length -= sizeof(ethernet_header_t);
@@ -162,15 +163,7 @@ void net_recv(net_interface_t *interface, void *packet, uint16_t length) {
     }
 }
 
-void net_send(net_interface_t *interface, net_packet_t *packet) {    
-    interface->tx_send(interface, packet);
-    
-    if(packet->link_hdr) kfree(packet->link_hdr, packet->link_len);
-    if(packet->net_hdr) kfree(packet->net_hdr, packet->net_len);
-    if(packet->tran_hdr) kfree(packet->tran_hdr, packet->tran_len);
-}
-
-net_packet_t * net_packet(void *payload, uint16_t len) {
+net_packet_t * packet_alloc(void *payload, uint16_t len) {
     net_packet_t *packet = kmalloc(sizeof(net_packet_t));
     memset(packet, 0, sizeof(net_packet_t));
     
@@ -180,7 +173,19 @@ net_packet_t * net_packet(void *payload, uint16_t len) {
     return packet;
 }
 
-void packet_link_eth(net_packet_t *packet, uint16_t type, mac_t src, mac_t dst) {
+void packet_free(net_packet_t *packet) {
+    kfree(packet, sizeof(net_packet_t));
+}
+
+void packet_send(net_interface_t *interface, net_packet_t *packet) {    
+    interface->tx_send(interface, packet);
+    
+    if(packet->link_hdr) kfree(packet->link_hdr, packet->link_len);
+    if(packet->net_hdr) kfree(packet->net_hdr, packet->net_len);
+    if(packet->tran_hdr) kfree(packet->tran_hdr, packet->tran_len);
+}
+
+void layer_link_eth(net_packet_t *packet, uint16_t type, mac_t src, mac_t dst) {
     ethernet_header_t *hdr = kmalloc(sizeof(ethernet_header_t));
     hdr->src = src;
     hdr->dst = dst;
@@ -198,7 +203,7 @@ static uint16_t sum_to_checksum(uint32_t sum) {
     return ~sum;
 }
 
-void packet_net_ip(net_packet_t *packet, uint8_t protocol, ip_t src, ip_t dst) {
+void layer_net_ip(net_packet_t *packet, uint8_t protocol, ip_t src, ip_t dst) {
     ip_header_t *hdr = kmalloc(sizeof(ip_header_t));
     
     hdr->version_ihl = (IP(4) << 4) | ((uint8_t) (sizeof(ip_header_t) / sizeof(uint32_t)));
@@ -223,7 +228,7 @@ void packet_net_ip(net_packet_t *packet, uint8_t protocol, ip_t src, ip_t dst) {
     packet->net_len = sizeof(ip_header_t);
 }
 
-void packet_tran_udp(net_packet_t *packet, ip_t src, ip_t dst, uint16_t src_port, uint16_t dst_port) {    
+void layer_tran_udp(net_packet_t *packet, ip_t src, ip_t dst, uint16_t src_port, uint16_t dst_port) {    
     udp_header_t *hdr = kmalloc(sizeof(udp_header_t));
     
     hdr->src_port = swap_uint16(src_port);

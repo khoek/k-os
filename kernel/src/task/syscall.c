@@ -1,17 +1,16 @@
 #include <stddef.h>
 
-#include "string.h"
-#include "init.h"
-#include "syscall.h"
-#include "gdt.h"
-#include "idt.h"
-#include "panic.h"
-#include "asm.h"
-#include "task.h"
-#include "timer.h"
-#include "clock.h"
-#include "cache.h"
-#include "log.h"
+#include "lib/string.h"
+#include "common/init.h"
+#include "common/asm.h"
+#include "arch/gdt.h"
+#include "arch/idt.h"
+#include "bug/panic.h"
+#include "time/timer.h"
+#include "time/clock.h"
+#include "mm/cache.h"
+#include "task/task.h"
+#include "video/log.h"
 
 #define MAX_SYSCALL 256
 

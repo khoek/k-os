@@ -1,10 +1,10 @@
 #include <stddef.h>
 
-#include "list.h"
-#include "init.h"
-#include "clock.h"
-#include "asm.h"
-#include "panic.h"
+#include "common/list.h"
+#include "common/init.h"
+#include "common/asm.h"
+#include "bug/panic.h"
+#include "time/clock.h"
 
 static LIST_HEAD(clocks);
 static LIST_HEAD(clock_event_sources);

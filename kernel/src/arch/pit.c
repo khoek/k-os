@@ -1,14 +1,9 @@
-#include "int.h"
-#include "common.h"
-#include "init.h"
-#include "pit.h"
-#include "clock.h"
-#include "gdt.h"
-#include "idt.h"
-#include "panic.h"
-#include "asm.h"
-#include "log.h"
-#include "task.h"
+#include "lib/int.h"
+#include "common/asm.h"
+#include "arch/gdt.h"
+#include "arch/idt.h"
+#include "time/clock.h"
+#include "video/log.h"
 
 #define TIMER_FREQ 1000
 

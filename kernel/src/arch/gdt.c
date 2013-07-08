@@ -1,12 +1,12 @@
 #include <stddef.h>
 
-#include "string.h"
-#include "init.h"
-#include "gdt.h"
-#include "idt.h"
-#include "panic.h"
-#include "registers.h"
-#include "log.h"
+#include "lib/string.h"
+#include "common/init.h"
+#include "bug/panic.h"
+#include "arch/gdt.h"
+#include "arch/idt.h"
+#include "arch/registers.h"
+#include "video/log.h"
 
 #define GDT_SIZE 6
 

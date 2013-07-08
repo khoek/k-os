@@ -1,18 +1,19 @@
 #include <stddef.h>
 #include <stdbool.h>
 
-#include "int.h"
-#include "string.h"
-#include "init.h"
-#include "common.h"
-#include "panic.h"
-#include "mm.h"
-#include "cache.h"
-#include "module.h"
-#include "console.h"
-#include "debug.h"
-#include "task.h"
-#include "log.h"
+#include "boot/module.h"
+#include "lib/int.h"
+#include "lib/string.h"
+#include "common/init.h"
+#include "common/math.h"
+#include "common/compiler.h"
+#include "bug/panic.h"
+#include "bug/debug.h"
+#include "mm/mm.h"
+#include "mm/cache.h"
+#include "task/task.h"
+#include "video/console.h"
+#include "video/log.h"
 
 #define MAX_ORDER 10
 #define ADDRESS_SPACE_SIZE 4294967296ULL

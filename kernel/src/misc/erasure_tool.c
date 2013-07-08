@@ -1,16 +1,15 @@
 #include <stdbool.h>
 
-#include "string.h"
-#include "erasure_tool.h"
-#include "common.h"
-#include "panic.h"
-#include "idt.h"
-#include "pit.h"
-#include "mm.h"
-#include "ide.h"
-#include "console.h"
-#include "keyboard.h"
-#include "asm.h"
+#include "lib/string.h"
+#include "common/asm.h"
+#include "bug/panic.h"
+#include "arch/idt.h"
+#include "mm/mm.h"
+#include "driver/disk/ide.h"
+#include "sound/pit.h"
+#include "video/console.h"
+#include "input/keyboard.h"
+#include "misc/erasure_tool.h"
 
 static char twirls[] = {
     '|', '/', '-', '\\'

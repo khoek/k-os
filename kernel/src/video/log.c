@@ -1,11 +1,11 @@
-#include "string.h"
-#include "printf.h"
-#include "common.h"
-#include "clock.h"
-#include "console.h"
-#include "panic.h"
-#include "registers.h"
-#include "spinlock.h"
+#include "lib/string.h"
+#include "lib/printf.h"
+#include "common/compiler.h"
+#include "bug/panic.h"
+#include "atomic/spinlock.h"
+#include "arch/registers.h"
+#include "time/clock.h"
+#include "video/console.h"
 
 #define BUFFSIZE 1024
 
