@@ -2,8 +2,9 @@
 #include "common/compiler.h"
 #include "net/types.h"
 
-#define IP_PROT_TCP 0x06
-#define IP_PROT_UDP 0x11
+#define IP_PROT_ICMP 0x01
+#define IP_PROT_TCP  0x06
+#define IP_PROT_UDP  0x11
 
 #define IP_VERSION(x)   ((x & 0xF0) >> 4)
 #define IP_IHL(x)       ((x & 0x0F))

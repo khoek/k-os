@@ -50,6 +50,10 @@ void recv_net_ip(net_interface_t *interface, void *packet, uint16_t len) {
         );
 
         switch(ip->protocol) {
+            case IP_PROT_ICMP: {
+                recv_tran_icmp(interface, packet, len);
+                break;
+            }
             case IP_PROT_TCP: {
                 recv_tran_tcp(interface, packet, len);
                 break;

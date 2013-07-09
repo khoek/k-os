@@ -17,7 +17,7 @@ OBJS=	loader.o \
         task/task.o task/syscall.o \
         net/interface.o net/packet.o \
         net/eth.o \
-        net/ip.o net/arp.o \
+        net/arp.o net/ip.o net/icmp.o \
         net/tcp.o net/udp.o \
         net/dhcp.o \
         fs/vfs.o \
