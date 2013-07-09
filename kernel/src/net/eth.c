@@ -21,7 +21,7 @@ void layer_link_eth(net_packet_t *packet, uint16_t type, mac_t src, mac_t dst) {
     ethernet_header_t *hdr = kmalloc(sizeof(ethernet_header_t));
     hdr->src = src;
     hdr->dst = dst;
-    hdr->type = type;
+    hdr->type = swap_uint16(type);
 
     packet->link_hdr = hdr;
     packet->link_len = sizeof(ethernet_header_t);
@@ -32,6 +32,7 @@ void recv_link_eth(net_interface_t *interface, void *packet, uint16_t length) {
     packet += sizeof(ethernet_header_t);
     length -= sizeof(ethernet_header_t);
 
+    header->type = swap_uint16(header->type);
     switch(header->type) {
         case ETH_TYPE_IP: {
             recv_net_ip(interface, packet, length);

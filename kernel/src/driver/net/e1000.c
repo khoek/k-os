@@ -188,11 +188,11 @@ static void net_825xx_rx_poll(net_interface_t *interface) {
 
     while(net_device->rx_desc[net_device->rx_front].status & RX_DESC_STATUS_DD) {
         if(!(net_device->rx_desc[net_device->rx_front].status & RX_DESC_STATUS_EOP)) {
-            logf("net - rx: no EOP support, dropping");
+            logf("825xx - rx: no EOP support, dropping");
         //} else if(net_device->rx_desc[net_device->rx_front].error) {
-        //    logf("net - rx: descriptor error (0x%X), dropping", net_device->rx_desc[net_device->rx_front].error);
+        //    logf("825xx - rx: descriptor error (0x%X), dropping", net_device->rx_desc[net_device->rx_front].error);
         } else if(net_device->rx_desc[net_device->rx_front].length < 60) {
-            logf("net - rx: short packet (%u bytes)", net_device->rx_desc[net_device->rx_front].length);
+            logf("825xx - rx: short packet (%u bytes)", net_device->rx_desc[net_device->rx_front].length);
         } else {
             recv_link_eth(interface, net_device->rx_buff[net_device->rx_front], net_device->rx_desc[net_device->rx_front].length);
         }
@@ -209,15 +209,15 @@ static void handle_network(interrupt_t UNUSED(*interrupt)) {
         uint32_t icr = mmio_read(net_device, REG_ICR);
 
         if(icr & ICR_LSC) {
-            logf("net - link status change! (link is now %s)", mmio_read(net_device, REG_STATUS) & STATUS_LU ? "UP" : "DOWN");
+            logf("825xx - link status change! (link is now %s)", mmio_read(net_device, REG_STATUS) & STATUS_LU ? "UP" : "DOWN");
         }
 
         if(icr & ICR_TXDW) {
-            logf("net - tx descriptor writeback");
+            logf("825xx - tx descriptor writeback");
         }
 
         if(icr & ICR_TXQE) {
-            logf("net - tx queue empty");
+            logf("825xx - tx queue empty");
         }
 
         if(icr & ICR_RXT) {
@@ -225,7 +225,7 @@ static void handle_network(interrupt_t UNUSED(*interrupt)) {
         }
 
         if(icr & ICR_PHY) {
-            logf("net - PHY int");
+            logf("825xx - PHY int");
         }
     }
 }
@@ -234,6 +234,7 @@ int32_t net_825xx_tx_send(net_interface_t *net_interface, net_packet_t *packet) 
     net_825xx_t *net_device = containerof(net_interface, net_825xx_t, interface);
 
     uint8_t *buff = (uint8_t *) net_device->tx_buff[net_device->tx_front];
+    uint16_t len = packet->link_len + packet->net_len + packet->tran_len + packet->payload_len;
     memcpy(buff, packet->link_hdr, packet->link_len);
     buff += packet->link_len;
     memcpy(buff, packet->net_hdr, packet->net_len);
@@ -243,7 +244,12 @@ int32_t net_825xx_tx_send(net_interface_t *net_interface, net_packet_t *packet) 
     memcpy(buff, packet->payload, packet->payload_len);
     buff += packet->payload_len;
 
-    net_device->tx_desc[net_device->tx_front].length = ((uint32_t) buff) - ((uint32_t) net_device->tx_buff[net_device->tx_front]);
+    if(len < 60) {
+        memset(buff, 0, 60 - len);
+        len = 60;
+    }
+
+    net_device->tx_desc[net_device->tx_front].length = len;
     net_device->tx_desc[net_device->tx_front].cmd = TX_DESC_CMD_EOP | TX_DESC_CMD_IFCS | TX_DESC_CMD_RS;
 
     uint32_t old_tx_front = net_device->tx_front;

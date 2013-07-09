@@ -15,8 +15,6 @@
 #define OP_REQUEST 1
 #define OP_REPLY   2
 
-#define HTYPE_ETH  1
-
 #define MAGIC_COOKIE 0x63825363
 
 #define OPT_PAD               0
