@@ -105,14 +105,14 @@ struct packet {
         ethernet_header_t *eth;
     } link;
     uint32_t link_size;
-    
+
     union {
         void *ptr;
         arp_header_t *arp;
         ip_header_t *ip;
     } net;
     uint32_t net_size;
-    
+
     union {
         void *ptr;
         icmp_header_t *icmp;
@@ -120,7 +120,7 @@ struct packet {
         udp_header_t *udp;
     } tran;
     uint32_t tran_size;
-    
+
     void *payload;
     uint32_t payload_size;
 };
