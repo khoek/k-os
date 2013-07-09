@@ -13,8 +13,9 @@
 #include "time/clock.h" //FIXME sleep(1) should be microseconds not hundredths of a second
 #include "device/device.h"
 #include "driver/bus/pci.h"
-#include "net/interface.h"
 #include "net/layer.h"
+#include "net/protocols.h"
+#include "net/interface.h"
 #include "video/log.h"
 
 //FIXME change these back to -> (PAGE_SIZE / sizeof(rx_desc_t)) after a better kmalloc is implemented
@@ -234,15 +235,15 @@ int32_t net_825xx_tx_send(net_interface_t *net_interface, net_packet_t *packet) 
     net_825xx_t *net_device = containerof(net_interface, net_825xx_t, interface);
 
     uint8_t *buff = (uint8_t *) net_device->tx_buff[net_device->tx_front];
-    uint16_t len = packet->link_len + packet->net_len + packet->tran_len + packet->payload_len;
-    memcpy(buff, packet->link_hdr, packet->link_len);
-    buff += packet->link_len;
-    memcpy(buff, packet->net_hdr, packet->net_len);
-    buff += packet->net_len;
-    memcpy(buff, packet->tran_hdr, packet->tran_len);
-    buff += packet->tran_len;
-    memcpy(buff, packet->payload, packet->payload_len);
-    buff += packet->payload_len;
+    uint16_t len = packet->link_size + packet->net_size + packet->tran_size + packet->payload_size;
+    memcpy(buff, packet->link.ptr, packet->link_size);
+    buff += packet->link_size;
+    memcpy(buff, packet->net.ptr, packet->net_size);
+    buff += packet->net_size;
+    memcpy(buff, packet->tran.ptr, packet->tran_size);
+    buff += packet->tran_size;
+    memcpy(buff, packet->payload, packet->payload_size);
+    buff += packet->payload_size;
 
     if(len < 60) {
         memset(buff, 0, 60 - len);

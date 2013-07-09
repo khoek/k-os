@@ -4,18 +4,8 @@
 #include "mm/cache.h"
 #include "net/types.h"
 #include "net/layer.h"
+#include "net/protocols.h"
 #include "video/log.h"
-
-#include "eth.h"
-#include "ip.h"
-#include "udp.h"
-#include "tcp.h"
-
-typedef struct ethernet_header {
-    mac_t dst;
-    mac_t src;
-    uint16_t type;
-} PACKED ethernet_header_t;
 
 void layer_link_eth(net_packet_t *packet, uint16_t type, mac_t src, mac_t dst) {
     ethernet_header_t *hdr = kmalloc(sizeof(ethernet_header_t));
@@ -23,8 +13,8 @@ void layer_link_eth(net_packet_t *packet, uint16_t type, mac_t src, mac_t dst) {
     hdr->dst = dst;
     hdr->type = swap_uint16(type);
 
-    packet->link_hdr = hdr;
-    packet->link_len = sizeof(ethernet_header_t);
+    packet->link.eth = hdr;
+    packet->link_size = sizeof(ethernet_header_t);
 }
 
 void recv_link_eth(net_interface_t *interface, void *packet, uint16_t length) {

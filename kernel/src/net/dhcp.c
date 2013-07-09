@@ -5,10 +5,8 @@
 #include "net/types.h"
 #include "net/layer.h"
 #include "net/dhcp.h"
+#include "net/protocols.h"
 #include "video/log.h"
-
-#include "eth.h"
-#include "ip.h"
 
 #define END_PADDING 28
 

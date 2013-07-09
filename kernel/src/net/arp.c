@@ -4,11 +4,9 @@
 #include "mm/cache.h"
 #include "net/types.h"
 #include "net/layer.h"
+#include "net/protocols.h"
 #include "net/interface.h"
 #include "video/log.h"
-
-#include "eth.h"
-#include "arp.h"
 
 void layer_net_arp(net_packet_t *packet, uint16_t op, mac_t sender_mac, mac_t target_mac, ip_t sender_ip, ip_t target_ip) {
     arp_header_t *hdr = kmalloc(sizeof(arp_header_t));
@@ -23,8 +21,8 @@ void layer_net_arp(net_packet_t *packet, uint16_t op, mac_t sender_mac, mac_t ta
     hdr->target_mac = target_mac;
     hdr->target_ip = target_ip;
 
-    packet->net_hdr = hdr;
-    packet->net_len = sizeof(arp_header_t);
+    packet->net.arp = hdr;
+    packet->net_size = sizeof(arp_header_t);
 
     layer_link_eth(packet, ETH_TYPE_ARP, sender_mac, target_mac);
 }
