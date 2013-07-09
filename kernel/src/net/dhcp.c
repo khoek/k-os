@@ -19,6 +19,7 @@
 #define OPT_SUBNET_MASK       1
 #define OPT_ROUTER            3
 #define OPT_DNS               6
+#define OPT_HOST_NAME         12
 #define OPT_REQUESTED_IP_ADDR 50
 #define OPT_LEASE_TIME        51
 #define OPT_MESSAGE_TYPE      53
@@ -158,13 +159,20 @@ static void * dhcp_build_packet(dhcp_header_t *dhcp, mac_t addr, uint32_t xid) {
 #define OPTIONS_LEN_DISCOVER 9
 
 static void dhcp_send_discover(net_interface_t *interface) {
-    void *dhcp = kmalloc(sizeof(dhcp_header_t) + OPTIONS_LEN_DISCOVER + END_PADDING);
+    char *hostname = net_get_hostname();
+    uint32_t hostname_len = strlen(hostname);
+    void *dhcp = kmalloc(sizeof(dhcp_header_t) + OPTIONS_LEN_DISCOVER + hostname_len + END_PADDING);
 
     uint8_t *ptr = dhcp_build_packet(dhcp, interface->mac, rand32());
 
     *ptr++ = OPT_MESSAGE_TYPE;
     *ptr++ = 1;
     *ptr++ = MSG_DISCOVER;
+    
+    *ptr++ = OPT_HOST_NAME;
+    *ptr++ = hostname_len;
+    memcpy(ptr, hostname, hostname_len);
+    ptr += hostname_len;
 
     *ptr++ = OPT_PARAMETER_REQUEST;
     *ptr++ = 3;
@@ -185,13 +193,20 @@ static void dhcp_send_discover(net_interface_t *interface) {
 #define OPTIONS_LEN_REQUEST 22
 
 static void dhcp_send_request(net_interface_t *interface, dhcp_header_t *hdr, dhcp_options_t *opts) {
-    void *dhcp = kmalloc(sizeof(dhcp_header_t) + OPTIONS_LEN_REQUEST + END_PADDING);
+    char *hostname = net_get_hostname();
+    uint32_t hostname_len = strlen(hostname);
+    void *dhcp = kmalloc(sizeof(dhcp_header_t) + OPTIONS_LEN_REQUEST + hostname_len + END_PADDING);
 
-    uint8_t *ptr = dhcp_build_packet(dhcp, interface->mac, hdr->xid);
+    uint8_t *ptr = dhcp_build_packet(dhcp, interface->mac, rand32());
 
     *ptr++ = OPT_MESSAGE_TYPE;
     *ptr++ = 1;
     *ptr++ = MSG_REQUEST;
+    
+    *ptr++ = OPT_HOST_NAME;
+    *ptr++ = hostname_len;
+    memcpy(ptr, hostname, hostname_len);
+    ptr += hostname_len;
 
     *ptr++ = OPT_SERVER_ID;
     *ptr++ = sizeof(ip_t);

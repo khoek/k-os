@@ -30,6 +30,9 @@ struct net_interface {
 void register_net_interface(net_interface_t *interface, net_state_t state);
 void unregister_net_interface(net_interface_t *interface);
 
+char * net_get_hostname();
+void net_put_hostname();
+
 void net_set_state(net_interface_t *interface, net_state_t state);
 
 #endif

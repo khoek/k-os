@@ -5,6 +5,9 @@
 #include "net/dhcp.h"
 #include "video/log.h"
 
+static char *hostname = "k-os";
+static uint32_t hostname_handles;
+
 static LIST_HEAD(interfaces);
 static SPINLOCK_INIT(interface_lock);
 
@@ -31,6 +34,27 @@ void unregister_net_interface(net_interface_t *interface) {
     list_rm(&interface->list);
 
     spin_unlock_irqstore(&interface_lock, flags);
+}
+
+char * net_get_hostname() {
+    uint32_t flags;
+    spin_lock_irqsave(&interface_lock, &flags);   
+
+    hostname_handles++;
+    char *local_name = ACCESS_ONCE(hostname);
+
+    spin_unlock_irqstore(&interface_lock, flags);
+
+    return local_name;
+}
+
+void net_put_hostname() {
+    uint32_t flags;
+    spin_lock_irqsave(&interface_lock, &flags);   
+
+    hostname_handles--;
+
+    spin_unlock_irqstore(&interface_lock, flags);    
 }
 
 void net_set_state(net_interface_t *interface, net_state_t state) {
