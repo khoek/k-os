@@ -38,9 +38,9 @@ void layer_tran_icmp(packet_t *packet, uint8_t type, uint8_t code, uint32_t othe
     layer_net_ip(packet, IP_PROT_ICMP, src_mac, dst_mac, src_ip, dst_ip);    
 }
 
-void recv_tran_icmp(net_interface_t *interface, void *packet, uint16_t len) {
-    icmp_header_t *icmp = packet;
-    packet = icmp + 1;
+void recv_tran_icmp(net_interface_t *interface, packet_t *packet, void *raw, uint16_t len) {
+    icmp_header_t *icmp = packet->tran.icmp = raw;
+    raw = icmp + 1;
     len -= sizeof(icmp_header_t);
     
     logf("icmp - type: %u code: %u", icmp->type, icmp->code);

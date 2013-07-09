@@ -46,9 +46,9 @@ void layer_tran_udp(packet_t *packet, mac_t src_mac, mac_t dst_mac, ip_t src_ip,
     layer_net_ip(packet, IP_PROT_UDP, src_mac, dst_mac, src_ip, dst_ip);
 }
 
-void recv_tran_udp(net_interface_t *interface, void *packet, uint16_t len) {
-    udp_header_t *udp = (udp_header_t *) packet;
-    packet += sizeof(udp_header_t);
+void recv_tran_udp(net_interface_t *interface, packet_t *packet, void *raw, uint16_t len) {
+    udp_header_t *udp = packet->tran.udp = raw;
+    raw += sizeof(udp_header_t);
     len -= sizeof(udp_header_t);
 
     udp->src_port = swap_uint16(udp->src_port);
@@ -57,6 +57,6 @@ void recv_tran_udp(net_interface_t *interface, void *packet, uint16_t len) {
     logf("udp - src: %u dst: %u", udp->src_port, udp->dst_port);
 
     if(interface->state == IF_DHCP && udp->src_port == DHCP_PORT_SERVER && udp->dst_port == DHCP_PORT_CLIENT) {
-        dhcp_handle(interface, packet, len);
+        dhcp_handle(interface, raw, len);
     }
 }

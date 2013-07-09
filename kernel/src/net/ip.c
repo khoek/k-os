@@ -35,9 +35,9 @@ void layer_net_ip(packet_t *packet, uint8_t protocol, mac_t src_mac, mac_t dst_m
     layer_link_eth(packet, ETH_TYPE_IP, src_mac, dst_mac);
 }
 
-void recv_net_ip(net_interface_t *interface, void *packet, uint16_t len) {
-    ip_header_t *ip = (ip_header_t *) packet;
-    packet += sizeof(ip_header_t);
+void recv_net_ip(net_interface_t *interface, packet_t *packet, void *raw, uint16_t len) {
+    ip_header_t *ip = packet->net.ip = raw;
+    raw += sizeof(ip_header_t);
     len -= sizeof(ip_header_t);
 
     if(IP_VERSION(ip->version_ihl) != 0x04) {
@@ -50,15 +50,15 @@ void recv_net_ip(net_interface_t *interface, void *packet, uint16_t len) {
 
         switch(ip->protocol) {
             case IP_PROT_ICMP: {
-                recv_tran_icmp(interface, packet, len);
+                recv_tran_icmp(interface, packet, raw, len);
                 break;
             }
             case IP_PROT_TCP: {
-                recv_tran_tcp(interface, packet, len);
+                recv_tran_tcp(interface, packet, raw, len);
                 break;
             }
             case IP_PROT_UDP: {
-                recv_tran_udp(interface, packet, len);
+                recv_tran_udp(interface, packet, raw, len);
                 break;
             }
             default: {

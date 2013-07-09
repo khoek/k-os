@@ -27,8 +27,8 @@ void layer_net_arp(packet_t *packet, uint16_t op, mac_t sender_mac, mac_t target
     layer_link_eth(packet, ETH_TYPE_ARP, sender_mac, target_mac);
 }
 
-void recv_net_arp(net_interface_t *interface, void *packet, uint16_t len) {
-    arp_header_t *arp = (arp_header_t *) packet;
+void recv_net_arp(net_interface_t *interface, packet_t *packet, void *raw, uint16_t len) {
+    arp_header_t *arp = packet->net.arp = raw;
 
     if(!memcmp(&interface->ip.addr, &arp->target_ip.addr, sizeof(ip_t))) {
         packet_t *response = packet_alloc(NULL, 0);
