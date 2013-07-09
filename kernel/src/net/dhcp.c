@@ -179,8 +179,6 @@ static void dhcp_send_discover(net_interface_t *interface) {
     packet_send(interface, packet);
     packet_free(packet);
 
-    logf("dhcp - discover sent");
-
     kfree(dhcp, sizeof(dhcp_header_t) + OPTIONS_LEN_DISCOVER + END_PADDING);
 }
 
@@ -218,8 +216,6 @@ static void dhcp_send_request(net_interface_t *interface, dhcp_header_t *hdr, dh
     packet_send(interface, packet);
     packet_free(packet);
 
-    logf("dhcp - request sent");
-
     kfree(dhcp, sizeof(dhcp_header_t) + OPTIONS_LEN_REQUEST + END_PADDING);
 }
 
@@ -236,8 +232,6 @@ void dhcp_start(net_interface_t *interface) {
 }
 
 void dhcp_handle(net_interface_t *interface, void *packet, uint16_t len) {
-    logf("dhcp - message recieved");
-
     if(len < sizeof(dhcp_header_t)) return;
 
     dhcp_header_t *dhcp = packet;
@@ -255,12 +249,10 @@ void dhcp_handle(net_interface_t *interface, void *packet, uint16_t len) {
 
     switch (opts.message_type) {
         case MSG_OFFER: {
-            logf("dhcp - offer");
             dhcp_send_request(interface, dhcp, &opts);
             break;
         }
         case MSG_ACK: {
-            logf("dhcp - ack");
             dhcp_ack(interface, dhcp);
             break;
         }

@@ -35,7 +35,7 @@ void recv_link_eth(net_interface_t *interface, void *raw, uint16_t length) {
             break;
         }
         default: {
-            logf("ethernet - unrecognised raw type (0x%02X)", header->type);
+            logf("ethernet - unrecognised ethertype (0x%02X)", header->type);
             break;
         }
     }

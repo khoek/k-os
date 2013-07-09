@@ -43,11 +43,6 @@ void recv_net_ip(net_interface_t *interface, packet_t *packet, void *raw, uint16
     if(IP_VERSION(ip->version_ihl) != 0x04) {
         logf("ip - unsupported version number (0x%02X)", IP_VERSION(ip->version_ihl));
     } else {
-        logf("ip - src %u.%u.%u.%u dst %u.%u.%u.%u",
-            ip->src.addr[0], ip->src.addr[1], ip->src.addr[2], ip->src.addr[3],
-            ip->dst.addr[0], ip->dst.addr[1], ip->dst.addr[2], ip->dst.addr[3]
-        );
-
         switch(ip->protocol) {
             case IP_PROT_ICMP: {
                 recv_tran_icmp(interface, packet, raw, len);
