@@ -7,7 +7,8 @@
 #include "net/types.h"
 
 typedef enum net_state {
-    IF_INIT,
+    IF_DOWN,
+    IF_UP,
     IF_DHCP,
     IF_READY,
     IF_ERROR
@@ -26,7 +27,7 @@ struct net_interface {
     int32_t (*tx_send)(net_interface_t *, packet_t *);
 };
 
-void register_net_interface(net_interface_t *interface);
+void register_net_interface(net_interface_t *interface, net_state_t state);
 void unregister_net_interface(net_interface_t *interface);
 
 void net_set_state(net_interface_t *interface, net_state_t state);

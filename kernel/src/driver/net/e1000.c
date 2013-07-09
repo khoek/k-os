@@ -210,23 +210,15 @@ static void handle_network(interrupt_t UNUSED(*interrupt)) {
         uint32_t icr = mmio_read(net_device, REG_ICR);
 
         if(icr & ICR_LSC) {
-            logf("825xx - link status change! (link is now %s)", mmio_read(net_device, REG_STATUS) & STATUS_LU ? "UP" : "DOWN");
-        }
-
-        if(icr & ICR_TXDW) {
-            logf("825xx - tx descriptor writeback");
-        }
-
-        if(icr & ICR_TXQE) {
-            logf("825xx - tx queue empty");
+            if(mmio_read(net_device, REG_STATUS) & STATUS_LU) {            
+                net_set_state(&net_device->interface, IF_UP);
+            } else {
+                net_set_state(&net_device->interface, IF_DOWN);
+            }
         }
 
         if(icr & ICR_RXT) {
             net_825xx_rx_poll(&net_device->interface);
-        }
-
-        if(icr & ICR_PHY) {
-            logf("825xx - PHY int");
         }
     }
 }
@@ -282,8 +274,6 @@ static bool net_825xx_probe(device_t *device) {
         return false;
     }
 
-    logf("825xx - interface detected");
-
     net_825xx_t *net_device = pci_device->private = kmalloc(sizeof(net_825xx_t));
 
     net_device->interface.rx_poll = net_825xx_rx_poll;
@@ -307,8 +297,6 @@ static bool net_825xx_probe(device_t *device) {
     }
 
     sleep(1);
-
-    logf("825xx - link is %s", mmio_read(net_device, REG_STATUS) & STATUS_LU ? "UP" : "DOWN");
 
     for(uint16_t i = 0; i < 128; i++) {
         mmio_write(net_device, REG_MTA + (i * 4), 0);
@@ -386,7 +374,7 @@ static void net_825xx_enable(device_t *device) {
     mmio_write(net_device, REG_TCTL, mmio_read(net_device, REG_TCTL) | TCTL_EN | TCTL_PSP);
     mmio_write(net_device, REG_RCTL, mmio_read(net_device, REG_RCTL) | RCTL_EN);
 
-    register_net_interface(&net_device->interface);
+    register_net_interface(&net_device->interface, mmio_read(net_device, REG_STATUS) & STATUS_LU ? IF_UP : IF_DOWN);
 }
 
 static void net_825xx_disable(device_t *device) {
