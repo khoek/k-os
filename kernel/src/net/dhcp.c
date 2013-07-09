@@ -1,10 +1,14 @@
 #include "lib/string.h"
 #include "lib/rand.h"
 #include "common/swap.h"
-#include "net/dhcp.h"
-#include "net/layer.h"
 #include "mm/cache.h"
+#include "net/types.h"
+#include "net/layer.h"
+#include "net/dhcp.h"
 #include "video/log.h"
+
+#include "eth.h"
+#include "ip.h"
 
 #define END_PADDING 28
 

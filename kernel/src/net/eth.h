@@ -1,0 +1,2 @@
+#define ETH_TYPE_IP  0x0008
+#define ETH_TYPE_ARP 0x0608

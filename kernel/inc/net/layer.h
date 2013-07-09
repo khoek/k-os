@@ -13,13 +13,9 @@ void packet_free(net_packet_t *packet);
 void packet_send(net_interface_t *interface, net_packet_t *packet);
 
 //Link layer
-#define ETH_TYPE_IP  0x0008
-#define ETH_TYPE_ARP 0x0608
 void layer_link_eth(net_packet_t *packet, uint16_t type, mac_t src, mac_t dst);
 
 //Network layer
-#define IP_PROT_TCP 0x06
-#define IP_PROT_UDP 0x11
 void layer_net_ip(net_packet_t *packet, uint8_t protocol, ip_t src_ip, ip_t dst_ip);
 
 //Transport layer
