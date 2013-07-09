@@ -15,7 +15,11 @@ OBJS=	loader.o \
         time/clock.o time/timer.o\
         device/device.o \
         task/task.o task/syscall.o \
-        net/interface.o net/packet.o net/eth.o net/ip.o net/udp.o net/dhcp.o \
+        net/interface.o net/packet.o \
+        net/eth.o \
+        net/ip.o net/arp.o \
+        net/tcp.o net/udp.o \
+        net/dhcp.o \
         fs/vfs.o \
         fs/binfmt/binfmt.o fs/binfmt/binfmt_elf.o \
         driver/bus/pci.o \

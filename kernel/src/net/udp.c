@@ -3,6 +3,7 @@
 #include "mm/cache.h"
 #include "net/types.h"
 #include "net/layer.h"
+#include "video/log.h"
 
 #include "checksum.h"
 #include "ip.h"
@@ -43,4 +44,12 @@ void layer_tran_udp(net_packet_t *packet, mac_t src_mac, mac_t dst_mac, ip_t src
     packet->tran_len = sizeof(udp_header_t);
 
     layer_net_ip(packet, IP_PROT_UDP, src_mac, dst_mac, src_ip, dst_ip);
+}
+
+void recv_tran_udp(void *packet, uint16_t len) {
+    udp_header_t *udp = (udp_header_t *) packet;
+    packet += sizeof(udp_header_t);
+    len -= sizeof(udp_header_t);
+
+    logf("udp - src: %u dst: %u", swap_uint16(udp->src_port), swap_uint16(udp->dst_port));
 }

@@ -3,6 +3,7 @@
 #include "mm/cache.h"
 #include "net/types.h"
 #include "net/layer.h"
+#include "video/log.h"
 
 #include "checksum.h"
 #include "eth.h"
@@ -33,4 +34,34 @@ void layer_net_ip(net_packet_t *packet, uint8_t protocol, mac_t src_mac, mac_t d
     packet->net_len = sizeof(ip_header_t);
 
     layer_link_eth(packet, ETH_TYPE_IP, src_mac, dst_mac);
+}
+
+void recv_net_ip(void *packet, uint16_t len) {
+    ip_header_t *ip = (ip_header_t *) packet;
+    packet += sizeof(ip_header_t);
+    len -= sizeof(ip_header_t);
+
+    if(IP_VERSION(ip->version_ihl) != 0x04) {
+        logf("ip - unsupported version number (0x%02X)", IP_VERSION(ip->version_ihl));
+    } else {
+        logf("ip - src %u.%u.%u.%u dst %u.%u.%u.%u",
+            ip->src.addr[0], ip->src.addr[1], ip->src.addr[2], ip->src.addr[3],
+            ip->dst.addr[0], ip->dst.addr[1], ip->dst.addr[2], ip->dst.addr[3]
+        );
+
+        switch(ip->protocol) {
+            case IP_PROT_TCP: {
+                recv_tran_tcp(packet, len);
+                break;
+            }
+            case IP_PROT_UDP: {
+                recv_tran_udp(packet, len);
+                break;
+            }
+            default: {
+                logf("ip - unrecognised protocol (0x%02X)", ip->protocol);
+                break;
+            }
+        }
+    }
 }

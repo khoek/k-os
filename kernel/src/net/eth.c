@@ -34,50 +34,11 @@ void recv_link_eth(net_interface_t *interface, void *packet, uint16_t length) {
 
     switch(header->type) {
         case ETH_TYPE_IP: {
-            ip_header_t *ip = (ip_header_t *) packet;
-            packet += sizeof(ip_header_t);
-            length -= sizeof(ip_header_t);
-
-            if(IP_VERSION(ip->version_ihl) != 0x04) {
-                logf("ethernet - ip packet with unsupported version number (0x%02X)", IP_VERSION(ip->version_ihl));
-            } else {
-                switch(ip->protocol) {
-                    case IP_PROT_TCP: {
-                        tcp_header_t *tcp = (tcp_header_t *) packet;
-                        packet += sizeof(tcp_header_t);
-                        length -= sizeof(tcp_header_t);
-
-                        logf("ethernet - tcp packet detected");
-                        logf("ethernet - src %u.%u.%u.%u port %u dst %u.%u.%u.%u port %u",
-                            ip->src.addr[0], ip->src.addr[1], ip->src.addr[2], ip->src.addr[3], swap_uint16(tcp->src_port),
-                            ip->dst.addr[0], ip->dst.addr[1], ip->dst.addr[2], ip->dst.addr[3], swap_uint16(tcp->dst_port)
-                        );
-
-                        break;
-                    }
-                    case IP_PROT_UDP: {
-                        udp_header_t *udp = (udp_header_t *) packet;
-                        packet += sizeof(udp_header_t);
-                        length -= sizeof(udp_header_t);
-
-                        logf("ethernet - udp packet detected");
-                        logf("ethernet - src %u.%u.%u.%u port %u dst %u.%u.%u.%u port %u",
-                            ip->src.addr[0], ip->src.addr[1], ip->src.addr[2], ip->src.addr[3], swap_uint16(udp->src_port),
-                            ip->dst.addr[0], ip->dst.addr[1], ip->dst.addr[2], ip->dst.addr[3], swap_uint16(udp->dst_port)
-                        );
-                        break;
-                    }
-                    default: {
-                        logf("ethernet - ip packet with urecognised protocol (0x%02X)", ip->protocol);
-                        break;
-                    }
-                }
-            }
-
+            recv_net_ip(packet, length);
             break;
         }
         case ETH_TYPE_ARP: {
-            logf("ethernet - arp packet detected");
+            recv_net_arp(packet, length);
             break;
         }
         default: {
