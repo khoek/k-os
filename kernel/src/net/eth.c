@@ -6,6 +6,7 @@
 #include "net/layer.h"
 #include "video/log.h"
 
+#include "eth.h"
 #include "ip.h"
 #include "udp.h"
 #include "tcp.h"
@@ -21,7 +22,7 @@ void layer_link_eth(net_packet_t *packet, uint16_t type, mac_t src, mac_t dst) {
     hdr->src = src;
     hdr->dst = dst;
     hdr->type = type;
- 
+
     packet->link_hdr = hdr;
     packet->link_len = sizeof(ethernet_header_t);
 }

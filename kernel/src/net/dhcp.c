@@ -49,49 +49,45 @@ typedef struct dhcp_packet {
     uint8_t  pad1[10];  //Zero
     char     sname[64]; //Server host name
     char     file[128]; //Boot file name
-    uint32_t cookie;    //Magic Cookie    
+    uint32_t cookie;    //Magic Cookie
 } PACKED dhcp_packet_t;
 
 static uint8_t opts_discover[] = {
     OPT_MESSAGE_TYPE,
     1,
     OP_REQUEST,
-    
+
     OPT_PARAMETER_REQUEST,
     3,
     OPT_SUBNET_MASK,
     OPT_ROUTER,
     OPT_DNS,
-    
+
     OPT_END
 };
 
 void dhcp_send_packet(net_interface_t *interface, uint32_t xid, uint8_t *opts, uint32_t opts_size) {
-    dhcp_packet_t *dhcp = kmalloc(sizeof(dhcp_packet_t) + sizeof(opts) + END_PADDING);    
+    dhcp_packet_t *dhcp = kmalloc(sizeof(dhcp_packet_t) + sizeof(opts) + END_PADDING);
     memset(dhcp, 0, sizeof(dhcp_packet_t));
-    
+
     dhcp->op = OP_REQUEST;
     dhcp->htype = HTYPE_ETH;
     dhcp->hlen = sizeof(mac_t);
     dhcp->xid = xid;
     dhcp->chaddr = interface->mac;
     dhcp->cookie = swap_uint32(MAGIC_COOKIE);
-    
-    memcpy(dhcp + 1, opts, sizeof(opts));    
+
+    memcpy(dhcp + 1, opts, sizeof(opts));
 
     net_packet_t *packet = packet_alloc(dhcp, sizeof(dhcp_packet_t) + sizeof(opts) + END_PADDING);
-        
-    layer_tran_udp(packet, interface->ip, IP_BROADCAST, DHCP_PORT_CLIENT, DHCP_PORT_SERVER);
-    layer_net_ip(packet, IP_PROT_UDP, interface->ip, IP_BROADCAST);
-    layer_link_eth(packet, ETH_TYPE_IP, interface->mac, MAC_BROADCAST);
-    
+    layer_tran_udp(packet, interface->mac, MAC_BROADCAST, IP_NONE, IP_BROADCAST, DHCP_PORT_CLIENT, DHCP_PORT_SERVER);
     packet_send(interface, packet);
-    
+
     kfree(dhcp, sizeof(dhcp_packet_t) + sizeof(opts) + END_PADDING);
 }
 
 void dhcp_start(net_interface_t *interface) {
     dhcp_send_packet(interface, rand32(), opts_discover, sizeof(opts_discover));
-    
+
     logf("dhcp - discover request sent");
 }

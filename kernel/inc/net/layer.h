@@ -16,10 +16,10 @@ void packet_send(net_interface_t *interface, net_packet_t *packet);
 void layer_link_eth(net_packet_t *packet, uint16_t type, mac_t src, mac_t dst);
 
 //Network layer
-void layer_net_ip(net_packet_t *packet, uint8_t protocol, ip_t src_ip, ip_t dst_ip);
+void layer_net_ip(net_packet_t *packet, uint8_t protocol, mac_t src, mac_t dst, ip_t src_ip, ip_t dst_ip);
 
 //Transport layer
-void layer_tran_udp(net_packet_t *packet, ip_t src_ip, ip_t dst_ip, uint16_t src_port, uint16_t dst_port);
+void layer_tran_udp(net_packet_t *packet, mac_t src, mac_t dst, ip_t src_ip, ip_t dst_ip, uint16_t src_port, uint16_t dst_port);
 
 //////////  Packet reception  //////////
 

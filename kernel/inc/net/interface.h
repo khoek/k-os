@@ -18,7 +18,7 @@ struct net_interface {
     mac_t mac;
     ip_t ip;
     uint32_t rx_total, tx_total;
-    
+
     net_state_t state;
 
     void (*rx_poll)(net_interface_t *);

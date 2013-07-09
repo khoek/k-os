@@ -13,10 +13,10 @@ void register_net_interface(net_interface_t *interface) {
     spin_lock_irqsave(&interface_lock, &flags);
 
     interface->ip = IP_NONE;
-    
+
     interface->rx_total = 0;
     interface->tx_total = 0;
-    
+
     interface->state = IF_DHCP;
 
     list_add(&interface->list, &interfaces);
@@ -31,7 +31,7 @@ void register_net_interface(net_interface_t *interface) {
         interface->mac.addr[4],
         interface->mac.addr[5]
     );
-    
+
     dhcp_start(interface);
 }
 
