@@ -8,7 +8,7 @@
 #include "net/interface.h"
 #include "video/log.h"
 
-void layer_net_arp(net_packet_t *packet, uint16_t op, mac_t sender_mac, mac_t target_mac, ip_t sender_ip, ip_t target_ip) {
+void layer_net_arp(packet_t *packet, uint16_t op, mac_t sender_mac, mac_t target_mac, ip_t sender_ip, ip_t target_ip) {
     arp_header_t *hdr = kmalloc(sizeof(arp_header_t));
 
     hdr->htype = swap_uint16(HTYPE_ETH);
@@ -31,7 +31,7 @@ void recv_net_arp(net_interface_t *interface, void *packet, uint16_t len) {
     arp_header_t *arp = (arp_header_t *) packet;
 
     if(!memcmp(&interface->ip.addr, &arp->target_ip.addr, sizeof(ip_t))) {
-        net_packet_t *response = packet_alloc(NULL, 0);
+        packet_t *response = packet_alloc(NULL, 0);
         layer_net_arp(response, ARP_OP_RESPONSE, interface->mac, arp->sender_mac, interface->ip, arp->sender_ip);
         packet_send(interface, response);
         packet_free(response);

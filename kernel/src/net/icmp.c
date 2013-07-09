@@ -8,7 +8,7 @@
 
 #include "checksum.h"
 
-void layer_tran_icmp(net_packet_t *packet, uint8_t type, uint8_t code, uint32_t other, mac_t src_mac, mac_t dst_mac, ip_t src_ip, ip_t dst_ip) {
+void layer_tran_icmp(packet_t *packet, uint8_t type, uint8_t code, uint32_t other, mac_t src_mac, mac_t dst_mac, ip_t src_ip, ip_t dst_ip) {
     icmp_header_t *hdr = kmalloc(sizeof(icmp_header_t));
 
     hdr->type = type;
@@ -52,7 +52,7 @@ void recv_tran_icmp(net_interface_t *interface, void *packet, uint16_t len) {
                     void *buff = kmalloc(len);
                     memcpy(buff, packet, len);
                     
-                    net_packet_t *reply = packet_alloc(buff, len);            
+                    packet_t *reply = packet_alloc(buff, len);            
                     layer_tran_icmp(reply, ICMP_TYPE_ECHO_REPLY, ICMP_CODE_ECHO_REPLY, interface->mac, ->sender_mac, interface->ip, arp->sender_ip);
                     packet_send(interface, reply);
                     packet_free(reply);

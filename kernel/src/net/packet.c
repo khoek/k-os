@@ -5,9 +5,9 @@
 #include "net/protocols.h"
 #include "net/interface.h"
 
-net_packet_t * packet_alloc(void *payload, uint16_t len) {
-    net_packet_t *packet = kmalloc(sizeof(net_packet_t));
-    memset(packet, 0, sizeof(net_packet_t));
+packet_t * packet_alloc(void *payload, uint16_t len) {
+    packet_t *packet = kmalloc(sizeof(packet_t));
+    memset(packet, 0, sizeof(packet_t));
 
     packet->payload = payload;
     packet->payload_size = len;
@@ -15,11 +15,11 @@ net_packet_t * packet_alloc(void *payload, uint16_t len) {
     return packet;
 }
 
-void packet_free(net_packet_t *packet) {
-    kfree(packet, sizeof(net_packet_t));
+void packet_free(packet_t *packet) {
+    kfree(packet, sizeof(packet_t));
 }
 
-void packet_send(net_interface_t *interface, net_packet_t *packet) {
+void packet_send(net_interface_t *interface, packet_t *packet) {
     interface->tx_send(interface, packet);
 
     if(packet->link.ptr) kfree(packet->link.ptr, packet->link_size);

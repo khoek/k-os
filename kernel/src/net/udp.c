@@ -9,7 +9,7 @@
 
 #include "checksum.h"
 
-void layer_tran_udp(net_packet_t *packet, mac_t src_mac, mac_t dst_mac, ip_t src_ip, ip_t dst_ip, uint16_t src_port, uint16_t dst_port) {
+void layer_tran_udp(packet_t *packet, mac_t src_mac, mac_t dst_mac, ip_t src_ip, ip_t dst_ip, uint16_t src_port, uint16_t dst_port) {
     udp_header_t *hdr = kmalloc(sizeof(udp_header_t));
 
     hdr->src_port = swap_uint16(src_port);

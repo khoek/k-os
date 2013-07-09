@@ -7,7 +7,7 @@
 #include "net/protocols.h"
 #include "video/log.h"
 
-void layer_link_eth(net_packet_t *packet, uint16_t type, mac_t src, mac_t dst) {
+void layer_link_eth(packet_t *packet, uint16_t type, mac_t src, mac_t dst) {
     ethernet_header_t *hdr = kmalloc(sizeof(ethernet_header_t));
     hdr->src = src;
     hdr->dst = dst;

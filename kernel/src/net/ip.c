@@ -8,7 +8,7 @@
 
 #include "checksum.h"
 
-void layer_net_ip(net_packet_t *packet, uint8_t protocol, mac_t src_mac, mac_t dst_mac, ip_t src, ip_t dst) {
+void layer_net_ip(packet_t *packet, uint8_t protocol, mac_t src_mac, mac_t dst_mac, ip_t src, ip_t dst) {
     ip_header_t *hdr = kmalloc(sizeof(ip_header_t));
 
     hdr->version_ihl = (IP(4) << 4) | ((uint8_t) (sizeof(ip_header_t) / sizeof(uint32_t)));

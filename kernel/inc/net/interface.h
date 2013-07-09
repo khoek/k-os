@@ -23,7 +23,7 @@ struct net_interface {
     net_state_t state;
 
     void (*rx_poll)(net_interface_t *);
-    int32_t (*tx_send)(net_interface_t *, net_packet_t *);
+    int32_t (*tx_send)(net_interface_t *, packet_t *);
 };
 
 void register_net_interface(net_interface_t *interface);

@@ -231,7 +231,7 @@ static void handle_network(interrupt_t UNUSED(*interrupt)) {
     }
 }
 
-int32_t net_825xx_tx_send(net_interface_t *net_interface, net_packet_t *packet) {
+int32_t net_825xx_tx_send(net_interface_t *net_interface, packet_t *packet) {
     net_825xx_t *net_device = containerof(net_interface, net_825xx_t, interface);
 
     uint8_t *buff = (uint8_t *) net_device->tx_buff[net_device->tx_front];

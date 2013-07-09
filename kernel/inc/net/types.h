@@ -12,7 +12,7 @@ typedef struct ip { uint8_t addr[4]; } ip_t;
 #define IP_BROADCAST ((ip_t) { .addr = {0xFF, 0xFF, 0xFF, 0xFF} })
 #define IP_NONE ((ip_t) { .addr = {0x00, 0x00, 0x00, 0x00} })
 
-typedef struct net_packet net_packet_t;
+typedef struct packet packet_t;
 typedef struct net_interface net_interface_t;
 
 #endif

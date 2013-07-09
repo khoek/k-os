@@ -99,7 +99,7 @@ typedef struct udp_header {
 } PACKED udp_header_t;
 
 //Packet
-struct net_packet {
+struct packet {
     union {
         void *ptr;
         ethernet_header_t *eth;
