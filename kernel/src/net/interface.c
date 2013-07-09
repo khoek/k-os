@@ -17,7 +17,7 @@ void register_net_interface(net_interface_t *interface) {
     interface->rx_total = 0;
     interface->tx_total = 0;
 
-    interface->state = IF_DHCP;
+    interface->state = IF_INIT;
 
     list_add(&interface->list, &interfaces);
 
@@ -42,4 +42,29 @@ void unregister_net_interface(net_interface_t *interface) {
     list_rm(&interface->list);
 
     spin_unlock_irqstore(&interface_lock, flags);
+}
+
+void net_set_state(net_interface_t *interface, net_state_t state) {
+    //FIXME locking
+    interface->state = state;
+
+    //TODO better handle active devices, etc
+    switch(state) {
+        case IF_READY: {
+            logf("net - interface is READY: %u.%u.%u.%u",
+                interface->ip.addr[0], interface->ip.addr[1],
+                interface->ip.addr[2], interface->ip.addr[3]
+            );
+            break;
+        }
+        case IF_DHCP: {
+            logf("net - interface commencing DHCP");
+            break;
+        }
+        case IF_ERROR: {
+            logf("net - interface error");
+            break;
+        }
+        default: break;
+    }
 }

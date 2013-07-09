@@ -3,6 +3,7 @@
 #include "mm/cache.h"
 #include "net/types.h"
 #include "net/layer.h"
+#include "net/dhcp.h"
 #include "video/log.h"
 
 #include "checksum.h"
@@ -28,9 +29,9 @@ void layer_tran_udp(net_packet_t *packet, mac_t src_mac, mac_t dst_mac, ip_t src
     sum += hdr->dst_port;
     sum += hdr->length;
 
-    uint32_t len = packet->payload_len / sizeof(uint16_t);
+    uint32_t len = packet->payload_len / sizeof(uint8_t);
     uint16_t *ptr = (uint16_t *) packet->payload;
-    for (; len > 1; len--) {
+    for (; len > 1; len -= 2) {
         sum += *ptr++;
     }
 
@@ -51,5 +52,12 @@ void recv_tran_udp(net_interface_t *interface, void *packet, uint16_t len) {
     packet += sizeof(udp_header_t);
     len -= sizeof(udp_header_t);
 
-    logf("udp - src: %u dst: %u", swap_uint16(udp->src_port), swap_uint16(udp->dst_port));
+    udp->src_port = swap_uint16(udp->src_port);
+    udp->dst_port = swap_uint16(udp->dst_port);
+
+    logf("udp - src: %u dst: %u", udp->src_port, udp->dst_port);
+
+    if(interface->state == IF_DHCP && udp->src_port == DHCP_PORT_SERVER && udp->dst_port == DHCP_PORT_CLIENT) {
+        dhcp_handle(interface, packet, len);
+    }
 }

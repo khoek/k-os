@@ -24,7 +24,7 @@ void layer_net_ip(net_packet_t *packet, uint8_t protocol, mac_t src_mac, mac_t d
     hdr->checksum = 0;
 
     uint32_t sum = 0;
-    for (uint32_t len = 0; len < (sizeof(ip_header_t) / sizeof(uint32_t)); len++) {
+    for (uint32_t len = 0; len < (sizeof(ip_header_t) / sizeof(uint16_t)); len++) {
         sum += ((uint16_t *) hdr)[len];
     }
 
