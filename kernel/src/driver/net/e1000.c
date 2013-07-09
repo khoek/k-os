@@ -278,7 +278,7 @@ static bool net_825xx_probe(device_t *device) {
     logf("825xx - interface detected");
 
     net_825xx_t *net_device = pci_device->private = kmalloc(sizeof(net_825xx_t));
-    
+
     net_device->interface.rx_poll = net_825xx_rx_poll;
     net_device->interface.tx_send = net_825xx_tx_send;
 
@@ -350,10 +350,10 @@ static bool net_825xx_probe(device_t *device) {
     net_device->tx_page = alloc_page(0);
     net_device->tx_desc = (tx_desc_t *) page_to_virt(net_device->tx_page);
     net_device->tx_front = 0;
-    
+
     for(uint32_t i = 0; i < NUM_TX_DESCS; i++) {
         page_t *page = alloc_page(0);
-        
+
         net_device->tx_desc[i].address = (uint32_t) page_to_phys(page);
         net_device->tx_desc[i].cmd = 0;
 

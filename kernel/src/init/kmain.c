@@ -36,6 +36,6 @@ void kmain(uint32_t magic, multiboot_info_t *mbd) {
 
     logf("entering usermode");
     task_run();
-    
+
     panic("kmain returned!");
 }

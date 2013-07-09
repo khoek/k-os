@@ -63,7 +63,7 @@ static INITCALL gdt_init() {
     create_selector(5, (uint32_t) &tss, sizeof(tss_t), PRESENT | CPL_KERNEL |            EXECABLE | TSS    , FLAG_BITS_32 | FLAG_GRANULARITY_BYTE);
 
     tss.ss0 = SEL_KERNEL_DATA;
-    
+
     tss_set_stack(((uint32_t) kernel_stack) + sizeof(kernel_stack) - 1);
 
     gdtd.size = (GDT_SIZE * sizeof(gdt_entry_t)) - 1;

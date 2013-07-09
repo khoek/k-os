@@ -89,7 +89,7 @@ void task_reschedule() {
     if(!tasking_up) return;
 
     task_switch();
-    
+
     tss_set_stack(current->kernel_stack);
 
     cpl_switch(current->cr3, (uint32_t) (current->ret & 0xFFFFFFFF), (uint32_t) (current->ret >> 32), current->cpu);
