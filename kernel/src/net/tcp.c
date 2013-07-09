@@ -5,7 +5,7 @@
 
 #include "tcp.h"
 
-void recv_tran_tcp(void *packet, uint16_t len) {
+void recv_tran_tcp(net_interface_t *interface, void *packet, uint16_t len) {
     tcp_header_t *tcp = (tcp_header_t *) packet;
     packet += sizeof(tcp_header_t);
     len -= sizeof(tcp_header_t);

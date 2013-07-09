@@ -34,11 +34,11 @@ void recv_link_eth(net_interface_t *interface, void *packet, uint16_t length) {
 
     switch(header->type) {
         case ETH_TYPE_IP: {
-            recv_net_ip(packet, length);
+            recv_net_ip(interface, packet, length);
             break;
         }
         case ETH_TYPE_ARP: {
-            recv_net_arp(packet, length);
+            recv_net_arp(interface, packet, length);
             break;
         }
         default: {

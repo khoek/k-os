@@ -27,11 +27,11 @@ void layer_tran_udp(net_packet_t *packet, mac_t src, mac_t dst, ip_t src_ip, ip_
 void recv_link_eth(net_interface_t *interface, void *packet, uint16_t len);
 
 //Network layer
-void recv_net_ip(void *packet, uint16_t len);
-void recv_net_arp(void *packet, uint16_t len);
+void recv_net_ip(net_interface_t *interface, void *packet, uint16_t len);
+void recv_net_arp(net_interface_t *interface, void *packet, uint16_t len);
 
 //Transport layer
-void recv_tran_tcp(void *packet, uint16_t len);
-void recv_tran_udp(void *packet, uint16_t len);
+void recv_tran_tcp(net_interface_t *interface, void *packet, uint16_t len);
+void recv_tran_udp(net_interface_t *interface, void *packet, uint16_t len);
 
 #endif
