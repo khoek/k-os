@@ -5,11 +5,14 @@
 
 #include "net/types.h"
 
+//////////  Address resolution  //////////
+
+void arp_resolve(net_interface_t *interface, packet_t *packet, ip_t ip);
+
 //////////  Packet construction  //////////
 
 //Generic
 packet_t * packet_alloc(void *payload, uint16_t len);
-void packet_free(packet_t *packet);
 void packet_send(net_interface_t *interface, packet_t *packet);
 
 //Link layer

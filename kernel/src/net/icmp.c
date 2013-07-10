@@ -55,9 +55,6 @@ void icmp_recv(net_interface_t *interface, packet_t *packet, void *raw, uint16_t
                     packet_t *reply = packet_alloc(buff, len);
                     icmp_build(reply, ICMP_TYPE_ECHO_REPLY, ICMP_CODE_ECHO_REPLY, icmp->other, interface->mac, packet->link.eth->src, interface->ip, packet->net.ip->src);
                     packet_send(interface, reply);
-                    packet_free(reply);
-
-                    kfree(buff, len);
 
                     break;
                 }

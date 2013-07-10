@@ -186,9 +186,6 @@ static void dhcp_send_discover(net_interface_t *interface) {
     packet_t *packet = packet_alloc(dhcp, sizeof(dhcp_header_t) + OPTIONS_LEN_DISCOVER + END_PADDING);
     udp_build(packet, interface->mac, MAC_BROADCAST, IP_NONE, IP_BROADCAST, DHCP_PORT_CLIENT, DHCP_PORT_SERVER);
     packet_send(interface, packet);
-    packet_free(packet);
-
-    kfree(dhcp, sizeof(dhcp_header_t) + OPTIONS_LEN_DISCOVER + END_PADDING);
 }
 
 #define OPTIONS_LEN_REQUEST 22
@@ -230,9 +227,6 @@ static void dhcp_send_request(net_interface_t *interface, dhcp_header_t *hdr, dh
     packet_t *packet = packet_alloc(dhcp, sizeof(dhcp_header_t) + sizeof(opts) + END_PADDING);
     udp_build(packet, interface->mac, MAC_BROADCAST, IP_NONE, IP_BROADCAST, DHCP_PORT_CLIENT, DHCP_PORT_SERVER);
     packet_send(interface, packet);
-    packet_free(packet);
-
-    kfree(dhcp, sizeof(dhcp_header_t) + OPTIONS_LEN_REQUEST + END_PADDING);
 }
 
 static void dhcp_ack(net_interface_t *interface, dhcp_header_t *hdr) {

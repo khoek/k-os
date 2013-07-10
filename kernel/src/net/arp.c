@@ -27,13 +27,24 @@ void arp_build(packet_t *packet, uint16_t op, mac_t sender_mac, mac_t target_mac
     eth_build(packet, ETH_TYPE_ARP, sender_mac, target_mac);
 }
 
+void arp_resolve(net_interface_t *interface, packet_t *packet, ip_t ip) {
+    //TODO do an ARP lookup
+}
+
+static void arp_cache(ip_t ip, mac_t mac) {
+    //TODO cache this combo :P
+}
+
 void arp_recv(net_interface_t *interface, packet_t *packet, void *raw, uint16_t len) {
     arp_header_t *arp = packet->net.arp = raw;
 
     if(!memcmp(&interface->ip.addr, &arp->target_ip.addr, sizeof(ip_t))) {
-        packet_t *response = packet_alloc(NULL, 0);
-        arp_build(response, ARP_OP_RESPONSE, interface->mac, arp->sender_mac, interface->ip, arp->sender_ip);
-        packet_send(interface, response);
-        packet_free(response);
+        if(!memcmp(&interface->mac.addr, &MAC_NONE, sizeof(ip_t))) {
+            packet_t *response = packet_alloc(NULL, 0);
+            arp_build(response, ARP_OP_RESPONSE, interface->mac, arp->sender_mac, interface->ip, arp->sender_ip);
+            packet_send(interface, response);
+        }
     }
+
+    arp_cache(arp->sender_ip, arp->sender_mac);
 }
