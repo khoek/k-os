@@ -210,7 +210,7 @@ static void handle_network(interrupt_t UNUSED(*interrupt)) {
         uint32_t icr = mmio_read(net_device, REG_ICR);
 
         if(icr & ICR_LSC) {
-            if(mmio_read(net_device, REG_STATUS) & STATUS_LU) {            
+            if(mmio_read(net_device, REG_STATUS) & STATUS_LU) {
                 net_set_state(&net_device->interface, IF_UP);
             } else {
                 net_set_state(&net_device->interface, IF_DOWN);

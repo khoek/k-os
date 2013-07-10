@@ -31,7 +31,7 @@ typedef struct dns_sym_rr {
     uint32_t ttl;
     uint16_t addr_len;
     uint16_t nb_flags;
-    ip_t ip;    
+    ip_t ip;
 } PACKED dns_sym_rr_t;
 
 typedef struct dns_sym_aliased_rr {
@@ -41,7 +41,7 @@ typedef struct dns_sym_aliased_rr {
     uint32_t ttl;
     uint16_t addr_len;
     uint16_t nb_flags;
-    ip_t ip;    
+    ip_t ip;
 } PACKED dns_sym_aliased_rr_t;
 
 #endif

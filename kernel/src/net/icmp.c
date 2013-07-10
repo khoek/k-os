@@ -48,7 +48,7 @@ void recv_tran_icmp(net_interface_t *interface, packet_t *packet, void *raw, uin
     switch(icmp->type) {
         case ICMP_TYPE_ECHO_REQUEST: {
             switch(icmp->code) {
-                case ICMP_CODE_ECHO_REQUEST: {    
+                case ICMP_CODE_ECHO_REQUEST: {
                     void *buff = kmalloc(len);
                     memcpy(buff, raw, len);
 
