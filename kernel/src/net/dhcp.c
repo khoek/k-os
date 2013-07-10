@@ -4,8 +4,9 @@
 #include "mm/cache.h"
 #include "net/types.h"
 #include "net/layer.h"
-#include "net/dhcp.h"
 #include "net/protocols.h"
+#include "net/interface.h"
+#include "net/dhcp.h"
 #include "video/log.h"
 
 #define END_PADDING 28
@@ -168,7 +169,7 @@ static void dhcp_send_discover(net_interface_t *interface) {
     *ptr++ = OPT_MESSAGE_TYPE;
     *ptr++ = 1;
     *ptr++ = MSG_DISCOVER;
-    
+
     *ptr++ = OPT_HOST_NAME;
     *ptr++ = hostname_len;
     memcpy(ptr, hostname, hostname_len);
@@ -202,7 +203,7 @@ static void dhcp_send_request(net_interface_t *interface, dhcp_header_t *hdr, dh
     *ptr++ = OPT_MESSAGE_TYPE;
     *ptr++ = 1;
     *ptr++ = MSG_REQUEST;
-    
+
     *ptr++ = OPT_HOST_NAME;
     *ptr++ = hostname_len;
     memcpy(ptr, hostname, hostname_len);
@@ -246,11 +247,11 @@ void dhcp_start(net_interface_t *interface) {
     dhcp_send_discover(interface);
 }
 
-void dhcp_handle(net_interface_t *interface, void *packet, uint16_t len) {
+void dhcp_handle(net_interface_t *interface, packet_t *packet, void *raw, uint16_t len) {
     if(len < sizeof(dhcp_header_t)) return;
 
-    dhcp_header_t *dhcp = packet;
-    packet = dhcp + 1;
+    dhcp_header_t *dhcp = raw;
+    raw = dhcp + 1;
     len -= sizeof(dhcp_header_t);
 
     if(dhcp->op != OP_REPLY) return;
@@ -260,7 +261,7 @@ void dhcp_handle(net_interface_t *interface, void *packet, uint16_t len) {
     if(memcmp(&interface->mac, &dhcp->chaddr, sizeof(mac_t))) return;
 
     dhcp_options_t opts;
-    if(!dhcp_parse_options(&opts, packet, len)) return;
+    if(!dhcp_parse_options(&opts, raw, len)) return;
 
     switch (opts.message_type) {
         case MSG_OFFER: {

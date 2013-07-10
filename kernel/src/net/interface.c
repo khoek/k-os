@@ -2,10 +2,12 @@
 #include "common/list.h"
 #include "atomic/spinlock.h"
 #include "net/types.h"
+#include "net/interface.h"
 #include "net/dhcp.h"
+#include "net/nbns.h"
 #include "video/log.h"
 
-static char *hostname = "k-os";
+static char *hostname = "K-OS";
 static uint32_t hostname_handles;
 
 static LIST_HEAD(interfaces);
@@ -19,9 +21,9 @@ void register_net_interface(net_interface_t *interface, net_state_t state) {
 
     uint32_t flags;
     spin_lock_irqsave(&interface_lock, &flags);
-    
+
     list_add(&interface->list, &interfaces);
-    
+
     spin_unlock_irqstore(&interface_lock, flags);
 
     net_set_state(interface, state);
@@ -38,7 +40,7 @@ void unregister_net_interface(net_interface_t *interface) {
 
 char * net_get_hostname() {
     uint32_t flags;
-    spin_lock_irqsave(&interface_lock, &flags);   
+    spin_lock_irqsave(&interface_lock, &flags);
 
     hostname_handles++;
     char *local_name = ACCESS_ONCE(hostname);
@@ -50,16 +52,16 @@ char * net_get_hostname() {
 
 void net_put_hostname() {
     uint32_t flags;
-    spin_lock_irqsave(&interface_lock, &flags);   
+    spin_lock_irqsave(&interface_lock, &flags);
 
     hostname_handles--;
 
-    spin_unlock_irqstore(&interface_lock, flags);    
+    spin_unlock_irqstore(&interface_lock, flags);
 }
 
 void net_set_state(net_interface_t *interface, net_state_t state) {
     if(interface->state == state) return;
-    
+
     //FIXME locking
     interface->state = state;
 
@@ -71,9 +73,9 @@ void net_set_state(net_interface_t *interface, net_state_t state) {
                 interface->mac.addr[2], interface->mac.addr[3],
                 interface->mac.addr[4], interface->mac.addr[5]
             );
-    
-            dhcp_start(interface);            
-            
+
+            dhcp_start(interface);
+
             break;
         }
         case IF_DOWN: {
@@ -89,6 +91,9 @@ void net_set_state(net_interface_t *interface, net_state_t state) {
             break;
         }
         case IF_READY: {
+            nbns_register_name(interface, net_get_hostname());
+            net_put_hostname();
+
             logf("net - interface is READY (%u.%u.%u.%u)",
                 interface->ip.addr[0], interface->ip.addr[1],
                 interface->ip.addr[2], interface->ip.addr[3]
