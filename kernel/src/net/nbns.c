@@ -124,7 +124,7 @@ void nbns_handle(net_interface_t *interface, packet_t *packet, void *raw, uint16
     response->rr.ip = interface->ip;
 
     packet_t *resp = packet_alloc(response, sizeof(nbns_query_response_t));
-    layer_tran_udp(resp, interface->mac, packet->link.eth->src, interface->ip, packet->net.ip->src, NBNS_PORT, NBNS_PORT);
+    udp_build(resp, interface->mac, packet->link.eth->src, interface->ip, packet->net.ip->src, NBNS_PORT, NBNS_PORT);
     packet_send(interface, resp);
     packet_free(resp);
 }
@@ -151,7 +151,7 @@ void nbns_register_name(net_interface_t *interface, char *name) {
     nbns->rr.ip = interface->ip;
 
     packet_t *packet = packet_alloc(nbns, sizeof(nbns_reg_request_t));
-    layer_tran_udp(packet, interface->mac, MAC_BROADCAST, interface->ip, IP_BROADCAST, NBNS_PORT, NBNS_PORT);
+    udp_build(packet, interface->mac, MAC_BROADCAST, interface->ip, IP_BROADCAST, NBNS_PORT, NBNS_PORT);
     packet_send(interface, packet);
     packet_free(packet);
 

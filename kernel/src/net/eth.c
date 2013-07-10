@@ -7,17 +7,17 @@
 #include "net/protocols.h"
 #include "video/log.h"
 
-void layer_link_eth(packet_t *raw, uint16_t type, mac_t src, mac_t dst) {
+void eth_build(packet_t *packet, uint16_t type, mac_t src, mac_t dst) {
     ethernet_header_t *hdr = kmalloc(sizeof(ethernet_header_t));
     hdr->src = src;
     hdr->dst = dst;
     hdr->type = swap_uint16(type);
 
-    raw->link.eth = hdr;
-    raw->link_size = sizeof(ethernet_header_t);
+    packet->link.eth = hdr;
+    packet->link_size = sizeof(ethernet_header_t);
 }
 
-void recv_link_eth(net_interface_t *interface, void *raw, uint16_t length) {
+void eth_recv(net_interface_t *interface, void *raw, uint16_t length) {
     packet_t packet;
 
     ethernet_header_t *header = packet.link.eth = raw;
@@ -27,11 +27,11 @@ void recv_link_eth(net_interface_t *interface, void *raw, uint16_t length) {
     header->type = swap_uint16(header->type);
     switch(header->type) {
         case ETH_TYPE_ARP: {
-            recv_net_arp(interface, &packet, raw, length);
+            arp_recv(interface, &packet, raw, length);
             break;
         }
         case ETH_TYPE_IP: {
-            recv_net_ip(interface, &packet, raw, length);
+            ip_recv(interface, &packet, raw, length);
             break;
         }
         default: {

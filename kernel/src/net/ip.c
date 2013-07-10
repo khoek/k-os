@@ -8,7 +8,7 @@
 
 #include "checksum.h"
 
-void layer_net_ip(packet_t *packet, uint8_t protocol, mac_t src_mac, mac_t dst_mac, ip_t src, ip_t dst) {
+void ip_build(packet_t *packet, uint8_t protocol, mac_t src_mac, mac_t dst_mac, ip_t src, ip_t dst) {
     ip_header_t *hdr = kmalloc(sizeof(ip_header_t));
 
     hdr->version_ihl = (IP(4) << 4) | ((uint8_t) (sizeof(ip_header_t) / sizeof(uint32_t)));
@@ -32,10 +32,10 @@ void layer_net_ip(packet_t *packet, uint8_t protocol, mac_t src_mac, mac_t dst_m
     packet->net.ip = hdr;
     packet->net_size = sizeof(ip_header_t);
 
-    layer_link_eth(packet, ETH_TYPE_IP, src_mac, dst_mac);
+    eth_build(packet, ETH_TYPE_IP, src_mac, dst_mac);
 }
 
-void recv_net_ip(net_interface_t *interface, packet_t *packet, void *raw, uint16_t len) {
+void ip_recv(net_interface_t *interface, packet_t *packet, void *raw, uint16_t len) {
     ip_header_t *ip = packet->net.ip = raw;
     raw += sizeof(ip_header_t);
     len -= sizeof(ip_header_t);
@@ -45,15 +45,15 @@ void recv_net_ip(net_interface_t *interface, packet_t *packet, void *raw, uint16
     } else {
         switch(ip->protocol) {
             case IP_PROT_ICMP: {
-                recv_tran_icmp(interface, packet, raw, len);
+                icmp_recv(interface, packet, raw, len);
                 break;
             }
             case IP_PROT_TCP: {
-                recv_tran_tcp(interface, packet, raw, len);
+                tcp_recv(interface, packet, raw, len);
                 break;
             }
             case IP_PROT_UDP: {
-                recv_tran_udp(interface, packet, raw, len);
+                udp_recv(interface, packet, raw, len);
                 break;
             }
             default: {

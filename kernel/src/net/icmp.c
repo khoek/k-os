@@ -10,7 +10,7 @@
 
 #include "checksum.h"
 
-void layer_tran_icmp(packet_t *packet, uint8_t type, uint8_t code, uint32_t other, mac_t src_mac, mac_t dst_mac, ip_t src_ip, ip_t dst_ip) {
+void icmp_build(packet_t *packet, uint8_t type, uint8_t code, uint32_t other, mac_t src_mac, mac_t dst_mac, ip_t src_ip, ip_t dst_ip) {
     icmp_header_t *hdr = kmalloc(sizeof(icmp_header_t));
 
     hdr->type = type;
@@ -37,10 +37,10 @@ void layer_tran_icmp(packet_t *packet, uint8_t type, uint8_t code, uint32_t othe
     packet->tran.icmp = hdr;
     packet->tran_size = sizeof(icmp_header_t);
 
-    layer_net_ip(packet, IP_PROT_ICMP, src_mac, dst_mac, src_ip, dst_ip);
+    ip_build(packet, IP_PROT_ICMP, src_mac, dst_mac, src_ip, dst_ip);
 }
 
-void recv_tran_icmp(net_interface_t *interface, packet_t *packet, void *raw, uint16_t len) {
+void icmp_recv(net_interface_t *interface, packet_t *packet, void *raw, uint16_t len) {
     icmp_header_t *icmp = packet->tran.icmp = raw;
     raw = icmp + 1;
     len -= sizeof(icmp_header_t);
@@ -53,7 +53,7 @@ void recv_tran_icmp(net_interface_t *interface, packet_t *packet, void *raw, uin
                     memcpy(buff, raw, len);
 
                     packet_t *reply = packet_alloc(buff, len);
-                    layer_tran_icmp(reply, ICMP_TYPE_ECHO_REPLY, ICMP_CODE_ECHO_REPLY, icmp->other, interface->mac, packet->link.eth->src, interface->ip, packet->net.ip->src);
+                    icmp_build(reply, ICMP_TYPE_ECHO_REPLY, ICMP_CODE_ECHO_REPLY, icmp->other, interface->mac, packet->link.eth->src, interface->ip, packet->net.ip->src);
                     packet_send(interface, reply);
                     packet_free(reply);
 

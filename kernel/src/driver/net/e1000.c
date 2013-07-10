@@ -195,7 +195,7 @@ static void net_825xx_rx_poll(net_interface_t *interface) {
         } else if(net_device->rx_desc[net_device->rx_front].length < 60) {
             logf("825xx - rx: short packet (%u bytes)", net_device->rx_desc[net_device->rx_front].length);
         } else {
-            recv_link_eth(interface, net_device->rx_buff[net_device->rx_front], net_device->rx_desc[net_device->rx_front].length);
+            eth_recv(interface, net_device->rx_buff[net_device->rx_front], net_device->rx_desc[net_device->rx_front].length);
         }
 
         net_device->rx_desc[net_device->rx_front].status = 0;

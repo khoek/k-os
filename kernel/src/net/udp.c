@@ -11,7 +11,7 @@
 
 #include "checksum.h"
 
-void layer_tran_udp(packet_t *packet, mac_t src_mac, mac_t dst_mac, ip_t src_ip, ip_t dst_ip, uint16_t src_port, uint16_t dst_port) {
+void udp_build(packet_t *packet, mac_t src_mac, mac_t dst_mac, ip_t src_ip, ip_t dst_ip, uint16_t src_port, uint16_t dst_port) {
     udp_header_t *hdr = kmalloc(sizeof(udp_header_t));
 
     hdr->src_port = swap_uint16(src_port);
@@ -45,10 +45,10 @@ void layer_tran_udp(packet_t *packet, mac_t src_mac, mac_t dst_mac, ip_t src_ip,
     packet->tran.udp = hdr;
     packet->tran_size = sizeof(udp_header_t);
 
-    layer_net_ip(packet, IP_PROT_UDP, src_mac, dst_mac, src_ip, dst_ip);
+    ip_build(packet, IP_PROT_UDP, src_mac, dst_mac, src_ip, dst_ip);
 }
 
-void recv_tran_udp(net_interface_t *interface, packet_t *packet, void *raw, uint16_t len) {
+void udp_recv(net_interface_t *interface, packet_t *packet, void *raw, uint16_t len) {
     udp_header_t *udp = packet->tran.udp = raw;
     raw += sizeof(udp_header_t);
     len -= sizeof(udp_header_t);

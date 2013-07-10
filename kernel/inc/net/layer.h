@@ -13,28 +13,28 @@ void packet_free(packet_t *packet);
 void packet_send(net_interface_t *interface, packet_t *packet);
 
 //Link layer
-void layer_link_eth(packet_t *packet, uint16_t type, mac_t src, mac_t dst);
+void eth_build(packet_t *packet, uint16_t type, mac_t src, mac_t dst);
 
 //Network layer
-void layer_net_arp(packet_t *packet, uint16_t op, mac_t sender_mac, mac_t target_mac, ip_t sender_ip, ip_t target_ip);
-void layer_net_ip(packet_t *packet, uint8_t protocol, mac_t src_mac, mac_t dst_mac, ip_t src_ip, ip_t dst_ip);
+void arp_build(packet_t *packet, uint16_t op, mac_t sender_mac, mac_t target_mac, ip_t sender_ip, ip_t target_ip);
+void ip_build(packet_t *packet, uint8_t protocol, mac_t src_mac, mac_t dst_mac, ip_t src_ip, ip_t dst_ip);
 
 //Transport layer
-void layer_tran_icmp(packet_t *packet, uint8_t type, uint8_t code, uint32_t other, mac_t src_mac, mac_t dst_mac, ip_t src_ip, ip_t dst_ip);
-void layer_tran_udp(packet_t *packet, mac_t src, mac_t dst, ip_t src_ip, ip_t dst_ip, uint16_t src_port, uint16_t dst_port);
+void icmp_build(packet_t *packet, uint8_t type, uint8_t code, uint32_t other, mac_t src_mac, mac_t dst_mac, ip_t src_ip, ip_t dst_ip);
+void udp_build(packet_t *packet, mac_t src, mac_t dst, ip_t src_ip, ip_t dst_ip, uint16_t src_port, uint16_t dst_port);
 
 //////////  Packet reception  //////////
 
 //Link layer
-void recv_link_eth(net_interface_t *interface, void *packet, uint16_t len);
+void eth_recv(net_interface_t *interface, void *packet, uint16_t len);
 
 //Network layer
-void recv_net_arp(net_interface_t *interface, packet_t *packet, void *raw, uint16_t len);
-void recv_net_ip(net_interface_t *interface, packet_t *packet, void *raw, uint16_t len);
+void arp_recv(net_interface_t *interface, packet_t *packet, void *raw, uint16_t len);
+void ip_recv(net_interface_t *interface, packet_t *packet, void *raw, uint16_t len);
 
 //Transport layer
-void recv_tran_icmp(net_interface_t *interface, packet_t *packet, void *raw, uint16_t len);
-void recv_tran_tcp(net_interface_t *interface, packet_t *packet, void *raw, uint16_t len);
-void recv_tran_udp(net_interface_t *interface, packet_t *packet, void *raw, uint16_t len);
+void icmp_recv(net_interface_t *interface, packet_t *packet, void *raw, uint16_t len);
+void tcp_recv(net_interface_t *interface, packet_t *packet, void *raw, uint16_t len);
+void udp_recv(net_interface_t *interface, packet_t *packet, void *raw, uint16_t len);
 
 #endif
