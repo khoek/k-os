@@ -20,12 +20,13 @@ An operating system written by Keeley Hoek as a hobby. It was inspired by Charli
     * Clock and Timer APIs
 * Devices
     * Unified Bus, Device and Driver APIs
-* Networking (incomplete, in progress)
+* Networking (functional, in progress)
     * DHCP support
-    * 3 layer packet switch
+    * 4 layer packet switch
         * Link layer (Ethernet)
         * Network layer (IP, ARP)
         * Transport layer (TCP, UDP)
+        * Application layer (ICMP, NBNS)
 * Tasks and Threads (functional, in progress)
     * Multitasking
     * Scheduler
