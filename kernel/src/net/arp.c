@@ -1,12 +1,22 @@
 #include "lib/int.h"
 #include "lib/string.h"
 #include "common/swap.h"
+#include "common/hashtable.h"
 #include "mm/cache.h"
 #include "net/types.h"
 #include "net/layer.h"
 #include "net/protocols.h"
 #include "net/interface.h"
 #include "video/log.h"
+
+typedef struct arp_cache_entry {
+    hlist_node_t node;
+
+    ip_t ip;
+    mac_t mac;
+} arp_cache_entry_t;
+
+static DEFINE_HASHTABLE(arp_lookup, 5);
 
 void arp_build(packet_t *packet, uint16_t op, mac_t sender_mac, mac_t target_mac, ip_t sender_ip, ip_t target_ip) {
     arp_header_t *hdr = kmalloc(sizeof(arp_header_t));
@@ -32,7 +42,11 @@ void arp_resolve(net_interface_t *interface, packet_t *packet, ip_t ip) {
 }
 
 static void arp_cache(ip_t ip, mac_t mac) {
-    //TODO cache this combo :P
+    arp_cache_entry_t *entry = kmalloc(sizeof(arp_cache_entry_t));
+    entry->ip = ip;
+    entry->mac = mac;
+    
+    hashtable_add(*((uint32_t *) ip.addr), &entry->node, arp_lookup);
 }
 
 void arp_recv(net_interface_t *interface, packet_t *packet, void *raw, uint16_t len) {
