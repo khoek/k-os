@@ -1,3 +1,9 @@
+#ifndef KERNEL_MATH_H
+#define KERNEL_MATH_H
+
+#include "lib/int.h"
+#include "arch/math.h"
+
 #define MIN(a, b) ((a < b) ? a : b)
 #define MAX(a, b) ((a > b) ? a : b)
 
@@ -6,10 +12,12 @@
 
 #define BIT_SET(flags, mask) (((uint32_t) flags) & ((uint32_t) mask))
 
+extern uint32_t log2_NaN();
+
 #define log2(n)	                    \
 (						            \
 	__builtin_constant_p(n) ? (		\
-		(n) < 1 ? NAN :	            \
+		(n) < 1 ? log2_NaN() :	    \
 		(n) & (1ULL << 63) ? 63 :	\
 		(n) & (1ULL << 62) ? 62 :	\
 		(n) & (1ULL << 61) ? 61 :	\
@@ -74,7 +82,9 @@
 		(n) & (1ULL <<  2) ?  2 :	\
 		(n) & (1ULL <<  1) ?  1 :	\
 		(n) & (1ULL <<  0) ?  0 :	\
-		NAN ) :	(sizeof(n) <= 4) ?  \
+		log2_NaN() ) :	(sizeof(n) <= 4) ?  \
 	log2_32(n) :			        \
 	log2_64(n)				        \
 )
+
+#endif
