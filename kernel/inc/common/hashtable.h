@@ -108,7 +108,7 @@ static inline void hashtable_init_size(hlist_head_t *hashtable, uint32_t size) {
 
 #define hashtable_add(key, node, hashtable)                                     \
     hlist_add_head(node, &hashtable[hash(key, HASHTABLE_BITS(hashtable))])
-    
+
 #define hashtable_rm(node)                                                      \
     hlist_rm(node)
 
