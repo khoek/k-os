@@ -149,17 +149,20 @@ void arp_recv(packet_t *packet, void *raw, uint16_t len) {
 
     arp_cache_entry_t *entry = arp_cache_find(&arp->sender_ip);
     if(entry) {
-        uint32_t flags;
-        spin_lock_irqsave(&entry->lock, &flags);
+        if(entry->state == CACHE_UNRESOLVED) {
+            uint32_t flags;
+            spin_lock_irqsave(&entry->lock, &flags);
 
-        entry->state = CACHE_RESOLVED;
+            entry->state = CACHE_RESOLVED;
+            entry->mac = arp->sender_mac;
 
-        spin_unlock_irqstore(&entry->lock, flags);
+            spin_unlock_irqstore(&entry->lock, flags);
 
-        packet_t *pending;
-        LIST_FOR_EACH_ENTRY(pending, &entry->pending, list) {
-            pending->state = P_RESOLVED;
-            packet_send(pending);
+            packet_t *pending;
+            LIST_FOR_EACH_ENTRY(pending, &entry->pending, list) {
+                pending->state = P_RESOLVED;
+                packet_send(pending);
+            }
         }
     } else {
         arp_cache_put_resolved(arp->sender_ip, arp->sender_mac);
