@@ -2,6 +2,7 @@
 #include "common/list.h"
 #include "sync/spinlock.h"
 #include "net/types.h"
+#include "net/protocols.h"
 #include "net/interface.h"
 #include "net/dhcp.h"
 #include "net/nbns.h"
@@ -57,6 +58,12 @@ void net_put_hostname() {
     hostname_handles--;
 
     spin_unlock_irqstore(&interface_lock, flags);
+}
+
+void net_recieve(net_interface_t *interface, void *raw, uint16_t len) {
+    packet_t packet;
+    packet.interface = interface;
+    interface->hard_recieve(&packet, raw, len);
 }
 
 void net_set_state(net_interface_t *interface, net_state_t state) {

@@ -17,22 +17,19 @@ void eth_build(packet_t *packet, uint16_t type, mac_t src, mac_t dst) {
     packet->link_size = sizeof(ethernet_header_t);
 }
 
-void eth_recv(net_interface_t *interface, void *raw, uint16_t length) {
-    packet_t packet;
-    packet.interface = interface;
-
-    ethernet_header_t *header = packet.link.eth = raw;
+void eth_recieve(packet_t *packet, void *raw, uint16_t length) {
+    ethernet_header_t *header = packet->link.eth = raw;
     raw += sizeof(ethernet_header_t);
     length -= sizeof(ethernet_header_t);
 
     header->type = swap_uint16(header->type);
     switch(header->type) {
         case ETH_TYPE_ARP: {
-            arp_recv(&packet, raw, length);
+            arp_recv(packet, raw, length);
             break;
         }
         case ETH_TYPE_IP: {
-            ip_recv(&packet, raw, length);
+            ip_recv(packet, raw, length);
             break;
         }
         default: {

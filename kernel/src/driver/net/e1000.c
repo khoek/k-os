@@ -16,6 +16,7 @@
 #include "net/layer.h"
 #include "net/protocols.h"
 #include "net/interface.h"
+#include "net/eth.h"
 #include "video/log.h"
 
 //FIXME change these back to -> (PAGE_SIZE / sizeof(rx_desc_t)) after a better kmalloc is implemented
@@ -195,7 +196,7 @@ static void net_825xx_rx_poll(net_interface_t *interface) {
         } else if(net_device->rx_desc[net_device->rx_front].length < 60) {
             logf("825xx - rx: short packet (%u bytes)", net_device->rx_desc[net_device->rx_front].length);
         } else {
-            eth_recv(interface, net_device->rx_buff[net_device->rx_front], net_device->rx_desc[net_device->rx_front].length);
+            net_recieve(interface, net_device->rx_buff[net_device->rx_front], net_device->rx_desc[net_device->rx_front].length);
         }
 
         net_device->rx_desc[net_device->rx_front].status = 0;
@@ -276,7 +277,7 @@ static bool net_825xx_probe(device_t *device) {
 
     net_825xx_t *net_device = pci_device->private = kmalloc(sizeof(net_825xx_t));
 
-    net_device->interface.rx_poll = net_825xx_rx_poll;
+    net_device->interface.hard_recieve = eth_recieve;
     net_device->interface.tx_send = net_825xx_tx_send;
 
     net_device->mmio = (uint32_t) mm_map((void *) BAR_ADDR_32(pci_device->bar[0]));

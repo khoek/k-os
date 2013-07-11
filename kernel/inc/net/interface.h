@@ -23,7 +23,8 @@ struct net_interface {
 
     net_state_t state;
 
-    void (*rx_poll)(net_interface_t *);
+    void (*hard_recieve)(packet_t *, void *, uint16_t);
+        
     int32_t (*tx_send)(net_interface_t *, packet_t *);
 };
 
@@ -32,6 +33,8 @@ void unregister_net_interface(net_interface_t *interface);
 
 char * net_get_hostname();
 void net_put_hostname();
+
+void net_recieve(net_interface_t *interface, void *raw, uint16_t len);
 
 void net_set_state(net_interface_t *interface, net_state_t state);
 

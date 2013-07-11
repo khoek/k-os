@@ -28,9 +28,6 @@ void udp_build(packet_t *packet, mac_t src, mac_t dst, ip_t src_ip, ip_t dst_ip,
 
 //////////  Packet reception  //////////
 
-//Link layer
-void eth_recv(net_interface_t *interface, void *packet, uint16_t len);
-
 //Network layer
 void arp_recv(packet_t *packet, void *raw, uint16_t len);
 void ip_recv(packet_t *packet, void *raw, uint16_t len);
