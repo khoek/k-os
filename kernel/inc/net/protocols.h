@@ -100,6 +100,8 @@ typedef struct udp_header {
 
 //Packet
 struct packet {
+    net_interface_t *interface;
+
     union {
         void *ptr;
         ethernet_header_t *eth;

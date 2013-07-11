@@ -183,9 +183,9 @@ static void dhcp_send_discover(net_interface_t *interface) {
 
     *ptr++ = OPT_END;
 
-    packet_t *packet = packet_alloc(dhcp, sizeof(dhcp_header_t) + OPTIONS_LEN_DISCOVER + END_PADDING);
+    packet_t *packet = packet_alloc(interface, dhcp, sizeof(dhcp_header_t) + OPTIONS_LEN_DISCOVER + END_PADDING);
     udp_build(packet, interface->mac, MAC_BROADCAST, IP_NONE, IP_BROADCAST, DHCP_PORT_CLIENT, DHCP_PORT_SERVER);
-    packet_send(interface, packet);
+    packet_send(packet);
 }
 
 #define OPTIONS_LEN_REQUEST 22
@@ -224,9 +224,9 @@ static void dhcp_send_request(net_interface_t *interface, dhcp_header_t *hdr, dh
 
     *ptr++ = OPT_END;
 
-    packet_t *packet = packet_alloc(dhcp, sizeof(dhcp_header_t) + sizeof(opts) + END_PADDING);
+    packet_t *packet = packet_alloc(interface, dhcp, sizeof(dhcp_header_t) + sizeof(opts) + END_PADDING);
     udp_build(packet, interface->mac, MAC_BROADCAST, IP_NONE, IP_BROADCAST, DHCP_PORT_CLIENT, DHCP_PORT_SERVER);
-    packet_send(interface, packet);
+    packet_send(packet);
 }
 
 static void dhcp_ack(net_interface_t *interface, dhcp_header_t *hdr) {
@@ -241,7 +241,7 @@ void dhcp_start(net_interface_t *interface) {
     dhcp_send_discover(interface);
 }
 
-void dhcp_handle(net_interface_t *interface, packet_t *packet, void *raw, uint16_t len) {
+void dhcp_handle(packet_t *packet, void *raw, uint16_t len) {
     if(len < sizeof(dhcp_header_t)) return;
 
     dhcp_header_t *dhcp = raw;
@@ -252,18 +252,18 @@ void dhcp_handle(net_interface_t *interface, packet_t *packet, void *raw, uint16
     if(dhcp->htype != HTYPE_ETH) return;
     if(dhcp->hlen != sizeof(mac_t)) return;
     if(dhcp->cookie != swap_uint32(MAGIC_COOKIE)) return;
-    if(memcmp(&interface->mac, &dhcp->chaddr, sizeof(mac_t))) return;
+    if(memcmp(&packet->interface->mac, &dhcp->chaddr, sizeof(mac_t))) return;
 
     dhcp_options_t opts;
     if(!dhcp_parse_options(&opts, raw, len)) return;
 
     switch (opts.message_type) {
         case MSG_OFFER: {
-            dhcp_send_request(interface, dhcp, &opts);
+            dhcp_send_request(packet->interface, dhcp, &opts);
             break;
         }
         case MSG_ACK: {
-            dhcp_ack(interface, dhcp);
+            dhcp_ack(packet->interface, dhcp);
             break;
         }
         default: {

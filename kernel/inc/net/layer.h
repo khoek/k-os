@@ -7,13 +7,13 @@
 
 //////////  Address resolution  //////////
 
-void arp_resolve(net_interface_t *interface, packet_t *packet, ip_t ip);
+void arp_resolve(packet_t *packet, ip_t ip);
 
 //////////  Packet construction  //////////
 
 //Generic
-packet_t * packet_alloc(void *payload, uint16_t len);
-void packet_send(net_interface_t *interface, packet_t *packet);
+packet_t * packet_alloc(net_interface_t *interface, void *payload, uint16_t len);
+void packet_send(packet_t *packet);
 
 //Link layer
 void eth_build(packet_t *packet, uint16_t type, mac_t src, mac_t dst);
@@ -32,12 +32,12 @@ void udp_build(packet_t *packet, mac_t src, mac_t dst, ip_t src_ip, ip_t dst_ip,
 void eth_recv(net_interface_t *interface, void *packet, uint16_t len);
 
 //Network layer
-void arp_recv(net_interface_t *interface, packet_t *packet, void *raw, uint16_t len);
-void ip_recv(net_interface_t *interface, packet_t *packet, void *raw, uint16_t len);
+void arp_recv(packet_t *packet, void *raw, uint16_t len);
+void ip_recv(packet_t *packet, void *raw, uint16_t len);
 
 //Transport layer
-void icmp_recv(net_interface_t *interface, packet_t *packet, void *raw, uint16_t len);
-void tcp_recv(net_interface_t *interface, packet_t *packet, void *raw, uint16_t len);
-void udp_recv(net_interface_t *interface, packet_t *packet, void *raw, uint16_t len);
+void icmp_recv(packet_t *packet, void *raw, uint16_t len);
+void tcp_recv(packet_t *packet, void *raw, uint16_t len);
+void udp_recv(packet_t *packet, void *raw, uint16_t len);
 
 #endif

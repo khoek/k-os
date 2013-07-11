@@ -40,7 +40,7 @@ void icmp_build(packet_t *packet, uint8_t type, uint8_t code, uint32_t other, ma
     ip_build(packet, IP_PROT_ICMP, src_mac, dst_mac, src_ip, dst_ip);
 }
 
-void icmp_recv(net_interface_t *interface, packet_t *packet, void *raw, uint16_t len) {
+void icmp_recv(packet_t *packet, void *raw, uint16_t len) {
     icmp_header_t *icmp = packet->tran.icmp = raw;
     raw = icmp + 1;
     len -= sizeof(icmp_header_t);
@@ -52,9 +52,9 @@ void icmp_recv(net_interface_t *interface, packet_t *packet, void *raw, uint16_t
                     void *buff = kmalloc(len);
                     memcpy(buff, raw, len);
 
-                    packet_t *reply = packet_alloc(buff, len);
-                    icmp_build(reply, ICMP_TYPE_ECHO_REPLY, ICMP_CODE_ECHO_REPLY, icmp->other, interface->mac, packet->link.eth->src, interface->ip, packet->net.ip->src);
-                    packet_send(interface, reply);
+                    packet_t *reply = packet_alloc(packet->interface, buff, len);
+                    icmp_build(reply, ICMP_TYPE_ECHO_REPLY, ICMP_CODE_ECHO_REPLY, icmp->other, packet->interface->mac, packet->link.eth->src, packet->interface->ip, packet->net.ip->src);
+                    packet_send(reply);
 
                     break;
                 }

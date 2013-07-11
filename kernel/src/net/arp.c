@@ -37,7 +37,7 @@ void arp_build(packet_t *packet, uint16_t op, mac_t sender_mac, mac_t target_mac
     eth_build(packet, ETH_TYPE_ARP, sender_mac, target_mac);
 }
 
-void arp_resolve(net_interface_t *interface, packet_t *packet, ip_t ip) {
+void arp_resolve(packet_t *packet, ip_t ip) {
     //TODO do an ARP lookup
 }
 
@@ -45,18 +45,17 @@ static void arp_cache(ip_t ip, mac_t mac) {
     arp_cache_entry_t *entry = kmalloc(sizeof(arp_cache_entry_t));
     entry->ip = ip;
     entry->mac = mac;
-    
+
     hashtable_add(*((uint32_t *) ip.addr), &entry->node, arp_lookup);
 }
 
-void arp_recv(net_interface_t *interface, packet_t *packet, void *raw, uint16_t len) {
+void arp_recv(packet_t *packet, void *raw, uint16_t len) {
     arp_header_t *arp = packet->net.arp = raw;
-
-    if(!memcmp(&interface->ip.addr, &arp->target_ip.addr, sizeof(ip_t))) {
-        if(!memcmp(&interface->mac.addr, &MAC_NONE, sizeof(ip_t))) {
-            packet_t *response = packet_alloc(NULL, 0);
-            arp_build(response, ARP_OP_RESPONSE, interface->mac, arp->sender_mac, interface->ip, arp->sender_ip);
-            packet_send(interface, response);
+    if(!memcmp(&packet->interface->ip.addr, &arp->target_ip.addr, sizeof(ip_t))) {
+        if(!memcmp(&packet->interface->mac.addr, &MAC_NONE, sizeof(ip_t))) {
+            packet_t *response = packet_alloc(packet->interface, NULL, 0);
+            arp_build(response, ARP_OP_RESPONSE, packet->interface->mac, arp->sender_mac, packet->interface->ip, arp->sender_ip);
+            packet_send(response);
         }
     }
 

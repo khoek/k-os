@@ -88,7 +88,7 @@ static void nbns_encode_name(uint8_t *buff, char *name, uint8_t type) {
     buff[(NBNS_NAME_LENGTH * 2) + 1] = (type & 0xF) + 'A';
 }
 
-void nbns_handle(net_interface_t *interface, packet_t *packet, void *raw, uint16_t len) {
+void nbns_handle(packet_t *packet, void *raw, uint16_t len) {
     if(len < sizeof(dns_header_t)) return;
 
     dns_header_t *dns = raw;
@@ -121,11 +121,11 @@ void nbns_handle(net_interface_t *interface, packet_t *packet, void *raw, uint16
     response->rr.class = swap_uint16(RR_CLASS_INTERNET);
     response->rr.ttl = swap_uint32(HOSTNAME_TTL);
     response->rr.addr_len = swap_uint16(sizeof(ip_t) + sizeof(uint16_t));
-    response->rr.ip = interface->ip;
+    response->rr.ip = packet->interface->ip;
 
-    packet_t *resp = packet_alloc(response, sizeof(nbns_query_response_t));
-    udp_build(resp, interface->mac, packet->link.eth->src, interface->ip, packet->net.ip->src, NBNS_PORT, NBNS_PORT);
-    packet_send(interface, resp);
+    packet_t *resp = packet_alloc(packet->interface, response, sizeof(nbns_query_response_t));
+    udp_build(resp, packet->interface->mac, packet->link.eth->src, packet->interface->ip, packet->net.ip->src, NBNS_PORT, NBNS_PORT);
+    packet_send(resp);
 }
 
 void nbns_register_name(net_interface_t *interface, char *name) {
@@ -149,7 +149,7 @@ void nbns_register_name(net_interface_t *interface, char *name) {
     nbns->rr.nb_flags = swap_uint16(SCOPE_UNIQUE | NODE_B);
     nbns->rr.ip = interface->ip;
 
-    packet_t *packet = packet_alloc(nbns, sizeof(nbns_reg_request_t));
+    packet_t *packet = packet_alloc(interface, nbns, sizeof(nbns_reg_request_t));
     udp_build(packet, interface->mac, MAC_BROADCAST, interface->ip, IP_BROADCAST, NBNS_PORT, NBNS_PORT);
-    packet_send(interface, packet);
+    packet_send(packet);
 }

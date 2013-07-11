@@ -8,6 +8,6 @@
 #define DHCP_PORT_SERVER 67
 
 void dhcp_start(net_interface_t *interface);
-void dhcp_handle(net_interface_t *interface, packet_t *packet, void *raw, uint16_t len);
+void dhcp_handle(packet_t *packet, void *raw, uint16_t len);
 
 #endif

@@ -48,7 +48,7 @@ void udp_build(packet_t *packet, mac_t src_mac, mac_t dst_mac, ip_t src_ip, ip_t
     ip_build(packet, IP_PROT_UDP, src_mac, dst_mac, src_ip, dst_ip);
 }
 
-void udp_recv(net_interface_t *interface, packet_t *packet, void *raw, uint16_t len) {
+void udp_recv(packet_t *packet, void *raw, uint16_t len) {
     udp_header_t *udp = packet->tran.udp = raw;
     raw += sizeof(udp_header_t);
     len -= sizeof(udp_header_t);
@@ -56,9 +56,9 @@ void udp_recv(net_interface_t *interface, packet_t *packet, void *raw, uint16_t 
     udp->src_port = swap_uint16(udp->src_port);
     udp->dst_port = swap_uint16(udp->dst_port);
 
-    if(interface->state == IF_DHCP && udp->src_port == DHCP_PORT_SERVER && udp->dst_port == DHCP_PORT_CLIENT) {
-        dhcp_handle(interface, packet, raw, len);
-    } else if(interface->state == IF_READY && udp->dst_port == NBNS_PORT) {
-        nbns_handle(interface, packet, raw, len);
+    if(packet->interface->state == IF_DHCP && udp->src_port == DHCP_PORT_SERVER && udp->dst_port == DHCP_PORT_CLIENT) {
+        dhcp_handle(packet, raw, len);
+    } else if(packet->interface->state == IF_READY && udp->dst_port == NBNS_PORT) {
+        nbns_handle(packet, raw, len);
     }
 }

@@ -7,6 +7,6 @@
 #define NBNS_PORT 137
 
 void nbns_register_name(net_interface_t *interface, char *name);
-void nbns_handle(net_interface_t *interface, packet_t *packet, void *raw, uint16_t len);
+void nbns_handle(packet_t *packet, void *raw, uint16_t len);
 
 #endif
