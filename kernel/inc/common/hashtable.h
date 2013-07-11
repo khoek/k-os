@@ -18,8 +18,8 @@ typedef struct hlist_head_t {
     hlist_node_t *first;
 } hlist_head_t;
 
-#define HLIST_MAKE_HEAD { .first = NULL }
-#define HLIST_HEAD(name) hlist_head_t name = {  .first = NULL }
+#define HLIST_HEAD { .first = NULL }
+#define DEFINE_HLIST(name) hlist_head_t name = {  .first = NULL }
 
 static inline void hlist_init(hlist_head_t *head) {
     head->first = NULL;
@@ -103,21 +103,23 @@ static inline void hashtable_init_size(hlist_head_t *hashtable, uint32_t size) {
     }
 }
 
-#define hashtable_init(hashtable) hash_init_size(hashtable, ARRAY_SIZE(hashtable))
+#define hashtable_init(hashtable)                                               \
+    hash_init_size(hashtable, ARRAY_SIZE(hashtable))
 
-#define hashtable_add(hashtable, node, key)                                      \
+#define hashtable_add(key, node, hashtable)                                     \
     hlist_add_head(node, &hashtable[hash(key, HASHTABLE_BITS(hashtable))])
     
-#define hashtable_rm(node)                                                       \
+#define hashtable_rm(node)                                                      \
     hlist_rm(node)
 
 #define DEFINE_HASHTABLE(name, bits)                                            \
     hlist_head_t name[1 << ((bits) - 1)] =                                      \
-        { [0 ... ((1 << ((bits) - 1)) - 1)] = HLIST_MAKE_HEAD }
+        { [0 ... ((1 << ((bits) - 1)) - 1)] = HLIST_HEAD }
 
-#define HASHTABLE_BITS(name) log2(ARRAY_SIZE(name))
+#define HASHTABLE_BITS(name)                                                    \
+    log2(ARRAY_SIZE(name))
 
-#define HASHTABLE_FOR_EACH_COLLISION(key, pos, hashtable, member)                    \
+#define HASHTABLE_FOR_EACH_COLLISION(key, pos, hashtable, member)               \
     hlist_for_each_entry(pos, &((hashtable)[hash(key, HASHTABLE_BITS(hashtable))]), member)
 
 #endif
