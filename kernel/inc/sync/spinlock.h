@@ -22,6 +22,10 @@ typedef struct spinlock {
 
 #define DEFINE_SPINLOCK(name) spinlock_t name = SPINLOCK_UNLOCKED
 
+static inline void spinlock_init(spinlock_t *spinlock) {
+    *spinlock = (spinlock_t) SPINLOCK_UNLOCKED;
+}
+
 void spin_lock(spinlock_t *lock);
 void spin_unlock(spinlock_t *lock);
 
