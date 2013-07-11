@@ -3,7 +3,6 @@
 
 #include "lib/int.h"
 #include "common/compiler.h"
-#include "atomic/atomic.h"
 
 typedef uint16_t ticket_t;
 

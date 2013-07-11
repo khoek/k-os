@@ -2,7 +2,7 @@
 #include "lib/printf.h"
 #include "common/compiler.h"
 #include "bug/panic.h"
-#include "atomic/spinlock.h"
+#include "sync/spinlock.h"
 #include "arch/registers.h"
 #include "time/clock.h"
 #include "video/console.h"

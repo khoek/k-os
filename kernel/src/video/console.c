@@ -3,7 +3,7 @@
 #include "lib/string.h"
 #include "lib/printf.h"
 #include "common/asm.h"
-#include "atomic/spinlock.h"
+#include "sync/spinlock.h"
 #include "mm/mm.h"
 #include "video/console.h"
 

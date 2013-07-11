@@ -1,5 +1,5 @@
 #include "common/list.h"
-#include "atomic/spinlock.h"
+#include "sync/spinlock.h"
 #include "arch/registers.h"
 #include "time/timer.h"
 #include "time/clock.h"

@@ -1,6 +1,6 @@
 #include "common/compiler.h"
 #include "common/asm.h"
-#include "atomic/spinlock.h"
+#include "sync/spinlock.h"
 #include "arch/registers.h"
 
 #include "atomic_ops.h"

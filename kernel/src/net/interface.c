@@ -1,6 +1,6 @@
 #include "lib/int.h"
 #include "common/list.h"
-#include "atomic/spinlock.h"
+#include "sync/spinlock.h"
 #include "net/types.h"
 #include "net/interface.h"
 #include "net/dhcp.h"
