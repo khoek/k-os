@@ -2,15 +2,16 @@
 #define KERNEL_NET_TYPES_H
 
 #include "lib/int.h"
+#include "common/list.h"
 
 typedef struct mac { uint8_t addr[6]; } mac_t;
 typedef struct ip { uint8_t addr[4]; } ip_t;
 
-#define MAC_BROADCAST ((mac_t) { .addr = {0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF} })
-#define MAC_NONE ((mac_t) { .addr = {0x00, 0x00, 0x00, 0x00, 0x00, 0x00} })
+static const mac_t MAC_BROADCAST = { .addr = {0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF} };
+static const mac_t MAC_NONE = { .addr = {0x00, 0x00, 0x00, 0x00, 0x00, 0x00} };
 
-#define IP_BROADCAST ((ip_t) { .addr = {0xFF, 0xFF, 0xFF, 0xFF} })
-#define IP_NONE ((ip_t) { .addr = {0x00, 0x00, 0x00, 0x00} })
+static const ip_t IP_BROADCAST = { .addr = {0xFF, 0xFF, 0xFF, 0xFF} };
+static const ip_t IP_NONE = { .addr = {0x00, 0x00, 0x00, 0x00} };
 
 typedef union hard_addr {
     mac_t mac;
@@ -53,6 +54,8 @@ typedef enum packet_state {
 #include "net/protocols.h"
 
 typedef struct packet {
+    list_head_t list;
+
     packet_state_t state;
 
     net_interface_t *interface;
