@@ -5,7 +5,7 @@
 #include "fs/binfmt.h"
 #include "video/log.h"
 
-static LIST_HEAD(binfmts);
+static DEFINE_LIST(binfmts);
 
 void binfmt_register(binfmt_t *binfmt) {
     list_add(&binfmt->list, &binfmts);

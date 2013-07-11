@@ -70,8 +70,8 @@ static inline void list_rotate_left(list_head_t *head) {
 	}
 }
 
-#define LIST_MAKE_HEAD(name) {&(name), &(name)}
-#define LIST_HEAD(name) list_head_t name = LIST_MAKE_HEAD(name)
+#define LIST_HEAD(name) {&(name), &(name)}
+#define DEFINE_LIST(name) list_head_t name = LIST_HEAD(name)
 
 #define LIST_FOR_EACH(pos, head) \
     for (pos = (head)->next; pos != (head); pos = pos->next)

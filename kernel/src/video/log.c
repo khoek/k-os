@@ -11,8 +11,8 @@
 
 static char buff[BUFFSIZE];
 
-static SPINLOCK_INIT(buff_lock);
-static SPINLOCK_INIT(log_lock);
+static DEFINE_SPINLOCK(buff_lock);
+static DEFINE_SPINLOCK(log_lock);
 
 static void print_time() {
     uint32_t time = uptime();

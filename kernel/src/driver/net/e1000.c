@@ -164,7 +164,7 @@ typedef struct net_825xx {
     net_interface_t interface;
 } PACKED net_825xx_t;
 
-static LIST_HEAD(net_825xx_devices);
+static DEFINE_LIST(net_825xx_devices);
 
 static uint32_t mmio_read(net_825xx_t *net_device, uint32_t reg) {
     return *(uint32_t *)(net_device->mmio + reg);

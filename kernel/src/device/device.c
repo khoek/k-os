@@ -13,10 +13,10 @@
 static node_t root = {
     .name = "/",
     .parent = NULL,
-    .children = LIST_MAKE_HEAD(root.children)
+    .children = LIST_HEAD(root.children)
 };
 
-static LIST_HEAD(buses);
+static DEFINE_LIST(buses);
 
 static uint32_t next_id = 0;
 static const char *generic_name = "dev";

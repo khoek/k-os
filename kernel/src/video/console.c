@@ -17,8 +17,8 @@ static uint16_t *vga_port = ((uint16_t *) PORT_BASE);
 static char *vram = ((char *) VRAM_PHYS);
 static char color = 0x07;
 
-static SPINLOCK_INIT(vram_lock);
-static SPINLOCK_INIT(buffer_lock);
+static DEFINE_SPINLOCK(vram_lock);
+static DEFINE_SPINLOCK(buffer_lock);
 
 void console_map_virtual() {
     vga_port = mm_map(vga_port);

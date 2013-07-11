@@ -41,12 +41,12 @@ static cache_t meta_cache = {
     .size = sizeof(cache_t),
     .max = (PAGE_SIZE - sizeof(cache_page_t)) / (sizeof(cache_t) + sizeof(uint32_t)),
     .flags = CACHE_FLAG_PERM,
-    .full = LIST_MAKE_HEAD(meta_cache.full),
-    .partial = LIST_MAKE_HEAD(meta_cache.partial),
-    .empty = LIST_MAKE_HEAD(meta_cache.empty)
+    .full = LIST_HEAD(meta_cache.full),
+    .partial = LIST_HEAD(meta_cache.partial),
+    .empty = LIST_HEAD(meta_cache.empty)
 };
 
-static LIST_HEAD(caches);
+static DEFINE_LIST(caches);
 
 static void cache_alloc_page(cache_t *cache) {
     page_t *page = alloc_page(0);

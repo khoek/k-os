@@ -24,9 +24,9 @@ static bool tasking_up = false;
 
 static task_t *idle_task;
 
-static LIST_HEAD(tasks);
-static LIST_HEAD(sleeping_tasks);
-static LIST_HEAD(blocking_tasks);
+static DEFINE_LIST(tasks);
+static DEFINE_LIST(sleeping_tasks);
+static DEFINE_LIST(blocking_tasks);
 
 static void idle_loop() {
     while(1) hlt();

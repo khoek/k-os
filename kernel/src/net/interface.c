@@ -10,8 +10,8 @@
 static char *hostname = "K-OS";
 static uint32_t hostname_handles;
 
-static LIST_HEAD(interfaces);
-static SPINLOCK_INIT(interface_lock);
+static DEFINE_LIST(interfaces);
+static DEFINE_SPINLOCK(interface_lock);
 
 void register_net_interface(net_interface_t *interface, net_state_t state) {
     interface->ip = IP_NONE;

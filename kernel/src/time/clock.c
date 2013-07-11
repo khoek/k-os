@@ -6,9 +6,9 @@
 #include "bug/panic.h"
 #include "time/clock.h"
 
-static LIST_HEAD(clocks);
-static LIST_HEAD(clock_event_sources);
-static LIST_HEAD(clock_event_listeners);
+static DEFINE_LIST(clocks);
+static DEFINE_LIST(clock_event_sources);
+static DEFINE_LIST(clock_event_listeners);
 
 static clock_t *active;
 static clock_event_source_t *active_event_source;

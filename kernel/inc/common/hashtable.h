@@ -97,12 +97,6 @@ static inline void hlist_move_list(hlist_head_t *old, hlist_head_t *new) {
          pos;                                                                   \
          pos = hlist_entry_safe((pos)->member.next, typeof(*(pos)), member))
 
-#define HASHTABLE_DEFINE(name, bits)                                            \
-    hlist_head_t name[1 << ((bits) - 1)] =                                      \
-        { [0 ... ((1 << ((bits) - 1)) - 1)] = HLIST_MAKE_HEAD }
-
-#define HASHTABLE_BITS(name) log2(ARRAY_SIZE(name))
-
 static inline void hashtable_init_size(hlist_head_t *hashtable, uint32_t size) {
     for (uint32_t i = 0; i < size; i++) {
         hlist_init(&hashtable[i]);
@@ -113,10 +107,15 @@ static inline void hashtable_init_size(hlist_head_t *hashtable, uint32_t size) {
 
 #define hashtable_add(hashtable, node, key)                                      \
     hlist_add_head(node, &hashtable[hash(key, HASHTABLE_BITS(hashtable))])
+    
+#define hashtable_rm(node)                                                       \
+    hlist_rm(node)
 
-static inline void hashtable_rm(hlist_node_t *node) {
-    hlist_rm(node);
-}
+#define DEFINE_HASHTABLE(name, bits)                                            \
+    hlist_head_t name[1 << ((bits) - 1)] =                                      \
+        { [0 ... ((1 << ((bits) - 1)) - 1)] = HLIST_MAKE_HEAD }
+
+#define HASHTABLE_BITS(name) log2(ARRAY_SIZE(name))
 
 #define HASHTABLE_FOR_EACH_COLLISION(key, pos, hashtable, member)                    \
     hlist_for_each_entry(pos, &((hashtable)[hash(key, HASHTABLE_BITS(hashtable))]), member)

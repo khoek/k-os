@@ -16,11 +16,11 @@ typedef struct timer {
 
 static cache_t *timer_cache;
 
-static LIST_HEAD(active_timers);
-static LIST_HEAD(dispatch_timers);
+static DEFINE_LIST(active_timers);
+static DEFINE_LIST(dispatch_timers);
 
-static SPINLOCK_INIT(active_lock);
-static SPINLOCK_INIT(dispatch_lock);
+static DEFINE_SPINLOCK(active_lock);
+static DEFINE_SPINLOCK(dispatch_lock);
 
 void timer_create(uint32_t millis, void (*callback)(void *), void *data) {
     timer_t *new = cache_alloc(timer_cache);
