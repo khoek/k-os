@@ -7,14 +7,14 @@
 #define DEPENDS(m, c) if(!(c)) panic("Dependency assertion on \"%s\" failed!", m)
 #define ASSERT(c)     if(!(c)) panic("Assertion failed!")
 #define BUG_ON(c)     if((c))  panic("Bug!")
+#define BUG()         panic("Bug!")
 
 #else
 
-#define NOP do{}while(0)
-
-#define DEPENDS(m, c) NOP
-#define ASSERT(c)     NOP
-#define BUG_ON(c)     NOP
+#define DEPENDS(m, c)
+#define ASSERT(c)
+#define BUG_ON(c)
+#define BUG()
 
 #endif
 

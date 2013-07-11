@@ -7,6 +7,8 @@
 #include "net/layer.h"
 #include "net/protocols.h"
 #include "net/interface.h"
+#include "net/eth.h"
+#include "net/arp.h"
 #include "video/log.h"
 
 typedef struct arp_cache_entry {
@@ -34,11 +36,27 @@ void arp_build(packet_t *packet, uint16_t op, mac_t sender_mac, mac_t target_mac
     packet->net.arp = hdr;
     packet->net_size = sizeof(arp_header_t);
 
-    eth_build(packet, ETH_TYPE_ARP, sender_mac, target_mac);
+    packet->state = P_RESOLVED;
+
+    packet->route.protocol = PROTOCOL_ARP;
+    packet->route.hard.src = (hard_addr_t *) &hdr->sender_mac;
+    packet->route.hard.dst = (hard_addr_t *) &hdr->target_mac;
 }
 
-void arp_resolve(packet_t *packet, ip_t ip) {
-    //TODO do an ARP lookup
+void arp_resolve(packet_t *packet) {
+    ip_t ip = *((ip_t *) packet->route.sock.dst);
+
+    packet->route.hard.src = (hard_addr_t *) &packet->interface->mac;
+
+    if(!memcmp(&ip, &IP_BROADCAST, sizeof(ip_t))) {
+        packet->route.hard.dst = (hard_addr_t *) &MAC_BROADCAST;
+    } else {
+        //FIXME do an ARP lookup
+    }
+
+    packet->state = P_RESOLVED;
+
+    packet_send(packet);
 }
 
 static void arp_cache(ip_t ip, mac_t mac) {
@@ -53,7 +71,7 @@ void arp_recv(packet_t *packet, void *raw, uint16_t len) {
     arp_header_t *arp = packet->net.arp = raw;
     if(!memcmp(&packet->interface->ip.addr, &arp->target_ip.addr, sizeof(ip_t))) {
         if(!memcmp(&packet->interface->mac.addr, &MAC_NONE, sizeof(ip_t))) {
-            packet_t *response = packet_alloc(packet->interface, NULL, 0);
+            packet_t *response = packet_create(packet->interface, NULL, 0);
             arp_build(response, ARP_OP_RESPONSE, packet->interface->mac, arp->sender_mac, packet->interface->ip, arp->sender_ip);
             packet_send(response);
         }

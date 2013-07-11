@@ -8,14 +8,11 @@
 //Link layer
 #define HTYPE_ETH  1
 
-#define ETH_TYPE_IP  0x0800
-#define ETH_TYPE_ARP 0x0806
-
-typedef struct ethernet_header {
+typedef struct eth_header {
     mac_t dst;
     mac_t src;
     uint16_t type;
-} PACKED ethernet_header_t;
+} PACKED eth_header_t;
 
 //Network layer
 #define ARP_OP_REQUEST  0x0001
@@ -97,34 +94,5 @@ typedef struct udp_header {
     uint16_t length;
     uint16_t checksum;
 } PACKED udp_header_t;
-
-//Packet
-struct packet {
-    net_interface_t *interface;
-
-    union {
-        void *ptr;
-        ethernet_header_t *eth;
-    } link;
-    uint32_t link_size;
-
-    union {
-        void *ptr;
-        arp_header_t *arp;
-        ip_header_t *ip;
-    } net;
-    uint32_t net_size;
-
-    union {
-        void *ptr;
-        icmp_header_t *icmp;
-        tcp_header_t *tcp;
-        udp_header_t *udp;
-    } tran;
-    uint32_t tran_size;
-
-    void *payload;
-    uint32_t payload_size;
-};
 
 #endif

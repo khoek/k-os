@@ -1,14 +1,16 @@
 #include "lib/int.h"
+#include "lib/string.h"
 #include "common/swap.h"
 #include "mm/cache.h"
 #include "net/types.h"
 #include "net/layer.h"
 #include "net/protocols.h"
+#include "net/interface.h"
 #include "video/log.h"
 
 #include "checksum.h"
 
-void ip_build(packet_t *packet, uint8_t protocol, mac_t src_mac, mac_t dst_mac, ip_t src, ip_t dst) {
+void ip_build(packet_t *packet, uint8_t protocol, ip_t dst) {
     ip_header_t *hdr = kmalloc(sizeof(ip_header_t));
 
     hdr->version_ihl = (IP(4) << 4) | ((uint8_t) (sizeof(ip_header_t) / sizeof(uint32_t)));
@@ -18,7 +20,7 @@ void ip_build(packet_t *packet, uint8_t protocol, mac_t src_mac, mac_t dst_mac, 
     hdr->flags_frag_off = IP_FLAG_DONT_FRAG;
     hdr->ttl = 0x40;
     hdr->protocol = protocol;
-    hdr->src = src;
+    hdr->src = packet->interface->ip;
     hdr->dst = dst;
     hdr->checksum = 0;
 
@@ -29,10 +31,15 @@ void ip_build(packet_t *packet, uint8_t protocol, mac_t src_mac, mac_t dst_mac, 
 
     hdr->checksum = sum_to_checksum(sum);
 
+    ip_t *dst_copy = kmalloc(sizeof(ip_t));
+    memcpy(dst_copy, &dst, sizeof(ip_t));
+
+    packet->state = P_UNRESOLVED;
+    packet->route.sock.src = (sock_addr_t *) &packet->interface->ip;
+    packet->route.sock.dst = (sock_addr_t *) dst_copy;
+
     packet->net.ip = hdr;
     packet->net_size = sizeof(ip_header_t);
-
-    eth_build(packet, ETH_TYPE_IP, src_mac, dst_mac);
 }
 
 void ip_recv(packet_t *packet, void *raw, uint16_t len) {

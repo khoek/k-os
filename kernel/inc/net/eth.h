@@ -1,9 +1,11 @@
 #ifndef KERNEL_NET_ETH
 #define KERNEL_NET_ETH
 
-#include "lib/int.h"
-#include "net/interface.h"
+#include "net/types.h"
 
-void eth_recieve(packet_t *packet, void *raw, uint16_t len);
+#define ETH_TYPE_IP  0x0800
+#define ETH_TYPE_ARP 0x0806
+
+extern net_link_layer_t eth_link_layer;
 
 #endif

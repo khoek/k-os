@@ -1,29 +1,48 @@
+#include <stddef.h>
+
 #include "lib/int.h"
 #include "common/swap.h"
 #include "common/compiler.h"
+#include "bug/debug.h"
 #include "mm/cache.h"
 #include "net/types.h"
 #include "net/layer.h"
 #include "net/protocols.h"
+#include "net/eth.h"
+#include "net/arp.h"
 #include "video/log.h"
 
-void eth_build(packet_t *packet, uint16_t type, mac_t src, mac_t dst) {
-    ethernet_header_t *hdr = kmalloc(sizeof(ethernet_header_t));
-    hdr->src = src;
-    hdr->dst = dst;
-    hdr->type = swap_uint16(type);
+static uint16_t type_lookup[] = {
+    [PROTOCOL_IP]  = ETH_TYPE_IP ,
+    [PROTOCOL_ARP] = ETH_TYPE_ARP
+};
 
-    packet->link.eth = hdr;
-    packet->link_size = sizeof(ethernet_header_t);
+static void eth_resolve(packet_t *packet) {
+    switch(packet->route.protocol) {
+        case PROTOCOL_IP: {
+            arp_resolve(packet);
+            break;
+        }
+        default: BUG();
+    }
 }
 
-void eth_recieve(packet_t *packet, void *raw, uint16_t length) {
-    ethernet_header_t *header = packet->link.eth = raw;
-    raw += sizeof(ethernet_header_t);
-    length -= sizeof(ethernet_header_t);
+static void eth_build_hdr(packet_t *packet) {
+    eth_header_t *hdr = kmalloc(sizeof(eth_header_t));
+    hdr->src = packet->route.hard.src->mac;
+    hdr->dst = packet->route.hard.dst->mac;
+    hdr->type = swap_uint16(type_lookup[packet->route.protocol] ? type_lookup[packet->route.protocol] : 0xFFFF);
 
-    header->type = swap_uint16(header->type);
-    switch(header->type) {
+    packet->link.eth = hdr;
+    packet->link_size = sizeof(eth_header_t);
+}
+
+static void eth_recieve(packet_t *packet, void *raw, uint16_t length) {
+    eth_header_t *header = packet->link.eth = raw;
+    raw += sizeof(eth_header_t);
+    length -= sizeof(eth_header_t);
+
+    switch(swap_uint16(header->type)) {
         case ETH_TYPE_ARP: {
             arp_recv(packet, raw, length);
             break;
@@ -33,8 +52,14 @@ void eth_recieve(packet_t *packet, void *raw, uint16_t length) {
             break;
         }
         default: {
-            logf("ethernet - unrecognised ethertype (0x%02X)", header->type);
+            logf("eth - unrecognised ethertype (0x%02X)", swap_uint16(header->type));
             break;
         }
     }
 }
+
+net_link_layer_t eth_link_layer = {
+    .resolve = eth_resolve,
+    .build_hdr = eth_build_hdr,
+    .recieve = eth_recieve,
+};
