@@ -112,6 +112,7 @@ void * cache_alloc(cache_t *cache) {
 void cache_free(cache_t *cache, void *mem) {
     //FIXME this is absurdly slow, make it faster by an order of complexity somehow :P
 
+#ifdef CONFIG_DEBUG_MM
     cache_page_t *cur, *target = NULL;
     LIST_FOR_EACH_ENTRY(cur, &cache->full, list) {
         uint32_t addr = (uint32_t) page_to_virt(cur->page);
@@ -134,18 +135,19 @@ void cache_free(cache_t *cache, void *mem) {
     if(target == NULL) {
         panic("Illegal mem ptr passed to cache_free");
     }
+#else
+    cache_page_t *target = (void *) ((((uint32_t) mem) / PAGE_SIZE) * PAGE_SIZE);
+#endif
 
-    cache_page_t *cache_page = (cache_page_t *) page_to_virt(cur->page);
-
-    if(cache_page->left + 1 == cache->max) {
-        list_rm(&cache_page->list);
-        list_add(&cache_page->list, &cache->empty);
-    } else if(!cache_page->left) {
-        list_rm(&cache_page->list);
-        list_add(&cache_page->list, &cache->partial);
+    if(target->left + 1 == cache->max) {
+        list_rm(&target->list);
+        list_add(&target->list, &cache->empty);
+    } else if(!target->left) {
+        list_rm(&target->list);
+        list_add(&target->list, &cache->partial);
     }
 
-    cache_do_free(cache_page, (((uint32_t) mem) - ((uint32_t) cache_page->mem)) / cache->size);
+    cache_do_free(target, (((uint32_t) mem) - ((uint32_t) target->mem)) / cache->size);
 }
 
 cache_t * cache_create(uint32_t size) {
