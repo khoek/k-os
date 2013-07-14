@@ -108,8 +108,8 @@ WARN_LOGFILE           =
 #---------------------------------------------------------------------------
 # configuration options related to the input files
 #---------------------------------------------------------------------------
-INPUT                  = /home/escortkeel/code/k-os/src \
-                         /home/escortkeel/code/k-os/inc
+INPUT                  = src \
+                         inc
 INPUT_ENCODING         = UTF-8
 FILE_PATTERNS          = *.c \
                          *.cc \
