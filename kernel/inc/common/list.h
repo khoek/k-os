@@ -1,9 +1,12 @@
 #ifndef KERNEL_LIST_H
 #define KERNEL_LIST_H
 
+#include <stddef.h>
 #include <stdbool.h>
 
 #include "common/compiler.h"
+
+//Lists
 
 typedef struct list_head list_head_t;
 
@@ -15,23 +18,23 @@ struct list_head {
 #define list_first(ptr, type, member) list_entry((ptr)->next, type, member)
 
 static inline void list_init(list_head_t *entry) {
-	entry->next = entry;
-	entry->prev = entry;
+    entry->next = entry;
+    entry->prev = entry;
 }
 
 static inline bool list_empty(const list_head_t *head) {
-	return head->next == head;
+    return head->next == head;
 }
 
 static inline bool list_is_singular(const list_head_t *head) {
-	return !list_empty(head) && (head->next == head->prev);
+    return !list_empty(head) && (head->next == head->prev);
 }
 
 static inline void list_insert(list_head_t *new, list_head_t *prev, list_head_t *next) {
-	next->prev = new;
-	new->next = next;
-	new->prev = prev;
-	prev->next = new;
+    next->prev = new;
+    new->next = next;
+    new->prev = prev;
+    prev->next = new;
 }
 
 static inline void list_add(list_head_t *new, list_head_t *old) {
@@ -52,33 +55,124 @@ static inline void list_rm(list_head_t *entry) {
 }
 
 static inline void list_move(list_head_t *entry, list_head_t *head) {
-	list_rm(entry);
-	list_add(entry, head);
+    list_rm(entry);
+    list_add(entry, head);
 }
 
 static inline void list_move_before(list_head_t *entry, list_head_t *head) {
-	list_rm(entry);
-	list_add_before(entry, head);
+    list_rm(entry);
+    list_add_before(entry, head);
 }
 
 static inline void list_rotate_left(list_head_t *head) {
-	list_head_t *first;
+    list_head_t *first;
 
-	if (!list_empty(head)) {
-		first = head->next;
-		list_move_before(first, head);
-	}
+    if (!list_empty(head)) {
+        first = head->next;
+        list_move_before(first, head);
+    }
 }
 
-#define LIST_HEAD(name) {&(name), &(name)}
+#define LIST_HEAD(name) { &(name), &(name) }
 #define DEFINE_LIST(name) list_head_t name = LIST_HEAD(name)
 
-#define LIST_FOR_EACH(pos, head) \
+#define LIST_FOR_EACH(pos, head)                                                \
     for (pos = (head)->next; pos != (head); pos = pos->next)
 
-#define LIST_FOR_EACH_ENTRY(pos, head, member)				\
-	for (pos = list_entry((head)->next, typeof(*pos), member);	\
-	     &pos->member != (head); 	\
-	     pos = list_entry(pos->member.next, typeof(*pos), member))
+#define LIST_FOR_EACH_ENTRY(pos, head, member)                                  \
+    for (pos = list_entry((head)->next, typeof(*pos), member);                  \
+         &pos->member != (head);                                                \
+         pos = list_entry(pos->member.next, typeof(*pos), member))
+
+//Chains
+
+typedef struct chain_node chain_node_t;
+
+struct chain_node {
+    chain_node_t *next, **pprev;
+};
+
+typedef struct chain_head_t {
+    chain_node_t *first;
+} chain_head_t;
+
+#define chain_entry(ptr, type, member) containerof(ptr,type,member)
+
+#define chain_entry_safe(ptr, type, member)                                     \
+    ({ typeof(ptr) ____ptr = (ptr);                                             \
+       ____ptr ? chain_entry(____ptr, type, member) : NULL;                     \
+    })
+
+static inline void chain_init(chain_head_t *head) {
+    head->first = NULL;
+}
+
+static inline void chain_init_node(chain_node_t *h) {
+    h->next = NULL;
+    h->pprev = NULL;
+}
+
+static inline bool chain_unhashed(const chain_node_t *h) {
+    return !h->pprev;
+}
+
+static inline bool chain_empty(const chain_head_t *h) {
+    return !h->first;
+}
+
+static inline void chain_join(chain_node_t **pprev, chain_node_t *next) {
+    *pprev = next;
+    if(next)
+        next->pprev = pprev;
+}
+
+static inline void chain_rm(chain_node_t *n) {
+    chain_join(n->pprev, n->next);
+    n->next = NULL;
+    n->pprev = NULL;
+}
+
+static inline void chain_add_head(chain_node_t *n, chain_head_t *h) {
+    chain_node_t *first = h->first;
+    n->next = first;
+    if (first)
+        first->pprev = &n->next;
+    h->first = n;
+    n->pprev = &h->first;
+}
+
+static inline void chain_add_before(chain_node_t *n, chain_node_t *next) {
+    n->pprev = next->pprev;
+    n->next = next;
+    next->pprev = &n->next;
+    *(n->pprev) = n;
+}
+
+static inline void chain_add_after(chain_node_t *n, chain_node_t *next) {
+    next->next = n->next;
+    n->next = next;
+    next->pprev = &n->next;
+
+    if(next->next)
+        next->next->pprev = &next->next;
+}
+
+static inline void chain_move_list(chain_head_t *old, chain_head_t *new) {
+    new->first = old->first;
+    if (new->first)
+        new->first->pprev = &new->first;
+    old->first = NULL;
+}
+
+#define CHAIN_HEAD { .first = NULL }
+#define DEFINE_CHAIN(name) chain_head_t name = {  .first = NULL }
+
+#define CHAIN_FOR_EACH(pos, head)                                               \
+    for (pos = (head)->first; pos ; pos = pos->next)
+
+#define CHAIN_FOR_EACH_ENTRY(pos, head, member)                                 \
+    for (pos = chain_entry_safe((head)->first, typeof(*(pos)), member);         \
+         pos;                                                                   \
+         pos = chain_entry_safe((pos)->member.next, typeof(*(pos)), member))
 
 #endif

@@ -18,7 +18,7 @@ typedef enum arp_cache_entry_state {
 } arp_cache_entry_state_t;
 
 typedef struct arp_cache_entry {
-    hlist_node_t node;
+    hashtable_node_t node;
 
     ip_t ip;
     mac_t mac;
