@@ -2,6 +2,7 @@
 #define KERNEL_NET_DHCP_H
 
 #include "lib/int.h"
+#include "common/compiler.h"
 #include "net/types.h"
 
 #define DHCP_PORT_CLIENT 68

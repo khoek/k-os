@@ -7,9 +7,8 @@
 #include "mm/cache.h"
 #include "net/types.h"
 #include "net/layer.h"
-#include "net/protocols.h"
-#include "net/eth.h"
-#include "net/arp.h"
+#include "net/eth/eth.h"
+#include "net/ip/arp.h"
 #include "video/log.h"
 
 static uint16_t type_lookup[] = {

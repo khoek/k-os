@@ -14,9 +14,8 @@
 #include "device/device.h"
 #include "driver/bus/pci.h"
 #include "net/layer.h"
-#include "net/protocols.h"
 #include "net/interface.h"
-#include "net/eth.h"
+#include "net/eth/eth.h"
 #include "video/log.h"
 
 //FIXME change these back to -> (PAGE_SIZE / sizeof(rx_desc_t)) after a better kmalloc is implemented

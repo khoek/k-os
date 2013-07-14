@@ -2,6 +2,7 @@
 #define KERNEL_NET_NBNS_H
 
 #include "lib/int.h"
+#include "common/compiler.h"
 #include "net/types.h"
 
 #define NBNS_PORT 137

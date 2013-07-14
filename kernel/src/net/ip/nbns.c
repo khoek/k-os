@@ -7,10 +7,9 @@
 #include "mm/cache.h"
 #include "net/types.h"
 #include "net/layer.h"
-#include "net/protocols.h"
 #include "net/interface.h"
-#include "net/dns.h"
-#include "net/nbns.h"
+#include "net/ip/dns.h"
+#include "net/ip/nbns.h"
 #include "video/log.h"
 
 #define HOSTNAME_TTL 300000

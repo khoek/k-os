@@ -4,9 +4,8 @@
 #include "net/types.h"
 #include "net/layer.h"
 #include "net/interface.h"
-#include "net/dhcp.h"
-#include "net/nbns.h"
-#include "net/protocols.h"
+#include "net/ip/dhcp.h"
+#include "net/ip/nbns.h"
 #include "video/log.h"
 
 #include "checksum.h"

@@ -13,6 +13,8 @@ static const mac_t MAC_NONE = { .addr = {0x00, 0x00, 0x00, 0x00, 0x00, 0x00} };
 static const ip_t IP_BROADCAST = { .addr = {0xFF, 0xFF, 0xFF, 0xFF} };
 static const ip_t IP_NONE = { .addr = {0x00, 0x00, 0x00, 0x00} };
 
+typedef struct packet packet_t;
+
 typedef union hard_addr {
     mac_t mac;
 } hard_addr_t;
@@ -51,9 +53,20 @@ typedef enum packet_state {
     P_RESOLVED
 } packet_state_t;
 
-#include "net/protocols.h"
+typedef struct net_link_layer {
+    void (*resolve)(packet_t *packet);
+    void (*build_hdr)(packet_t *);
+    void (*recieve)(packet_t *, void *, uint16_t);
+} net_link_layer_t;
 
-typedef struct packet {
+#include "net/eth/eth.h"
+#include "net/ip/arp.h"
+#include "net/ip/ip.h"
+#include "net/ip/icmp.h"
+#include "net/ip/tcp.h"
+#include "net/ip/udp.h"
+
+struct packet {
     list_head_t list;
 
     packet_state_t state;
@@ -84,12 +97,6 @@ typedef struct packet {
 
     void *payload;
     uint32_t payload_size;
-} packet_t;
-
-typedef struct net_link_layer {
-    void (*resolve)(packet_t *packet);
-    void (*build_hdr)(packet_t *);
-    void (*recieve)(packet_t *, void *, uint16_t);
-} net_link_layer_t;
+};
 
 #endif

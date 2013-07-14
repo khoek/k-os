@@ -2,7 +2,6 @@
 #include "lib/string.h"
 #include "mm/cache.h"
 #include "net/types.h"
-#include "net/protocols.h"
 #include "net/interface.h"
 #include "net/layer.h"
 #include "video/log.h"

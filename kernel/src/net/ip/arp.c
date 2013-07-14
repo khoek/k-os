@@ -6,10 +6,9 @@
 #include "mm/cache.h"
 #include "net/types.h"
 #include "net/layer.h"
-#include "net/protocols.h"
 #include "net/interface.h"
-#include "net/eth.h"
-#include "net/arp.h"
+#include "net/eth/eth.h"
+#include "net/ip/arp.h"
 #include "video/log.h"
 
 typedef enum arp_cache_entry_state {
