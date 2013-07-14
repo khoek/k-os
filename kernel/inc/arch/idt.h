@@ -1,5 +1,5 @@
-#ifndef KERNEL_IDT_H
-#define KERNEL_IDT_H
+#ifndef KERNEL_ARCH_IDT_H
+#define KERNEL_ARCH_IDT_H
 
 #include <stdbool.h>
 

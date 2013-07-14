@@ -1,5 +1,5 @@
-#ifndef KERNEL_PRINTF_H
-#define KERNEL_PRINTF_H
+#ifndef KERNEL_LIB_PRINTF_H
+#define KERNEL_LIB_PRINTF_H
 
 #include <stdarg.h>
 

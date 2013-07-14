@@ -1,5 +1,5 @@
-#ifndef KERNEL_DEBUG_H
-#define KERNEL_DEBUG_H
+#ifndef KERNEL_BUG_DEBUG_H
+#define KERNEL_BUG_DEBUG_H
 
 #ifndef CONFIG_OPTIMIZE
 

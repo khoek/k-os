@@ -1,5 +1,5 @@
-#ifndef KERNEL_RAND_H
-#define KERNEL_RAND_H
+#ifndef KERNEL_LIB_RAND_H
+#define KERNEL_LIB_RAND_H
 
 #include "int.h"
 

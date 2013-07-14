@@ -1,5 +1,5 @@
-#ifndef KERNEL_DEVICE_H
-#define KERNEL_DEVICE_H
+#ifndef KERNEL_DEVICE_DEVICE_H
+#define KERNEL_DEVICE_DEVICE_H
 
 #include <stdbool.h>
 

@@ -1,5 +1,5 @@
-#ifndef KERNEL_MATH_H
-#define KERNEL_MATH_H
+#ifndef KERNEL_COMMON_MATH_H
+#define KERNEL_COMMON_MATH_H
 
 #include "lib/int.h"
 #include "arch/math.h"

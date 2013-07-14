@@ -1,5 +1,5 @@
-#ifndef KERNEL_TCP_H
-#define KERNEL_TCP_H
+#ifndef KERNEL_NET_IP_TCP_H
+#define KERNEL_NET_IP_TCP_H
 
 #include "lib/int.h"
 #include "common/compiler.h"

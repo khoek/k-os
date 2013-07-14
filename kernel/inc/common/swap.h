@@ -1,3 +1,6 @@
+#ifndef KERNEL_COMMON_SWAP_H
+#define KERNEL_COMMON_SWAP_H
+
 #include "lib/int.h"
 
 static inline int16_t swap_int16(int16_t val) {
@@ -29,3 +32,5 @@ static inline uint64_t swap_uint64(uint64_t val) {
     val = ((val << 16) & 0xFFFF0000FFFF0000ULL ) | ((val >> 16) & 0x0000FFFF0000FFFFULL );
     return (val << 32) | (val >> 32);
 }
+
+#endif

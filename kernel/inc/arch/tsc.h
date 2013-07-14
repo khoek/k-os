@@ -1,5 +1,5 @@
-#ifndef KERNEL_TSC_H
-#define KERNEL_TSC_H
+#ifndef KERNEL_ARCH_TSC_H
+#define KERNEL_ARCH_TSC_H
 
 #include "lib/int.h"
 

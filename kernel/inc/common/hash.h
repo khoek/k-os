@@ -1,5 +1,5 @@
-#ifndef KERNEL_HASH_H
-#define KERNEL_HASH_H
+#ifndef KERNEL_COMMON_HASH_H
+#define KERNEL_COMMON_HASH_H
 
 #include <lib/int.h>
 #include <common/compiler.h>

@@ -1,5 +1,5 @@
-#ifndef KERNEL_IP_H
-#define KERNEL_IP_H
+#ifndef KERNEL_NET_IP_IP_H
+#define KERNEL_NET_IP_IP_H
 
 #include "lib/int.h"
 #include "common/compiler.h"

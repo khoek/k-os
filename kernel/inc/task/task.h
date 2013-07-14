@@ -1,5 +1,5 @@
-#ifndef KERNEL_TASK_H
-#define KERNEL_TASK_H
+#ifndef KERNEL_TASK_TASK_H
+#define KERNEL_TASK_TASK_H
 
 #include "lib/int.h"
 #include "common/list.h"

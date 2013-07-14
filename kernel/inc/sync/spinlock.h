@@ -1,5 +1,5 @@
-#ifndef KERNEL_SPINLOCK_H
-#define KERNEL_SPINLOCK_H
+#ifndef KERNEL_SYNC_SPINLOCK_H
+#define KERNEL_SYNC_SPINLOCK_H
 
 #include "lib/int.h"
 #include "common/compiler.h"

@@ -1,5 +1,5 @@
-#ifndef KERNEL_NET_ETH
-#define KERNEL_NET_ETH
+#ifndef KERNEL_NET_ETH_ETH_H
+#define KERNEL_NET_ETH_ETH_H
 
 #include "lib/int.h"
 #include "common/compiler.h"

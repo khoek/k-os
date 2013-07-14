@@ -1,5 +1,5 @@
-#ifndef KERNEL_PCI_H
-#define KERNEL_PCI_H
+#ifndef KERNEL_DRIVER_BUS_PCI_H
+#define KERNEL_DRIVER_BUS_PCI_H
 
 #include "device/device.h"
 

@@ -1,5 +1,5 @@
-#ifndef KERNEL_NET_DHCP_H
-#define KERNEL_NET_DHCP_H
+#ifndef KERNEL_NET_IP_DHCP_H
+#define KERNEL_NET_IP_DHCP_H
 
 #include "lib/int.h"
 #include "common/compiler.h"

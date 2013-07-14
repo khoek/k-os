@@ -1,5 +1,5 @@
-#ifndef KERNEL_PANIC_H
-#define KERNEL_PANIC_H
+#ifndef KERNEL_BUG_PANIC_H
+#define KERNEL_BUG_PANIC_H
 
 #include <stdbool.h>
 

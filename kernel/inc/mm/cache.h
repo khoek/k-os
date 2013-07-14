@@ -1,5 +1,5 @@
-#ifndef KERNEL_CACHE_H
-#define KERNEL_CACHE_H
+#ifndef KERNEL_MM_CACHE_H
+#define KERNEL_MM_CACHE_H
 
 #include "lib/int.h"
 #include "common/init.h"

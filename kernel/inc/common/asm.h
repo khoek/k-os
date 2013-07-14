@@ -1,5 +1,5 @@
-#ifndef KERNEL_IO_H
-#define KERNEL_IO_H
+#ifndef KERNEL_COMMON_ASM_H
+#define KERNEL_COMMON_ASM_H
 
 #include "lib/int.h"
 

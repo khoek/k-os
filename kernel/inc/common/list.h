@@ -1,5 +1,5 @@
-#ifndef KERNEL_LIST_H
-#define KERNEL_LIST_H
+#ifndef KERNEL_COMMON_LIST_H
+#define KERNEL_COMMON_LIST_H
 
 #include <stddef.h>
 #include <stdbool.h>

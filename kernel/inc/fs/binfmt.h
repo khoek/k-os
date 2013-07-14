@@ -1,5 +1,5 @@
-#ifndef KERNEL_BINFMT_H
-#define KERNEL_BINFMT_H
+#ifndef KERNEL_FS_BINFMT_H
+#define KERNEL_FS_BINFMT_H
 
 #include "lib/int.h"
 #include "common/list.h"

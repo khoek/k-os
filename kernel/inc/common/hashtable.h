@@ -1,5 +1,5 @@
-#ifndef KERNEL_HASHTABLE_H
-#define KERNEL_HASHTABLE_H
+#ifndef KERNEL_COMMON_HASHTABLE_H
+#define KERNEL_COMMON_HASHTABLE_H
 
 #include "common/math.h"
 #include "common/hash.h"

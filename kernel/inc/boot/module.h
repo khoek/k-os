@@ -1,5 +1,5 @@
-#ifndef KERNEL_MODULE_H
-#define KERNEL_MODULE_H
+#ifndef KERNEL_BOOT_MODULE_H
+#define KERNEL_BOOT_MODULE_H
 
 #include "lib/int.h"
 #include "boot/multiboot.h"

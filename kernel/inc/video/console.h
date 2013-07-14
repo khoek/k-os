@@ -1,5 +1,5 @@
-#ifndef KERNEL_CONSOLE_H
-#define KERNEL_CONSOLE_H
+#ifndef KERNEL_VIDEO_CONSOLE_H
+#define KERNEL_VIDEO_CONSOLE_H
 
 #include "lib/int.h"
 

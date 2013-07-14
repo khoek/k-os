@@ -1,5 +1,5 @@
-#ifndef KERNEL_MM_H
-#define KERNEL_MM_H
+#ifndef KERNEL_MM_MM_H
+#define KERNEL_MM_MM_H
 
 #include <stdbool.h>
 

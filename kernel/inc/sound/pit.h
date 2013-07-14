@@ -1,5 +1,5 @@
-#ifndef KERNEL_PIT_H
-#define KERNEL_PIT_H
+#ifndef KERNEL_SOUND_PIT_H
+#define KERNEL_SOUND_PIT_H
 
 #include "lib/int.h"
 

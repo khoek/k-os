@@ -1,5 +1,5 @@
-#ifndef KERNEL_ATOMIC_H
-#define KERNEL_ATOMIC_H
+#ifndef KERNEL_SYNC_ATOMIC_H
+#define KERNEL_SYNC_ATOMIC_H
 
 #include "lib/int.h"
 

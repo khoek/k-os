@@ -1,5 +1,5 @@
-#ifndef KERNEL_STRING_H
-#define KERNEL_STRING_H
+#ifndef KERNEL_LIB_STRING_H
+#define KERNEL_LIB_STRING_H
 
 #include <stddef.h>
 #include <stdarg.h>

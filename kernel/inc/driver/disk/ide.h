@@ -1,5 +1,5 @@
-#ifndef KERNEL_IDE_H
-#define KERNEL_IDE_H
+#ifndef KERNEL_DRIVER_DISK_IDE_H
+#define KERNEL_DRIVER_DISK_IDE_H
 
 #include <stdbool.h>
 

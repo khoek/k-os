@@ -1,6 +1,7 @@
-#ifndef KERNEL_NET_ARP
-#define KERNEL_NET_ARP
+#ifndef KERNEL_NET_IP_ARP_H
+#define KERNEL_NET_IP_ARP_H
 
+#include "lib/int.h"
 #include "common/compiler.h"
 #include "net/types.h"
 

@@ -1,5 +1,5 @@
-#ifndef KERNEL_CPL_H
-#define KERNEL_CPL_H
+#ifndef KERNEL_ARCH_CPL_H
+#define KERNEL_ARCH_CPL_H
 
 #include "lib/int.h"
 #include "arch/registers.h"

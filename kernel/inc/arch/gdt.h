@@ -1,5 +1,5 @@
-#ifndef KERNEL_GDT_H
-#define KERNEL_GDT_H
+#ifndef KERNEL_ARCH_GDT_H
+#define KERNEL_ARCH_GDT_H
 
 #include "lib/int.h"
 #include "common/compiler.h"

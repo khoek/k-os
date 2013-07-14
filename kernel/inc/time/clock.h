@@ -1,5 +1,5 @@
-#ifndef KERNEL_TIME_H
-#define KERNEL_TIME_H
+#ifndef KERNEL_TIME_TIME_H
+#define KERNEL_TIME_TIME_H
 
 #include "lib/int.h"
 #include "common/list.h"

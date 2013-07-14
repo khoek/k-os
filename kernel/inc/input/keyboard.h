@@ -1,5 +1,5 @@
-#ifndef KERNEL_KEYBOARD_H
-#define KERNEL_KEYBOARD_H
+#ifndef KERNEL_INPUT_KEYBOARD_H
+#define KERNEL_INPUT_KEYBOARD_H
 
 #include <stdbool.h>
 

@@ -1,5 +1,5 @@
-#ifndef KERNEL_LISTENER_H
-#define KERNEL_LISTENER_H
+#ifndef KERNEL_COMMON_LISTENER_H
+#define KERNEL_COMMON_LISTENER_H
 
 #include "lib/int.h"
 #include "common/list.h"
