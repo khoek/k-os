@@ -20,7 +20,7 @@ OBJS=	loader.o \
         net/arp.o net/ip.o net/icmp.o \
         net/tcp.o net/udp.o \
         net/dhcp.o net/nbns.o \
-        net/socket.o net/raw.o \
+        net/socket.o \
         fs/vfs.o \
         fs/binfmt/binfmt.o fs/binfmt/binfmt_elf.o \
         driver/bus/pci.o \

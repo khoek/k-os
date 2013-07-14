@@ -2,32 +2,42 @@
 #define KERNEL_NET_SOCKET_H
 
 #define PF_INET 1
+#define PF_MAX  2
 
-#define SOCK_STREAM 1
-#define SOCK_DGRAM  2
-#define SOCK_RAW    3
+#define AF_INET PF_INET
+#define AF_MAX  PF_MAX
 
-#include "common/hashtable.h"
+typedef enum socket_type {
+    SOCK_STREAM = 1,
+    SOCK_DGRAM  = 2,
+    SOCK_RAW    = 3,
+} socket_type_t;
 
-typedef struct sock sock_t;
+#define SOCK_MAX (SOCK_RAW + 1)
 
-typedef struct sock_provider {
-    int (*socket)(int, sock_t *);
-} sock_provider_t;
+#include "lib/int.h"
+#include "sync/atomic.h"
 
-struct sock {
-    sock_provider_t *provider;
+typedef struct socket socket_t;
+
+typedef struct socket_protocol socket_protocol_t;
+
+typedef struct socket_family {
+    uint32_t code;
+    socket_protocol_t * (*create)(uint32_t, uint32_t);
+} socket_family_t;
+
+struct socket {
+    socket_protocol_t *proto;
     void *private;
 };
 
-typedef struct sock_type {
-    int family, type;
-    sock_provider_t * (*provider)(int);
+struct socket_protocol {
+    void (*create)(socket_t *);
+    void (*destroy)(socket_t *);
+};
 
-    hlist_node_t node;
-} sock_type_t;
-
-void register_sock_type(sock_type_t *type);
-void unregister_sock_type(sock_type_t *type);
+void register_socket_family(socket_family_t *family);
+socket_t * socket_create(uint32_t family, uint32_t type, uint32_t protocol);
 
 #endif
