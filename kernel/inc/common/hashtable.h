@@ -15,7 +15,7 @@ static inline void hashtable_init_size(chain_head_t *hashtable, uint32_t size) {
 }
 
 #define hashtable_init(hashtable)                                               \
-    hash_init_size(hashtable, ARRAY_SIZE(hashtable))
+    hashtable_init_size(hashtable, ARRAY_SIZE(hashtable))
 
 #define hashtable_add(key, node, hashtable)                                     \
     chain_add_head(node, &hashtable[hash(key, HASHTABLE_BITS(hashtable))])
