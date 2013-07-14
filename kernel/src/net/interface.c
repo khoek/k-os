@@ -1,5 +1,6 @@
 #include "lib/int.h"
 #include "common/list.h"
+#include "common/listener.h"
 #include "sync/spinlock.h"
 #include "net/types.h"
 #include "net/protocols.h"
@@ -8,11 +9,13 @@
 #include "net/nbns.h"
 #include "video/log.h"
 
-static char *hostname = "K-OS";
+static char *hostname = "K-OS"; //TODO touppercase this when it gets dynamically loaded
 static uint32_t hostname_handles;
 
 static DEFINE_LIST(interfaces);
+static DEFINE_LISTENER_CHAIN(listeners);
 static DEFINE_SPINLOCK(interface_lock);
+static DEFINE_SPINLOCK(listener_lock);
 
 void register_net_interface(net_interface_t *interface, net_state_t state) {
     interface->ip = IP_NONE;
@@ -37,6 +40,24 @@ void unregister_net_interface(net_interface_t *interface) {
     list_rm(&interface->list);
 
     spin_unlock_irqstore(&interface_lock, flags);
+}
+
+void register_net_event_listener(listener_t *listener) {
+    uint32_t flags;
+    spin_lock_irqsave(&listener_lock, &flags);
+
+    listener_chain_add(listener, &listeners);
+
+    spin_unlock_irqstore(&listener_lock, flags);
+}
+
+void unregister_net_event_listener(listener_t *listener) {
+    uint32_t flags;
+    spin_lock_irqsave(&listener_lock, &flags);
+
+    listener_chain_rm(listener);
+
+    spin_unlock_irqstore(&listener_lock, flags);
 }
 
 char * net_get_hostname() {
@@ -109,4 +130,11 @@ void net_set_state(net_interface_t *interface, net_state_t state) {
         }
         default: break;
     }
+
+    uint32_t flags;
+    spin_lock_irqsave(&listener_lock, &flags);
+
+    listener_chain_fire(state, interface, &listeners);
+
+    spin_unlock_irqstore(&listener_lock, flags);
 }
