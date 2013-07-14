@@ -25,7 +25,7 @@ struct listener {
 #define listener_chain_rm(listener)                                             \
     chain_rm(&(listener)->node)
 
-static inline void listener_chain_fire(chain_head_t *chain, uint32_t change, void *data) {
+static inline void listener_chain_fire(uint32_t change, void *data, listener_chain_head_t *chain) {
     listener_t *listener;
     CHAIN_FOR_EACH_ENTRY(listener, chain, node) {
         listener->callback(listener, change, data);
