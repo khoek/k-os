@@ -236,8 +236,6 @@ static void dhcp_ack(net_interface_t *interface, dhcp_header_t *hdr) {
 }
 
 void dhcp_start(net_interface_t *interface) {
-    net_set_state(interface, IF_DHCP);
-
     dhcp_send_discover(interface);
 }
 

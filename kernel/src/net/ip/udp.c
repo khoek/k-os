@@ -56,7 +56,7 @@ void udp_recv(packet_t *packet, void *raw, uint16_t len) {
     udp->src_port = swap_uint16(udp->src_port);
     udp->dst_port = swap_uint16(udp->dst_port);
 
-    if(packet->interface->state == IF_DHCP && udp->src_port == DHCP_PORT_SERVER && udp->dst_port == DHCP_PORT_CLIENT) {
+    if(packet->interface->state == IF_UP && udp->src_port == DHCP_PORT_SERVER && udp->dst_port == DHCP_PORT_CLIENT) {
         dhcp_handle(packet, raw, len);
     } else if(packet->interface->state == IF_READY && udp->dst_port == NBNS_PORT) {
         nbns_handle(packet, raw, len);

@@ -93,10 +93,6 @@ void net_set_state(net_interface_t *interface, net_state_t state) {
             );
             break;
         }
-        case IF_DHCP: {
-            logf("net - interface commencing DHCP");
-            break;
-        }
         case IF_READY: {
             nbns_register_name(interface, net_get_hostname());
             net_put_hostname();

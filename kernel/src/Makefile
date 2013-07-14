@@ -16,10 +16,8 @@ OBJS=	loader.o \
         device/device.o \
         task/task.o task/syscall.o \
         net/interface.o net/packet.o \
-        net/eth.o \
-        net/arp.o net/ip.o net/icmp.o \
-        net/tcp.o net/udp.o \
-        net/dhcp.o net/nbns.o \
+        net/eth/eth.o \
+        net/ip/ip.o net/ip/arp.o net/ip/icmp.o net/ip/tcp.o net/ip/udp.o net/ip/dhcp.o net/ip/nbns.o \
         net/socket.o \
         fs/vfs.o \
         fs/binfmt/binfmt.o fs/binfmt/binfmt_elf.o \

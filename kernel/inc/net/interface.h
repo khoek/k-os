@@ -9,7 +9,6 @@
 typedef enum net_state {
     IF_DOWN,
     IF_UP,
-    IF_DHCP,
     IF_READY,
     IF_ERROR
 } net_state_t;
