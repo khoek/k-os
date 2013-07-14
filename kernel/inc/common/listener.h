@@ -34,5 +34,6 @@ static inline void listener_chain_fire(chain_head_t *chain, uint32_t change, voi
 
 #define LISTENER_CHAIN_HEAD CHAIN_HEAD
 #define DEFINE_LISTENER_CHAIN(name) listener_chain_head_t name = LISTENER_CHAIN_HEAD
+#define DEFINE_LISTENER_CHAIN_ARRAY(name, num) listener_chain_head_t name[num] = { [0 ... (num - 1)] = LISTENER_CHAIN_HEAD };
 
 #endif
