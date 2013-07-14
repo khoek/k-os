@@ -8,7 +8,7 @@ typedef chain_head_t listener_chain_head_t;
 
 typedef struct listener listener_t;
 
-typedef int (*callback_t)(listener_t *listener, uint32_t change, void *data);
+typedef void (*callback_t)(listener_t *listener, uint32_t change, void *data);
 
 struct listener {
     callback_t callback;
