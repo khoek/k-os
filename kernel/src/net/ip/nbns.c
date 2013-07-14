@@ -1,6 +1,8 @@
 #include "lib/string.h"
 #include "lib/rand.h"
 #include "common/swap.h"
+#include "common/listener.h"
+#include "common/init.h"
 #include "common/compiler.h"
 #include "mm/cache.h"
 #include "net/types.h"
@@ -153,3 +155,29 @@ void nbns_register_name(net_interface_t *interface, char *name) {
     udp_build(packet, IP_BROADCAST, NBNS_PORT, NBNS_PORT);
     packet_send(packet);
 }
+
+static void nbns_callback(listener_t *listener, net_state_t state, void *data) {
+    net_interface_t *interface = data;
+
+    switch(state) {
+        case IF_READY: {
+            nbns_register_name(interface, net_get_hostname());
+            net_put_hostname();
+
+            break;
+        }
+        default: break;
+    };
+}
+
+static listener_t nbns_listener = {
+    .callback = nbns_callback
+};
+
+static INITCALL nbns_init() {
+    register_net_state_listener(&nbns_listener);
+
+    return 0;
+}
+
+core_initcall(nbns_init);

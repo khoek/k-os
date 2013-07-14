@@ -5,8 +5,6 @@
 #include "net/types.h"
 #include "net/protocols.h"
 #include "net/interface.h"
-#include "net/dhcp.h"
-#include "net/nbns.h"
 #include "video/log.h"
 
 static char *hostname = "K-OS"; //TODO touppercase this when it gets dynamically loaded
@@ -42,7 +40,7 @@ void unregister_net_interface(net_interface_t *interface) {
     spin_unlock_irqstore(&interface_lock, flags);
 }
 
-void register_net_event_listener(listener_t *listener) {
+void register_net_state_listener(listener_t *listener) {
     uint32_t flags;
     spin_lock_irqsave(&listener_lock, &flags);
 
@@ -51,7 +49,7 @@ void register_net_event_listener(listener_t *listener) {
     spin_unlock_irqstore(&listener_lock, flags);
 }
 
-void unregister_net_event_listener(listener_t *listener) {
+void unregister_net_state_listener(listener_t *listener) {
     uint32_t flags;
     spin_lock_irqsave(&listener_lock, &flags);
 
@@ -102,8 +100,6 @@ void net_set_state(net_interface_t *interface, net_state_t state) {
                 interface->mac.addr[4], interface->mac.addr[5]
             );
 
-            dhcp_start(interface);
-
             break;
         }
         case IF_DOWN: {
@@ -115,9 +111,6 @@ void net_set_state(net_interface_t *interface, net_state_t state) {
             break;
         }
         case IF_READY: {
-            nbns_register_name(interface, net_get_hostname());
-            net_put_hostname();
-
             logf("net - interface is READY (%u.%u.%u.%u)",
                 interface->ip.addr[0], interface->ip.addr[1],
                 interface->ip.addr[2], interface->ip.addr[3]

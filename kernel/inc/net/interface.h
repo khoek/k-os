@@ -3,6 +3,7 @@
 
 #include "lib/int.h"
 #include "common/list.h"
+#include "common/listener.h"
 
 #include "net/types.h"
 
@@ -29,6 +30,9 @@ struct net_interface {
 
 void register_net_interface(net_interface_t *interface, net_state_t state);
 void unregister_net_interface(net_interface_t *interface);
+
+void register_net_state_listener(listener_t *listener);
+void unregister_net_state_listener(listener_t *listener);
 
 char * net_get_hostname();
 void net_put_hostname();

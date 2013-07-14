@@ -1,6 +1,8 @@
 #include "lib/string.h"
 #include "lib/rand.h"
 #include "common/swap.h"
+#include "common/init.h"
+#include "common/listener.h"
 #include "mm/cache.h"
 #include "net/types.h"
 #include "net/layer.h"
@@ -235,10 +237,6 @@ static void dhcp_ack(net_interface_t *interface, dhcp_header_t *hdr) {
     net_set_state(interface, IF_READY);
 }
 
-void dhcp_start(net_interface_t *interface) {
-    dhcp_send_discover(interface);
-}
-
 void dhcp_handle(packet_t *packet, void *raw, uint16_t len) {
     if(len < sizeof(dhcp_header_t)) return;
 
@@ -270,3 +268,28 @@ void dhcp_handle(packet_t *packet, void *raw, uint16_t len) {
         }
     }
 }
+
+static void dhcp_callback(listener_t *listener, net_state_t state, void *data) {
+    net_interface_t *interface = data;
+
+    switch(state) {
+        case IF_UP: {
+            dhcp_send_discover(interface);
+
+            break;
+        }
+        default: break;
+    };
+}
+
+static listener_t dhcp_listener = {
+    .callback = dhcp_callback
+};
+
+static INITCALL dhcp_init() {
+    register_net_state_listener(&dhcp_listener);
+
+    return 0;
+}
+
+core_initcall(dhcp_init);
