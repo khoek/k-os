@@ -6,8 +6,9 @@
 #include "bug/debug.h"
 #include "mm/cache.h"
 #include "net/types.h"
-#include "net/layer.h"
+#include "net/packet.h"
 #include "net/eth/eth.h"
+#include "net/ip/ip.h"
 #include "net/ip/arp.h"
 #include "video/log.h"
 

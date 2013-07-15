@@ -5,7 +5,7 @@
 #include "sync/spinlock.h"
 #include "mm/cache.h"
 #include "net/types.h"
-#include "net/layer.h"
+#include "net/packet.h"
 #include "net/interface.h"
 #include "net/eth/eth.h"
 #include "net/ip/arp.h"

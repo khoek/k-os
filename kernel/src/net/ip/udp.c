@@ -2,7 +2,7 @@
 #include "common/swap.h"
 #include "mm/cache.h"
 #include "net/types.h"
-#include "net/layer.h"
+#include "net/packet.h"
 #include "net/interface.h"
 #include "net/ip/ip.h"
 #include "net/ip/udp.h"

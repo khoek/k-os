@@ -19,4 +19,6 @@ typedef struct tcp_header {
     uint16_t urgent;
 } PACKED tcp_header_t;
 
+void tcp_recv(packet_t *packet, void *raw, uint16_t len);
+
 #endif

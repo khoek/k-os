@@ -1,6 +1,6 @@
 #include "lib/int.h"
 #include "common/swap.h"
-#include "net/layer.h"
+#include "net/packet.h"
 #include "net/ip/tcp.h"
 #include "video/log.h"
 

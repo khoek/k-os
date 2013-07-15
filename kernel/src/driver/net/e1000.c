@@ -13,7 +13,7 @@
 #include "time/clock.h" //FIXME sleep(1) should be microseconds not hundredths of a second
 #include "device/device.h"
 #include "driver/bus/pci.h"
-#include "net/layer.h"
+#include "net/packet.h"
 #include "net/interface.h"
 #include "net/eth/eth.h"
 #include "video/log.h"

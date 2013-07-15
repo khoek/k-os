@@ -2,8 +2,8 @@
 #include "lib/string.h"
 #include "mm/cache.h"
 #include "net/types.h"
+#include "net/packet.h"
 #include "net/interface.h"
-#include "net/layer.h"
 #include "video/log.h"
 
 packet_t * packet_create(net_interface_t *interface, void *payload, uint16_t len) {
@@ -48,11 +48,11 @@ uint32_t packet_expand(void *buff, packet_t *packet, uint32_t minimum_size) {
     buff += packet->tran.size;
     memcpy(buff, packet->payload.buff, packet->payload.size);
     buff += packet->payload.size;
-    
+
     if(len < minimum_size) {
         memset(buff, 0, 60 - minimum_size);
         len = minimum_size;
     }
-    
+
     return len;
 }
