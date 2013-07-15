@@ -31,9 +31,9 @@ static void packet_dispatch(packet_t *packet) {
 
 void packet_send(packet_t *packet) {
     if(packet->state == P_UNRESOLVED) {
-        packet->interface->hard.resolve(packet);
+        packet->interface->link_layer.resolve(packet);
     } else {
-        packet->interface->hard.build_hdr(packet);
+        packet->interface->link_layer.build_hdr(packet);
         packet_dispatch(packet);
     }
 }

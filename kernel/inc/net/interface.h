@@ -23,7 +23,7 @@ struct net_interface {
 
     net_state_t state;
 
-    net_link_layer_t hard;
+    net_link_layer_t link_layer;
 
     int32_t (*tx_send)(net_interface_t *, packet_t *);
 };

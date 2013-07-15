@@ -276,7 +276,7 @@ static bool net_825xx_probe(device_t *device) {
 
     net_825xx_t *net_device = pci_device->private = kmalloc(sizeof(net_825xx_t));
 
-    net_device->interface.hard = eth_link_layer;
+    net_device->interface.link_layer = eth_link_layer;
     net_device->interface.tx_send = net_825xx_tx_send;
 
     net_device->mmio = (uint32_t) mm_map((void *) BAR_ADDR_32(pci_device->bar[0]));
