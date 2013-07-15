@@ -184,7 +184,7 @@ static uint16_t net_eeprom_read(net_825xx_t *net_device, uint8_t addr) {
     return (uint16_t) ((tmp >> 16) & 0xFFFF);
 }
 
-static void net_825xx_rx_poll(net_interface_t *interface) {
+static void net_825xx_poll(net_interface_t *interface) {
     net_825xx_t *net_device = containerof(interface, net_825xx_t, interface);
 
     while(net_device->rx_desc[net_device->rx_front].status & RX_DESC_STATUS_DD) {
@@ -218,13 +218,13 @@ static void handle_network(interrupt_t UNUSED(*interrupt)) {
         }
 
         if(icr & ICR_RXT) {
-            net_825xx_rx_poll(&net_device->interface);
+            net_825xx_poll(&net_device->interface);
         }
     }
 }
 
-int32_t net_825xx_tx_send(net_interface_t *net_interface, packet_t *packet) {
-    net_825xx_t *net_device = containerof(net_interface, net_825xx_t, interface);
+int32_t net_825xx_send(packet_t *packet) {
+    net_825xx_t *net_device = containerof(packet->interface, net_825xx_t, interface);
 
     net_device->tx_desc[net_device->tx_front].length = packet_expand(net_device->tx_buff[net_device->tx_front], packet, ETH_MIN_PACKET_SIZE);
     net_device->tx_desc[net_device->tx_front].cmd = TX_DESC_CMD_EOP | TX_DESC_CMD_IFCS | TX_DESC_CMD_RS;
@@ -261,7 +261,7 @@ static bool net_825xx_probe(device_t *device) {
     net_825xx_t *net_device = pci_device->private = kmalloc(sizeof(net_825xx_t));
 
     net_device->interface.link_layer = eth_link_layer;
-    net_device->interface.tx_send = net_825xx_tx_send;
+    net_device->interface.send = net_825xx_send;
 
     net_device->mmio = (uint32_t) mm_map((void *) BAR_ADDR_32(pci_device->bar[0]));
 

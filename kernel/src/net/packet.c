@@ -19,7 +19,7 @@ packet_t * packet_create(net_interface_t *interface, void *payload, uint16_t len
 }
 
 static void packet_dispatch(packet_t *packet) {
-    packet->interface->tx_send(packet->interface, packet);
+    packet->interface->send(packet);
 
     if(packet->link.buff   ) kfree(packet->link.buff   , packet->link.size);
     if(packet->net.buff    ) kfree(packet->net.buff    , packet->net.size);

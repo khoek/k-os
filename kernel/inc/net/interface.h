@@ -25,7 +25,7 @@ struct net_interface {
 
     net_link_layer_t link_layer;
 
-    int32_t (*tx_send)(net_interface_t *, packet_t *);
+    int32_t (*send)(packet_t *);
 };
 
 void register_net_interface(net_interface_t *interface, net_state_t state);
