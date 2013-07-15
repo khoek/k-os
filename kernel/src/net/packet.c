@@ -37,3 +37,22 @@ void packet_send(packet_t *packet) {
         packet_dispatch(packet);
     }
 }
+
+uint32_t packet_expand(void *buff, packet_t *packet, uint32_t minimum_size) {
+    uint16_t len = packet->link.size + packet->net.size + packet->tran.size + packet->payload.size;
+    memcpy(buff, packet->link.buff, packet->link.size);
+    buff += packet->link.size;
+    memcpy(buff, packet->net.buff, packet->net.size);
+    buff += packet->net.size;
+    memcpy(buff, packet->tran.buff, packet->tran.size);
+    buff += packet->tran.size;
+    memcpy(buff, packet->payload.buff, packet->payload.size);
+    buff += packet->payload.size;
+    
+    if(len < minimum_size) {
+        memset(buff, 0, 60 - minimum_size);
+        len = minimum_size;
+    }
+    
+    return len;
+}

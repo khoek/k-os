@@ -5,6 +5,8 @@
 #include "common/compiler.h"
 #include "net/types.h"
 
+#define ETH_MIN_PACKET_SIZE 60
+
 #define HTYPE_ETH  1
 
 #define ETH_TYPE_IP  0x0800

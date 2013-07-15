@@ -226,23 +226,7 @@ static void handle_network(interrupt_t UNUSED(*interrupt)) {
 int32_t net_825xx_tx_send(net_interface_t *net_interface, packet_t *packet) {
     net_825xx_t *net_device = containerof(net_interface, net_825xx_t, interface);
 
-    uint8_t *buff = (uint8_t *) net_device->tx_buff[net_device->tx_front];
-    uint16_t len = packet->link.size + packet->net.size + packet->tran.size + packet->payload.size;
-    memcpy(buff, packet->link.buff, packet->link.size);
-    buff += packet->link.size;
-    memcpy(buff, packet->net.buff, packet->net.size);
-    buff += packet->net.size;
-    memcpy(buff, packet->tran.buff, packet->tran.size);
-    buff += packet->tran.size;
-    memcpy(buff, packet->payload.buff, packet->payload.size);
-    buff += packet->payload.size;
-
-    if(len < 60) {
-        memset(buff, 0, 60 - len);
-        len = 60;
-    }
-
-    net_device->tx_desc[net_device->tx_front].length = len;
+    net_device->tx_desc[net_device->tx_front].length = packet_expand(net_device->tx_buff[net_device->tx_front], packet, ETH_MIN_PACKET_SIZE);
     net_device->tx_desc[net_device->tx_front].cmd = TX_DESC_CMD_EOP | TX_DESC_CMD_IFCS | TX_DESC_CMD_RS;
 
     uint32_t old_tx_front = net_device->tx_front;
