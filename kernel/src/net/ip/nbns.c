@@ -126,7 +126,7 @@ void nbns_handle(packet_t *packet, void *raw, uint16_t len) {
     response->rr.ip = packet->interface->ip;
 
     packet_t *resp = packet_create(packet->interface, response, sizeof(nbns_query_response_t));
-    udp_build(resp, ((ip_header_t *) packet->net.buff)->src, NBNS_PORT, NBNS_PORT);
+    udp_build(resp, ip_hdr(packet)->src, NBNS_PORT, NBNS_PORT);
     packet_send(resp);
 }
 

@@ -25,6 +25,7 @@ typedef struct sock_protocol sock_protocol_t;
 
 typedef struct sock_family {
     uint32_t code;
+    uint32_t addr_size;
     sock_protocol_t * (*find)(uint32_t, uint32_t);
 } sock_family_t;
 

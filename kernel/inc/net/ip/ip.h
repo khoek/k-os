@@ -36,4 +36,6 @@ typedef struct ip_header {
     ip_t dst;
 } PACKED ip_header_t;
 
+ip_header_t * ip_hdr(packet_t *packet);
+
 #endif

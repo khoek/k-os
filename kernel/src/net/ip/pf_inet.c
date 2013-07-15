@@ -42,8 +42,9 @@ static sock_protocol_t * pf_inet_find(uint32_t type, uint32_t protocol) {
 }
 
 static sock_family_t pf_inet = {
-    .code = PF_INET,
-    .find = pf_inet_find
+    .code      = PF_INET,
+    .addr_size = sizeof(ip_t),
+    .find      = pf_inet_find,
 };
 
 static pf_inet_protocol_t builtin_protocols[] = {

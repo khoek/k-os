@@ -54,7 +54,7 @@ void icmp_recv(packet_t *packet, void *raw, uint16_t len) {
                     memcpy(buff, raw, len);
 
                     packet_t *reply = packet_create(packet->interface, buff, len);
-                    icmp_build(reply, ICMP_TYPE_ECHO_REPLY, ICMP_CODE_ECHO_REPLY, icmp->other, ((ip_header_t *) packet->net.buff)->src);
+                    icmp_build(reply, ICMP_TYPE_ECHO_REPLY, ICMP_CODE_ECHO_REPLY, icmp->other, ip_hdr(packet)->src);
                     packet_send(reply);
 
                     break;

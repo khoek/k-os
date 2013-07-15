@@ -73,3 +73,7 @@ void ip_recv(packet_t *packet, void *raw, uint16_t len) {
         }
     }
 }
+
+ip_header_t * ip_hdr(packet_t *packet) {
+    return (ip_header_t *) packet->net.buff;
+}
