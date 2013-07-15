@@ -12,8 +12,8 @@ packet_t * packet_create(net_interface_t *interface, void *payload, uint16_t len
 
     packet->state = P_UNRESOLVED;
     packet->interface = interface;
-    packet->payload = payload;
-    packet->payload_size = len;
+    packet->payload.buff = payload;
+    packet->payload.size = len;
 
     return packet;
 }
@@ -21,10 +21,10 @@ packet_t * packet_create(net_interface_t *interface, void *payload, uint16_t len
 static void packet_dispatch(packet_t *packet) {
     packet->interface->tx_send(packet->interface, packet);
 
-    if(packet->link.ptr) kfree(packet->link.ptr, packet->link_size);
-    if(packet->net.ptr) kfree(packet->net.ptr, packet->net_size);
-    if(packet->tran.ptr) kfree(packet->tran.ptr, packet->tran_size);
-    if(packet->payload) kfree(packet->payload, packet->payload_size);
+    if(packet->link.buff   ) kfree(packet->link.buff   , packet->link.size);
+    if(packet->net.buff    ) kfree(packet->net.buff    , packet->net.size);
+    if(packet->tran.buff   ) kfree(packet->tran.buff   , packet->tran.size);
+    if(packet->payload.buff) kfree(packet->payload.buff, packet->payload.size);
 
     kfree(packet, sizeof(packet_t));
 }

@@ -4,6 +4,8 @@
 #include "net/types.h"
 #include "net/layer.h"
 #include "net/interface.h"
+#include "net/ip/ip.h"
+#include "net/ip/udp.h"
 #include "net/ip/dhcp.h"
 #include "net/ip/nbns.h"
 #include "video/log.h"
@@ -15,7 +17,7 @@ void udp_build(packet_t *packet, ip_t dst_ip, uint16_t src_port, uint16_t dst_po
 
     hdr->src_port = swap_uint16(src_port);
     hdr->dst_port = swap_uint16(dst_port);
-    hdr->length = swap_uint16(sizeof(udp_header_t) + packet->payload_size);
+    hdr->length = swap_uint16(sizeof(udp_header_t) + packet->payload.size);
 
     uint32_t sum = 0;
     sum += ((uint16_t *) &packet->interface->ip)[0];
@@ -23,14 +25,14 @@ void udp_build(packet_t *packet, ip_t dst_ip, uint16_t src_port, uint16_t dst_po
     sum += ((uint16_t *) &dst_ip)[0];
     sum += ((uint16_t *) &dst_ip)[1];
     sum += swap_uint16((uint16_t) IP_PROT_UDP);
-    sum += swap_uint16(sizeof(udp_header_t) + packet->payload_size);
+    sum += swap_uint16(sizeof(udp_header_t) + packet->payload.size);
 
     sum += hdr->src_port;
     sum += hdr->dst_port;
     sum += hdr->length;
 
-    uint32_t len = packet->payload_size / sizeof(uint8_t);
-    uint16_t *ptr = (uint16_t *) packet->payload;
+    uint32_t len = packet->payload.size / sizeof(uint8_t);
+    uint16_t *ptr = (uint16_t *) packet->payload.buff;
     for (; len > 1; len -= 2) {
         sum += *ptr++;
     }
@@ -41,14 +43,14 @@ void udp_build(packet_t *packet, ip_t dst_ip, uint16_t src_port, uint16_t dst_po
 
     hdr->checksum = sum_to_checksum(sum);
 
-    packet->tran.udp = hdr;
-    packet->tran_size = sizeof(udp_header_t);
+    packet->tran.buff = hdr;
+    packet->tran.size = sizeof(udp_header_t);
 
     ip_build(packet, IP_PROT_UDP, dst_ip);
 }
 
 void udp_recv(packet_t *packet, void *raw, uint16_t len) {
-    udp_header_t *udp = packet->tran.udp = raw;
+    udp_header_t *udp = packet->tran.buff = raw;
     raw += sizeof(udp_header_t);
     len -= sizeof(udp_header_t);
 
@@ -61,3 +63,14 @@ void udp_recv(packet_t *packet, void *raw, uint16_t len) {
         nbns_handle(packet, raw, len);
     }
 }
+
+static void udp_open(sock_t *sock) {
+}
+
+static void udp_close(sock_t *sock) {
+}
+
+sock_protocol_t udp_protocol = {
+    .open  = udp_open,
+    .close = udp_close,
+};

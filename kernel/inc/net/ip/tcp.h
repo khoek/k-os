@@ -3,6 +3,7 @@
 
 #include "lib/int.h"
 #include "common/compiler.h"
+#include "net/socket.h"
 
 #define TCP_DATA_OFF(x) ((x & 0xF000) >> 4)
 #define TCP_FLAGS(x)    ((x & 0x0FFF) >> 4)

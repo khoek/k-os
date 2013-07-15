@@ -3,6 +3,8 @@
 
 #include "lib/int.h"
 #include "common/compiler.h"
+#include "net/types.h"
+#include "net/socket.h"
 
 #define IP_PROT_ICMP 0x01
 #define IP_PROT_TCP  0x06

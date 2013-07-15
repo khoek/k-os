@@ -59,44 +59,23 @@ typedef struct net_link_layer {
     void (*recieve)(packet_t *, void *, uint16_t);
 } net_link_layer_t;
 
-#include "net/eth/eth.h"
-#include "net/ip/arp.h"
-#include "net/ip/ip.h"
-#include "net/ip/icmp.h"
-#include "net/ip/tcp.h"
-#include "net/ip/udp.h"
+typedef struct net_buff {
+    uint32_t size;
+    void *buff;
+} net_buff_t;
 
 struct packet {
     list_head_t list;
 
     packet_state_t state;
-
     net_interface_t *interface;
+
     route_t route;
 
-    union {
-        void *ptr;
-        eth_header_t *eth;
-    } link;
-    uint32_t link_size;
-
-    union {
-        void *ptr;
-        arp_header_t *arp;
-        ip_header_t *ip;
-    } net;
-    uint32_t net_size;
-
-    union {
-        void *ptr;
-        icmp_header_t *icmp;
-        tcp_header_t *tcp;
-        udp_header_t *udp;
-    } tran;
-    uint32_t tran_size;
-
-    void *payload;
-    uint32_t payload_size;
+    net_buff_t link;
+    net_buff_t net;
+    net_buff_t tran;
+    net_buff_t payload;
 };
 
 #endif

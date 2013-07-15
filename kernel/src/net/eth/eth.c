@@ -32,12 +32,12 @@ static void eth_build_hdr(packet_t *packet) {
     hdr->dst = packet->route.hard.dst->mac;
     hdr->type = swap_uint16(type_lookup[packet->route.protocol] ? type_lookup[packet->route.protocol] : 0xFFFF);
 
-    packet->link.eth = hdr;
-    packet->link_size = sizeof(eth_header_t);
+    packet->link.buff = hdr;
+    packet->link.size = sizeof(eth_header_t);
 }
 
 static void eth_recieve(packet_t *packet, void *raw, uint16_t length) {
-    eth_header_t *header = packet->link.eth = raw;
+    eth_header_t *header = packet->link.buff = raw;
     raw += sizeof(eth_header_t);
     length -= sizeof(eth_header_t);
 

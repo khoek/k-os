@@ -227,15 +227,15 @@ int32_t net_825xx_tx_send(net_interface_t *net_interface, packet_t *packet) {
     net_825xx_t *net_device = containerof(net_interface, net_825xx_t, interface);
 
     uint8_t *buff = (uint8_t *) net_device->tx_buff[net_device->tx_front];
-    uint16_t len = packet->link_size + packet->net_size + packet->tran_size + packet->payload_size;
-    memcpy(buff, packet->link.ptr, packet->link_size);
-    buff += packet->link_size;
-    memcpy(buff, packet->net.ptr, packet->net_size);
-    buff += packet->net_size;
-    memcpy(buff, packet->tran.ptr, packet->tran_size);
-    buff += packet->tran_size;
-    memcpy(buff, packet->payload, packet->payload_size);
-    buff += packet->payload_size;
+    uint16_t len = packet->link.size + packet->net.size + packet->tran.size + packet->payload.size;
+    memcpy(buff, packet->link.buff, packet->link.size);
+    buff += packet->link.size;
+    memcpy(buff, packet->net.buff, packet->net.size);
+    buff += packet->net.size;
+    memcpy(buff, packet->tran.buff, packet->tran.size);
+    buff += packet->tran.size;
+    memcpy(buff, packet->payload.buff, packet->payload.size);
+    buff += packet->payload.size;
 
     if(len < 60) {
         memset(buff, 0, 60 - len);

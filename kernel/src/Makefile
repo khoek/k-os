@@ -17,8 +17,8 @@ OBJS=	loader.o \
         task/task.o task/syscall.o \
         net/interface.o net/packet.o \
         net/eth/eth.o \
-        net/ip/ip.o net/ip/arp.o net/ip/icmp.o net/ip/tcp.o net/ip/udp.o net/ip/dhcp.o net/ip/nbns.o \
         net/socket.o \
+        net/ip/pf_inet.o net/ip/ip.o net/ip/arp.o net/ip/icmp.o net/ip/tcp.o net/ip/udp.o net/ip/dhcp.o net/ip/nbns.o net/ip/raw.o \
         fs/vfs.o \
         fs/binfmt/binfmt.o fs/binfmt/binfmt_elf.o \
         driver/bus/pci.o \

@@ -3,6 +3,7 @@
 
 #include "lib/int.h"
 #include "common/compiler.h"
+#include "net/socket.h"
 
 #define ICMP_TYPE_ECHO_REQUEST 8
 #define ICMP_TYPE_ECHO_REPLY   0
@@ -16,5 +17,7 @@ typedef struct icmp_header {
     uint16_t checksum;
     uint32_t other;
 } PACKED icmp_header_t;
+
+extern sock_protocol_t icmp_protocol;
 
 #endif

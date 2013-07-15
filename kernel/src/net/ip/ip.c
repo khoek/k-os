@@ -1,10 +1,14 @@
 #include "lib/int.h"
 #include "lib/string.h"
 #include "common/swap.h"
+#include "common/list.h"
+#include "common/init.h"
 #include "mm/cache.h"
 #include "net/types.h"
 #include "net/layer.h"
 #include "net/interface.h"
+#include "net/socket.h"
+#include "net/ip/ip.h"
 #include "video/log.h"
 
 #include "checksum.h"
@@ -14,7 +18,7 @@ void ip_build(packet_t *packet, uint8_t protocol, ip_t dst) {
 
     hdr->version_ihl = (IP(4) << 4) | ((uint8_t) (sizeof(ip_header_t) / sizeof(uint32_t)));
     hdr->dscp_ecn = 0;
-    hdr->total_length = swap_uint16(sizeof(ip_header_t) + packet->tran_size + packet->payload_size);
+    hdr->total_length = swap_uint16(sizeof(ip_header_t) + packet->tran.size + packet->payload.size);
     hdr->ident = 0;
     hdr->flags_frag_off = IP_FLAG_DONT_FRAG;
     hdr->ttl = 0x40;
@@ -37,12 +41,12 @@ void ip_build(packet_t *packet, uint8_t protocol, ip_t dst) {
     packet->route.sock.src = (sock_addr_t *) &packet->interface->ip;
     packet->route.sock.dst = (sock_addr_t *) dst_copy;
 
-    packet->net.ip = hdr;
-    packet->net_size = sizeof(ip_header_t);
+    packet->net.buff = hdr;
+    packet->net.size = sizeof(ip_header_t);
 }
 
 void ip_recv(packet_t *packet, void *raw, uint16_t len) {
-    ip_header_t *ip = packet->net.ip = raw;
+    ip_header_t *ip = packet->net.buff = raw;
     raw += sizeof(ip_header_t);
     len -= sizeof(ip_header_t);
 

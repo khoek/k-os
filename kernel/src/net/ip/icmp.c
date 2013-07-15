@@ -5,6 +5,8 @@
 #include "net/types.h"
 #include "net/layer.h"
 #include "net/interface.h"
+#include "net/ip/ip.h"
+#include "net/ip/icmp.h"
 #include "video/log.h"
 
 #include "checksum.h"
@@ -21,8 +23,8 @@ void icmp_build(packet_t *packet, uint8_t type, uint8_t code, uint32_t other, ip
     sum += hdr->code;
     sum += hdr->other;
 
-    uint32_t len = packet->payload_size / sizeof(uint8_t);
-    uint16_t *ptr = (uint16_t *) packet->payload;
+    uint32_t len = packet->payload.size / sizeof(uint8_t);
+    uint16_t *ptr = (uint16_t *) packet->payload.buff;
     for (; len > 1; len -= 2) {
         sum += *ptr++;
     }
@@ -33,14 +35,14 @@ void icmp_build(packet_t *packet, uint8_t type, uint8_t code, uint32_t other, ip
 
     hdr->checksum = sum_to_checksum(sum);
 
-    packet->tran.icmp = hdr;
-    packet->tran_size = sizeof(icmp_header_t);
+    packet->tran.buff = hdr;
+    packet->tran.size = sizeof(icmp_header_t);
 
     ip_build(packet, IP_PROT_ICMP, dst_ip);
 }
 
 void icmp_recv(packet_t *packet, void *raw, uint16_t len) {
-    icmp_header_t *icmp = packet->tran.icmp = raw;
+    icmp_header_t *icmp = packet->tran.buff = raw;
     raw = icmp + 1;
     len -= sizeof(icmp_header_t);
 
@@ -52,7 +54,7 @@ void icmp_recv(packet_t *packet, void *raw, uint16_t len) {
                     memcpy(buff, raw, len);
 
                     packet_t *reply = packet_create(packet->interface, buff, len);
-                    icmp_build(reply, ICMP_TYPE_ECHO_REPLY, ICMP_CODE_ECHO_REPLY, icmp->other, packet->net.ip->src);
+                    icmp_build(reply, ICMP_TYPE_ECHO_REPLY, ICMP_CODE_ECHO_REPLY, icmp->other, ((ip_header_t *) packet->net.buff)->src);
                     packet_send(reply);
 
                     break;
@@ -62,3 +64,14 @@ void icmp_recv(packet_t *packet, void *raw, uint16_t len) {
         }
     }
 }
+
+static void icmp_open(sock_t *sock) {
+}
+
+static void icmp_close(sock_t *sock) {
+}
+
+sock_protocol_t icmp_protocol = {
+    .open  = icmp_open,
+    .close = icmp_close,
+};

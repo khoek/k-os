@@ -44,8 +44,8 @@ void arp_build(packet_t *packet, uint16_t op, mac_t sender_mac, mac_t target_mac
     hdr->target_mac = target_mac;
     hdr->target_ip = target_ip;
 
-    packet->net.arp = hdr;
-    packet->net_size = sizeof(arp_header_t);
+    packet->net.buff = hdr;
+    packet->net.size = sizeof(arp_header_t);
 
     packet->state = P_RESOLVED;
 
@@ -134,7 +134,7 @@ void arp_resolve(packet_t *packet) {
 }
 
 void arp_recv(packet_t *packet, void *raw, uint16_t len) {
-    arp_header_t *arp = packet->net.arp = raw;
+    arp_header_t *arp = packet->net.buff = raw;
     if(!memcmp(&packet->interface->ip.addr, &arp->target_ip.addr, sizeof(ip_t))) {
         if(!memcmp(&arp->target_mac, &MAC_NONE, sizeof(mac_t))) {
             packet_t *response = packet_create(packet->interface, NULL, 0);
