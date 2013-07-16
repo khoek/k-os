@@ -4,8 +4,8 @@
 #include "lib/int.h"
 #include "common/list.h"
 #include "common/listener.h"
-
 #include "net/types.h"
+#include "net/ip/ip.h"
 
 typedef enum net_state {
     IF_DOWN,
@@ -17,7 +17,8 @@ typedef enum net_state {
 struct net_interface {
     list_head_t list;
 
-    mac_t mac;
+    sock_addr_t hard_addr;
+
     ip_t ip;
     uint32_t rx_total, tx_total;
 

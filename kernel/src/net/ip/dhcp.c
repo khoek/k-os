@@ -167,7 +167,7 @@ static void dhcp_send_discover(net_interface_t *interface) {
     uint32_t hostname_len = strlen(hostname);
     void *dhcp = kmalloc(sizeof(dhcp_header_t) + OPTIONS_LEN_DISCOVER + hostname_len + END_PADDING);
 
-    uint8_t *ptr = dhcp_build_packet(dhcp, interface->mac, rand32());
+    uint8_t *ptr = dhcp_build_packet(dhcp, *((mac_t *) interface->hard_addr.addr), rand32());
 
     *ptr++ = OPT_MESSAGE_TYPE;
     *ptr++ = 1;
@@ -198,7 +198,7 @@ static void dhcp_send_request(net_interface_t *interface, dhcp_header_t *hdr, dh
     uint32_t hostname_len = strlen(hostname);
     void *dhcp = kmalloc(sizeof(dhcp_header_t) + OPTIONS_LEN_REQUEST + hostname_len + END_PADDING);
 
-    uint8_t *ptr = dhcp_build_packet(dhcp, interface->mac, rand32());
+    uint8_t *ptr = dhcp_build_packet(dhcp, *((mac_t *) interface->hard_addr.addr), rand32());
 
     *ptr++ = OPT_MESSAGE_TYPE;
     *ptr++ = 1;
@@ -235,6 +235,8 @@ static void dhcp_send_request(net_interface_t *interface, dhcp_header_t *hdr, dh
 static void dhcp_ack(net_interface_t *interface, dhcp_header_t *hdr) {
     interface->ip = hdr->yiaddr;
 
+    logf("dhcp - ip address ACK (%u.%u.%u.%u)", hdr->yiaddr.addr[0], hdr->yiaddr.addr[1], hdr->yiaddr.addr[2], hdr->yiaddr.addr[3]);
+
     net_set_state(interface, IF_READY);
 }
 
@@ -249,7 +251,7 @@ void dhcp_handle(packet_t *packet, void *raw, uint16_t len) {
     if(dhcp->htype != HTYPE_ETH) return;
     if(dhcp->hlen != sizeof(mac_t)) return;
     if(dhcp->cookie != swap_uint32(MAGIC_COOKIE)) return;
-    if(memcmp(&packet->interface->mac, &dhcp->chaddr, sizeof(mac_t))) return;
+    if(memcmp(packet->interface->hard_addr.addr, &dhcp->chaddr, sizeof(mac_t))) return;
 
     dhcp_options_t opts;
     if(!dhcp_parse_options(&opts, raw, len)) return;

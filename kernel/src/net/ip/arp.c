@@ -49,9 +49,11 @@ void arp_build(packet_t *packet, uint16_t op, mac_t sender_mac, mac_t target_mac
 
     packet->state = P_RESOLVED;
 
-    packet->route.protocol = PROTOCOL_ARP;
-    packet->route.hard.src = (hard_addr_t *) &hdr->sender_mac;
-    packet->route.hard.dst = (hard_addr_t *) (op == ARP_OP_REQUEST ? &MAC_BROADCAST : &hdr->target_mac);
+    packet->route.protocol = ETH_TYPE_ARP;
+    packet->route.src.family = AF_LINK;
+    packet->route.src.addr = &hdr->sender_mac;
+    packet->route.dst.family = AF_LINK;
+    packet->route.dst.addr = (op == ARP_OP_REQUEST) ? (mac_t *) &MAC_BROADCAST : &hdr->target_mac;
 }
 
 static arp_cache_entry_t * arp_cache_find(ip_t *ip) {
@@ -89,7 +91,7 @@ static void arp_cache_put_unresolved(ip_t ip, packet_t *packet) {
     hashtable_add(*((uint32_t *) ip.addr), &entry->node, arp_cache);
 
     packet_t *request = packet_create(packet->interface, NULL, 0);
-    arp_build(request, ARP_OP_REQUEST, packet->interface->mac, MAC_NONE, packet->interface->ip, ip);
+    arp_build(request, ARP_OP_REQUEST, *((mac_t *) packet->interface->hard_addr.addr), MAC_NONE, packet->interface->ip, ip);
     packet_send(request);
 }
 
@@ -97,12 +99,13 @@ void arp_resolve(packet_t *packet) {
     uint32_t flags;
     spin_lock_irqsave(&arp_cache_lock, &flags);
 
-    ip_t ip = *((ip_t *) packet->route.sock.dst);
+    ip_t ip = *((ip_t *) packet->route.dst.addr);
 
-    packet->route.hard.src = (hard_addr_t *) &packet->interface->mac;
+    packet->route.src = packet->interface->hard_addr;
 
     if(!memcmp(&ip, &IP_BROADCAST, sizeof(ip_t))) {
-        packet->route.hard.dst = (hard_addr_t *) &MAC_BROADCAST;
+        packet->route.dst.family = AF_LINK;
+        packet->route.dst.addr = (mac_t *) &MAC_BROADCAST;
 
         packet->state = P_RESOLVED;
         packet_send(packet);
@@ -120,7 +123,7 @@ void arp_resolve(packet_t *packet) {
             } else if(entry->state == CACHE_RESOLVED) {
                 spin_unlock_irqstore(&entry->lock, flags);
 
-                packet->route.hard.dst = (hard_addr_t *) &entry->mac;
+                packet->route.dst.addr = &entry->mac;
 
                 packet->state = P_RESOLVED;
                 packet_send(packet);
@@ -138,7 +141,7 @@ void arp_recv(packet_t *packet, void *raw, uint16_t len) {
     if(!memcmp(&packet->interface->ip.addr, &arp->target_ip.addr, sizeof(ip_t))) {
         if(!memcmp(&arp->target_mac, &MAC_NONE, sizeof(mac_t))) {
             packet_t *response = packet_create(packet->interface, NULL, 0);
-            arp_build(response, ARP_OP_RESPONSE, packet->interface->mac, arp->sender_mac, packet->interface->ip, arp->sender_ip);
+            arp_build(response, ARP_OP_RESPONSE, *((mac_t *) packet->interface->hard_addr.addr), arp->sender_mac, packet->interface->ip, arp->sender_ip);
             packet_send(response);
         }
     }

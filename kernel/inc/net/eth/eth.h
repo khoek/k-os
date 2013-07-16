@@ -5,6 +5,11 @@
 #include "common/compiler.h"
 #include "net/types.h"
 
+typedef struct mac { uint8_t addr[6]; } mac_t;
+
+static const mac_t MAC_BROADCAST = { .addr = {0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF} };
+static const mac_t MAC_NONE = { .addr = {0x00, 0x00, 0x00, 0x00, 0x00, 0x00} };
+
 #define ETH_MIN_PACKET_SIZE 60
 
 #define HTYPE_ETH  1

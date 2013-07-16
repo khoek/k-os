@@ -15,8 +15,6 @@ static DEFINE_SPINLOCK(interface_lock);
 static DEFINE_SPINLOCK(listener_lock);
 
 void register_net_interface(net_interface_t *interface, net_state_t state) {
-    interface->ip = IP_NONE;
-
     interface->rx_total = 0;
     interface->tx_total = 0;
 
@@ -92,28 +90,16 @@ void net_set_state(net_interface_t *interface, net_state_t state) {
 
     //TODO better handle active devices, etc
     switch(state) {
-        case IF_UP: {
-            logf("net - interface is UP (%02X:%02X:%02X:%02X:%02X:%02X)",
-                interface->mac.addr[0], interface->mac.addr[1],
-                interface->mac.addr[2], interface->mac.addr[3],
-                interface->mac.addr[4], interface->mac.addr[5]
-            );
-
+        case IF_DOWN: {
+            logf("net - interface is DOWN");
             break;
         }
-        case IF_DOWN: {
-            logf("net - interface is DOWN (%02X:%02X:%02X:%02X:%02X:%02X)",
-                interface->mac.addr[0], interface->mac.addr[1],
-                interface->mac.addr[2], interface->mac.addr[3],
-                interface->mac.addr[4], interface->mac.addr[5]
-            );
+        case IF_UP: {
+            logf("net - interface is UP");
             break;
         }
         case IF_READY: {
-            logf("net - interface is READY (%u.%u.%u.%u)",
-                interface->ip.addr[0], interface->ip.addr[1],
-                interface->ip.addr[2], interface->ip.addr[3]
-            );
+            logf("net - interface is READY");
             break;
         }
         case IF_ERROR: {

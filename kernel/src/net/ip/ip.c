@@ -8,6 +8,7 @@
 #include "net/packet.h"
 #include "net/interface.h"
 #include "net/socket.h"
+#include "net/eth/eth.h"
 #include "net/ip/ip.h"
 #include "net/ip/icmp.h"
 #include "net/ip/tcp.h"
@@ -41,8 +42,12 @@ void ip_build(packet_t *packet, uint8_t protocol, ip_t dst) {
     memcpy(dst_copy, &dst, sizeof(ip_t));
 
     packet->state = P_UNRESOLVED;
-    packet->route.sock.src = (sock_addr_t *) &packet->interface->ip;
-    packet->route.sock.dst = (sock_addr_t *) dst_copy;
+
+    packet->route.protocol = ETH_TYPE_IP;
+    packet->route.src.family = AF_INET;
+    packet->route.src.addr = &packet->interface->ip;
+    packet->route.dst.family = AF_INET;
+    packet->route.dst.addr = dst_copy;
 
     packet->net.buff = hdr;
     packet->net.size = sizeof(ip_header_t);

@@ -260,9 +260,6 @@ static bool net_825xx_probe(device_t *device) {
 
     net_825xx_t *net_device = pci_device->private = kmalloc(sizeof(net_825xx_t));
 
-    net_device->interface.link_layer = eth_link_layer;
-    net_device->interface.send = net_825xx_send;
-
     net_device->mmio = (uint32_t) mm_map((void *) BAR_ADDR_32(pci_device->bar[0]));
 
     //FIXME this assumes that mm_map will map the pages contiguously, this should not be relied upon!
@@ -272,9 +269,11 @@ static bool net_825xx_probe(device_t *device) {
 
     idt_register(IRQ_OFFSET + pci_device->interrupt, CPL_KERNEL, handle_network);
 
-    ((uint16_t *) net_device->interface.mac.addr)[0] = net_eeprom_read(net_device, 0);
-    ((uint16_t *) net_device->interface.mac.addr)[1] = net_eeprom_read(net_device, 1);
-    ((uint16_t *) net_device->interface.mac.addr)[2] = net_eeprom_read(net_device, 2);
+    mac_t *mac = kmalloc(sizeof(mac_t));
+
+    ((uint16_t *) &mac->addr)[0] = net_eeprom_read(net_device, 0);
+    ((uint16_t *) &mac->addr)[1] = net_eeprom_read(net_device, 1);
+    ((uint16_t *) &mac->addr)[2] = net_eeprom_read(net_device, 2);
 
     if(!(mmio_read(net_device, REG_STATUS) & STATUS_LU)) {
         mmio_write(net_device, REG_CTRL, mmio_read(net_device, REG_CTRL) | CTRL_SLU);
@@ -291,8 +290,8 @@ static bool net_825xx_probe(device_t *device) {
     mmio_read(net_device, REG_ICR);
 
     //set mac address filter
-    mmio_write(net_device, REG_RAL, ((uint16_t *) net_device->interface.mac.addr)[0] | ((((uint32_t)((uint16_t *) net_device->interface.mac.addr)[1]) << 16)));
-    mmio_write(net_device, REG_RAH, ((uint16_t *) net_device->interface.mac.addr)[2] | (1 << 31));
+    mmio_write(net_device, REG_RAL, ((uint16_t *) &mac->addr)[0] | ((((uint32_t)((uint16_t *) &mac->addr)[1]) << 16)));
+    mmio_write(net_device, REG_RAH, ((uint16_t *) &mac->addr)[2] | (1 << 31));
 
     //init RX
     net_device->rx_page = alloc_page(0);
@@ -345,6 +344,11 @@ static bool net_825xx_probe(device_t *device) {
 
     mmio_write(net_device, REG_TDH, 0);
     mmio_write(net_device, REG_TDT, NUM_TX_DESCS);
+
+    net_device->interface.link_layer = eth_link_layer;
+    net_device->interface.send = net_825xx_send;
+    net_device->interface.hard_addr.family = AF_LINK;
+    net_device->interface.hard_addr.addr = mac;
 
     return true;
 }

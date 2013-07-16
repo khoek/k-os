@@ -6,6 +6,11 @@
 #include "net/types.h"
 #include "net/socket.h"
 
+typedef struct ip { uint8_t addr[4]; } ip_t;
+
+static const ip_t IP_BROADCAST = { .addr = {0xFF, 0xFF, 0xFF, 0xFF} };
+static const ip_t IP_NONE = { .addr = {0x00, 0x00, 0x00, 0x00} };
+
 #define IP_PROT_ICMP 0x01
 #define IP_PROT_TCP  0x06
 #define IP_PROT_UDP  0x11

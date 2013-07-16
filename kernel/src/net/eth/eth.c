@@ -7,19 +7,15 @@
 #include "mm/cache.h"
 #include "net/types.h"
 #include "net/packet.h"
+#include "net/socket.h"
 #include "net/eth/eth.h"
 #include "net/ip/ip.h"
 #include "net/ip/arp.h"
 #include "video/log.h"
 
-static uint16_t type_lookup[] = {
-    [PROTOCOL_IP]  = ETH_TYPE_IP ,
-    [PROTOCOL_ARP] = ETH_TYPE_ARP
-};
-
 static void eth_resolve(packet_t *packet) {
-    switch(packet->route.protocol) {
-        case PROTOCOL_IP: {
+    switch(packet->route.dst.family) {
+        case AF_INET: {
             arp_resolve(packet);
             break;
         }
@@ -28,10 +24,13 @@ static void eth_resolve(packet_t *packet) {
 }
 
 static void eth_build_hdr(packet_t *packet) {
+    BUG_ON(packet->route.src.family != AF_LINK);
+    BUG_ON(packet->route.dst.family != AF_LINK);
+
     eth_header_t *hdr = kmalloc(sizeof(eth_header_t));
-    hdr->src = packet->route.hard.src->mac;
-    hdr->dst = packet->route.hard.dst->mac;
-    hdr->type = swap_uint16(type_lookup[packet->route.protocol] ? type_lookup[packet->route.protocol] : 0xFFFF);
+    hdr->src = *((mac_t *) packet->route.src.addr);
+    hdr->dst = *((mac_t *) packet->route.dst.addr);
+    hdr->type = swap_uint16(packet->route.protocol);
 
     packet->link.buff = hdr;
     packet->link.size = sizeof(eth_header_t);

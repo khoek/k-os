@@ -2,9 +2,11 @@
 #define KERNEL_NET_SOCK_H
 
 #define PF_INET 1
-#define PF_MAX  2
+#define PF_LINK 2
+#define PF_MAX  3
 
 #define AF_INET PF_INET
+#define AF_LINK PF_LINK
 #define AF_MAX  PF_MAX
 
 typedef enum sock_type {
