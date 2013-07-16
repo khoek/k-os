@@ -35,7 +35,7 @@ void unregister_net_interface(net_interface_t *interface);
 void register_net_state_listener(listener_t *listener);
 void unregister_net_state_listener(listener_t *listener);
 
-char * net_get_hostname();
+const char * net_get_hostname();
 void net_put_hostname();
 
 void net_recieve(net_interface_t *interface, void *raw, uint16_t len);

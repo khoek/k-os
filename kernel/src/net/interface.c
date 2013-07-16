@@ -55,7 +55,7 @@ void unregister_net_state_listener(listener_t *listener) {
     spin_unlock_irqstore(&listener_lock, flags);
 }
 
-char * net_get_hostname() {
+const char * net_get_hostname() {
     uint32_t flags;
     spin_lock_irqsave(&interface_lock, &flags);
 

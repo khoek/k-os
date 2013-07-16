@@ -73,7 +73,7 @@ typedef struct nbns_reg_request {
 #define NAME_IS_ALIAS 0xC000
 
 #define NAME_WORKSTATION 0x00
-static void nbns_encode_name(uint8_t *buff, char *name, uint8_t type) {
+static void nbns_encode_name(uint8_t *buff, const char *name, uint8_t type) {
     bool foundEnd = false;
     for(uint8_t i = 0; i < NBNS_NAME_LENGTH; i++) {
         if(!name[i]) foundEnd = true;
@@ -131,7 +131,7 @@ void nbns_handle(packet_t *packet, void *raw, uint16_t len) {
     packet_send(resp);
 }
 
-void nbns_register_name(net_interface_t *interface, char *name) {
+void nbns_register_name(net_interface_t *interface, const char *name) {
     nbns_reg_request_t *nbns = kmalloc(sizeof(nbns_reg_request_t));
     memset(nbns, 0, sizeof(nbns_reg_request_t));
 

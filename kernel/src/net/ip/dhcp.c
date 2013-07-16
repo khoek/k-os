@@ -163,7 +163,7 @@ static void * dhcp_build_packet(dhcp_header_t *dhcp, mac_t addr, uint32_t xid) {
 #define OPTIONS_LEN_DISCOVER 9
 
 static void dhcp_send_discover(net_interface_t *interface) {
-    char *hostname = net_get_hostname();
+    const char *hostname = net_get_hostname();
     uint32_t hostname_len = strlen(hostname);
     void *dhcp = kmalloc(sizeof(dhcp_header_t) + OPTIONS_LEN_DISCOVER + hostname_len + END_PADDING);
 
@@ -194,7 +194,7 @@ static void dhcp_send_discover(net_interface_t *interface) {
 #define OPTIONS_LEN_REQUEST 22
 
 static void dhcp_send_request(net_interface_t *interface, dhcp_header_t *hdr, dhcp_options_t *opts) {
-    char *hostname = net_get_hostname();
+    const char *hostname = net_get_hostname();
     uint32_t hostname_len = strlen(hostname);
     void *dhcp = kmalloc(sizeof(dhcp_header_t) + OPTIONS_LEN_REQUEST + hostname_len + END_PADDING);
 
