@@ -6,6 +6,7 @@
 #include "common/swap.h"
 #include "common/init.h"
 #include "common/asm.h"
+#include "sync/spinlock.h"
 #include "arch/gdt.h"
 #include "arch/idt.h"
 #include "mm/mm.h"
@@ -161,6 +162,8 @@ typedef struct net_825xx {
     rx_desc_t *rx_desc;
     tx_desc_t *tx_desc;
 
+    spinlock_t state_lock;
+
     net_interface_t interface;
 } PACKED net_825xx_t;
 
@@ -210,11 +213,16 @@ static void handle_network(interrupt_t UNUSED(*interrupt)) {
         uint32_t icr = mmio_read(net_device, REG_ICR);
 
         if(icr & ICR_LSC) {
+            uint32_t flags;
+            spin_lock_irqsave(&net_device->state_lock, &flags);
+
             if(mmio_read(net_device, REG_STATUS) & STATUS_LU) {
                 net_set_state(&net_device->interface, IF_UP);
             } else {
                 net_set_state(&net_device->interface, IF_DOWN);
             }
+
+            spin_unlock_irqstore(&net_device->state_lock, flags);
         }
 
         if(icr & ICR_RXT) {
@@ -259,6 +267,8 @@ static bool net_825xx_probe(device_t *device) {
     }
 
     net_825xx_t *net_device = pci_device->private = kmalloc(sizeof(net_825xx_t));
+
+    spinlock_init(&net_device->state_lock);
 
     net_device->mmio = (uint32_t) mm_map((void *) BAR_ADDR_32(pci_device->bar[0]));
 
@@ -362,7 +372,14 @@ static void net_825xx_enable(device_t *device) {
     mmio_write(net_device, REG_TCTL, mmio_read(net_device, REG_TCTL) | TCTL_EN | TCTL_PSP);
     mmio_write(net_device, REG_RCTL, mmio_read(net_device, REG_RCTL) | RCTL_EN);
 
-    register_net_interface(&net_device->interface, mmio_read(net_device, REG_STATUS) & STATUS_LU ? IF_UP : IF_DOWN);
+    register_net_interface(&net_device->interface);
+
+    uint32_t flags;
+    spin_lock_irqsave(&net_device->state_lock, &flags);
+
+    net_set_state(&net_device->interface, mmio_read(net_device, REG_STATUS) & STATUS_LU ? IF_UP : IF_DOWN);
+
+    spin_unlock_irqstore(&net_device->state_lock, flags);
 }
 
 static void net_825xx_disable(device_t *device) {

@@ -91,7 +91,7 @@ static void arp_cache_put_unresolved(ip_t ip, packet_t *packet) {
     hashtable_add(*((uint32_t *) ip.addr), &entry->node, arp_cache);
 
     packet_t *request = packet_create(packet->interface, NULL, 0);
-    arp_build(request, ARP_OP_REQUEST, *((mac_t *) packet->interface->hard_addr.addr), MAC_NONE, packet->interface->ip, ip);
+    arp_build(request, ARP_OP_REQUEST, *((mac_t *) packet->interface->hard_addr.addr), MAC_NONE, packet->interface->ip_data->ip_addr, ip);
     packet_send(request);
 }
 
@@ -138,10 +138,10 @@ void arp_resolve(packet_t *packet) {
 
 void arp_recv(packet_t *packet, void *raw, uint16_t len) {
     arp_header_t *arp = packet->net.buff = raw;
-    if(!memcmp(&packet->interface->ip.addr, &arp->target_ip.addr, sizeof(ip_t))) {
+    if(!memcmp(&packet->interface->ip_data->ip_addr.addr, &arp->target_ip.addr, sizeof(ip_t))) {
         if(!memcmp(&arp->target_mac, &MAC_NONE, sizeof(mac_t))) {
             packet_t *response = packet_create(packet->interface, NULL, 0);
-            arp_build(response, ARP_OP_RESPONSE, *((mac_t *) packet->interface->hard_addr.addr), arp->sender_mac, packet->interface->ip, arp->sender_ip);
+            arp_build(response, ARP_OP_RESPONSE, *((mac_t *) packet->interface->hard_addr.addr), arp->sender_mac, packet->interface->ip_data->ip_addr, arp->sender_ip);
             packet_send(response);
         }
     }

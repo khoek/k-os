@@ -233,7 +233,7 @@ static void dhcp_send_request(net_interface_t *interface, dhcp_header_t *hdr, dh
 }
 
 static void dhcp_ack(net_interface_t *interface, dhcp_header_t *hdr) {
-    interface->ip = hdr->yiaddr;
+    interface->ip_data->ip_addr = hdr->yiaddr;
 
     logf("dhcp - ip address ACK (%u.%u.%u.%u)", hdr->yiaddr.addr[0], hdr->yiaddr.addr[1], hdr->yiaddr.addr[2], hdr->yiaddr.addr[3]);
 
@@ -272,13 +272,10 @@ void dhcp_handle(packet_t *packet, void *raw, uint16_t len) {
     }
 }
 
-static void dhcp_callback(listener_t *listener, net_state_t state, void *data) {
-    net_interface_t *interface = data;
-
+static void dhcp_callback(listener_t *listener, net_state_t state, net_interface_t *interface) {
     switch(state) {
         case IF_UP: {
             dhcp_send_discover(interface);
-
             break;
         }
         default: break;
@@ -286,7 +283,7 @@ static void dhcp_callback(listener_t *listener, net_state_t state, void *data) {
 }
 
 static listener_t dhcp_listener = {
-    .callback = dhcp_callback
+    .callback = (callback_t) dhcp_callback,
 };
 
 static INITCALL dhcp_init() {

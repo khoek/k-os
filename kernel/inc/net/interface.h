@@ -8,6 +8,7 @@
 #include "net/ip/ip.h"
 
 typedef enum net_state {
+    IF_UNKNOWN=0,
     IF_DOWN,
     IF_UP,
     IF_READY,
@@ -17,19 +18,20 @@ typedef enum net_state {
 struct net_interface {
     list_head_t list;
 
+    net_state_t state;
+
+    ip_interface_t *ip_data;
+
     sock_addr_t hard_addr;
 
-    ip_t ip;
     uint32_t rx_total, tx_total;
-
-    net_state_t state;
 
     net_link_layer_t link_layer;
 
     int32_t (*send)(packet_t *);
 };
 
-void register_net_interface(net_interface_t *interface, net_state_t state);
+void register_net_interface(net_interface_t *interface);
 void unregister_net_interface(net_interface_t *interface);
 
 void register_net_state_listener(listener_t *listener);

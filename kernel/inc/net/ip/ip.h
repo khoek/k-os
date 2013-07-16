@@ -41,7 +41,13 @@ typedef struct ip_header {
     ip_t dst;
 } PACKED ip_header_t;
 
-ip_header_t * ip_hdr(packet_t *packet);
+static inline ip_header_t * ip_hdr(packet_t *packet) {
+    return (ip_header_t *) packet->net.buff;
+}
+
+typedef struct ip_interface {
+    ip_t ip_addr;
+} ip_interface_t;
 
 void ip_build(packet_t *packet, uint8_t protocol, ip_t dst_ip);
 void ip_recv(packet_t *packet, void *raw, uint16_t len);

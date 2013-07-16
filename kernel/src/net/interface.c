@@ -14,9 +14,11 @@ static DEFINE_LISTENER_CHAIN(listeners);
 static DEFINE_SPINLOCK(interface_lock);
 static DEFINE_SPINLOCK(listener_lock);
 
-void register_net_interface(net_interface_t *interface, net_state_t state) {
+void register_net_interface(net_interface_t *interface) {
     interface->rx_total = 0;
     interface->tx_total = 0;
+
+    interface->ip_data = 0;
 
     uint32_t flags;
     spin_lock_irqsave(&interface_lock, &flags);
@@ -25,7 +27,7 @@ void register_net_interface(net_interface_t *interface, net_state_t state) {
 
     spin_unlock_irqstore(&interface_lock, flags);
 
-    net_set_state(interface, state);
+    net_set_state(interface, IF_DOWN);
 }
 
 void unregister_net_interface(net_interface_t *interface) {

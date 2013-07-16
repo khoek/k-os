@@ -13,6 +13,7 @@
 #include "net/ip/icmp.h"
 #include "net/ip/tcp.h"
 #include "net/ip/udp.h"
+#include "net/ip/dhcp.h"
 #include "video/log.h"
 
 #include "checksum.h"
@@ -27,7 +28,7 @@ void ip_build(packet_t *packet, uint8_t protocol, ip_t dst) {
     hdr->flags_frag_off = IP_FLAG_DONT_FRAG;
     hdr->ttl = 0x40;
     hdr->protocol = protocol;
-    hdr->src = packet->interface->ip;
+    hdr->src = packet->interface->ip_data->ip_addr;
     hdr->dst = dst;
     hdr->checksum = 0;
 
@@ -45,7 +46,7 @@ void ip_build(packet_t *packet, uint8_t protocol, ip_t dst) {
 
     packet->route.protocol = ETH_TYPE_IP;
     packet->route.src.family = AF_INET;
-    packet->route.src.addr = &packet->interface->ip;
+    packet->route.src.addr = packet->interface->ip_data->ip_addr.addr;
     packet->route.dst.family = AF_INET;
     packet->route.dst.addr = dst_copy;
 
@@ -82,6 +83,26 @@ void ip_recv(packet_t *packet, void *raw, uint16_t len) {
     }
 }
 
-ip_header_t * ip_hdr(packet_t *packet) {
-    return (ip_header_t *) packet->net.buff;
+static void inet_callback(listener_t *listener, net_state_t state, net_interface_t *interface) {
+    switch(state) {
+        case IF_DOWN: {
+            if(interface->ip_data) kfree(interface->ip_data, sizeof(net_interface_t));
+            interface->ip_data = kmalloc(sizeof(net_interface_t));
+            memset(interface->ip_data, 0, sizeof(net_interface_t));
+            break;
+        }
+        default: break;
+    };
 }
+
+static listener_t inet_listener = {
+    .callback = (callback_t) inet_callback,
+};
+
+static INITCALL inet_init() {
+    register_net_state_listener(&inet_listener);
+
+    return 0;
+}
+
+core_initcall(inet_init);
