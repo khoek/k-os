@@ -3,8 +3,10 @@
 
 #include "lib/int.h"
 #include "common/list.h"
+#include "sync/spinlock.h"
 #include "arch/registers.h"
 #include "arch/idt.h"
+#include "fs/fd.h"
 
 typedef enum task_state {
     TASK_NONE,
@@ -25,6 +27,12 @@ typedef struct task {
 
     uint32_t pid;
     uint32_t flags;
+
+    ufd_t *fd;
+    ufd_idx_t *fd_list;
+    ufd_idx_t fd_next;
+    uint32_t fd_count;
+    spinlock_t fd_lock;
     task_state_t state;
 } task_t;
 

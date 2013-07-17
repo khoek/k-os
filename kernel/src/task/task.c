@@ -10,11 +10,14 @@
 #include "arch/gdt.h"
 #include "arch/idt.h"
 #include "arch/cpl.h"
-#include "time/clock.h"
-#include "task/task.h"
 #include "mm/mm.h"
 #include "mm/cache.h"
+#include "time/clock.h"
+#include "task/task.h"
+#include "fs/stream/char.h"
 #include "video/log.h"
+
+#define FREELIST_END (1 << 31)
 
 task_t *current;
 
@@ -105,6 +108,27 @@ void task_add_page(task_t UNUSED(*task), page_t UNUSED(*page)) {
     //TODO add this to the list of pages for the task
 }
 
+void task_fd_add(task_t *task, uint32_t flags, uint32_t gfd) {
+    uint32_t f;
+    spin_lock_irqsave(&task->fd_lock, &f);
+
+    task->fd[task->fd_next].flags = flags;
+    task->fd[task->fd_next].gfd = gfd;
+    task->fd_next = task->fd_list[task->fd_next];
+
+    spin_unlock_irqstore(&task->fd_lock, f);
+}
+
+void task_fd_rm(task_t *task, uint32_t fd_idx) {
+    uint32_t flags;
+    spin_lock_irqsave(&task->fd_lock, &flags);
+
+    task->fd_list[fd_idx] = task->fd_next;
+    task->fd_next = fd_idx;
+
+    spin_unlock_irqstore(&task->fd_lock, flags);
+}
+
 #define FLAG_KERNEL (1 << 0)
 
 task_t * task_create(bool kernel, void *ip, void *sp) {
@@ -118,6 +142,26 @@ task_t * task_create(bool kernel, void *ip, void *sp) {
     task->directory = page_to_virt(page);
     task->cr3 = (uint32_t) page_to_phys(page);
     page_build_directory(task->directory);
+
+    task->fd_count = PAGE_SIZE / sizeof(ufd_t);
+    task->fd_next = 0;
+
+    uint32_t *tmp_fds_list = (uint32_t *) alloc_page_user(0, task, 0x20000);
+    for(uint32_t i = 0; i < task->fd_count - 1; i++) {
+        tmp_fds_list[i] = i + 1;
+    }
+    tmp_fds_list[task->fd_count - 1] = FREELIST_END;
+
+    ufd_t *tmp_fds = (ufd_t *) alloc_page_user(0, task, 0x21000);
+    tmp_fds[0].flags = 0;
+    tmp_fds[0].gfd = char_stream_alloc();
+    tmp_fds[1].flags = 0;
+    tmp_fds[1].gfd = char_stream_alloc();
+    tmp_fds[2].flags = 0;
+    tmp_fds[2].gfd = char_stream_alloc();
+
+    task->fd_list = (void *) 0x20000;
+    task->fd = (void *) 0x21000;
 
     //FIXME the address 0x11000 is hardcoded
     cpu_state_t *cpu = (void *) (((uint32_t) alloc_page_user(0, task, 0x11000)) + PAGE_SIZE - (sizeof(cpu_state_t) + 1));
@@ -172,4 +216,4 @@ static INITCALL task_init() {
     return 0;
 }
 
-core_initcall(task_init);
+postcore_initcall(task_init);

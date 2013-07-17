@@ -3,12 +3,13 @@
 #include "common/math.h"
 #include "common/list.h"
 #include "common/init.h"
+#include "bug/debug.h"
 #include "bug/panic.h"
 #include "mm/mm.h"
 #include "mm/cache.h"
 #include "video/log.h"
 
-#define FREELIST_END (1 << 31)
+#define FREELIST_END ((uint32_t) (1 << 31))
 
 #define CACHE_FLAG_PERM (1 << 0)
 
@@ -69,6 +70,8 @@ static void cache_alloc_page(cache_t *cache) {
 }
 
 static void cache_do_alloc(cache_page_t *cache_page) {
+    BUG_ON(cache_page->free == FREELIST_END);
+
     cache_page->left--;
     cache_page->free = cache_page->freelist[cache_page->free];
 }
