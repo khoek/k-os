@@ -6,10 +6,11 @@
 #include "arch/gdt.h"
 #include "arch/idt.h"
 #include "bug/panic.h"
+#include "mm/cache.h"
 #include "time/timer.h"
 #include "time/clock.h"
-#include "mm/cache.h"
 #include "task/task.h"
+#include "net/socket.h"
 #include "video/log.h"
 
 #define MAX_SYSCALL 256
@@ -54,12 +55,19 @@ static void sys_uptime(interrupt_t *interrupt) {
     current->ret = uptime();
 }
 
+static void sys_socket(interrupt_t *interrupt) {
+    //TODO sanitize stuff
+
+    current->ret = sock_create_fd(interrupt->cpu.reg.ecx, interrupt->cpu.reg.edx, interrupt->cpu.reg.ebx);
+}
+
 static syscall_t syscalls[MAX_SYSCALL] = {
     [0] = sys_exit,
     [1] = sys_fork,
     [2] = sys_sleep,
     [3] = sys_log,
-    [4] = sys_uptime
+    [4] = sys_uptime,
+    [5] = sys_socket,
 };
 
 static void syscall_handler(interrupt_t *interrupt) {

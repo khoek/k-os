@@ -38,3 +38,15 @@ _uptime:
     int $0x80
 
     ret
+    
+socket:
+    push ebx
+    
+    mov $5, %eax
+    mov 12(%esp), %ebx
+    mov 8(%esp), %edx
+    mov 4(%esp), %ecx
+    int $0x80
+    
+    pop ebx
+    ret

@@ -4,6 +4,7 @@
 #include "sync/spinlock.h"
 #include "mm/cache.h"
 #include "net/socket.h"
+#include "fs/fd.h"
 
 static sock_family_t *families[PF_MAX];
 static DEFINE_SPINLOCK(family_lock);
@@ -51,4 +52,18 @@ void sock_close(sock_t *sock) {
     sock->proto->close(sock);
 
     sock_free(sock);
+}
+
+static void sock_close_fd(gfd_t *gfd) {
+    sock_close(gfd->private);
+}
+
+static fd_ops_t sock_ops = {
+    .close = sock_close_fd,
+};
+
+gfd_idx_t sock_create_fd(uint32_t family, uint32_t type, uint32_t protocol) {
+    sock_t *sock = sock_create(family, type, protocol);
+
+    return gfdt_add(FD_SOCK, 0, &sock_ops, sock);
 }

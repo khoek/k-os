@@ -20,6 +20,7 @@ typedef enum sock_type {
 #include "lib/int.h"
 #include "sync/atomic.h"
 #include "net/types.h"
+#include "fs/fd.h"
 
 typedef struct sock sock_t;
 
@@ -63,6 +64,10 @@ struct sock_protocol {
 };
 
 void register_sock_family(sock_family_t *family);
+
 sock_t * sock_create(uint32_t family, uint32_t type, uint32_t protocol);
+void sock_close(sock_t *sock);
+
+gfd_idx_t sock_create_fd(uint32_t family, uint32_t type, uint32_t protocol);
 
 #endif
