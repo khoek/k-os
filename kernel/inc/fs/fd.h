@@ -3,6 +3,9 @@
 
 #include "lib/int.h"
 
+#define FD_CHAR 0
+#define FD_SOCK 1
+
 typedef struct gfd gfd_t;
 
 typedef struct fd_ops {
@@ -10,6 +13,7 @@ typedef struct fd_ops {
 } fd_ops_t;
 
 struct gfd {
+    uint32_t type;
     uint32_t flags;
     fd_ops_t *ops;
     void *private;
@@ -23,7 +27,7 @@ typedef struct ufd {
 typedef uint32_t gfd_idx_t;
 typedef uint32_t ufd_idx_t;
 
-gfd_idx_t gfdt_add(uint32_t flags, fd_ops_t *ops, void *private);
+gfd_idx_t gfdt_add(uint32_t type, uint32_t flags, fd_ops_t *ops, void *private);
 void gfdt_rm(gfd_idx_t gfd_idx);
 
 #endif
