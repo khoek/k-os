@@ -108,7 +108,7 @@ void task_add_page(task_t UNUSED(*task), page_t UNUSED(*page)) {
     //TODO add this to the list of pages for the task
 }
 
-ufd_idx_t task_fd_add(task_t *task, uint32_t flags, gfd_idx_t gfd) {
+ufd_idx_t ufdt_add(task_t *task, uint32_t flags, gfd_idx_t gfd) {
     uint32_t f;
     spin_lock_irqsave(&task->fd_lock, &f);
 
@@ -122,14 +122,19 @@ ufd_idx_t task_fd_add(task_t *task, uint32_t flags, gfd_idx_t gfd) {
     return added;
 }
 
-void task_fd_rm(task_t *task, ufd_idx_t fd_idx) {
+void ufdt_rm(task_t *task, ufd_idx_t fd_idx) {
     uint32_t flags;
     spin_lock_irqsave(&task->fd_lock, &flags);
 
+    task->fd[fd_idx].gfd = -1;
     task->fd_list[fd_idx] = task->fd_next;
     task->fd_next = fd_idx;
 
     spin_unlock_irqstore(&task->fd_lock, flags);
+}
+
+gfd_idx_t ufd_to_gfd(task_t *task, ufd_idx_t ufd) {
+    return task->fd[ufd].gfd == FD_INVALID ? -1 : task->fd[ufd].gfd;
 }
 
 #define FLAG_KERNEL (1 << 0)
@@ -162,6 +167,9 @@ task_t * task_create(bool kernel, void *ip, void *sp) {
     tmp_fds[1].gfd = char_stream_alloc();
     tmp_fds[2].flags = 0;
     tmp_fds[2].gfd = char_stream_alloc();
+    for(uint32_t i = 3; i < task->fd_count - 1; i++) {
+        tmp_fds[i].gfd = 0;
+    }
 
     task->fd_list = (void *) 0x20000;
     task->fd = (void *) 0x21000;

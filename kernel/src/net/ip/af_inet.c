@@ -13,7 +13,7 @@
 static list_head_t types[SOCK_MAX];
 static DEFINE_SPINLOCK(type_lock);
 
-void register_af_inet_protocol(af_inet_protocol_t *protocol) {
+void register_inet_protocol(inet_protocol_t *protocol) {
     uint32_t flags;
     spin_lock_irqsave(&type_lock, &flags);
 
@@ -22,9 +22,9 @@ void register_af_inet_protocol(af_inet_protocol_t *protocol) {
     spin_unlock_irqstore(&type_lock, flags);
 }
 
-static sock_protocol_t * af_inet_find(uint32_t type, uint32_t protocol) {
+static sock_protocol_t * inet_find(uint32_t type, uint32_t protocol) {
     bool success;
-    af_inet_protocol_t *found;
+    inet_protocol_t *found;
     LIST_FOR_EACH_ENTRY(found, &types[type], list) {
         success = true;
         if(found->protocol == protocol || found->protocol == IPPROTO_RAW) {
@@ -44,10 +44,10 @@ static sock_protocol_t * af_inet_find(uint32_t type, uint32_t protocol) {
 static sock_family_t af_inet = {
     .code      = AF_INET,
     .addr_size = sizeof(ip_t),
-    .find      = af_inet_find,
-};
+    .find      = inet_find,
+}
 
-static af_inet_protocol_t builtin_protocols[] = {
+static inet_protocol_t builtin_protocols[] = {
     {
         .type     = SOCK_DGRAM,
         .protocol = IP_PROT_UDP,
@@ -65,13 +65,13 @@ static af_inet_protocol_t builtin_protocols[] = {
     },
 };
 
-static INITCALL af_inet_init() {
+static INITCALL inet_init() {
     for(uint32_t i = 0; i < SOCK_MAX; i++) {
         list_init(&types[i]);
     }
 
-    for(uint32_t i = 0; i < sizeof(builtin_protocols) / sizeof(af_inet_protocol_t); i++) {
-        register_af_inet_protocol(&builtin_protocols[i]);
+    for(uint32_t i = 0; i < sizeof(builtin_protocols) / sizeof(inet_protocol_t); i++) {
+        register_inet_protocol(&builtin_protocols[i]);
     }
 
     register_sock_family(&af_inet);
@@ -79,4 +79,4 @@ static INITCALL af_inet_init() {
     return 0;
 }
 
-core_initcall(af_inet_init);
+core_initcall(inet_init);

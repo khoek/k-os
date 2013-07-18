@@ -41,6 +41,7 @@ struct sock {
 
 struct sock_protocol {
     void (*open)(sock_t *);
+    uint32_t (*send)(sock_t *, void *buff, uint32_t len, uint32_t flags);
     void (*close)(sock_t *);
 
     /*
@@ -49,7 +50,6 @@ struct sock_protocol {
     void (*connect)(sock_t *, sock_addr_t *);
     void (*accept)(sock_t *, sock_addr_t *);
 
-    void (*send)(sock_t *);
     void (*sendto)(sock_t *);
     void (*read)(sock_t *);
 
@@ -65,8 +65,13 @@ struct sock_protocol {
 void register_sock_family(sock_family_t *family);
 
 sock_t * sock_create(uint32_t family, uint32_t type, uint32_t protocol);
+uint32_t sock_send(sock_t *sock, void *buff, uint32_t len, uint32_t flags);
 void sock_close(sock_t *sock);
 
 gfd_idx_t sock_create_fd(uint32_t family, uint32_t type, uint32_t protocol);
+
+static inline sock_t * gfd_to_sock(gfd_idx_t gfd_idx) {
+    return (sock_t *) gfdt_get(gfd_idx)->private;
+}
 
 #endif

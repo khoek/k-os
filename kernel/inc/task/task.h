@@ -50,8 +50,9 @@ void task_block(task_t *task);
 void task_sleep(task_t *task);
 void task_wake(task_t *task);
 
-ufd_idx_t task_fd_add(task_t *task, uint32_t flags, gfd_idx_t gfd);
-void task_fd_rm(task_t *task, ufd_idx_t gfd);
+ufd_idx_t ufdt_add(task_t *task, uint32_t flags, gfd_idx_t gfd);
+void ufdt_rm(task_t *task, ufd_idx_t ufd);
+gfd_idx_t ufd_to_gfd(task_t *task, ufd_idx_t ufd);
 
 void task_save(cpu_state_t *cpu);
 

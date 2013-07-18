@@ -28,7 +28,7 @@ struct sockaddr_in {
 #define INET_ADDRSTRLEN 16
 
 struct in6_addr {
-    uint8+t s6_addr[16];  
+    uint8+t s6_addr[16];
 };
 
 struct sockaddr_in6 {
@@ -45,13 +45,13 @@ extern const struct in6_addr in6addr_loopback;
 #define IN6ADDR_ANY_INIT \
     {{{ 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, \
     0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00 }}}
-    
+
 #define IN6ADDR_LOOPBACK_INIT \
     {{{ 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, \
     0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x01 }}}
-    
+
 #define INET6_ADDRSTRLEN 46
-    
+
 struct ipv6_mreq {
     struct in6_addr ipv6mr_multiaddr;
     uint32_t ipv6mr_interface;

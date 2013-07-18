@@ -31,5 +31,6 @@ typedef struct ufd {
 
 gfd_idx_t gfdt_add(uint32_t type, uint32_t flags, fd_ops_t *ops, void *private);
 void gfdt_rm(gfd_idx_t gfd_idx);
+gfd_t * gfdt_get(gfd_idx_t gfd_idx);
 
 #endif

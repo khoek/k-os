@@ -30,6 +30,10 @@ void gfdt_rm(gfd_idx_t gfd_idx) {
     gfd_next = gfd_idx;
 }
 
+gfd_t * gfdt_get(gfd_idx_t gfd_idx) {
+    return &gfdt[gfd_idx];
+}
+
 static INITCALL gfdt_init() {
     gfdt = mm_map(page_to_phys(alloc_page(0)));
     gfd_list = mm_map(page_to_phys(alloc_page(0)));

@@ -70,7 +70,19 @@ static void udp_open(sock_t *sock) {
 static void udp_close(sock_t *sock) {
 }
 
+static void udp_send(sock_t *sock, void *buff, uint32_t len, uint32_t flags) {
+    //TODO Send udp packet
+
+    /*
+    task_block(current);
+
+    task_reschedule();
+    */
+}
+
 sock_protocol_t udp_protocol = {
     .open  = udp_open,
     .close = udp_close,
+    
+    .send = udp_send,
 };

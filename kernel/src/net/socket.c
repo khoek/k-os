@@ -53,6 +53,10 @@ sock_t * sock_create(uint32_t family, uint32_t type, uint32_t protocol) {
     return sock;
 }
 
+uint32_t sock_send(sock_t *sock, void *buff, uint32_t len, uint32_t flags) {
+    return sock->proto->send(sock, buff, len, flags);
+}
+
 void sock_close(sock_t *sock) {
     sock->proto->close(sock);
 
