@@ -73,7 +73,7 @@ static void icmp_close(sock_t *sock) {
 
 sock_protocol_t icmp_protocol = {
     .type  = SOCK_DGRAM,
-        
+
     .open  = icmp_open,
     .close = icmp_close,
 };

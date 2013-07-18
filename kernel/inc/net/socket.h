@@ -46,7 +46,7 @@ struct sock_protocol {
     uint32_t type;
 
     void (*open)(sock_t *);
-    void (*send)(sock_t *, void *buff, uint32_t len, uint32_t flags);
+    uint32_t (*send)(sock_t *, void *buff, uint32_t len, uint32_t flags);
     void (*close)(sock_t *);
 
     /*
