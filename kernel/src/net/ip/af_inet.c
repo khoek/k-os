@@ -17,7 +17,7 @@ void register_inet_protocol(inet_protocol_t *protocol) {
     uint32_t flags;
     spin_lock_irqsave(&type_lock, &flags);
 
-    list_add_before(&protocol->list, &types[protocol->type]);
+    list_add_before(&protocol->list, &types[protocol->impl->type]);
 
     spin_unlock_irqstore(&type_lock, flags);
 }
@@ -42,24 +42,21 @@ static sock_protocol_t * inet_find(uint32_t type, uint32_t protocol) {
 }
 
 static sock_family_t af_inet = {
-    .code      = AF_INET,
+    .family    = AF_INET,
     .addr_size = sizeof(ip_t),
     .find      = inet_find,
-}
+};
 
 static inet_protocol_t builtin_protocols[] = {
     {
-        .type     = SOCK_DGRAM,
         .protocol = IP_PROT_UDP,
         .impl     = &udp_protocol
     },
     {
-        .type     = SOCK_DGRAM,
         .protocol = IP_PROT_ICMP,
         .impl     = &icmp_protocol
     },
     {
-        .type     = SOCK_RAW,
         .protocol = 0,
         .impl     = &raw_protocol
     },

@@ -81,8 +81,9 @@ static void udp_send(sock_t *sock, void *buff, uint32_t len, uint32_t flags) {
 }
 
 sock_protocol_t udp_protocol = {
-    .open  = udp_open,
-    .close = udp_close,
-    
+    .type  = SOCK_DGRAM,
+        
+    .open  = udp_open,    
     .send = udp_send,
+    .close = udp_close,
 };

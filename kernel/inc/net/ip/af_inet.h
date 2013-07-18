@@ -12,7 +12,6 @@
 typedef struct inet_protocol_t {
     list_head_t list;
 
-    uint32_t type;
     uint16_t protocol;
     sock_protocol_t *impl;
 } inet_protocol_t;

@@ -16,6 +16,8 @@ typedef enum sock_type {
 
 #define SOCK_MAX (SOCK_RAW + 1)
 
+#define SOCK_FLAG_CONNECTED (1 << 0)
+
 #include "lib/int.h"
 #include "sync/atomic.h"
 #include "net/types.h"
@@ -26,13 +28,14 @@ typedef struct sock sock_t;
 typedef struct sock_protocol sock_protocol_t;
 
 typedef struct sock_family {
-    uint32_t code;
+    uint32_t family;
     uint32_t addr_size;
     sock_protocol_t * (*find)(uint32_t, uint32_t);
 } sock_family_t;
 
 struct sock {
     sock_addr_t peer;
+    uint32_t flags;
 
     sock_family_t *family;
     sock_protocol_t *proto;
@@ -40,8 +43,10 @@ struct sock {
 };
 
 struct sock_protocol {
+    uint32_t type;
+
     void (*open)(sock_t *);
-    uint32_t (*send)(sock_t *, void *buff, uint32_t len, uint32_t flags);
+    void (*send)(sock_t *, void *buff, uint32_t len, uint32_t flags);
     void (*close)(sock_t *);
 
     /*

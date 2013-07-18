@@ -13,8 +13,8 @@ void register_sock_family(sock_family_t *family) {
     uint32_t flags;
     spin_lock_irqsave(&family_lock, &flags);
 
-    if(families[family->code]) panicf("Socket family %u already registered!", family->code);
-    families[family->code] = family;
+    if(families[family->family]) panicf("Socket family %u already registered!", family->family);
+    families[family->family] = family;
 
     spin_unlock_irqstore(&family_lock, flags);
 }
@@ -54,7 +54,16 @@ sock_t * sock_create(uint32_t family, uint32_t type, uint32_t protocol) {
 }
 
 uint32_t sock_send(sock_t *sock, void *buff, uint32_t len, uint32_t flags) {
-    return sock->proto->send(sock, buff, len, flags);
+    if(sock->flags & SOCK_FLAG_CONNECTED) {
+        return sock->proto->send(sock, buff, len, flags);
+    } else {
+        if(sock->proto->type == SOCK_DGRAM || sock->proto->type == SOCK_RAW) {
+            //FIXME errno = EDESTADDRREQ
+        } else {
+            //FIXME errno = ENOTCONN
+        }
+        return -1;
+    }
 }
 
 void sock_close(sock_t *sock) {
