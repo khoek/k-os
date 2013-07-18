@@ -37,8 +37,8 @@ An operating system written by Keeley Hoek as a hobby. It was inspired by Charli
 ## Compiling
 Currently K-OS accepts the following optional configuration options:
 
-    * ```CONFIG_OPTIMIZE``` - Remove assorted bugcheck code which would otherwise make the system unnecessarily slower
-    * ```CONFIG_DEBUG_MM``` - Enable particularly expensive MM-related bugchecks
+    * CONFIG_OPTIMIZE - Remove assorted bugcheck code which would otherwise make the system unnecessarily slower
+    * CONFIG_DEBUG_MM - Enable particularly expensive MM-related bugchecks
 
 ## License
 
