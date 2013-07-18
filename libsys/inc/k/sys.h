@@ -7,6 +7,4 @@ void _sleep(unsigned int millis);
 void _log(const char *s, unsigned short len);
 unsigned long long _uptime();
 
-int socket(int family, int type, int protocol);
-
 #endif

@@ -6,7 +6,7 @@
 #include "net/socket.h"
 #include "fs/fd.h"
 
-static sock_family_t *families[PF_MAX];
+static sock_family_t *families[AF_MAX];
 static DEFINE_SPINLOCK(family_lock);
 
 void register_sock_family(sock_family_t *family) {

@@ -1,13 +1,12 @@
 #ifndef KERNEL_NET_SOCK_H
 #define KERNEL_NET_SOCK_H
 
-#define PF_INET 1
-#define PF_LINK 2
-#define PF_MAX  3
-
-#define AF_INET PF_INET
-#define AF_LINK PF_LINK
-#define AF_MAX  PF_MAX
+#define AF_INET   1
+#define AF_INET6  2
+#define AF_UNIX   3
+#define AF_UNSPEC 4
+#define AF_LINK   5
+#define AF_MAX    6
 
 typedef enum sock_type {
     SOCK_STREAM = 1,
