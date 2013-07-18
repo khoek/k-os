@@ -108,18 +108,21 @@ void task_add_page(task_t UNUSED(*task), page_t UNUSED(*page)) {
     //TODO add this to the list of pages for the task
 }
 
-void task_fd_add(task_t *task, uint32_t flags, uint32_t gfd) {
+ufd_idx_t task_fd_add(task_t *task, uint32_t flags, gfd_idx_t gfd) {
     uint32_t f;
     spin_lock_irqsave(&task->fd_lock, &f);
 
+    ufd_idx_t added = task->fd_next;
     task->fd[task->fd_next].flags = flags;
     task->fd[task->fd_next].gfd = gfd;
     task->fd_next = task->fd_list[task->fd_next];
 
     spin_unlock_irqstore(&task->fd_lock, f);
+
+    return added;
 }
 
-void task_fd_rm(task_t *task, uint32_t fd_idx) {
+void task_fd_rm(task_t *task, ufd_idx_t fd_idx) {
     uint32_t flags;
     spin_lock_irqsave(&task->fd_lock, &flags);
 
@@ -144,10 +147,10 @@ task_t * task_create(bool kernel, void *ip, void *sp) {
     page_build_directory(task->directory);
 
     task->fd_count = PAGE_SIZE / sizeof(ufd_t);
-    task->fd_next = 0;
+    task->fd_next = 3;
 
     uint32_t *tmp_fds_list = (uint32_t *) alloc_page_user(0, task, 0x20000);
-    for(uint32_t i = 0; i < task->fd_count - 1; i++) {
+    for(uint32_t i = 3; i < task->fd_count - 1; i++) {
         tmp_fds_list[i] = i + 1;
     }
     tmp_fds_list[task->fd_count - 1] = FREELIST_END;

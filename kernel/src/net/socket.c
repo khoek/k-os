@@ -38,10 +38,15 @@ sock_t * sock_create(uint32_t family, uint32_t type, uint32_t protocol) {
         return NULL;
     }
 
-    sock_t *sock = sock_alloc();
-    sock->family = families[family];
-    sock->proto = families[family]->find(type, protocol);
-    sock->proto->open(sock);
+    sock_t *sock = NULL;
+    sock_protocol_t *proto = families[family]->find(type, protocol);
+    if(proto) {
+        sock = sock_alloc();
+        sock->family = families[family];
+        sock->proto = proto;
+
+        sock->proto->open(sock);
+    }
 
     spin_unlock_irqstore(&family_lock, flags);
 
@@ -65,5 +70,9 @@ static fd_ops_t sock_ops = {
 gfd_idx_t sock_create_fd(uint32_t family, uint32_t type, uint32_t protocol) {
     sock_t *sock = sock_create(family, type, protocol);
 
-    return gfdt_add(FD_SOCK, 0, &sock_ops, sock);
+    if(sock) {
+        return gfdt_add(FD_SOCK, 0, &sock_ops, sock);
+    } else {
+        return FD_INVALID;
+    }
 }

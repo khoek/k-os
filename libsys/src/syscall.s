@@ -3,6 +3,7 @@
 .global _sleep
 .global _log
 .global _uptime
+.global socket
 
 _exit:
     mov 4(%esp), %ecx
@@ -38,15 +39,15 @@ _uptime:
     int $0x80
 
     ret
-    
+
 socket:
-    push ebx
-    
+    push %ebx
+
     mov $5, %eax
-    mov 12(%esp), %ebx
-    mov 8(%esp), %edx
-    mov 4(%esp), %ecx
+    mov 16(%esp), %ebx
+    mov 12(%esp), %edx
+    mov 8(%esp), %ecx
     int $0x80
-    
-    pop ebx
+
+    pop %ebx
     ret

@@ -174,7 +174,7 @@ static uint32_t mmio_read(net_825xx_t *net_device, uint32_t reg) {
 }
 
 static void mmio_write(net_825xx_t *net_device, uint32_t reg, uint32_t value) {
-     *(uint32_t *)(net_device->mmio + reg) = value;
+    *(uint32_t *)(net_device->mmio + reg) = value;
 }
 
 static uint16_t net_eeprom_read(net_825xx_t *net_device, uint8_t addr) {
@@ -273,7 +273,7 @@ static bool net_825xx_probe(device_t *device) {
     net_device->mmio = (uint32_t) mm_map((void *) BAR_ADDR_32(pci_device->bar[0]));
 
     //FIXME this assumes that mm_map will map the pages contiguously, this should not be relied upon!
-    for(uint32_t addr = PAGE_SIZE; addr < (DIV_DOWN(REG_LAST, PAGE_SIZE) * PAGE_SIZE); addr += PAGE_SIZE) {
+    for(uint32_t addr = PAGE_SIZE; addr < (DIV_UP(REG_LAST, PAGE_SIZE) * PAGE_SIZE); addr += PAGE_SIZE) {
         mm_map((void *) (addr + BAR_ADDR_32(pci_device->bar[0])));
     }
 
@@ -353,7 +353,7 @@ static bool net_825xx_probe(device_t *device) {
     mmio_write(net_device, REG_TDLEN, NUM_TX_DESCS * sizeof(tx_desc_t));
 
     mmio_write(net_device, REG_TDH, 0);
-    mmio_write(net_device, REG_TDT, NUM_TX_DESCS);
+    mmio_write(net_device, REG_TDT, 0);
 
     net_device->interface.link_layer = eth_link_layer;
     net_device->interface.send = net_825xx_send;

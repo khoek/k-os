@@ -50,6 +50,9 @@ void task_block(task_t *task);
 void task_sleep(task_t *task);
 void task_wake(task_t *task);
 
+ufd_idx_t task_fd_add(task_t *task, uint32_t flags, gfd_idx_t gfd);
+void task_fd_rm(task_t *task, ufd_idx_t gfd);
+
 void task_save(cpu_state_t *cpu);
 
 void task_reschedule();

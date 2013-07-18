@@ -25,7 +25,7 @@ void register_pf_inet_protocol(pf_inet_protocol_t *protocol) {
 static sock_protocol_t * pf_inet_find(uint32_t type, uint32_t protocol) {
     bool success;
     pf_inet_protocol_t *found;
-    LIST_FOR_EACH_ENTRY(found, &types[protocol], list) {
+    LIST_FOR_EACH_ENTRY(found, &types[type], list) {
         success = true;
         if(found->protocol == protocol || found->protocol == IPPROTO_RAW) {
             break;

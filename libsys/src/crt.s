@@ -1,9 +1,9 @@
 .global _start
 
 .extern main
-.extern sys_exit
+.extern _exit
 
 _start:
     call main
     push %eax
-    call sys_exit
+    call _exit

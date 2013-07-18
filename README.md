@@ -39,7 +39,7 @@ Currently K-OS accepts the following optional configuration options:
 
     * ```CONFIG_OPTIMIZE``` - Remove assorted bugcheck code which would otherwise make the system unnecessarily slower
     * ```CONFIG_DEBUG_MM``` - Enable particularly expensive MM-related bugchecks
-    
+
 ## License
 
 Where not explicitly indicated otherwise, all files are licensed under the following terms:

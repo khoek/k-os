@@ -56,9 +56,9 @@ static void sys_uptime(interrupt_t *interrupt) {
 }
 
 static void sys_socket(interrupt_t *interrupt) {
-    //TODO sanitize stuff
+    gfd_idx_t fd = sock_create_fd(interrupt->cpu.reg.ecx, interrupt->cpu.reg.edx, interrupt->cpu.reg.ebx);
 
-    current->ret = sock_create_fd(interrupt->cpu.reg.ecx, interrupt->cpu.reg.edx, interrupt->cpu.reg.ebx);
+    current->ret = fd == FD_INVALID ? -1 : task_fd_add(current, 0, fd);
 }
 
 static syscall_t syscalls[MAX_SYSCALL] = {

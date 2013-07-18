@@ -4,7 +4,7 @@
 #include "fs/fd.h"
 #include "video/log.h"
 
-#define FREELIST_END ((uint32_t) (1 << 31))
+#define FREELIST_END (-1)
 
 gfd_t *gfdt;
 gfd_idx_t *gfd_list;
@@ -31,14 +31,14 @@ void gfdt_rm(gfd_idx_t gfd_idx) {
 }
 
 static INITCALL gfdt_init() {
-    gfdt = mm_map(alloc_page(0));
-    gfd_list = mm_map(alloc_page(0));
+    gfdt = mm_map(page_to_phys(alloc_page(0)));
+    gfd_list = mm_map(page_to_phys(alloc_page(0)));
     gfd_next = 0;
 
     for(uint32_t i = 0; i < (PAGE_SIZE / sizeof(gfd_t)) - 1; i++) {
         gfd_list[i] = i + 1;
     }
-    gfd_list[PAGE_SIZE / sizeof(gfd_t) - 1] = FREELIST_END;
+    gfd_list[(PAGE_SIZE / sizeof(gfd_t)) - 1] = FREELIST_END;
 
     return 0;
 }
