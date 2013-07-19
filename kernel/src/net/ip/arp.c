@@ -95,9 +95,6 @@ static void arp_cache_put_unresolved(ip_t ip, packet_t *packet) {
 }
 
 void arp_resolve(packet_t *packet) {
-    uint32_t flags;
-    spin_lock_irqsave(&arp_cache_lock, &flags);
-
     ip_t ip = *((ip_t *) packet->route.dst.addr);
 
     packet->route.src = packet->interface->hard_addr;
@@ -109,6 +106,9 @@ void arp_resolve(packet_t *packet) {
         packet->state = P_RESOLVED;
         packet_send(packet);
     } else {
+        uint32_t flags;
+        spin_lock_irqsave(&arp_cache_lock, &flags);
+    
         arp_cache_entry_t *entry = arp_cache_find(&ip);
 
         if(entry) {
@@ -132,8 +132,6 @@ void arp_resolve(packet_t *packet) {
             arp_cache_put_unresolved(ip, packet);
         }
     }
-
-    spin_unlock_irqstore(&arp_cache_lock, flags);
 }
 
 void arp_recv(packet_t *packet, void *raw, uint16_t len) {
