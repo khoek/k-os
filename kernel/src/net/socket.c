@@ -53,7 +53,7 @@ sock_t * sock_create(uint32_t family, uint32_t type, uint32_t protocol) {
     return sock;
 }
 
-bool sock_connect(sock_t *sock, sock_addr_t addr) {
+bool sock_connect(sock_t *sock, sock_addr_t *addr) {
     if(!(sock->proto->type == SOCK_DGRAM || sock->proto->type == SOCK_RAW)) {
         if(sock->flags & SOCK_FLAG_CONNECTED) {
             //FIXME errno = EISCONN
@@ -61,9 +61,12 @@ bool sock_connect(sock_t *sock, sock_addr_t addr) {
         }
     }
     
-    sock->peer = addr;
-    
-    return sock->proto->connect(sock);
+    if(sock->proto->connect(sock, addr)) {
+        sock->flags |= SOCK_FLAG_CONNECTED;
+        return true;
+    } else {
+        return false;
+    }
 }
 
 uint32_t sock_send(sock_t *sock, void *buff, uint32_t len, uint32_t flags) {

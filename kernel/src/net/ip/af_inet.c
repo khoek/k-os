@@ -42,7 +42,7 @@ static sock_protocol_t * inet_find(uint32_t type, uint32_t protocol) {
 
 static sock_family_t af_inet = {
     .family    = AF_INET,
-    .addr_size = sizeof(ip_t),
+    .addr_len = sizeof(ip_t),
     .find      = inet_find,
 };
 

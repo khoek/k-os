@@ -69,7 +69,7 @@ static void udp_open(sock_t *sock) {
 static bool udp_connect(sock_t *sock, sock_addr_t *addr) {
     if(addr->family == AF_UNSPEC) {
         sock->peer.family = AF_UNSPEC;
-        sock->peer.addr = &IP_NONE;
+        sock->peer.addr = (void *) &IP_NONE;
     } else if(addr->family == AF_INET) {
         sock->peer.family = AF_INET;
         sock->peer.addr = addr->addr;

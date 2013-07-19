@@ -12,7 +12,7 @@ static INITCALL module_init() {
     logf("module - detected %u module(s)", count);
 
     for(uint32_t i = 0; i < count; i++) {
-        logf("module - #%u load %s", binfmt_load_exe((void *) mods[i].start, mods[i].end - mods[i].start) ? "failed" : "OK");
+        logf("module - #%u load %s", i + 1, binfmt_load_exe((void *) mods[i].start, mods[i].end - mods[i].start) ? "failed" : "OK");
     }
 
     return 0;
