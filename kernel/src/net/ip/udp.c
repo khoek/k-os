@@ -66,7 +66,18 @@ void udp_recv(packet_t *packet, void *raw, uint16_t len) {
 static void udp_open(sock_t *sock) {
 }
 
-static void udp_close(sock_t *sock) {
+static bool udp_connect(sock_t *sock, sock_addr_t *addr) {
+    if(addr->family == AF_UNSPEC) {
+        sock->peer.family = AF_UNSPEC;
+        sock->peer.addr = &IP_NONE;
+    } else if(addr->family == AF_INET) {
+        sock->peer.family = AF_INET;
+        sock->peer.addr = addr->addr;
+    } else {
+        return false;
+    }
+    
+    return true;
 }
 
 static uint32_t udp_send(sock_t *sock, void *buff, uint32_t len, uint32_t flags) {
@@ -81,10 +92,14 @@ static uint32_t udp_send(sock_t *sock, void *buff, uint32_t len, uint32_t flags)
     return len;
 }
 
+static void udp_close(sock_t *sock) {
+}
+
 sock_protocol_t udp_protocol = {
     .type  = SOCK_DGRAM,
 
     .open  = udp_open,
+    .connect = udp_connect,
     .send = udp_send,
     .close = udp_close,
 };

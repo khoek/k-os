@@ -77,6 +77,17 @@ static void sys_socket(interrupt_t *interrupt) {
     current->ret = fd == FD_INVALID ? -1 : ufdt_add(current, 0, fd);
 }
 
+static void sys_connect(interrupt_t *interrupt) {
+    gfd_idx_t fd = ufd_to_gfd(current, interrupt->cpu.reg.ecx);
+
+    if(fd == FD_INVALID) current->ret = -1;
+    else {
+        //TODO sanitize buffer argument
+
+        current->ret = sock_connect(gfd_to_sock(fd), (void *) interrupt->cpu.reg.edx, interrupt->cpu.reg.ebx) ? 0 : -1;
+    }
+}
+
 static void sys_send(interrupt_t *interrupt) {
     gfd_idx_t fd = ufd_to_gfd(current, interrupt->cpu.reg.ecx);
 
@@ -84,8 +95,7 @@ static void sys_send(interrupt_t *interrupt) {
     else {
         //TODO sanitize buffer argument
 
-        sock_t *sock = gfd_to_sock(fd);
-        current->ret = sock_send(sock, (void *) interrupt->cpu.reg.edx, interrupt->cpu.reg.ebx, interrupt->cpu.reg.esi);
+        current->ret = sock_send(gfd_to_sock(fd), (void *) interrupt->cpu.reg.edx, interrupt->cpu.reg.ebx, interrupt->cpu.reg.esi);
     }
 }
 
@@ -96,7 +106,8 @@ static syscall_t syscalls[MAX_SYSCALL] = {
     [3] = sys_log,
     [4] = sys_uptime,
     [5] = sys_socket,
-    [6] = sys_send,
+    [6] = sys_connect,
+    [7] = sys_send,
 };
 
 static void syscall_handler(interrupt_t *interrupt) {

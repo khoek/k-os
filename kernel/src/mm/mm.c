@@ -1,7 +1,6 @@
 #include <stddef.h>
 #include <stdbool.h>
 
-#include "boot/module.h"
 #include "lib/int.h"
 #include "lib/string.h"
 #include "common/init.h"
@@ -12,6 +11,7 @@
 #include "mm/mm.h"
 #include "mm/cache.h"
 #include "task/task.h"
+#include "fs/module.h"
 #include "video/console.h"
 #include "video/log.h"
 

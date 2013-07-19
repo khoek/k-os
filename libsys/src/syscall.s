@@ -4,6 +4,7 @@
 .global _log
 .global _uptime
 .global socket
+.global connect
 .global send
 
 _exit:
@@ -53,11 +54,23 @@ socket:
     pop %ebx
     ret
 
+connect:
+    push %ebx
+
+    mov $6, %eax
+    mov 16(%esp), %ebx
+    mov 12(%esp), %edx
+    mov 8(%esp), %ecx
+    int $0x80
+
+    pop %ebx
+    ret
+
 send:
     push %esi
     push %ebx
 
-    mov $6, %eax
+    mov $7, %eax
     mov 24(%esp), %ebx
     mov 20(%esp), %ebx
     mov 16(%esp), %edx

@@ -6,7 +6,7 @@ CCFLAGS=-Wall -g -Wextra -Werror -Wno-unused-parameter -m32 -I../inc -std=gnu99 
         -nostdlib -nostartfiles -nodefaultlibs -ffreestanding -c
 
 OBJS=	loader.o \
-        init/kmain.o init/module.o \
+        init/kmain.o \
         lib/string.o lib/printf.o lib/rand.o \
         bug/debug.o bug/panic.o \
         video/console.o video/log.o \
@@ -19,7 +19,7 @@ OBJS=	loader.o \
         net/eth/eth.o \
         net/socket.o \
         net/ip/af_inet.o net/ip/ip.o net/ip/arp.o net/ip/icmp.o net/ip/tcp.o net/ip/udp.o net/ip/dhcp.o net/ip/nbns.o net/ip/raw.o \
-        fs/vfs.o fs/fd.o \
+        fs/vfs.o fs/module.o fs/fd.o \
         fs/stream/char.o \
         fs/binfmt/binfmt.o fs/binfmt/binfmt_elf.o \
         driver/bus/pci.o \

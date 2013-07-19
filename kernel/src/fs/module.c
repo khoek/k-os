@@ -1,7 +1,7 @@
 #include "lib/int.h"
 
 #include "common/init.h"
-#include "boot/module.h"
+#include "fs/module.h"
 #include "fs/binfmt.h"
 #include "video/log.h"
 
@@ -12,7 +12,7 @@ static INITCALL module_init() {
     logf("module - detected %u module(s)", count);
 
     for(uint32_t i = 0; i < count; i++) {
-        logf("binfmt returned %d", binfmt_load_exe((void *) mods[i].start, mods[i].end - mods[i].start));
+        logf("module - #%u load %s", binfmt_load_exe((void *) mods[i].start, mods[i].end - mods[i].start) ? "failed" : "OK");
     }
 
     return 0;
