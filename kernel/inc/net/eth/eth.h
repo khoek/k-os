@@ -3,7 +3,7 @@
 
 #include "lib/int.h"
 #include "common/compiler.h"
-#include "net/types.h"
+#include "net/socket.h"
 
 typedef struct mac { uint8_t addr[6]; } mac_t;
 

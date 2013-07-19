@@ -2,7 +2,6 @@
 #include "lib/rand.h"
 #include "lib/string.h"
 #include "mm/cache.h"
-#include "net/types.h"
 #include "net/packet.h"
 #include "net/interface.h"
 #include "net/ip/ip.h"

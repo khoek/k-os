@@ -4,10 +4,10 @@
 #include "common/init.h"
 #include "common/listener.h"
 #include "mm/cache.h"
-#include "net/types.h"
 #include "net/packet.h"
 #include "net/interface.h"
 #include "net/eth/eth.h"
+#include "net/ip/ip.h"
 #include "net/ip/udp.h"
 #include "net/ip/dhcp.h"
 #include "video/log.h"
@@ -233,7 +233,7 @@ static void dhcp_send_request(net_interface_t *interface, dhcp_header_t *hdr, dh
 }
 
 static void dhcp_ack(net_interface_t *interface, dhcp_header_t *hdr) {
-    interface->ip_data->ip_addr = hdr->yiaddr;
+    ((ip_interface_t *) interface->ip_data)->ip_addr = hdr->yiaddr;
 
     logf("dhcp - ip address ACK (%u.%u.%u.%u)", hdr->yiaddr.addr[0], hdr->yiaddr.addr[1], hdr->yiaddr.addr[2], hdr->yiaddr.addr[3]);
 

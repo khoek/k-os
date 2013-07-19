@@ -3,7 +3,8 @@
 
 #include "lib/int.h"
 #include "common/compiler.h"
-#include "net/types.h"
+#include "net/eth/eth.h"
+#include "net/ip/ip.h"
 
 #define ARP_OP_REQUEST  0x0001
 #define ARP_OP_RESPONSE 0x0002

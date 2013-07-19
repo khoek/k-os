@@ -1,4 +1,4 @@
-#include "net/types.h"
+#include "net/socket.h"
 #include "net/ip/raw.h"
 
 static void raw_open(sock_t *sock) {

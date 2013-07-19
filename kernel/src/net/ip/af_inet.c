@@ -2,7 +2,6 @@
 #include "common/init.h"
 #include "sync/spinlock.h"
 #include "net/socket.h"
-#include "net/types.h"
 #include "net/ip/af_inet.h"
 #include "net/ip/ip.h"
 #include "net/ip/tcp.h"

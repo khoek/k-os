@@ -2,7 +2,7 @@
 #include "common/list.h"
 #include "common/listener.h"
 #include "sync/spinlock.h"
-#include "net/types.h"
+#include "net/packet.h"
 #include "net/interface.h"
 #include "video/log.h"
 

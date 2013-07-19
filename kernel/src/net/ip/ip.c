@@ -4,7 +4,6 @@
 #include "common/list.h"
 #include "common/init.h"
 #include "mm/cache.h"
-#include "net/types.h"
 #include "net/packet.h"
 #include "net/interface.h"
 #include "net/socket.h"
@@ -28,7 +27,7 @@ void ip_build(packet_t *packet, uint8_t protocol, ip_t dst) {
     hdr->flags_frag_off = IP_FLAG_DONT_FRAG;
     hdr->ttl = 0x40;
     hdr->protocol = protocol;
-    hdr->src = packet->interface->ip_data->ip_addr;
+    hdr->src = ((ip_interface_t *) packet->interface->ip_data)->ip_addr;
     hdr->dst = dst;
     hdr->checksum = 0;
 
@@ -46,7 +45,7 @@ void ip_build(packet_t *packet, uint8_t protocol, ip_t dst) {
 
     packet->route.protocol = ETH_TYPE_IP;
     packet->route.src.family = AF_INET;
-    packet->route.src.addr = packet->interface->ip_data->ip_addr.addr;
+    packet->route.src.addr = ((ip_interface_t *) packet->interface->ip_data)->ip_addr.addr;
     packet->route.dst.family = AF_INET;
     packet->route.dst.addr = dst_copy;
 

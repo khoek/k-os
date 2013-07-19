@@ -1,6 +1,8 @@
 #ifndef KERNEL_NET_SOCK_H
 #define KERNEL_NET_SOCK_H
 
+#include "lib/int.h"
+
 #define AF_INET   1
 #define AF_INET6  2
 #define AF_UNIX   3
@@ -18,14 +20,28 @@ typedef enum sock_type {
 
 #define SOCK_FLAG_CONNECTED (1 << 0)
 
-#include "lib/int.h"
-#include "sync/atomic.h"
-#include "net/types.h"
-#include "fs/fd.h"
+typedef struct sock_addr {
+    uint32_t family;
+    void *addr;
+} sock_addr_t;
+
+typedef uint32_t net_protocol_t;
 
 typedef struct sock sock_t;
 
 typedef struct sock_protocol sock_protocol_t;
+
+typedef struct sock_route {
+    sock_addr_t src;
+    sock_addr_t dst;
+
+    net_protocol_t protocol;
+} sock_route_t;
+
+typedef struct sock_buff {
+    uint32_t size;
+    void *buff;
+} sock_buff_t;
 
 typedef struct sock_family {
     uint32_t family;
@@ -41,6 +57,10 @@ struct sock {
     sock_protocol_t *proto;
     void *private;
 };
+
+#include "lib/int.h"
+#include "net/packet.h"
+#include "fs/fd.h"
 
 struct sock_protocol {
     uint32_t type;

@@ -5,7 +5,6 @@
 #include "common/compiler.h"
 #include "bug/debug.h"
 #include "mm/cache.h"
-#include "net/types.h"
 #include "net/packet.h"
 #include "net/socket.h"
 #include "net/eth/eth.h"

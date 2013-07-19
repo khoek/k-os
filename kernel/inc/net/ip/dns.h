@@ -3,7 +3,6 @@
 
 #include "lib/int.h"
 #include "common/compiler.h"
-#include "net/types.h"
 
 typedef struct dns_header {
     uint16_t xid;

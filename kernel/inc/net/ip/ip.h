@@ -3,8 +3,8 @@
 
 #include "lib/int.h"
 #include "common/compiler.h"
-#include "net/types.h"
 #include "net/socket.h"
+#include "net/packet.h"
 
 typedef struct ip { uint8_t addr[4]; } ip_t;
 

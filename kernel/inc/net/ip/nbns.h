@@ -3,7 +3,8 @@
 
 #include "lib/int.h"
 #include "common/compiler.h"
-#include "net/types.h"
+#include "net/packet.h"
+#include "net/interface.h"
 
 #define NBNS_PORT 137
 

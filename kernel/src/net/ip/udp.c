@@ -1,7 +1,6 @@
 #include "lib/int.h"
 #include "common/swap.h"
 #include "mm/cache.h"
-#include "net/types.h"
 #include "net/packet.h"
 #include "net/interface.h"
 #include "net/ip/ip.h"
@@ -20,8 +19,8 @@ void udp_build(packet_t *packet, ip_t dst_ip, uint16_t src_port, uint16_t dst_po
     hdr->length = swap_uint16(sizeof(udp_header_t) + packet->payload.size);
 
     uint32_t sum = 0;
-    sum += ((uint16_t *) &packet->interface->ip_data->ip_addr.addr)[0];
-    sum += ((uint16_t *) &packet->interface->ip_data->ip_addr.addr)[1];
+    sum += ((uint16_t *) &((ip_interface_t *) packet->interface->ip_data)->ip_addr.addr)[0];
+    sum += ((uint16_t *) &((ip_interface_t *) packet->interface->ip_data)->ip_addr.addr)[1];
     sum += ((uint16_t *) &dst_ip)[0];
     sum += ((uint16_t *) &dst_ip)[1];
     sum += swap_uint16((uint16_t) IP_PROT_UDP);

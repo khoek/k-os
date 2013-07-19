@@ -4,8 +4,13 @@
 #include "lib/int.h"
 #include "common/list.h"
 #include "common/listener.h"
-#include "net/types.h"
-#include "net/ip/ip.h"
+#include "net/packet.h"
+
+typedef struct net_link_layer {
+    void (*resolve)(packet_t *packet);
+    void (*build_hdr)(packet_t *);
+    void (*recieve)(packet_t *, void *, uint16_t);
+} net_link_layer_t;
 
 typedef enum net_state {
     IF_UNKNOWN=0,
@@ -15,12 +20,12 @@ typedef enum net_state {
     IF_ERROR
 } net_state_t;
 
-struct net_interface {
+typedef struct net_interface {
     list_head_t list;
 
     net_state_t state;
 
-    ip_interface_t *ip_data;
+    void *ip_data;
 
     sock_addr_t hard_addr;
 
@@ -29,7 +34,7 @@ struct net_interface {
     net_link_layer_t link_layer;
 
     int32_t (*send)(packet_t *);
-};
+} net_interface_t;
 
 void register_net_interface(net_interface_t *interface);
 void unregister_net_interface(net_interface_t *interface);

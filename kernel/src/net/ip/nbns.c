@@ -5,7 +5,6 @@
 #include "common/init.h"
 #include "common/compiler.h"
 #include "mm/cache.h"
-#include "net/types.h"
 #include "net/packet.h"
 #include "net/interface.h"
 #include "net/ip/ip.h"
@@ -124,7 +123,7 @@ void nbns_handle(packet_t *packet, void *raw, uint16_t len) {
     response->rr.class = swap_uint16(RR_CLASS_INTERNET);
     response->rr.ttl = swap_uint32(HOSTNAME_TTL);
     response->rr.addr_len = swap_uint16(sizeof(ip_t) + sizeof(uint16_t));
-    response->rr.ip = packet->interface->ip_data->ip_addr;
+    response->rr.ip = ((ip_interface_t *) packet->interface->ip_data)->ip_addr;
 
     packet_t *resp = packet_create(packet->interface, response, sizeof(nbns_query_response_t));
     udp_build(resp, ip_hdr(packet)->src, NBNS_PORT, NBNS_PORT);
@@ -150,7 +149,7 @@ void nbns_register_name(net_interface_t *interface, const char *name) {
     nbns->rr.ttl = 0;
     nbns->rr.addr_len = swap_uint16(sizeof(ip_t) + sizeof(uint16_t));
     nbns->rr.nb_flags = swap_uint16(SCOPE_UNIQUE | NODE_B);
-    nbns->rr.ip = interface->ip_data->ip_addr;
+    nbns->rr.ip = ((ip_interface_t *) interface->ip_data)->ip_addr;
 
     packet_t *packet = packet_create(interface, nbns, sizeof(nbns_reg_request_t));
     udp_build(packet, IP_BROADCAST, NBNS_PORT, NBNS_PORT);
