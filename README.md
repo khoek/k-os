@@ -3,6 +3,8 @@
 
 An operating system written by Keeley Hoek as a hobby. It was inspired by Charlie Somerville's [JSOS](https://github.com/charliesome/JSOS).
 
+Design mantra is to "minimize assembly where doing so does not intrude on clarity".
+
 ## Features
 
 * Multiboot 1
