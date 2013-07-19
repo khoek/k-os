@@ -108,7 +108,7 @@ void arp_resolve(packet_t *packet) {
     } else {
         uint32_t flags;
         spin_lock_irqsave(&arp_cache_lock, &flags);
-    
+
         arp_cache_entry_t *entry = arp_cache_find(&ip);
 
         if(entry) {

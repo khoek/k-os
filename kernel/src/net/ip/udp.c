@@ -1,5 +1,6 @@
 #include "lib/int.h"
 #include "common/swap.h"
+#include "sync/atomic.h"
 #include "mm/cache.h"
 #include "net/packet.h"
 #include "net/interface.h"
@@ -76,7 +77,7 @@ static bool udp_connect(sock_t *sock, sock_addr_t *addr) {
     } else {
         return false;
     }
-    
+
     return true;
 }
 

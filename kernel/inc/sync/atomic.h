@@ -19,5 +19,6 @@ void atomic_add(atomic_t *a, int32_t v);
 int32_t atomic_add_and_return(atomic_t *a, int32_t v);
 
 void atomic_sub(atomic_t *a, int32_t v);
+int32_t atomic_sub_and_return(atomic_t *a, int32_t v);
 
 #endif

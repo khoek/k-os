@@ -11,8 +11,7 @@
 typedef enum task_state {
     TASK_NONE,
     TASK_AWAKE,
-    TASK_SLEEPING,
-    TASK_BLOCKING
+    TASK_SLEEPING
 } task_state_t;
 
 typedef struct task {
@@ -27,6 +26,10 @@ typedef struct task {
 
     uint32_t pid;
     uint32_t flags;
+
+    int32_t sleeps; //sleeps > 0 means should be sleeping
+
+    spinlock_t lock;
 
     ufd_t *fd;
     ufd_idx_t *fd_list;
@@ -46,7 +49,6 @@ void task_add_page(task_t *task, page_t *page);
 
 void task_exit(task_t *task, int32_t code);
 
-void task_block(task_t *task);
 void task_sleep(task_t *task);
 void task_wake(task_t *task);
 

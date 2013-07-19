@@ -60,7 +60,7 @@ bool sock_connect(sock_t *sock, sock_addr_t *addr) {
             return -1;
         }
     }
-    
+
     if(sock->proto->connect(sock, addr)) {
         sock->flags |= SOCK_FLAG_CONNECTED;
         return true;

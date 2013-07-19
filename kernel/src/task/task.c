@@ -7,6 +7,7 @@
 #include "common/asm.h"
 #include "bug/debug.h"
 #include "bug/panic.h"
+#include "sync/spinlock.h"
 #include "arch/gdt.h"
 #include "arch/idt.h"
 #include "arch/cpl.h"
@@ -29,25 +30,39 @@ static task_t *idle_task;
 
 static DEFINE_LIST(tasks);
 static DEFINE_LIST(sleeping_tasks);
-static DEFINE_LIST(blocking_tasks);
 
 static void idle_loop() {
     while(1) hlt();
 }
 
-void task_block(task_t *task) {
-    task->state = TASK_BLOCKING;
-    list_move_before(&task->list, &blocking_tasks);
-}
-
 void task_sleep(task_t *task) {
-    task->state = TASK_SLEEPING;
-    list_move_before(&task->list, &sleeping_tasks);
+    if(!task) return;
+
+    uint32_t flags;
+    spin_lock_irqsave(&task->lock, &flags);
+
+    task->sleeps++;
+    if(task->sleeps > 0) {
+        task->state = TASK_SLEEPING;
+        list_move_before(&task->list, &sleeping_tasks);
+    }
+
+    spin_unlock_irqstore(&task->lock, flags);
 }
 
 void task_wake(task_t *task) {
-    task->state = TASK_AWAKE;
-    list_move_before(&task->list, &tasks);
+    if(!task) return;
+
+    uint32_t flags;
+    spin_lock_irqsave(&task->lock, &flags);
+
+    task->sleeps--;
+    if(task->sleeps <= 0) {
+        task->state = TASK_AWAKE;
+        list_move_before(&task->list, &sleeping_tasks);
+    }
+
+    spin_unlock_irqstore(&task->lock, flags);
 }
 
 void task_exit(task_t *task, int32_t code) {
