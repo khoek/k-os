@@ -1,5 +1,5 @@
-#ifndef LIBSYS_H
-#define LIBSYS_H
+#ifndef LIBSYS_K_SYS_H
+#define LIBSYS_K_SYS_H
 
 void _exit(int code);
 unsigned long long _fork(unsigned int param);

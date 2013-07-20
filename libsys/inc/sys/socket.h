@@ -1,5 +1,5 @@
-#ifndef K_SYS_SOCKET_H
-#define K_SYS_SOCKET_H
+#ifndef LIBSYS_SYS_SOCKET_H
+#define LIBSYS_SYS_SOCKET_H
 
 #include <inttypes.h>
 
