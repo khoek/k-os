@@ -102,7 +102,7 @@ static void sys_connect(interrupt_t *interrupt) {
             } else if(useraddr->sa_family != sock->family->family) {
                 //FIXME errno = EAFNOSUPPORT
 
-                current->ret = -1;            
+                current->ret = -1;
             } else {
                 void *rawaddr = kmalloc(sock->family->addr_len);
                 memcpy(rawaddr, &useraddr->sa_data, sock->family->addr_len);
@@ -124,7 +124,7 @@ static void sys_send(interrupt_t *interrupt) {
     if(fd == FD_INVALID) current->ret = -1;
     else {
         //TODO sanitize buffer/size arguments
-        
+
         void *buff = kmalloc(interrupt->cpu.reg.ebx);
         memcpy(buff, (void *) interrupt->cpu.reg.edx, interrupt->cpu.reg.ebx);
 
