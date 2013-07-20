@@ -126,7 +126,7 @@ void nbns_handle(packet_t *packet, void *raw, uint16_t len) {
     response->rr.ip = ((ip_interface_t *) packet->interface->ip_data)->ip_addr;
 
     packet_t *resp = packet_create(packet->interface, response, sizeof(nbns_query_response_t));
-    udp_build(resp, ip_hdr(packet)->src, NBNS_PORT, NBNS_PORT);
+    udp_build(resp, ip_hdr(packet)->src, swap_uint16(NBNS_PORT), swap_uint16(NBNS_PORT));
     packet_send(resp);
 }
 
@@ -152,7 +152,7 @@ void nbns_register_name(net_interface_t *interface, const char *name) {
     nbns->rr.ip = ((ip_interface_t *) interface->ip_data)->ip_addr;
 
     packet_t *packet = packet_create(interface, nbns, sizeof(nbns_reg_request_t));
-    udp_build(packet, IP_BROADCAST, NBNS_PORT, NBNS_PORT);
+    udp_build(packet, IP_BROADCAST, swap_uint16(NBNS_PORT), swap_uint16(NBNS_PORT));
     packet_send(packet);
 }
 

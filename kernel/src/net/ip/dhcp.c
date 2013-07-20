@@ -187,7 +187,7 @@ static void dhcp_send_discover(net_interface_t *interface) {
     *ptr++ = OPT_END;
 
     packet_t *packet = packet_create(interface, dhcp, sizeof(dhcp_header_t) + OPTIONS_LEN_DISCOVER + END_PADDING);
-    udp_build(packet, IP_BROADCAST, DHCP_PORT_CLIENT, DHCP_PORT_SERVER);
+    udp_build(packet, IP_BROADCAST, swap_uint16(DHCP_PORT_CLIENT), swap_uint16(DHCP_PORT_SERVER));
     packet_send(packet);
 }
 
@@ -228,7 +228,7 @@ static void dhcp_send_request(net_interface_t *interface, dhcp_header_t *hdr, dh
     *ptr++ = OPT_END;
 
     packet_t *packet = packet_create(interface, dhcp, sizeof(dhcp_header_t) + sizeof(opts) + END_PADDING);
-    udp_build(packet, IP_BROADCAST, DHCP_PORT_CLIENT, DHCP_PORT_SERVER);
+    udp_build(packet, IP_BROADCAST, swap_uint16(DHCP_PORT_CLIENT), swap_uint16(DHCP_PORT_SERVER));
     packet_send(packet);
 }
 

@@ -12,11 +12,11 @@
 
 #include "checksum.h"
 
-void udp_build(packet_t *packet, ip_t dst_ip, uint16_t src_port, uint16_t dst_port) {
+void udp_build(packet_t *packet, ip_t dst_ip, uint16_t src_port_net, uint16_t dst_port_net) {
     udp_header_t *hdr = kmalloc(sizeof(udp_header_t));
 
-    hdr->src_port = swap_uint16(src_port);
-    hdr->dst_port = swap_uint16(dst_port);
+    hdr->src_port = src_port_net;
+    hdr->dst_port = dst_port_net;
     hdr->length = swap_uint16(sizeof(udp_header_t) + packet->payload.size);
 
     uint32_t sum = 0;
@@ -65,12 +65,12 @@ void udp_recv(packet_t *packet, void *raw, uint16_t len) {
 }
 
 static uint16_t udp_bind_port() {
-    //TODO actually pick a port
+    //TODO actually pick a port, return the port in network byte order
     return 25564;
 }
 
 static void udp_unbind_port(uint16_t port) {
-    //TODO free a bound port
+    //TODO free a bound port, parameter is in network byte order
 }
 
 typedef struct udp_data {
@@ -80,12 +80,12 @@ typedef struct udp_data {
 static void udp_open(sock_t *sock) {
     sock->peer.family = AF_UNSPEC;
     sock->peer.addr = (void *) &IP_AND_PORT_NONE;
-    
+
     udp_data_t *data = sock->private = kmalloc(sizeof(udp_data_t));
     data->local_port = udp_bind_port();
 }
 
-static void udp_close(sock_t *sock) {    
+static void udp_close(sock_t *sock) {
     udp_unbind_port(((udp_data_t *) sock->private)->local_port);
     kfree(sock->private, sizeof(udp_data_t));
 }
@@ -109,7 +109,7 @@ static uint32_t udp_send(sock_t *sock, void *buff, uint32_t len, uint32_t flags)
         //FIXME errno = EDESTADDRREQ
         return -1;
     }
-    
+
     ip_and_port_t *addr_data = (ip_and_port_t *) sock->peer.addr;
     addr_data = (void *) ((uint32_t) addr_data);
 
