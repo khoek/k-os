@@ -49,4 +49,6 @@ void net_recieve(net_interface_t *interface, void *raw, uint16_t len);
 
 void net_set_state(net_interface_t *interface, net_state_t state);
 
+net_interface_t * net_primary_interface();
+
 #endif

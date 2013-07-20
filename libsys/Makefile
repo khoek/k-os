@@ -29,7 +29,7 @@ clean:
 test: all main.c
 	rm -f ../kernel/build/kernel.elf
 	rm -f ../kernel/build/main.mod
-	/usr/local/cross/bin/i586-elf-gcc -c -Iinc -o main.o main.c
+	/usr/local/cross/bin/i586-elf-gcc -std=gnu99 -c -Iinc -o main.o main.c
 	/usr/local/cross/bin/i586-elf-ld -T linker.ld -o main.mod src/syscall.o src/crt.o main.o
 	cp main.mod ../kernel/build/
 	make -C ../kernel run

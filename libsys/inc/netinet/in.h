@@ -12,7 +12,7 @@ struct in_addr {
 };
 
 struct sockaddr_in {
-    sa_family_t sin_fmaily;
+    sa_family_t sin_family;
     in_port_t sin_port;
     struct in_addr sin_addr;
 };
@@ -28,7 +28,7 @@ struct sockaddr_in {
 #define INET_ADDRSTRLEN 16
 
 struct in6_addr {
-    uint8+t s6_addr[16];
+    uint8_t s6_addr[16];
 };
 
 struct sockaddr_in6 {

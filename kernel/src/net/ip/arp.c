@@ -117,10 +117,7 @@ void arp_resolve(packet_t *packet) {
 
             if(entry->state == CACHE_UNRESOLVED) {
                 list_add(&packet->list, &entry->pending);
-
-                spin_unlock_irqstore(&entry->lock, flags);
             } else if(entry->state == CACHE_RESOLVED) {
-                spin_unlock_irqstore(&entry->lock, flags);
 
                 packet->route.dst.family = AF_LINK;
                 packet->route.dst.addr = &entry->mac;
@@ -128,9 +125,13 @@ void arp_resolve(packet_t *packet) {
                 packet->state = P_RESOLVED;
                 packet_send(packet);
             }
+
+            spin_unlock_irqstore(&entry->lock, flags);
         } else {
             arp_cache_put_unresolved(ip, packet);
         }
+
+        spin_unlock_irqstore(&arp_cache_lock, flags);
     }
 }
 

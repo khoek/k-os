@@ -64,13 +64,36 @@ void udp_recv(packet_t *packet, void *raw, uint16_t len) {
     }
 }
 
+static uint16_t udp_bind_port() {
+    //TODO actually pick a port
+    return 25564;
+}
+
+static void udp_unbind_port(uint16_t port) {
+    //TODO free a bound port
+}
+
+typedef struct udp_data {
+    uint16_t local_port;
+} udp_data_t;
+
 static void udp_open(sock_t *sock) {
+    sock->peer.family = AF_UNSPEC;
+    sock->peer.addr = (void *) &IP_AND_PORT_NONE;
+    
+    udp_data_t *data = sock->private = kmalloc(sizeof(udp_data_t));
+    data->local_port = udp_bind_port();
+}
+
+static void udp_close(sock_t *sock) {    
+    udp_unbind_port(((udp_data_t *) sock->private)->local_port);
+    kfree(sock->private, sizeof(udp_data_t));
 }
 
 static bool udp_connect(sock_t *sock, sock_addr_t *addr) {
     if(addr->family == AF_UNSPEC) {
         sock->peer.family = AF_UNSPEC;
-        sock->peer.addr = (void *) &IP_NONE;
+        sock->peer.addr = (void *) &IP_AND_PORT_NONE;
     } else if(addr->family == AF_INET) {
         sock->peer.family = AF_INET;
         sock->peer.addr = addr->addr;
@@ -82,18 +105,21 @@ static bool udp_connect(sock_t *sock, sock_addr_t *addr) {
 }
 
 static uint32_t udp_send(sock_t *sock, void *buff, uint32_t len, uint32_t flags) {
-    //TODO Send udp packet
+    if(sock->peer.family != AF_INET) {
+        //FIXME errno = EDESTADDRREQ
+        return -1;
+    }
+    
+    ip_and_port_t *addr_data = (ip_and_port_t *) sock->peer.addr;
+    addr_data = (void *) ((uint32_t) addr_data);
 
-    /*
-    task_block(current);
+    packet_t *packet = packet_create(net_primary_interface(), buff, len);
+    udp_build(packet, addr_data->ip, ((udp_data_t *) sock->private)->local_port, addr_data->port);
+    packet_send(packet);
 
-    task_reschedule();
-    */
+    //TODO put task to sleep
 
     return len;
-}
-
-static void udp_close(sock_t *sock) {
 }
 
 sock_protocol_t udp_protocol = {

@@ -118,3 +118,7 @@ void net_set_state(net_interface_t *interface, net_state_t state) {
 
     spin_unlock_irqstore(&listener_lock, flags);
 }
+
+net_interface_t * net_primary_interface() {
+    return list_first(&interfaces, net_interface_t, list);
+}

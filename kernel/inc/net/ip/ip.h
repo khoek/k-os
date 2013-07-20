@@ -6,10 +6,17 @@
 #include "net/socket.h"
 #include "net/packet.h"
 
-typedef struct ip { uint8_t addr[4]; } ip_t;
+typedef struct ip { uint32_t padding[0]; uint8_t addr[4]; } ip_t;
 
 static const ip_t IP_BROADCAST = { .addr = {0xFF, 0xFF, 0xFF, 0xFF} };
 static const ip_t IP_NONE = { .addr = {0x00, 0x00, 0x00, 0x00} };
+
+typedef struct ip_and_port {
+    uint16_t port;
+    ip_t ip;
+} ip_and_port_t;
+
+static const ip_and_port_t IP_AND_PORT_NONE = { .port = 0, .ip = { .addr = {0x00, 0x00, 0x00, 0x00} } };
 
 #define IP_PROT_ICMP 0x01
 #define IP_PROT_TCP  0x06

@@ -82,7 +82,7 @@ static void sys_connect(interrupt_t *interrupt) {
 
     if(fd == FD_INVALID) current->ret = -1;
     else {
-        //TODO sanitize address argument
+        //TODO sanitize address/size arguments
 
         sock_t *sock = gfd_to_sock(fd);
 
@@ -99,6 +99,10 @@ static void sys_connect(interrupt_t *interrupt) {
                 //FIXME errno = EINVAL
 
                 current->ret = -1;
+            } else if(useraddr->sa_family != sock->family->family) {
+                //FIXME errno = EAFNOSUPPORT
+
+                current->ret = -1;            
             } else {
                 void *rawaddr = kmalloc(sock->family->addr_len);
                 memcpy(rawaddr, &useraddr->sa_data, sock->family->addr_len);
@@ -119,9 +123,12 @@ static void sys_send(interrupt_t *interrupt) {
 
     if(fd == FD_INVALID) current->ret = -1;
     else {
-        //TODO sanitize buffer argument
+        //TODO sanitize buffer/size arguments
+        
+        void *buff = kmalloc(interrupt->cpu.reg.ebx);
+        memcpy(buff, (void *) interrupt->cpu.reg.edx, interrupt->cpu.reg.ebx);
 
-        current->ret = sock_send(gfd_to_sock(fd), (void *) interrupt->cpu.reg.edx, interrupt->cpu.reg.ebx, interrupt->cpu.reg.esi);
+        current->ret = sock_send(gfd_to_sock(fd), buff, interrupt->cpu.reg.ebx, interrupt->cpu.reg.esi);
     }
 }
 
