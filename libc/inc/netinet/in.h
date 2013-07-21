@@ -1,5 +1,5 @@
-#ifndef LIBSYS_NETINET_IN_H
-#define LIBSYS_NETINET_IN_H
+#ifndef LIBC_NETINET_IN_H
+#define LIBC_NETINET_IN_H
 
 #include <inttypes.h>
 #include <sys/socket.h>

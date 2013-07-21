@@ -7,7 +7,7 @@ CCFLAGS=-Wall -g -Wextra -Werror -Wno-unused-parameter -m32 -I../inc -std=gnu99 
 
 OBJS=	src/crt.o src/syscall.o
 
-all: libsys.a
+all: libc.a
 
 .s.o:
 	@echo "      as  $<"
@@ -17,14 +17,14 @@ all: libsys.a
 	@echo "      cc  $<"
 	@$(CC) $(CCFLAGS) -o $@ $<
 
-libsys.a: $(OBJS)
-	@echo "      ar  libsys.a"
-	@rm -f libsys.a
-	@$(AR) rcs libsys.a $(OBJS)
+libc.a: $(OBJS)
+	@echo "      ar  libc.a"
+	@rm -f libc.a
+	@$(AR) rcs libc.a $(OBJS)
 
 clean:
 	find . -name \*.o -type f -delete
-	rm -f libsys.a
+	rm -f libc.a
 
 test: all main.c
 	rm -f ../kernel/build/kernel.elf
