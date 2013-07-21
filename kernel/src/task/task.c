@@ -36,8 +36,6 @@ static void idle_loop() {
 }
 
 void task_sleep(task_t *task) {
-    if(!task) return;
-
     uint32_t flags;
     spin_lock_irqsave(&task->lock, &flags);
 
@@ -48,6 +46,16 @@ void task_sleep(task_t *task) {
     }
 
     spin_unlock_irqstore(&task->lock, flags);
+}
+
+void task_sleep_current() {
+    cli();
+
+    task_sleep(current);
+
+    task_reschedule();
+
+    sti();
 }
 
 void task_wake(task_t *task) {

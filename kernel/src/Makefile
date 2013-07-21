@@ -9,6 +9,7 @@ OBJS=	loader.o \
         init/kmain.o \
         lib/string.o lib/printf.o lib/rand.o \
         bug/debug.o bug/panic.o \
+        sync/semaphore.o \
         video/console.o video/log.o \
         arch/gdt.o arch/registers.o arch/idt.o arch/isr.o arch/pit.o arch/tsc.o arch/cpl.o arch/atomic.o arch/spinlock.o \
         mm/mm.o mm/cache.o \
@@ -16,8 +17,8 @@ OBJS=	loader.o \
         device/device.o \
         task/task.o task/syscall.o \
         net/interface.o net/packet.o \
-        net/eth/eth.o \
         net/socket.o \
+        net/eth/eth.o \
         net/ip/af_inet.o net/ip/ip.o net/ip/arp.o net/ip/icmp.o net/ip/tcp.o net/ip/udp.o net/ip/dhcp.o net/ip/nbns.o net/ip/raw.o \
         fs/vfs.o fs/module.o fs/fd.o \
         fs/stream/char.o \

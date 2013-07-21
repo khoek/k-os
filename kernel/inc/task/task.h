@@ -16,6 +16,7 @@ typedef enum task_state {
 
 typedef struct task {
     list_head_t list;
+    list_head_t wait_list;
 
     uint32_t kernel_stack;
     uint32_t cpu; //On the top of the kernel stack, updated every interrupt
@@ -50,6 +51,8 @@ void task_add_page(task_t *task, page_t *page);
 void task_exit(task_t *task, int32_t code);
 
 void task_sleep(task_t *task);
+void task_sleep_current();
+
 void task_wake(task_t *task);
 
 ufd_idx_t ufdt_add(task_t *task, uint32_t flags, gfd_idx_t gfd);
