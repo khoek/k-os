@@ -2,6 +2,7 @@
 #include "lib/rand.h"
 #include "common/swap.h"
 #include "sync/spinlock.h"
+#include "sync/semaphore.h"
 #include "mm/cache.h"
 #include "net/packet.h"
 #include "net/ip/ip.h"
@@ -10,12 +11,20 @@
 
 #include "checksum.h"
 
+typedef enum tcp_state {
+    TCP_INITIALIZED,
+    TCP_SYN_SENT,
+    TCP_ESTABLISHED,
+    TCP_CLOSED,
+} tcp_state_t;
+
 #define FREELIST_END    (~((uint32_t) 0))
 
 #define EPHEMERAL_START 49152
 #define EPHEMERAL_END   65535
 #define EPHEMERAL_NUM   ((EPHEMERAL_END - EPHEMERAL_START) + 1)
 
+static sock_t * ephemeral_ports_sock[EPHEMERAL_NUM];
 static uint32_t ephemeral_ports_list[EPHEMERAL_NUM];
 static uint32_t ephemeral_next = EPHEMERAL_START;
 static DEFINE_SPINLOCK(tcp_ephemeral_lock);
@@ -75,13 +84,14 @@ void tcp_recv(packet_t *packet, void *raw, uint16_t len) {
     tcp++; //Silence gcc
 }
 
-static uint16_t tcp_bind_port() {
+static uint16_t tcp_bind_port(sock_t *sock) {
     uint32_t flags;
     spin_lock_irqsave(&tcp_ephemeral_lock, &flags);
 
-    uint32_t port = 0;
+    uint32_t port = 0; //FIXME handle returns of 0 (out of ports) from this function
     if(ephemeral_next != FREELIST_END) {
         port = ephemeral_next;
+        ephemeral_ports_sock[port] = sock;
         ephemeral_next = ephemeral_ports_list[ephemeral_next];
     }
 
@@ -104,6 +114,9 @@ static void tcp_unbind_port(uint16_t port) {
 
 typedef struct tcp_data {
     uint16_t local_port;
+
+    tcp_state_t state;
+    semaphore_t semaphore;
 } tcp_data_t;
 
 static void tcp_open(sock_t *sock) {
@@ -111,7 +124,11 @@ static void tcp_open(sock_t *sock) {
     sock->peer.addr = (void *) &IP_AND_PORT_NONE;
 
     tcp_data_t *data = sock->private = kmalloc(sizeof(tcp_data_t));
-    data->local_port = tcp_bind_port();
+    data->state = TCP_INITIALIZED;
+    semaphore_init(&data->semaphore, 0);
+
+    //do this last, it publishes the socket
+    data->local_port = tcp_bind_port(sock);
 }
 
 static void tcp_close(sock_t *sock) {
@@ -131,11 +148,17 @@ static bool tcp_connect(sock_t *sock, sock_addr_t *addr) {
         sock->peer.family = AF_INET;
         sock->peer.addr = addr->addr;
 
+        tcp_data_t *data = sock->private;
+
+        data->state = TCP_SYN_SENT;
+
         packet_t *packet = packet_create(net_primary_interface(), NULL, 0);
         tcp_build(packet, ((ip_and_port_t *) addr->addr)->ip, rand32(), 0, TCP_FLAG_SYN, 14600, 0, ((tcp_data_t *) sock->private)->local_port, ((ip_and_port_t *) addr->addr)->port);
         packet_send(packet);
 
-        //TODO block until 3-way-handshake done
+        semaphore_lock(&data->semaphore);
+
+        //TODO unlock the semaphore when syn-ack recieved
     } else {
         return false;
     }
