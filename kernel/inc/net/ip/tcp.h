@@ -5,8 +5,8 @@
 #include "common/compiler.h"
 #include "net/socket.h"
 
-#define TCP_DATA_OFF(x) ((x & 0xF000) >> 4)
-#define TCP_FLAGS(x)    ((x & 0x0FFF) >> 4)
+#define TCP_DATA_OFF(x) ((x & 0xF000) >> 12)
+#define TCP_FLAGS(x)    (x & 0x00FF)
 
 typedef struct tcp_header {
     uint16_t src_port;
@@ -18,6 +18,8 @@ typedef struct tcp_header {
     uint16_t checksum;
     uint16_t urgent;
 } PACKED tcp_header_t;
+
+extern sock_protocol_t tcp_protocol;
 
 void tcp_recv(packet_t *packet, void *raw, uint16_t len);
 

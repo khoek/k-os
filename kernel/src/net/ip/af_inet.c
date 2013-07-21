@@ -48,6 +48,10 @@ static sock_family_t af_inet = {
 
 static inet_protocol_t builtin_protocols[] = {
     {
+        .protocol = IP_PROT_TCP,
+        .impl     = &tcp_protocol
+    },
+    {
         .protocol = IP_PROT_UDP,
         .impl     = &udp_protocol
     },
