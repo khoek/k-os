@@ -1,10 +1,21 @@
 #include "lib/int.h"
 #include "common/swap.h"
+#include "sync/spinlock.h"
 #include "mm/cache.h"
 #include "net/packet.h"
 #include "net/ip/ip.h"
 #include "net/ip/tcp.h"
 #include "video/log.h"
+
+#define FREELIST_END    (~((uint32_t) 0))
+
+#define EPHEMERAL_START 49152
+#define EPHEMERAL_END   65535
+#define EPHEMERAL_NUM   ((EPHEMERAL_END - EPHEMERAL_START) + 1)
+
+static uint32_t ephemeral_ports_list[EPHEMERAL_NUM];
+static uint32_t ephemeral_next = EPHEMERAL_START;
+static DEFINE_SPINLOCK(tcp_ephemeral_lock);
 
 void tcp_recv(packet_t *packet, void *raw, uint16_t len) {
     tcp_header_t *tcp = packet->tran.buff = raw;
@@ -15,12 +26,30 @@ void tcp_recv(packet_t *packet, void *raw, uint16_t len) {
 }
 
 static uint16_t tcp_bind_port() {
-    //TODO actually pick a port, return the port in network byte order
-    return 25564;
+    uint32_t flags;
+    spin_lock_irqsave(&tcp_ephemeral_lock, &flags);
+
+    uint32_t port = 0;
+    if(ephemeral_next != FREELIST_END) {
+        port = ephemeral_next;
+        ephemeral_next = ephemeral_ports_list[ephemeral_next];
+    }
+
+    spin_unlock_irqstore(&tcp_ephemeral_lock, flags);
+
+    return swap_uint16(port);
 }
 
 static void tcp_unbind_port(uint16_t port) {
-    //TODO free a bound port, parameter is in network byte order
+    port = swap_uint16(port);
+
+    uint32_t flags;
+    spin_lock_irqsave(&tcp_ephemeral_lock, &flags);
+
+    ephemeral_ports_list[port] = ephemeral_next;
+    ephemeral_next = port;
+
+    spin_unlock_irqstore(&tcp_ephemeral_lock, flags);
 }
 
 typedef struct tcp_data {
@@ -51,7 +80,7 @@ static bool tcp_connect(sock_t *sock, sock_addr_t *addr) {
     } else if(addr->family == AF_INET) {
         sock->peer.family = AF_INET;
         sock->peer.addr = addr->addr;
-        
+
         //TODO actually attempt to connect and block until done
     } else {
         return false;
@@ -81,3 +110,14 @@ sock_protocol_t tcp_protocol = {
     .send = tcp_send,
     .close = tcp_close,
 };
+
+static INITCALL tcp_ephemeral_init() {
+    for(uint32_t i = 0; i < EPHEMERAL_NUM - 1; i++) {
+        ephemeral_ports_list[i] = i + 1;
+    }
+    ephemeral_ports_list[EPHEMERAL_NUM - 1] = FREELIST_END;
+
+    return 0;
+}
+
+pure_initcall(tcp_ephemeral_init);
