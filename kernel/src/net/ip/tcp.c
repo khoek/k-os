@@ -1,4 +1,5 @@
 #include "lib/int.h"
+#include "lib/rand.h"
 #include "common/swap.h"
 #include "sync/spinlock.h"
 #include "mm/cache.h"
@@ -6,6 +7,8 @@
 #include "net/ip/ip.h"
 #include "net/ip/tcp.h"
 #include "video/log.h"
+
+#include "checksum.h"
 
 #define FREELIST_END    (~((uint32_t) 0))
 
@@ -16,6 +19,53 @@
 static uint32_t ephemeral_ports_list[EPHEMERAL_NUM];
 static uint32_t ephemeral_next = EPHEMERAL_START;
 static DEFINE_SPINLOCK(tcp_ephemeral_lock);
+
+static void tcp_build(packet_t *packet, ip_t dst_ip, uint32_t seq_num, uint32_t ack_num, uint16_t flags, uint16_t window_size, uint16_t urgent, uint16_t src_port_net, uint16_t dst_port_net) {
+    tcp_header_t *hdr = kmalloc(sizeof(tcp_header_t));
+
+    hdr->src_port = src_port_net;
+    hdr->dst_port = dst_port_net;
+    hdr->seq_num = seq_num;
+    hdr->ack_num = ack_num;
+    hdr->data_off_flags = ((5 & 0x000F) << 4) | (flags);
+    hdr->window_size = swap_uint16(window_size);
+    hdr->urgent = urgent;
+
+    uint32_t sum = 0;
+    sum += ((uint16_t *) &((ip_interface_t *) packet->interface->ip_data)->ip_addr.addr)[0];
+    sum += ((uint16_t *) &((ip_interface_t *) packet->interface->ip_data)->ip_addr.addr)[1];
+    sum += ((uint16_t *) &dst_ip)[0];
+    sum += ((uint16_t *) &dst_ip)[1];
+    sum += swap_uint16((uint16_t) IP_PROT_TCP);
+    sum += swap_uint16(sizeof(tcp_header_t) + packet->payload.size);
+
+    sum += hdr->src_port;
+    sum += hdr->dst_port;
+    sum += ((uint16_t *) &hdr->seq_num)[0];
+    sum += ((uint16_t *) &hdr->seq_num)[1];
+    sum += ((uint16_t *) &hdr->ack_num)[0];
+    sum += ((uint16_t *) &hdr->ack_num)[1];
+    sum += hdr->data_off_flags;
+    sum += hdr->window_size;
+    sum += hdr->urgent;
+
+    uint32_t len = packet->payload.size / sizeof(uint8_t);
+    uint16_t *ptr = (uint16_t *) packet->payload.buff;
+    for (; len > 1; len -= 2) {
+        sum += *ptr++;
+    }
+
+    if(len) {
+        sum += *((uint8_t *) ptr);
+    }
+
+    hdr->checksum = sum_to_checksum(sum);
+
+    packet->tran.buff = hdr;
+    packet->tran.size = sizeof(tcp_header_t);
+
+    ip_build(packet, IP_PROT_TCP, dst_ip);
+}
 
 void tcp_recv(packet_t *packet, void *raw, uint16_t len) {
     tcp_header_t *tcp = packet->tran.buff = raw;
@@ -81,7 +131,11 @@ static bool tcp_connect(sock_t *sock, sock_addr_t *addr) {
         sock->peer.family = AF_INET;
         sock->peer.addr = addr->addr;
 
-        //TODO actually attempt to connect and block until done
+        packet_t *packet = packet_create(net_primary_interface(), NULL, 0);
+        tcp_build(packet, ((ip_and_port_t *) addr->addr)->ip, rand32(), 0, TCP_FLAG_SYN, 14600, 0, ((tcp_data_t *) sock->private)->local_port, ((ip_and_port_t *) addr->addr)->port);
+        packet_send(packet);
+
+        //TODO block until 3-way-handshake done
     } else {
         return false;
     }
