@@ -152,11 +152,11 @@ static bool tcp_connect(sock_t *sock, sock_addr_t *addr) {
 
         data->state = TCP_SYN_SENT;
 
-        packet_t *packet = packet_create(net_primary_interface(), NULL, 0);
+        packet_t *packet = packet_create(net_primary_interface(), NULL, NULL, 0);
         tcp_build(packet, ((ip_and_port_t *) addr->addr)->ip, rand32(), 0, TCP_FLAG_SYN, 14600, 0, ((tcp_data_t *) sock->private)->local_port, ((ip_and_port_t *) addr->addr)->port);
         packet_send(packet);
 
-        semaphore_lock(&data->semaphore);
+        semaphore_down(&data->semaphore);
 
         //TODO unlock the semaphore when syn-ack recieved
     } else {

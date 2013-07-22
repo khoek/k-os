@@ -22,7 +22,7 @@ static inline void semaphore_init(semaphore_t *semaphore, uint32_t count) {
     *semaphore = (semaphore_t) SEMAPHORE_WITH_COUNT(*semaphore, count);
 }
 
-void semaphore_lock(semaphore_t *lock);
-void semaphore_unlock(semaphore_t *lock);
+void semaphore_down(semaphore_t *lock);
+void semaphore_up(semaphore_t *lock);
 
 #endif

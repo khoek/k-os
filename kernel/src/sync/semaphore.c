@@ -4,7 +4,7 @@
 #include "sync/semaphore.h"
 #include "task/task.h"
 
-void semaphore_lock(semaphore_t *lock) {
+void semaphore_down(semaphore_t *lock) {
     uint32_t flags;
     spin_lock_irqsave(&lock->lock, &flags);
 
@@ -21,7 +21,7 @@ void semaphore_lock(semaphore_t *lock) {
     }
 }
 
-void semaphore_unlock(semaphore_t *lock) {
+void semaphore_up(semaphore_t *lock) {
     uint32_t flags;
     spin_lock_irqsave(&lock->lock, &flags);
 

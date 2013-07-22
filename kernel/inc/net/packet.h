@@ -30,7 +30,7 @@ struct packet {
     sock_buff_t payload;
 };
 
-packet_t * packet_create(net_interface_t *interface, void *payload, uint16_t len);
+packet_t * packet_create(net_interface_t *interface, semaphore_t *lock, void *payload, uint16_t len);
 void packet_destroy(packet_t *packet);
 void packet_send(packet_t *packet);
 uint32_t packet_expand(void *buff, packet_t *packet, uint32_t minimum_size);

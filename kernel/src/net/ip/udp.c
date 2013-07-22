@@ -103,6 +103,8 @@ static void udp_unbind_port(uint16_t port) {
 
 typedef struct udp_data {
     uint16_t local_port;
+
+    semaphore_t semaphore;
 } udp_data_t;
 
 static void udp_open(sock_t *sock) {
@@ -110,6 +112,7 @@ static void udp_open(sock_t *sock) {
     sock->peer.addr = (void *) &IP_AND_PORT_NONE;
 
     udp_data_t *data = sock->private = kmalloc(sizeof(udp_data_t));
+    semaphore_init(&data->semaphore, 0);
     data->local_port = udp_bind_port();
 }
 
@@ -141,11 +144,13 @@ static uint32_t udp_send(sock_t *sock, void *buff, uint32_t len, uint32_t flags)
     ip_and_port_t *addr_data = (ip_and_port_t *) sock->peer.addr;
     addr_data = (void *) ((uint32_t) addr_data);
 
-    packet_t *packet = packet_create(net_primary_interface(), buff, len);
-    udp_build(packet, addr_data->ip, ((udp_data_t *) sock->private)->local_port, addr_data->port);
+    udp_data_t *data = (udp_data_t *) sock->private;
+
+    packet_t *packet = packet_create(net_primary_interface(), &data->semaphore, buff, len);
+    udp_build(packet, addr_data->ip, data->local_port, addr_data->port);
     packet_send(packet);
 
-    //TODO put task to sleep
+    semaphore_down(&data->semaphore);
 
     return len;
 }
