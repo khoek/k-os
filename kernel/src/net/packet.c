@@ -1,5 +1,6 @@
 #include "lib/int.h"
 #include "lib/string.h"
+#include "sync/semaphore.h"
 #include "mm/cache.h"
 #include "net/packet.h"
 #include "net/interface.h"
@@ -17,12 +18,12 @@ packet_t * packet_create(net_interface_t *interface, void *payload, uint16_t len
     return packet;
 }
 
-static void packet_dispatch(packet_t *packet) {
-    packet->interface->send(packet);
+void packet_destroy(packet_t *packet) {
+    if(packet->dispatch_lock) semaphore_unlock(packet->dispatch_lock);
 
-    if(packet->link.buff   ) kfree(packet->link.buff   , packet->link.size);
-    if(packet->net.buff    ) kfree(packet->net.buff    , packet->net.size);
-    if(packet->tran.buff   ) kfree(packet->tran.buff   , packet->tran.size);
+    if(packet->link.buff) kfree(packet->link.buff, packet->link.size);
+    if(packet->net.buff) kfree(packet->net.buff, packet->net.size);
+    if(packet->tran.buff) kfree(packet->tran.buff, packet->tran.size);
     if(packet->payload.buff) kfree(packet->payload.buff, packet->payload.size);
 
     kfree(packet, sizeof(packet_t));
@@ -33,7 +34,7 @@ void packet_send(packet_t *packet) {
         packet->interface->link_layer.resolve(packet);
     } else {
         packet->interface->link_layer.build_hdr(packet);
-        packet_dispatch(packet);
+        packet->interface->send(packet);
     }
 }
 

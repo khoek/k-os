@@ -5,6 +5,7 @@ typedef struct packet packet_t;
 
 #include "lib/int.h"
 #include "common/list.h"
+#include "sync/semaphore.h"
 #include "net/socket.h"
 #include "net/interface.h"
 
@@ -15,6 +16,8 @@ typedef enum packet_state {
 
 struct packet {
     list_head_t list;
+
+    semaphore_t *dispatch_lock;
 
     packet_state_t state;
     net_interface_t *interface;
@@ -28,6 +31,7 @@ struct packet {
 };
 
 packet_t * packet_create(net_interface_t *interface, void *payload, uint16_t len);
+void packet_destroy(packet_t *packet);
 void packet_send(packet_t *packet);
 uint32_t packet_expand(void *buff, packet_t *packet, uint32_t minimum_size);
 

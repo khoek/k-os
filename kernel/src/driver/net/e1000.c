@@ -244,6 +244,8 @@ int32_t net_825xx_send(packet_t *packet) {
     while(!(net_device->tx_desc[old_tx_front].sta & 0xF))
         sleep(1);
 
+    packet_destroy(packet);
+
     return net_device->tx_desc[old_tx_front].sta & TX_DESC_STATUS_DD ? 0 : -1;
 }
 
