@@ -106,6 +106,7 @@ static void tcp_unbind_port(uint16_t port) {
     uint32_t flags;
     spin_lock_irqsave(&tcp_ephemeral_lock, &flags);
 
+    ephemeral_ports_sock[port] = NULL;
     ephemeral_ports_list[port] = ephemeral_next;
     ephemeral_next = port;
 
