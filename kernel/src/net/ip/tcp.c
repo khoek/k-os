@@ -31,6 +31,11 @@ typedef struct tcp_data {
     tcp_state_t state;
     spinlock_t state_lock;
 
+    uint8_t *recv_buff;
+    uint32_t recv_buff_front;
+    uint32_t recv_buff_back;
+    uint32_t recv_buff_size;
+
     semaphore_t semaphore;
 
     list_head_t queue;
@@ -246,6 +251,17 @@ void tcp_recv(packet_t *packet, void *raw, uint16_t len) {
                     return;
                 } else {
                     data->next_peer_seq = seq_num + len;
+
+                    if(data->recv_buff_front != data->recv_buff_back - 1) {
+                        for(uint32_t i = 0; i < len; i++) {
+                            data->recv_buff[data->recv_buff_front] = ((uint8_t *) raw)[i];
+                            data->recv_buff_front++;
+
+                            if(data->recv_buff_front == data->recv_buff_back - 1) {
+                                break;
+                            }
+                        }
+                    }
                 }
             }
 
@@ -278,6 +294,10 @@ static void tcp_open(sock_t *sock) {
     data->next_local_ack = 0;
     data->next_local_seq = 0;
     data->next_peer_seq = 0;
+    data->recv_buff = page_to_virt(alloc_page(0));
+    data->recv_buff_front = 0;
+    data->recv_buff_back = 0;
+    data->recv_buff_size = PAGE_SIZE;
     list_init(&data->queue);
     spinlock_init(&data->state_lock);
     semaphore_init(&data->semaphore, 0);
@@ -287,8 +307,8 @@ static void tcp_open(sock_t *sock) {
 }
 
 static void tcp_close(sock_t *sock) {
-    if(sock->peer.family != AF_UNSPEC) {
-        //TODO send FINs, ACKs, etc. and block until closed or connection reset
+    if(sock->peer.family == AF_INET) {
+        tcp_control_send(sock, TCP_FLAG_RST, 0);
     }
 
     tcp_unbind_port(((tcp_data_t *) sock->private)->local_port);
