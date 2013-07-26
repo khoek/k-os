@@ -1,5 +1,6 @@
 #include "lib/int.h"
 #include "lib/rand.h"
+#include "common/list.h"
 #include "common/swap.h"
 #include "sync/spinlock.h"
 #include "sync/semaphore.h"
@@ -15,8 +16,42 @@ typedef enum tcp_state {
     TCP_INITIALIZED,
     TCP_SYN_SENT,
     TCP_ESTABLISHED,
-    TCP_CLOSED,
+    TCP_FIN_WAIT,
 } tcp_state_t;
+
+typedef struct tcp_data {
+    net_interface_t *interface;
+
+    uint16_t local_port;
+    uint32_t next_local_ack;
+    uint32_t next_local_seq;
+
+    uint32_t next_peer_seq;
+
+    tcp_state_t state;
+    spinlock_t state_lock;
+
+    semaphore_t semaphore;
+
+    list_head_t queue;
+} tcp_data_t;
+
+typedef struct tcp_pending {
+    list_head_t list;
+
+    ip_t dst_ip;
+    uint32_t seq_num;
+    uint32_t ack_num;
+    uint16_t flags;
+    uint16_t window_size;
+    uint16_t urgent;
+    uint16_t src_port_net;
+    uint16_t dst_port_net;
+
+    semaphore_t *semaphore;
+
+    sock_buff_t payload;
+} tcp_pending_t;
 
 #define FREELIST_END    (~((uint32_t) 0))
 
@@ -27,7 +62,36 @@ typedef enum tcp_state {
 static sock_t * ephemeral_ports_sock[EPHEMERAL_NUM];
 static uint32_t ephemeral_ports_list[EPHEMERAL_NUM];
 static uint32_t ephemeral_next = EPHEMERAL_START;
-static DEFINE_SPINLOCK(tcp_ephemeral_lock);
+static DEFINE_SPINLOCK(ephemeral_lock);
+
+static uint16_t tcp_bind_port(sock_t *sock) {
+    uint32_t flags;
+    spin_lock_irqsave(&ephemeral_lock, &flags);
+
+    uint32_t port = 0; //FIXME handle returns of 0 (out of ports) from this function
+    if(ephemeral_next != FREELIST_END) {
+        port = ephemeral_next;
+        ephemeral_ports_sock[port] = sock;
+        ephemeral_next = ephemeral_ports_list[ephemeral_next];
+    }
+
+    spin_unlock_irqstore(&ephemeral_lock, flags);
+
+    return swap_uint16(port);
+}
+
+static void tcp_unbind_port(uint16_t port) {
+    port = swap_uint16(port);
+
+    uint32_t flags;
+    spin_lock_irqsave(&ephemeral_lock, &flags);
+
+    ephemeral_ports_sock[port] = NULL;
+    ephemeral_ports_list[port] = ephemeral_next;
+    ephemeral_next = port;
+
+    spin_unlock_irqstore(&ephemeral_lock, flags);
+}
 
 static void tcp_build(packet_t *packet, ip_t dst_ip, uint32_t seq_num, uint32_t ack_num, uint16_t flags, uint16_t window_size, uint16_t urgent, uint16_t src_port_net, uint16_t dst_port_net) {
     tcp_header_t *hdr = kmalloc(sizeof(tcp_header_t));
@@ -76,49 +140,132 @@ static void tcp_build(packet_t *packet, ip_t dst_ip, uint32_t seq_num, uint32_t 
     ip_build(packet, IP_PROT_TCP, dst_ip);
 }
 
+//should only be called when ((tcp_data_t *) sock->private)->state_lock is held
+static void tcp_queue_send(sock_t *sock) {
+    tcp_data_t *data = sock->private;
+    tcp_pending_t *pending = list_first(&data->queue, tcp_pending_t, list);
+
+    packet_t *packet = packet_create(data->interface, pending->semaphore, pending->payload.buff, pending->payload.size);
+    tcp_build(packet, pending->dst_ip, pending->seq_num, pending->ack_num, pending->flags, pending->window_size, pending->urgent, pending->src_port_net, pending->dst_port_net);
+    packet_send(packet);
+
+    //TODO set resend timer
+}
+
+//should only be called when ((tcp_data_t *) sock->private)->state_lock is held
+static void tcp_queue_add(sock_t *sock, semaphore_t *semaphore, uint16_t flags, uint16_t window_size, uint16_t urgent, void *payload_buff, uint32_t payload_size) {
+    tcp_data_t *data = sock->private;
+    ip_and_port_t *peer_addr = sock->peer.addr;
+
+    tcp_pending_t *pending = kmalloc(sizeof(tcp_pending_t));
+
+    pending->dst_ip = peer_addr->ip;
+    pending->seq_num = swap_uint32(data->next_local_seq);
+    pending->ack_num = swap_uint32(data->next_peer_seq);
+    pending->flags = flags;
+    pending->window_size = swap_uint16(window_size);
+    pending->urgent = swap_uint16(urgent);
+    pending->src_port_net = data->local_port;
+    pending->dst_port_net = peer_addr->port;
+    pending->payload.buff = payload_buff;
+    pending->payload.size = payload_size;
+    pending->semaphore = semaphore;
+
+    list_add_before(&pending->list, &data->queue);
+
+    if(list_is_singular(&data->queue)) {
+        tcp_queue_send(sock);
+    }
+}
+
+//should only be called when ((tcp_data_t *) sock->private)->state_lock is held
+static void tcp_control_send(sock_t *sock, uint16_t flags, uint16_t window_size) {
+    tcp_data_t *data = sock->private;
+    ip_and_port_t *peer_addr = sock->peer.addr;
+
+    packet_t *packet = packet_create(data->interface, NULL, NULL, 0);
+    tcp_build(packet, peer_addr->ip, swap_uint32(data->next_local_seq), swap_uint32(data->next_peer_seq), flags, swap_uint16(window_size), 0, data->local_port, peer_addr->port);
+    packet_send(packet);
+
+    //TODO set resend timer
+}
+
 void tcp_recv(packet_t *packet, void *raw, uint16_t len) {
     tcp_header_t *tcp = packet->tran.buff = raw;
     raw = tcp + 1;
-    len -= sizeof(tcp_header_t);
+    len = swap_uint16(ip_hdr(packet)->total_length) - ((IP_IHL(ip_hdr(packet)->version_ihl) * sizeof(uint32_t)) + (TCP_DATA_OFF(tcp->data_off_flags) * sizeof(uint32_t)));
 
-    tcp++; //Silence gcc
-}
-
-static uint16_t tcp_bind_port(sock_t *sock) {
     uint32_t flags;
-    spin_lock_irqsave(&tcp_ephemeral_lock, &flags);
+    spin_lock_irqsave(&ephemeral_lock, &flags);
 
-    uint32_t port = 0; //FIXME handle returns of 0 (out of ports) from this function
-    if(ephemeral_next != FREELIST_END) {
-        port = ephemeral_next;
-        ephemeral_ports_sock[port] = sock;
-        ephemeral_next = ephemeral_ports_list[ephemeral_next];
+    sock_t *sock = ephemeral_ports_sock[swap_uint16(tcp->dst_port)];
+    if(!sock) return;
+
+    tcp_data_t *data = sock->private;
+
+    uint32_t flags2;
+    spin_lock_irqsave(&data->state_lock, &flags2);
+
+    if(tcp->data_off_flags & TCP_FLAG_ACK) {
+        uint32_t ack_num = swap_uint32(tcp->ack_num);
+
+        if(ack_num > data->next_local_ack) {
+            for(uint32_t i = 0; i < ack_num - data->next_local_ack; i++) {
+                list_rm(&list_first(&data->queue, tcp_pending_t, list)->list);
+            }
+
+            data->next_local_ack = ack_num;
+        }
     }
 
-    spin_unlock_irqstore(&tcp_ephemeral_lock, flags);
+    uint32_t seq_num = swap_uint32(tcp->seq_num);
 
-    return swap_uint16(port);
+    switch(data->state) {
+        case TCP_SYN_SENT: {
+            if(tcp->data_off_flags & TCP_FLAG_ACK && tcp->data_off_flags & TCP_FLAG_SYN) {
+                data->state = TCP_ESTABLISHED;
+                data->next_peer_seq = seq_num + len + 1;
+
+                tcp_control_send(sock, TCP_FLAG_ACK, tcp->window_size);
+
+                semaphore_up(&data->semaphore);
+            } else {
+                tcp_control_send(sock, TCP_FLAG_RST, tcp->window_size);
+
+                //TODO close the connection
+            }
+
+            break;
+        }
+        case TCP_ESTABLISHED: {
+            if(len > 0) {
+                if(data->next_peer_seq < seq_num + len) {
+                    data->next_peer_seq = seq_num + len;
+                } else {
+                    tcp_control_send(sock, TCP_FLAG_ACK, tcp->window_size);
+                    return;
+                }
+            }
+
+            if(tcp->data_off_flags & TCP_FLAG_FIN) {
+                //TODO somehow record that the peer will not be sending any more information
+
+                data->next_peer_seq = seq_num + 1;
+            }
+
+            if(len > 0 || tcp->data_off_flags & TCP_FLAG_FIN) {
+                tcp_control_send(sock, TCP_FLAG_ACK, tcp->window_size);
+            }
+
+            break;
+        }
+        default: break;
+    }
+
+    spin_unlock_irqstore(&data->state_lock, flags2);
+
+    spin_unlock_irqstore(&ephemeral_lock, flags);
 }
-
-static void tcp_unbind_port(uint16_t port) {
-    port = swap_uint16(port);
-
-    uint32_t flags;
-    spin_lock_irqsave(&tcp_ephemeral_lock, &flags);
-
-    ephemeral_ports_sock[port] = NULL;
-    ephemeral_ports_list[port] = ephemeral_next;
-    ephemeral_next = port;
-
-    spin_unlock_irqstore(&tcp_ephemeral_lock, flags);
-}
-
-typedef struct tcp_data {
-    uint16_t local_port;
-
-    tcp_state_t state;
-    semaphore_t semaphore;
-} tcp_data_t;
 
 static void tcp_open(sock_t *sock) {
     sock->peer.family = AF_UNSPEC;
@@ -126,6 +273,11 @@ static void tcp_open(sock_t *sock) {
 
     tcp_data_t *data = sock->private = kmalloc(sizeof(tcp_data_t));
     data->state = TCP_INITIALIZED;
+    data->next_local_ack = 0;
+    data->next_local_seq = 0;
+    data->next_peer_seq = 0;
+    list_init(&data->queue);
+    spinlock_init(&data->state_lock);
     semaphore_init(&data->semaphore, 0);
 
     //do this last, it publishes the socket
@@ -151,11 +303,17 @@ static bool tcp_connect(sock_t *sock, sock_addr_t *addr) {
 
         tcp_data_t *data = sock->private;
 
-        data->state = TCP_SYN_SENT;
+        uint32_t flags;
+        spin_lock_irqsave(&data->state_lock, &flags);
 
-        packet_t *packet = packet_create(net_primary_interface(), NULL, NULL, 0);
-        tcp_build(packet, ((ip_and_port_t *) addr->addr)->ip, rand32(), 0, TCP_FLAG_SYN, 14600, 0, ((tcp_data_t *) sock->private)->local_port, ((ip_and_port_t *) addr->addr)->port);
-        packet_send(packet);
+        data->state = TCP_SYN_SENT;
+        data->interface = net_primary_interface();
+
+        tcp_queue_add(sock, NULL, TCP_FLAG_SYN, 14600, 0, NULL, 0);
+
+        data->next_local_seq++;
+
+        spin_unlock_irqstore(&data->state_lock, flags);
 
         semaphore_down(&data->semaphore);
 
@@ -189,7 +347,7 @@ sock_protocol_t tcp_protocol = {
     .close = tcp_close,
 };
 
-static INITCALL tcp_ephemeral_init() {
+static INITCALL ephemeral_init() {
     for(uint32_t i = 0; i < EPHEMERAL_NUM - 1; i++) {
         ephemeral_ports_list[i] = i + 1;
     }
@@ -198,4 +356,4 @@ static INITCALL tcp_ephemeral_init() {
     return 0;
 }
 
-pure_initcall(tcp_ephemeral_init);
+pure_initcall(ephemeral_init);
