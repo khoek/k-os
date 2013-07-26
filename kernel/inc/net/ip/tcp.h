@@ -5,11 +5,10 @@
 #include "common/compiler.h"
 #include "net/socket.h"
 
-#define TCP_DATA_OFF(x) ((x & 0xF000) >> 12)
-#define TCP_FLAGS(x)    (x & 0x0FFF)
+#define TCP_DATA_OFF(x) ((x & 0x00F0) >> 4)
 
 #define TCP_FLAG_NS  (1 << 0)  //ECN-nonce concealment protection
-#define TCP_FLAG_CWR (1 << 15) //Congestion WIndows Reduced
+#define TCP_FLAG_CWR (1 << 15) //Congestion Window Reduced
 #define TCP_FLAG_ECE (1 << 14) //ECN-Echo indication
 #define TCP_FLAG_URG (1 << 13) //Urgent pointer field is valid
 #define TCP_FLAG_ACK (1 << 12) //Acknowledgment field is valid
