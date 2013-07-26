@@ -239,11 +239,13 @@ void tcp_recv(packet_t *packet, void *raw, uint16_t len) {
         }
         case TCP_ESTABLISHED: {
             if(len > 0) {
-                if(data->next_peer_seq < seq_num + len) {
-                    data->next_peer_seq = seq_num + len;
-                } else {
+                if(data->next_peer_seq > seq_num) {
+                    return;
+                } else if (data->next_peer_seq < seq_num) {
                     tcp_control_send(sock, TCP_FLAG_ACK, tcp->window_size);
                     return;
+                } else {
+                    data->next_peer_seq = seq_num + len;
                 }
             }
 
