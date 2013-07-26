@@ -26,8 +26,7 @@ void semaphore_up(semaphore_t *lock) {
     spin_lock_irqsave(&lock->lock, &flags);
 
     if(list_empty(&lock->waiters)) {
-        lock->count
-        ++;
+        lock->count++;
     } else {
         task_t *waiting = list_first(&lock->waiters, task_t, wait_list);
 
