@@ -1,5 +1,5 @@
-#ifndef KERNEL_INTTYPES_H
-#define KERNEL_INTTYPES_H
+#ifndef LIBC_INTTYPES_H
+#define LIBC_INTTYPES_H
 
 #define MIN_INT16 (-32768)
 #define MAX_INT16 32767

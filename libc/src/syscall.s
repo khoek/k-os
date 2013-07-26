@@ -6,6 +6,7 @@
 .global socket
 .global connect
 .global send
+.global close
 
 _exit:
     mov 4(%esp), %ecx
@@ -79,4 +80,11 @@ send:
 
     pop %ebx
     pop %esi
+    ret
+
+close:
+    mov 4(%esp), %ecx
+    mov $8, %eax
+    int $0x80
+
     ret
