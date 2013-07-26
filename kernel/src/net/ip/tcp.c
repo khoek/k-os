@@ -17,6 +17,7 @@ typedef enum tcp_state {
     TCP_SYN_SENT,
     TCP_ESTABLISHED,
     TCP_FIN_WAIT,
+    TCP_CLOSED,
 } tcp_state_t;
 
 typedef struct tcp_data {
@@ -271,6 +272,10 @@ void tcp_recv(packet_t *packet, void *raw, uint16_t len) {
                 data->next_peer_seq = seq_num + 1;
             }
 
+            if(tcp->data_off_flags & TCP_FLAG_RST) {
+                data->state = TCP_CLOSED;
+            }
+
             if(len > 0 || tcp->data_off_flags & TCP_FLAG_FIN) {
                 tcp_control_send(sock, TCP_FLAG_ACK, tcp->window_size);
             }
@@ -298,6 +303,7 @@ static void tcp_open(sock_t *sock) {
     data->recv_buff_front = 0;
     data->recv_buff_back = 0;
     data->recv_buff_size = PAGE_SIZE;
+
     list_init(&data->queue);
     spinlock_init(&data->state_lock);
     semaphore_init(&data->semaphore, 0);
@@ -307,12 +313,21 @@ static void tcp_open(sock_t *sock) {
 }
 
 static void tcp_close(sock_t *sock) {
-    if(sock->peer.family == AF_INET) {
-        tcp_control_send(sock, TCP_FLAG_RST, 0);
+    tcp_data_t *data = sock->private;
+
+    uint32_t flags;
+    spin_lock_irqsave(&data->state_lock, &flags);
+
+    if(data->state != TCP_CLOSED) {
+        if(sock->peer.family == AF_INET) {
+            tcp_control_send(sock, TCP_FLAG_RST, 0);
+        }
     }
 
     tcp_unbind_port(((tcp_data_t *) sock->private)->local_port);
     kfree(sock->private, sizeof(tcp_data_t));
+
+    spin_unlock_irqstore(&data->state_lock, flags);
 }
 
 static bool tcp_connect(sock_t *sock, sock_addr_t *addr) {
