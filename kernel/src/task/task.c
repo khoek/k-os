@@ -36,23 +36,14 @@ static void idle_loop() {
 }
 
 void task_sleep(task_t *task) {
-    uint32_t flags;
-    spin_lock_irqsave(&task->lock, &flags);
-
-    task->sleeps++;
-    if(task->sleeps > 0) {
-        task->state = TASK_SLEEPING;
-        list_move_before(&task->list, &sleeping_tasks);
-    }
-
-    spin_unlock_irqstore(&task->lock, flags);
+    task->state = TASK_SLEEPING;
+    list_move_before(&task->list, &sleeping_tasks);
 }
 
 void task_sleep_current() {
     cli();
 
     task_sleep(current);
-
     task_reschedule();
 
     sti();
@@ -61,16 +52,8 @@ void task_sleep_current() {
 void task_wake(task_t *task) {
     if(!task) return;
 
-    uint32_t flags;
-    spin_lock_irqsave(&task->lock, &flags);
-
-    task->sleeps--;
-    if(task->sleeps <= 0) {
-        task->state = TASK_AWAKE;
-        list_move_before(&task->list, &sleeping_tasks);
-    }
-
-    spin_unlock_irqstore(&task->lock, flags);
+    task->state = TASK_AWAKE;
+    list_move_before(&task->list, &tasks);
 }
 
 void task_exit(task_t *task, int32_t code) {
