@@ -1,4 +1,5 @@
 #include "lib/int.h"
+#include "lib/string.h"
 #include "lib/rand.h"
 #include "common/list.h"
 #include "common/swap.h"
@@ -15,7 +16,9 @@
 
 typedef enum tcp_state {
     TCP_INITIALIZED,
+    TCP_LISTEN,
     TCP_SYN_SENT,
+    TCP_SYN_RECIEVED,
     TCP_ESTABLISHED,
     TCP_FIN_WAIT,
     TCP_CLOSED,
@@ -111,7 +114,7 @@ static void tcp_build(packet_t *packet, ip_t dst_ip, uint32_t seq_num, uint32_t 
     hdr->ack_num = ack_num;
     hdr->data_off_flags = ((5 & 0x000F) << 4) | (flags);
     hdr->window_size = swap_uint16(window_size);
-    hdr->urgent = urgent;
+    hdr->urgent = swap_uint16(urgent);
 
     uint32_t sum = 0;
     sum += ((uint16_t *) &((ip_interface_t *) packet->interface->ip_data)->ip_addr.addr)[0];
@@ -187,8 +190,8 @@ static void tcp_queue_add(sock_t *sock, semaphore_t *semaphore, uint16_t flags, 
     pending->seq_num = swap_uint32(data->next_local_seq);
     pending->ack_num = swap_uint32(data->next_peer_seq);
     pending->flags = flags;
-    pending->window_size = swap_uint16(window_size);
-    pending->urgent = swap_uint16(urgent);
+    pending->window_size = window_size;
+    pending->urgent = urgent;
     pending->src_port_net = data->local_port;
     pending->dst_port_net = peer_addr->port;
     pending->payload.buff = payload_buff;
@@ -229,6 +232,14 @@ void tcp_handle(packet_t *packet, void *raw, uint16_t len) {
     uint32_t flags2;
     spin_lock_irqsave(&data->state_lock, &flags2);
 
+    ip_and_port_t *addr = sock->peer.addr;
+
+    if(memcmp(&addr->ip, &ip_hdr(packet)->src, sizeof(ip_t))
+        || addr->port != tcp->src_port
+        || data->local_port != tcp->dst_port) {
+        goto out;
+    }
+
     if(tcp->data_off_flags & TCP_FLAG_ACK) {
         uint32_t ack_num = swap_uint32(tcp->ack_num);
 
@@ -264,13 +275,35 @@ void tcp_handle(packet_t *packet, void *raw, uint16_t len) {
 
             break;
         }
+        case TCP_LISTEN: {
+            if(tcp->data_off_flags & TCP_FLAG_SYN && !(tcp->data_off_flags & TCP_FLAG_ACK)) {
+                data->state = TCP_SYN_RECIEVED;
+                data->next_peer_seq = tcp->seq_num + len + 1;
+
+                tcp_queue_add(sock, NULL, TCP_FLAG_SYN | TCP_FLAG_ACK, 14600, 0, NULL, 0);
+            }
+
+            break;
+        }
+        case TCP_SYN_RECIEVED: {
+            if(data->next_peer_seq == seq_num) {
+                if(tcp->data_off_flags & TCP_FLAG_ACK && !(tcp->data_off_flags & TCP_FLAG_SYN)) {
+                    data->state = TCP_ESTABLISHED;
+                    data->next_peer_seq = seq_num + 1;
+
+                    sock->flags |= SOCK_FLAG_CONNECTED;
+                }
+            }
+
+            break;
+        }
         case TCP_ESTABLISHED: {
             if(len > 0) {
                 if(data->next_peer_seq > seq_num) {
-                    return;
+                    goto out;
                 } else if (data->next_peer_seq < seq_num) {
                     tcp_control_send(sock, TCP_FLAG_ACK, tcp->window_size);
-                    return;
+                    goto out;
                 } else {
                     data->next_peer_seq = seq_num + len;
 
@@ -310,8 +343,8 @@ void tcp_handle(packet_t *packet, void *raw, uint16_t len) {
         default: break;
     }
 
+out:
     spin_unlock_irqstore(&data->state_lock, flags2);
-
     spin_unlock_irqstore(&ephemeral_lock, flags);
 }
 
