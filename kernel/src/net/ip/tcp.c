@@ -238,9 +238,9 @@ void tcp_handle(packet_t *packet, void *raw, uint16_t len) {
         goto out;
     }
 
-    if(tcp->data_off_flags & TCP_FLAG_ACK) {
-        uint32_t ack_num = swap_uint32(tcp->ack_num);
+    uint32_t ack_num = swap_uint32(tcp->ack_num);
 
+    if(tcp->data_off_flags & TCP_FLAG_ACK) {
         if(ack_num > data->next_local_ack) {
             for(uint32_t i = 0; i < ack_num - data->next_local_ack; i++) {
                 list_rm(&list_first(&data->queue, tcp_pending_t, list)->list);
@@ -264,6 +264,12 @@ void tcp_handle(packet_t *packet, void *raw, uint16_t len) {
 
                 semaphore_up(&data->semaphore);
             } else {
+                if(tcp->data_off_flags & TCP_FLAG_ACK) {
+                    data->next_local_ack = ack_num;
+                } else {
+                    data->next_local_ack = 0;
+                }
+
                 tcp_control_send(sock, TCP_FLAG_RST, tcp->window_size);
 
                 tcp_reset(sock);
