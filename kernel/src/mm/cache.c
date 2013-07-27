@@ -113,8 +113,6 @@ void * cache_alloc(cache_t *cache) {
 }
 
 void cache_free(cache_t *cache, void *mem) {
-    //FIXME this is absurdly slow, make it faster by an order of complexity somehow :P
-
 #ifdef CONFIG_DEBUG_MM
     cache_page_t *cur, *target = NULL;
     LIST_FOR_EACH_ENTRY(cur, &cache->full, list) {

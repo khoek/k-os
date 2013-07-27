@@ -118,7 +118,6 @@ void arp_resolve(packet_t *packet) {
             if(entry->state == CACHE_UNRESOLVED) {
                 list_add(&packet->list, &entry->pending);
             } else if(entry->state == CACHE_RESOLVED) {
-
                 packet->route.dst.family = AF_LINK;
                 packet->route.dst.addr = &entry->mac;
 

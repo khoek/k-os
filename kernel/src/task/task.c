@@ -25,6 +25,7 @@ task_t *current;
 static cache_t *task_cache;
 static uint32_t pid = 1;
 static bool tasking_up = false;
+static bool need_resched = false;
 
 static task_t *idle_task;
 
@@ -33,6 +34,29 @@ static DEFINE_LIST(sleeping_tasks);
 
 static void idle_loop() {
     while(1) hlt();
+}
+
+static void task_switch() {
+    if(list_empty(&tasks)) {
+        current = idle_task;
+    } else {
+        current = list_first(&tasks, task_t, list);
+        list_rotate_left(&tasks);
+    }
+
+    BUG_ON(current->state != TASK_AWAKE);
+}
+
+static void task_do_switch() {
+    if(!tasking_up) return;
+
+    cli();
+
+    task_switch();
+
+    tss_set_stack(current->kernel_stack);
+
+    cpl_switch(current->cr3, (uint32_t) (current->ret & 0xFFFFFFFF), (uint32_t) (current->ret >> 32), current->cpu);
 }
 
 void task_sleep(task_t *task) {
@@ -73,7 +97,7 @@ void task_run() {
 
     tasking_up = true;
 
-    task_reschedule();
+    task_do_switch();
 }
 
 void task_save(cpu_state_t *cpu) {
@@ -83,31 +107,15 @@ void task_save(cpu_state_t *cpu) {
     }
 }
 
-static void task_switch() {
-    if(list_empty(&tasks)) {
-        current = idle_task;
-    } else {
-        current = list_first(&tasks, task_t, list);
-        list_rotate_left(&tasks);
-    }
-
-    BUG_ON(current->state != TASK_AWAKE);
-}
-
 void task_reschedule() {
-    if(!tasking_up) return;
-
-    task_switch();
-
-    tss_set_stack(current->kernel_stack);
-
-    cpl_switch(current->cr3, (uint32_t) (current->ret & 0xFFFFFFFF), (uint32_t) (current->ret >> 32), current->cpu);
+    asm volatile("int $0x79");
 }
 
 void task_run_scheduler() {
-    //TODO descide whether or not to switch tasks
-
-    task_reschedule();
+    if(need_resched) {
+        need_resched = false;
+        task_reschedule();
+    }
 }
 
 void task_add_page(task_t UNUSED(*task), page_t UNUSED(*page)) {
@@ -216,12 +224,18 @@ void task_schedule(task_t *task) {
 }
 
 static void time_tick(clock_event_source_t *source) {
-    if(tasking_up) task_switch();
+    if(!(((uint32_t)uptime()) % 50000)) {
+        need_resched = true;
+    }
 }
 
 static clock_event_listener_t clock_listener = {
     .handle = time_tick
 };
+
+static void task_switch_handler(interrupt_t *interrupt) {
+    task_do_switch();
+}
 
 static INITCALL task_init() {
     task_cache = cache_create(sizeof(task_t));
@@ -230,7 +244,9 @@ static INITCALL task_init() {
 
     register_clock_event_listener(&clock_listener);
 
-    logf("task - set up init task");
+    idt_register(0x79, CPL_KERNEL, task_switch_handler);
+
+    logf("task - tasking initialized");
 
     return 0;
 }

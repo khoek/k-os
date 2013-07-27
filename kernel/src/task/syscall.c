@@ -104,15 +104,13 @@ static void sys_connect(interrupt_t *interrupt) {
 
                 current->ret = -1;
             } else {
-                void *rawaddr = kmalloc(sock->family->addr_len);
+                void *rawaddr = kmalloc(sock->family->addr_len);\
                 memcpy(rawaddr, &useraddr->sa_data, sock->family->addr_len);
 
                 addr.family = sock->family->family;
                 addr.addr = rawaddr;
 
                 current->ret = sock_connect(sock, &addr) ? 0 : -1;
-
-                kfree(rawaddr, sock->family->addr_len);
             }
         }
     }
@@ -144,7 +142,6 @@ static void sys_recv(interrupt_t *interrupt) {
 }
 
 static void sys_close(interrupt_t *interrupt) {
-    logf("close");
     gfd_idx_t fd = ufd_to_gfd(current, interrupt->cpu.reg.ecx);
 
     if(fd == FD_INVALID) current->ret = -1;
@@ -179,6 +176,9 @@ static void syscall_handler(interrupt_t *interrupt) {
         panicf("Unregistered Syscall #%u: 0x%X", interrupt->cpu.reg.eax, interrupt->cpu.reg.ecx);
     } else {
         syscalls[interrupt->cpu.reg.eax](interrupt);
+
+        interrupt->cpu.reg.edx = current->ret >> 32;
+        interrupt->cpu.reg.eax = current->ret;
     }
 }
 

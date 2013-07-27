@@ -158,8 +158,7 @@ static void tcp_reset(sock_t *sock) {
 
     tcp_data_t *data = sock->private;
 
-    data->next_local_ack = 0;
-    data->next_local_seq = 0;
+    data->next_local_seq = data->next_local_ack = rand32();
     data->next_peer_seq = 0;
     data->recv_buff_front = 0;
     data->recv_buff_back = 0 - 1;
@@ -168,9 +167,8 @@ static void tcp_reset(sock_t *sock) {
 }
 
 //should only be called when ((tcp_data_t *) sock->private)->state_lock is held
-static void tcp_queue_send(sock_t *sock) {
+static void tcp_queue_send(sock_t *sock, tcp_pending_t *pending) {
     tcp_data_t *data = sock->private;
-    tcp_pending_t *pending = list_first(&data->queue, tcp_pending_t, list);
 
     packet_t *packet = packet_create(data->interface, pending->semaphore, pending->payload.buff, pending->payload.size);
     tcp_build(packet, pending->dst_ip, pending->seq_num, pending->ack_num, pending->flags, pending->window_size, pending->urgent, pending->src_port_net, pending->dst_port_net);
@@ -198,11 +196,11 @@ static void tcp_queue_add(sock_t *sock, semaphore_t *semaphore, uint16_t flags, 
     pending->payload.size = payload_size;
     pending->semaphore = semaphore;
 
+    data->next_local_seq += payload_size;
+
     list_add_before(&pending->list, &data->queue);
 
-    if(list_is_singular(&data->queue)) {
-        tcp_queue_send(sock);
-    }
+    tcp_queue_send(sock, pending);
 }
 
 static void tcp_control_send(sock_t *sock, uint16_t flags, uint16_t window_size) {
@@ -210,7 +208,7 @@ static void tcp_control_send(sock_t *sock, uint16_t flags, uint16_t window_size)
     ip_and_port_t *peer_addr = sock->peer.addr;
 
     packet_t *packet = packet_create(data->interface, NULL, NULL, 0);
-    tcp_build(packet, peer_addr->ip, swap_uint32(data->next_local_seq), swap_uint32(data->next_peer_seq), flags, swap_uint16(window_size), 0, data->local_port, peer_addr->port);
+    tcp_build(packet, peer_addr->ip, swap_uint32(data->next_local_ack), swap_uint32(data->next_peer_seq), flags, swap_uint16(window_size), 0, data->local_port, peer_addr->port);
     packet_send(packet);
 
     //TODO set resend timer
@@ -270,7 +268,6 @@ void tcp_handle(packet_t *packet, void *raw, uint16_t len) {
 
                 tcp_reset(sock);
                 tcp_queue_add(sock, NULL, TCP_FLAG_SYN, 14600, 0, NULL, 0);
-                data->next_local_seq++;
             }
 
             break;
@@ -424,9 +421,9 @@ static uint32_t tcp_send(sock_t *sock, void *buff, uint32_t len, uint32_t flags)
         return -1;
     }
 
-    //TODO add the data in buff to the TCP processing queue
+    //TODO split packets which are too long
 
-    //TODO put task to sleep
+    tcp_queue_add(sock, NULL, TCP_FLAG_ACK, 14600, 0, buff, len);
 
     return len;
 }

@@ -58,7 +58,7 @@ bool sock_connect(sock_t *sock, sock_addr_t *addr) {
     if(!(sock->proto->type == SOCK_DGRAM || sock->proto->type == SOCK_RAW)) {
         if(sock->flags & SOCK_FLAG_CONNECTED) {
             //FIXME errno = EISCONN
-            return -1;
+            return false;
         }
     }
 
