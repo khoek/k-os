@@ -30,6 +30,6 @@ typedef struct tcp_header {
 
 extern sock_protocol_t tcp_protocol;
 
-void tcp_recv(packet_t *packet, void *raw, uint16_t len);
+void tcp_handle(packet_t *packet, void *raw, uint16_t len);
 
 #endif

@@ -135,7 +135,7 @@ void arp_resolve(packet_t *packet) {
     }
 }
 
-void arp_recv(packet_t *packet, void *raw, uint16_t len) {
+void arp_handle(packet_t *packet, void *raw, uint16_t len) {
     arp_header_t *arp = packet->net.buff = raw;
     if(!memcmp(&((ip_interface_t *) packet->interface->ip_data)->ip_addr.addr, &arp->target_ip.addr, sizeof(ip_t))) {
         if(!memcmp(&arp->target_mac, &MAC_NONE, sizeof(mac_t))) {

@@ -132,7 +132,19 @@ static void sys_send(interrupt_t *interrupt) {
     }
 }
 
+static void sys_recv(interrupt_t *interrupt) {
+    gfd_idx_t fd = ufd_to_gfd(current, interrupt->cpu.reg.ecx);
+
+    if(fd == FD_INVALID) current->ret = -1;
+    else {
+        //TODO sanitize buffer/size arguments
+
+        current->ret = sock_recv(gfd_to_sock(fd), (void *) interrupt->cpu.reg.edx, interrupt->cpu.reg.ebx, interrupt->cpu.reg.esi);
+    }
+}
+
 static void sys_close(interrupt_t *interrupt) {
+    logf("close");
     gfd_idx_t fd = ufd_to_gfd(current, interrupt->cpu.reg.ecx);
 
     if(fd == FD_INVALID) current->ret = -1;
@@ -158,7 +170,8 @@ static syscall_t syscalls[MAX_SYSCALL] = {
     [5] = sys_socket,
     [6] = sys_connect,
     [7] = sys_send,
-    [8] = sys_close,
+    [8] = sys_recv,
+    [9] = sys_close,
 };
 
 static void syscall_handler(interrupt_t *interrupt) {

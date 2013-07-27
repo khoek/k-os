@@ -82,6 +82,7 @@ struct sock_protocol {
     void (*open)(sock_t *);
     bool (*connect)(sock_t *, sock_addr_t *);
     uint32_t (*send)(sock_t *, void *buff, uint32_t len, uint32_t flags);
+    uint32_t (*recv)(sock_t *, void *buff, uint32_t len, uint32_t flags);
     void (*close)(sock_t *);
 
     /*
@@ -106,6 +107,7 @@ void register_sock_family(sock_family_t *family);
 sock_t * sock_create(uint32_t family, uint32_t type, uint32_t protocol);
 bool sock_connect(sock_t *sock, sock_addr_t *addr);
 uint32_t sock_send(sock_t *sock, void *buff, uint32_t len, uint32_t flags);
+uint32_t sock_recv(sock_t *sock, void *buff, uint32_t len, uint32_t flags);
 void sock_close(sock_t *sock);
 
 gfd_idx_t sock_create_fd(uint32_t family, uint32_t type, uint32_t protocol);

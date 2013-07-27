@@ -152,6 +152,8 @@ task_t * task_create(bool kernel, void *ip, void *sp) {
 
     task->ret = 0;
 
+    spinlock_init(&task->fd_lock);
+
     page_t *page = alloc_page(0);
     task->directory = page_to_virt(page);
     task->cr3 = (uint32_t) page_to_phys(page);

@@ -40,7 +40,7 @@ void icmp_build(packet_t *packet, uint8_t type, uint8_t code, uint32_t other, ip
     ip_build(packet, IP_PROT_ICMP, dst_ip);
 }
 
-void icmp_recv(packet_t *packet, void *raw, uint16_t len) {
+void icmp_handle(packet_t *packet, void *raw, uint16_t len) {
     icmp_header_t *icmp = packet->tran.buff = raw;
     raw = icmp + 1;
     len -= sizeof(icmp_header_t);

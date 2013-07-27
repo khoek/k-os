@@ -22,7 +22,7 @@ typedef struct arp_header {
 } PACKED arp_header_t;
 
 void arp_build(packet_t *packet, uint16_t op, mac_t sender_mac, mac_t target_mac, ip_t sender_ip, ip_t target_ip);
-void arp_recv(packet_t *packet, void *raw, uint16_t len);
+void arp_handle(packet_t *packet, void *raw, uint16_t len);
 
 void arp_resolve(packet_t *packet);
 

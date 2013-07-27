@@ -5,6 +5,7 @@
 #include "sync/spinlock.h"
 #include "sync/semaphore.h"
 #include "mm/cache.h"
+#include "net/socket.h"
 #include "net/packet.h"
 #include "net/ip/ip.h"
 #include "net/ip/tcp.h"
@@ -36,6 +37,8 @@ typedef struct tcp_data {
     uint32_t recv_buff_front;
     uint32_t recv_buff_back;
     uint32_t recv_buff_size;
+
+    bool recv_waiting;
 
     semaphore_t semaphore;
 
@@ -146,6 +149,21 @@ static void tcp_build(packet_t *packet, ip_t dst_ip, uint32_t seq_num, uint32_t 
     ip_build(packet, IP_PROT_TCP, dst_ip);
 }
 
+//should only be called when ((tcp_data_t *) sock->private)->state_lock is held (or when the sock is being constructed and is therefore not visible)
+static void tcp_reset(sock_t *sock) {
+    sock->flags &= ~SOCK_FLAG_CONNECTED;
+
+    tcp_data_t *data = sock->private;
+
+    data->next_local_ack = 0;
+    data->next_local_seq = 0;
+    data->next_peer_seq = 0;
+    data->recv_buff_front = 0;
+    data->recv_buff_back = 0 - 1;
+    data->recv_buff_size = PAGE_SIZE;
+    data->recv_waiting = false;
+}
+
 //should only be called when ((tcp_data_t *) sock->private)->state_lock is held
 static void tcp_queue_send(sock_t *sock) {
     tcp_data_t *data = sock->private;
@@ -184,7 +202,6 @@ static void tcp_queue_add(sock_t *sock, semaphore_t *semaphore, uint16_t flags, 
     }
 }
 
-//should only be called when ((tcp_data_t *) sock->private)->state_lock is held
 static void tcp_control_send(sock_t *sock, uint16_t flags, uint16_t window_size) {
     tcp_data_t *data = sock->private;
     ip_and_port_t *peer_addr = sock->peer.addr;
@@ -196,7 +213,7 @@ static void tcp_control_send(sock_t *sock, uint16_t flags, uint16_t window_size)
     //TODO set resend timer
 }
 
-void tcp_recv(packet_t *packet, void *raw, uint16_t len) {
+void tcp_handle(packet_t *packet, void *raw, uint16_t len) {
     tcp_header_t *tcp = packet->tran.buff = raw;
     raw = tcp + 1;
     len = swap_uint16(ip_hdr(packet)->total_length) - ((IP_IHL(ip_hdr(packet)->version_ihl) * sizeof(uint32_t)) + (TCP_DATA_OFF(tcp->data_off_flags) * sizeof(uint32_t)));
@@ -232,13 +249,17 @@ void tcp_recv(packet_t *packet, void *raw, uint16_t len) {
                 data->state = TCP_ESTABLISHED;
                 data->next_peer_seq = seq_num + len + 1;
 
+                sock->flags |= SOCK_FLAG_CONNECTED;
+
                 tcp_control_send(sock, TCP_FLAG_ACK, tcp->window_size);
 
                 semaphore_up(&data->semaphore);
             } else {
                 tcp_control_send(sock, TCP_FLAG_RST, tcp->window_size);
 
-                //TODO close the connection
+                tcp_reset(sock);
+                tcp_queue_add(sock, NULL, TCP_FLAG_SYN, 14600, 0, NULL, 0);
+                data->next_local_seq++;
             }
 
             break;
@@ -255,13 +276,17 @@ void tcp_recv(packet_t *packet, void *raw, uint16_t len) {
 
                     if(data->recv_buff_front != data->recv_buff_back - 1) {
                         for(uint32_t i = 0; i < len; i++) {
-                            data->recv_buff[data->recv_buff_front] = ((uint8_t *) raw)[i];
-                            data->recv_buff_front++;
-
                             if(data->recv_buff_front == data->recv_buff_back - 1) {
                                 break;
                             }
+
+                            data->recv_buff[data->recv_buff_front] = ((uint8_t *) raw)[i];
+                            data->recv_buff_front++;
                         }
+                    }
+
+                    if(data->recv_waiting) {
+                        semaphore_up(&data->semaphore);
                     }
                 }
             }
@@ -276,7 +301,7 @@ void tcp_recv(packet_t *packet, void *raw, uint16_t len) {
                 data->state = TCP_CLOSED;
             }
 
-            if(len > 0 || tcp->data_off_flags & TCP_FLAG_FIN) {
+            if(len > 0 || tcp->data_off_flags & (TCP_FLAG_SYN | TCP_FLAG_FIN)) {
                 tcp_control_send(sock, TCP_FLAG_ACK, tcp->window_size);
             }
 
@@ -296,13 +321,10 @@ static void tcp_open(sock_t *sock) {
 
     tcp_data_t *data = sock->private = kmalloc(sizeof(tcp_data_t));
     data->state = TCP_INITIALIZED;
-    data->next_local_ack = 0;
-    data->next_local_seq = 0;
-    data->next_peer_seq = 0;
+
+    tcp_reset(sock);
+
     data->recv_buff = page_to_virt(alloc_page(0));
-    data->recv_buff_front = 0;
-    data->recv_buff_back = 0;
-    data->recv_buff_size = PAGE_SIZE;
 
     list_init(&data->queue);
     spinlock_init(&data->state_lock);
@@ -325,9 +347,13 @@ static void tcp_close(sock_t *sock) {
     }
 
     tcp_unbind_port(((tcp_data_t *) sock->private)->local_port);
-    kfree(sock->private, sizeof(tcp_data_t));
 
+    //Cycle the lock, to ensure that no-one who aquired a ref to the socket uses it after sock->private is freed
+    spin_unlock(&data->state_lock);
+    spin_lock(&data->state_lock);
     spin_unlock_irqstore(&data->state_lock, flags);
+
+    kfree(sock->private, sizeof(tcp_data_t));
 }
 
 static bool tcp_connect(sock_t *sock, sock_addr_t *addr) {
@@ -347,14 +373,11 @@ static bool tcp_connect(sock_t *sock, sock_addr_t *addr) {
         data->interface = net_primary_interface();
 
         tcp_queue_add(sock, NULL, TCP_FLAG_SYN, 14600, 0, NULL, 0);
-
         data->next_local_seq++;
 
         spin_unlock_irqstore(&data->state_lock, flags);
 
         semaphore_down(&data->semaphore);
-
-        //TODO unlock the semaphore when syn-ack recieved
     } else {
         return false;
     }
@@ -375,12 +398,49 @@ static uint32_t tcp_send(sock_t *sock, void *buff, uint32_t len, uint32_t flags)
     return len;
 }
 
+static uint32_t tcp_recv(sock_t *sock, void *buff, uint32_t len, uint32_t flags) {
+    if(sock->peer.family != AF_INET) {
+        //FIXME errno = ENOTCONN
+        return -1;
+    }
+
+    tcp_data_t *data = sock->private;
+
+    for(uint32_t i = 0; i < len; i++) {
+        uint32_t f;
+        spin_lock_irqsave(&data->state_lock, &f);
+
+        if(data->recv_buff_back + 1 == data->recv_buff_front) {
+            data->recv_waiting = true;
+
+            spin_unlock_irqstore(&data->state_lock, f);
+
+            semaphore_down(&data->semaphore);
+
+            spin_lock_irqsave(&data->state_lock, &f);
+
+            semaphore_init(&data->semaphore, 0);
+
+            i--;
+        } else {
+            data->recv_buff_back = (data->recv_buff_back + 1) % data->recv_buff_size;
+
+            ((uint8_t *) buff)[i] = data->recv_buff[data->recv_buff_back];
+        }
+
+        spin_unlock_irqstore(&data->state_lock, f);
+    }
+
+    return len;
+}
+
 sock_protocol_t tcp_protocol = {
     .type  = SOCK_STREAM,
 
-    .open  = tcp_open,
+    .open = tcp_open,
     .connect = tcp_connect,
     .send = tcp_send,
+    .recv = tcp_recv,
     .close = tcp_close,
 };
 

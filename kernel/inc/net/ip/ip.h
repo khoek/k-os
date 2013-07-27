@@ -57,6 +57,6 @@ typedef struct ip_interface {
 } ip_interface_t;
 
 void ip_build(packet_t *packet, uint8_t protocol, ip_t dst_ip);
-void ip_recv(packet_t *packet, void *raw, uint16_t len);
+void ip_handle(packet_t *packet, void *raw, uint16_t len);
 
 #endif

@@ -9,7 +9,7 @@
 typedef struct net_link_layer {
     void (*resolve)(packet_t *packet);
     void (*build_hdr)(packet_t *);
-    void (*recieve)(packet_t *, void *, uint16_t);
+    void (*handle)(packet_t *, void *, uint16_t);
 } net_link_layer_t;
 
 typedef enum net_state {

@@ -5,6 +5,7 @@
 #include "mm/cache.h"
 #include "net/socket.h"
 #include "fs/fd.h"
+#include "video/log.h"
 
 static sock_family_t *families[AF_MAX];
 static DEFINE_SPINLOCK(family_lock);
@@ -61,17 +62,25 @@ bool sock_connect(sock_t *sock, sock_addr_t *addr) {
         }
     }
 
-    if(sock->proto->connect(sock, addr)) {
-        sock->flags |= SOCK_FLAG_CONNECTED;
-        return true;
-    } else {
-        return false;
-    }
+    return sock->proto->connect(sock, addr);
 }
 
 uint32_t sock_send(sock_t *sock, void *buff, uint32_t len, uint32_t flags) {
     if(sock->flags & SOCK_FLAG_CONNECTED) {
         return sock->proto->send(sock, buff, len, flags);
+    } else {
+        if(sock->proto->type == SOCK_DGRAM || sock->proto->type == SOCK_RAW) {
+            //FIXME errno = EDESTADDRREQ
+        } else {
+            //FIXME errno = ENOTCONN
+        }
+        return -1;
+    }
+}
+
+uint32_t sock_recv(sock_t *sock, void *buff, uint32_t len, uint32_t flags) {
+    if(sock->flags & SOCK_FLAG_CONNECTED) {
+        return sock->proto->recv(sock, buff, len, flags);
     } else {
         if(sock->proto->type == SOCK_DGRAM || sock->proto->type == SOCK_RAW) {
             //FIXME errno = EDESTADDRREQ

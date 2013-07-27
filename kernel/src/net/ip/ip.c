@@ -53,7 +53,7 @@ void ip_build(packet_t *packet, uint8_t protocol, ip_t dst) {
     packet->net.size = sizeof(ip_header_t);
 }
 
-void ip_recv(packet_t *packet, void *raw, uint16_t len) {
+void ip_handle(packet_t *packet, void *raw, uint16_t len) {
     ip_header_t *ip = packet->net.buff = raw;
     raw += sizeof(ip_header_t);
     len -= sizeof(ip_header_t);
@@ -63,15 +63,15 @@ void ip_recv(packet_t *packet, void *raw, uint16_t len) {
     } else {
         switch(ip->protocol) {
             case IP_PROT_ICMP: {
-                icmp_recv(packet, raw, len);
+                icmp_handle(packet, raw, len);
                 break;
             }
             case IP_PROT_TCP: {
-                tcp_recv(packet, raw, len);
+                tcp_handle(packet, raw, len);
                 break;
             }
             case IP_PROT_UDP: {
-                udp_recv(packet, raw, len);
+                udp_handle(packet, raw, len);
                 break;
             }
             default: {

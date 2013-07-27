@@ -59,7 +59,7 @@ void udp_build(packet_t *packet, ip_t dst_ip, uint16_t src_port_net, uint16_t ds
     ip_build(packet, IP_PROT_UDP, dst_ip);
 }
 
-void udp_recv(packet_t *packet, void *raw, uint16_t len) {
+void udp_handle(packet_t *packet, void *raw, uint16_t len) {
     udp_header_t *udp = packet->tran.buff = raw;
     raw += sizeof(udp_header_t);
     len -= sizeof(udp_header_t);

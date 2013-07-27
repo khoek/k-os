@@ -35,18 +35,18 @@ static void eth_build_hdr(packet_t *packet) {
     packet->link.size = sizeof(eth_header_t);
 }
 
-static void eth_recieve(packet_t *packet, void *raw, uint16_t length) {
+static void eth_handle(packet_t *packet, void *raw, uint16_t length) {
     eth_header_t *header = packet->link.buff = raw;
     raw += sizeof(eth_header_t);
     length -= sizeof(eth_header_t);
 
     switch(swap_uint16(header->type)) {
         case ETH_TYPE_ARP: {
-            arp_recv(packet, raw, length);
+            arp_handle(packet, raw, length);
             break;
         }
         case ETH_TYPE_IP: {
-            ip_recv(packet, raw, length);
+            ip_handle(packet, raw, length);
             break;
         }
         default: {
@@ -59,5 +59,5 @@ static void eth_recieve(packet_t *packet, void *raw, uint16_t length) {
 net_link_layer_t eth_link_layer = {
     .resolve = eth_resolve,
     .build_hdr = eth_build_hdr,
-    .recieve = eth_recieve,
+    .handle = eth_handle,
 };

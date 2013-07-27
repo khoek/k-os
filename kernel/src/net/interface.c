@@ -81,7 +81,7 @@ void net_put_hostname() {
 void net_recieve(net_interface_t *interface, void *raw, uint16_t len) {
     packet_t packet;
     packet.interface = interface;
-    interface->link_layer.recieve(&packet, raw, len);
+    interface->link_layer.handle(&packet, raw, len);
 }
 
 void net_set_state(net_interface_t *interface, net_state_t state) {
