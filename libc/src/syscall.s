@@ -3,37 +3,42 @@
 .global _sleep
 .global _log
 .global _uptime
+.global open
+.global close
 .global socket
+.global listen
+.global accept
+.global bind
 .global connect
+.global shutdown
 .global send
 .global recv
-.global close
 
 _exit:
-    mov 4(%esp), %ecx
     mov $0, %eax
+    mov 4(%esp), %ecx
     int $0x80
 
     ret
 
 _fork:
-    mov 4(%esp), %ecx
     mov $1, %eax
+    mov 4(%esp), %ecx
     int $0x80
 
     ret
 
 _sleep:
-    mov 4(%esp), %ecx
     mov $2, %eax
+    mov 4(%esp), %ecx
     int $0x80
 
     ret
 
 _log:
+    mov $3, %eax
     mov 8(%esp), %edx
     mov 4(%esp), %ecx
-    mov $3, %eax
     int $0x80
 
     ret
@@ -44,10 +49,57 @@ _uptime:
 
     ret
 
+open:
+    mov $5, %eax
+    mov 8(%esp), %edx
+    mov 4(%esp), %ecx
+    int $0x80
+
+    ret
+
+close:
+    mov $6, %eax
+    mov 4(%esp), %ecx
+    int $0x80
+
+    ret
+
 socket:
     push %ebx
 
-    mov $5, %eax
+    mov $7, %eax
+    mov 16(%esp), %ebx
+    mov 12(%esp), %edx
+    mov 8(%esp), %ecx
+    int $0x80
+
+    pop %ebx
+    ret
+
+listen:
+    mov $8, %eax
+    mov 8(%esp), %edx
+    mov 4(%esp), %ecx
+    int $0x80
+
+    ret
+
+accept:
+    push %ebx
+
+    mov $9, %eax
+    mov 16(%esp), %ebx
+    mov 12(%esp), %edx
+    mov 8(%esp), %ecx
+    int $0x80
+
+    pop %ebx
+    ret
+
+bind:
+    push %ebx
+
+    mov $10, %eax
     mov 16(%esp), %ebx
     mov 12(%esp), %edx
     mov 8(%esp), %ecx
@@ -59,7 +111,7 @@ socket:
 connect:
     push %ebx
 
-    mov $6, %eax
+    mov $11, %eax
     mov 16(%esp), %ebx
     mov 12(%esp), %edx
     mov 8(%esp), %ecx
@@ -68,11 +120,19 @@ connect:
     pop %ebx
     ret
 
+shutdown:
+    mov $12, %eax
+    mov 8(%esp), %edx
+    mov 4(%esp), %ecx
+    int $0x80
+
+    ret
+
 send:
     push %esi
     push %ebx
 
-    mov $7, %eax
+    mov $13, %eax
     mov 24(%esp), %ebx
     mov 20(%esp), %ebx
     mov 16(%esp), %edx
@@ -87,7 +147,7 @@ recv:
     push %esi
     push %ebx
 
-    mov $8, %eax
+    mov $14, %eax
     mov 24(%esp), %ebx
     mov 20(%esp), %ebx
     mov 16(%esp), %edx
@@ -96,11 +156,4 @@ recv:
 
     pop %ebx
     pop %esi
-    ret
-
-close:
-    mov 4(%esp), %ecx
-    mov $9, %eax
-    int $0x80
-
     ret

@@ -71,10 +71,43 @@ static void sys_uptime(interrupt_t *interrupt) {
     current->ret = uptime();
 }
 
+static void sys_open(interrupt_t *interrupt) {
+    current->ret = -1;
+}
+
+static void sys_close(interrupt_t *interrupt) {
+    gfd_idx_t fd = ufd_to_gfd(current, interrupt->cpu.reg.ecx);
+
+    if(fd == FD_INVALID) current->ret = -1;
+    else {
+        //TODO sanitize buffer/size arguments
+
+        gfd_t *gfd_ptr = gfdt_get(fd);
+        gfd_ptr->ops->close(gfd_ptr);
+        gfdt_rm(fd);
+
+        ufdt_rm(current, interrupt->cpu.reg.ecx);
+
+        current->ret = 0;
+    }
+}
+
 static void sys_socket(interrupt_t *interrupt) {
     gfd_idx_t fd = sock_create_fd(interrupt->cpu.reg.ecx, interrupt->cpu.reg.edx, interrupt->cpu.reg.ebx);
 
     current->ret = fd == FD_INVALID ? -1 : ufdt_add(current, 0, fd);
+}
+
+static void sys_listen(interrupt_t *interrupt) {
+    current->ret = -1;
+}
+
+static void sys_accept(interrupt_t *interrupt) {
+    current->ret = -1;
+}
+
+static void sys_bind(interrupt_t *interrupt) {
+    current->ret = -1;
 }
 
 static void sys_connect(interrupt_t *interrupt) {
@@ -116,6 +149,10 @@ static void sys_connect(interrupt_t *interrupt) {
     }
 }
 
+static void sys_shutdown(interrupt_t *interrupt) {
+    current->ret = -1;
+}
+
 static void sys_send(interrupt_t *interrupt) {
     gfd_idx_t fd = ufd_to_gfd(current, interrupt->cpu.reg.ecx);
 
@@ -141,34 +178,22 @@ static void sys_recv(interrupt_t *interrupt) {
     }
 }
 
-static void sys_close(interrupt_t *interrupt) {
-    gfd_idx_t fd = ufd_to_gfd(current, interrupt->cpu.reg.ecx);
-
-    if(fd == FD_INVALID) current->ret = -1;
-    else {
-        //TODO sanitize buffer/size arguments
-
-        gfd_t *gfd_ptr = gfdt_get(fd);
-        gfd_ptr->ops->close(gfd_ptr);
-        gfdt_rm(fd);
-
-        ufdt_rm(current, interrupt->cpu.reg.ecx);
-
-        current->ret = 0;
-    }
-}
-
 static syscall_t syscalls[MAX_SYSCALL] = {
-    [0] = sys_exit,
-    [1] = sys_fork,
-    [2] = sys_sleep,
-    [3] = sys_log,
-    [4] = sys_uptime,
-    [5] = sys_socket,
-    [6] = sys_connect,
-    [7] = sys_send,
-    [8] = sys_recv,
-    [9] = sys_close,
+    [ 0] = sys_exit,
+    [ 1] = sys_fork,
+    [ 2] = sys_sleep,
+    [ 3] = sys_log,
+    [ 4] = sys_uptime,
+    [ 5] = sys_open,
+    [ 6] = sys_close,
+    [ 7] = sys_socket,
+    [ 8] = sys_listen,
+    [ 9] = sys_accept,
+    [10] = sys_bind,
+    [11] = sys_connect,
+    [12] = sys_shutdown,
+    [13] = sys_send,
+    [14] = sys_recv,
 };
 
 static void syscall_handler(interrupt_t *interrupt) {
