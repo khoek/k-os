@@ -32,6 +32,35 @@ static task_t *idle_task;
 static DEFINE_LIST(tasks);
 static DEFINE_LIST(sleeping_tasks);
 
+ufd_idx_t ufdt_add(task_t *task, uint32_t flags, gfd_idx_t gfd) {
+    uint32_t f;
+    spin_lock_irqsave(&task->fd_lock, &f);
+
+    ufd_idx_t added = task->fd_next;
+    task->fd[task->fd_next].flags = flags;
+    task->fd[task->fd_next].gfd = gfd;
+    task->fd_next = task->fd_list[task->fd_next];
+
+    spin_unlock_irqstore(&task->fd_lock, f);
+
+    return added;
+}
+
+void ufdt_rm(task_t *task, ufd_idx_t fd_idx) {
+    uint32_t flags;
+    spin_lock_irqsave(&task->fd_lock, &flags);
+
+    task->fd[fd_idx].gfd = -1;
+    task->fd_list[fd_idx] = task->fd_next;
+    task->fd_next = fd_idx;
+
+    spin_unlock_irqstore(&task->fd_lock, flags);
+}
+
+gfd_idx_t ufd_to_gfd(task_t *task, ufd_idx_t ufd) {
+    return task->fd[ufd].gfd == FD_INVALID ? -1 : task->fd[ufd].gfd;
+}
+
 static void idle_loop() {
     while(1) hlt();
 }
@@ -83,6 +112,13 @@ void task_wake(task_t *task) {
 void task_exit(task_t *task, int32_t code) {
     //TODO propagate the exit code somehow
 
+    for(uint32_t i = 0; i < task->fd_count - 1; i++) {
+        if(task->fd[i].flags) {
+            gfdt_get(task->fd[i].gfd)->ops->close(gfdt_get(task->fd[i].gfd));
+            gfdt_rm(task->fd[i].gfd);
+        }
+    }
+
     list_rm(&task->list);
 
     cache_free(task_cache, task);
@@ -120,35 +156,6 @@ void task_run_scheduler() {
 
 void task_add_page(task_t UNUSED(*task), page_t UNUSED(*page)) {
     //TODO add this to the list of pages for the task
-}
-
-ufd_idx_t ufdt_add(task_t *task, uint32_t flags, gfd_idx_t gfd) {
-    uint32_t f;
-    spin_lock_irqsave(&task->fd_lock, &f);
-
-    ufd_idx_t added = task->fd_next;
-    task->fd[task->fd_next].flags = flags;
-    task->fd[task->fd_next].gfd = gfd;
-    task->fd_next = task->fd_list[task->fd_next];
-
-    spin_unlock_irqstore(&task->fd_lock, f);
-
-    return added;
-}
-
-void ufdt_rm(task_t *task, ufd_idx_t fd_idx) {
-    uint32_t flags;
-    spin_lock_irqsave(&task->fd_lock, &flags);
-
-    task->fd[fd_idx].gfd = -1;
-    task->fd_list[fd_idx] = task->fd_next;
-    task->fd_next = fd_idx;
-
-    spin_unlock_irqstore(&task->fd_lock, flags);
-}
-
-gfd_idx_t ufd_to_gfd(task_t *task, ufd_idx_t ufd) {
-    return task->fd[ufd].gfd == FD_INVALID ? -1 : task->fd[ufd].gfd;
 }
 
 #define FLAG_KERNEL (1 << 0)
