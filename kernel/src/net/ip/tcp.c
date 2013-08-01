@@ -174,7 +174,7 @@ static void tcp_queue_send(sock_t *sock, tcp_pending_t *pending) {
     tcp_build(packet, pending->dst_ip, pending->seq_num, pending->ack_num, pending->flags, pending->window_size, pending->urgent, pending->src_port_net, pending->dst_port_net);
     packet_send(packet);
 
-    //TODO set resend timer
+    //TODO set resend timer (only if !(sock->flags & SOCK_FLAG_SHUT_WR))
 }
 
 //should only be called when ((tcp_data_t *) sock->private)->state_lock is held
@@ -310,18 +310,18 @@ void tcp_handle(packet_t *packet, void *raw, uint16_t len) {
                 } else {
                     data->next_peer_seq = seq_num + len;
 
-                    if(data->recv_buff_front != data->recv_buff_back - 1) {
-                        for(uint32_t i = 0; i < len; i++) {
-                            if(data->recv_buff_front == data->recv_buff_back - 1) {
-                                break;
+                    if(!(sock->flags & SOCK_FLAG_SHUT_RD)){
+                        if(data->recv_buff_front != data->recv_buff_back - 1) {
+                            for(uint32_t i = 0; i < len; i++) {
+                                if(data->recv_buff_front == data->recv_buff_back - 1) {
+                                    break;
+                                }
+
+                                data->recv_buff[data->recv_buff_front] = ((uint8_t *) raw)[i];
+                                data->recv_buff_front++;
                             }
-
-                            data->recv_buff[data->recv_buff_front] = ((uint8_t *) raw)[i];
-                            data->recv_buff_front++;
                         }
-                    }
-
-                    if(data->recv_waiting) {
+                    } else if(data->recv_waiting) {
                         semaphore_up(&data->semaphore);
                     }
                 }
@@ -421,9 +421,32 @@ static bool tcp_connect(sock_t *sock, sock_addr_t *addr) {
     return true;
 }
 
+static bool tcp_shutdown(sock_t *sock, int how) {
+    if(sock->peer.family == AF_INET) {
+        tcp_data_t *data = sock->private;
+
+        uint32_t flags;
+        spin_lock_irqsave(&data->state_lock, &flags);
+
+        if(how == SHUT_RDWR || (sock->flags & SOCK_FLAG_SHUT_WR && how & SHUT_RD) || (sock->flags & SOCK_FLAG_SHUT_RD && how & SHUT_WR)) {
+            data->state = TCP_CLOSED;
+            tcp_control_send(sock, TCP_FLAG_RST, 0);
+        }
+    } else {
+        return false;
+    }
+
+    return true;
+}
+
 static uint32_t tcp_send(sock_t *sock, void *buff, uint32_t len, uint32_t flags) {
     if(sock->peer.family != AF_INET) {
         //FIXME errno = ENOTCONN
+        return -1;
+    }
+
+    if(sock->flags & SOCK_FLAG_SHUT_WR) {
+        //FIXME errno = EPIPE
         return -1;
     }
 
@@ -438,6 +461,10 @@ static uint32_t tcp_recv(sock_t *sock, void *buff, uint32_t len, uint32_t flags)
     if(sock->peer.family != AF_INET) {
         //FIXME errno = ENOTCONN
         return -1;
+    }
+
+    if(sock->flags & SOCK_FLAG_SHUT_RD) {
+        return 0;
     }
 
     tcp_data_t *data = sock->private;
@@ -457,6 +484,10 @@ static uint32_t tcp_recv(sock_t *sock, void *buff, uint32_t len, uint32_t flags)
 
             semaphore_init(&data->semaphore, 0);
 
+            if(sock->flags & SOCK_FLAG_SHUT_RD) {
+                return i;
+            }
+
             i--;
         } else {
             data->recv_buff_back = (data->recv_buff_back + 1) % data->recv_buff_size;
@@ -474,10 +505,11 @@ sock_protocol_t tcp_protocol = {
     .type  = SOCK_STREAM,
 
     .open = tcp_open,
+    .close = tcp_close,
     .connect = tcp_connect,
+    .shutdown = tcp_shutdown,
     .send = tcp_send,
     .recv = tcp_recv,
-    .close = tcp_close,
 };
 
 static INITCALL ephemeral_init() {

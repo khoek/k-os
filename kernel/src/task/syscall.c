@@ -150,7 +150,12 @@ static void sys_connect(interrupt_t *interrupt) {
 }
 
 static void sys_shutdown(interrupt_t *interrupt) {
-    current->ret = -1;
+    gfd_idx_t fd = ufd_to_gfd(current, interrupt->cpu.reg.ecx);
+
+    if(fd == FD_INVALID) current->ret = -1;
+    else {
+        current->ret = sock_shutdown(gfd_to_sock(fd), interrupt->cpu.reg.edx);
+    }
 }
 
 static void sys_send(interrupt_t *interrupt) {

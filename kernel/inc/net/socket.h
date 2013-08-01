@@ -15,6 +15,7 @@
 #define SHUT_RD   1
 #define SHUT_RDWR 2
 #define SHUT_WR   3
+#define SHUT_MASK 3
 
 typedef enum sock_type {
     SOCK_STREAM = 1,
@@ -25,6 +26,9 @@ typedef enum sock_type {
 #define SOCK_MAX (SOCK_RAW + 1)
 
 #define SOCK_FLAG_CONNECTED (1 << 0)
+#define SOCK_FLAG_SHUT_RD   (1 << 1)
+#define SOCK_FLAG_SHUT_WR   (1 << 2)
+#define SOCK_FLAG_SHUT_RDWR (SOCK_FLAG_SHUT_RD | SOCK_FLAG_SHUT_WR)
 
 typedef uint32_t socklen_t;
 typedef unsigned int sa_family_t;
@@ -80,10 +84,11 @@ struct sock_protocol {
     uint32_t type;
 
     void (*open)(sock_t *);
+    void (*close)(sock_t *);
     bool (*connect)(sock_t *, sock_addr_t *);
+    bool (*shutdown)(sock_t *, int);
     uint32_t (*send)(sock_t *, void *buff, uint32_t len, uint32_t flags);
     uint32_t (*recv)(sock_t *, void *buff, uint32_t len, uint32_t flags);
-    void (*close)(sock_t *);
 
     /*
     void (*bind)(sock_t *, sock_addr_t *);
@@ -106,6 +111,7 @@ void register_sock_family(sock_family_t *family);
 
 sock_t * sock_create(uint32_t family, uint32_t type, uint32_t protocol);
 bool sock_connect(sock_t *sock, sock_addr_t *addr);
+bool sock_shutdown(sock_t *sock, int how);
 uint32_t sock_send(sock_t *sock, void *buff, uint32_t len, uint32_t flags);
 uint32_t sock_recv(sock_t *sock, void *buff, uint32_t len, uint32_t flags);
 void sock_close(sock_t *sock);
