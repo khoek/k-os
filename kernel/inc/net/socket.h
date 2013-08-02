@@ -29,6 +29,7 @@ typedef enum sock_type {
 #define SOCK_FLAG_SHUT_RD   (1 << 1)
 #define SOCK_FLAG_SHUT_WR   (1 << 2)
 #define SOCK_FLAG_SHUT_RDWR (SOCK_FLAG_SHUT_RD | SOCK_FLAG_SHUT_WR)
+#define SOCK_FLAG_BOUND     (1 << 3)
 
 typedef uint32_t socklen_t;
 typedef unsigned int sa_family_t;

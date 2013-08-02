@@ -3,6 +3,8 @@
 
 #include "lib/int.h"
 
-void timer_create(uint32_t millis, void (*callback)(void *), void *data);
+typedef void (*timer_callback_t)(void *);
+
+void timer_create(uint32_t millis, timer_callback_t callback, void *data);
 
 #endif

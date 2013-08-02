@@ -10,7 +10,7 @@ typedef struct timer {
     list_head_t list;
 
     uint32_t delta;
-    void (*callback)(void *);
+    timer_callback_t callback;
     void *data;
 } timer_t;
 
@@ -22,7 +22,7 @@ static DEFINE_LIST(dispatch_timers);
 static DEFINE_SPINLOCK(active_lock);
 static DEFINE_SPINLOCK(dispatch_lock);
 
-void timer_create(uint32_t millis, void (*callback)(void *), void *data) {
+void timer_create(uint32_t millis, timer_callback_t callback, void *data) {
     timer_t *new = cache_alloc(timer_cache);
     new->delta = millis;
     new->callback = callback;

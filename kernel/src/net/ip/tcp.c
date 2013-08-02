@@ -6,6 +6,7 @@
 #include "sync/spinlock.h"
 #include "sync/semaphore.h"
 #include "mm/cache.h"
+#include "time/timer.h"
 #include "net/socket.h"
 #include "net/packet.h"
 #include "net/ip/ip.h"
@@ -14,8 +15,11 @@
 
 #include "checksum.h"
 
+#define TCP_NUM_RETRYS 5
+
 typedef enum tcp_state {
     TCP_INITIALIZED,
+    TCP_RETRY,
     TCP_LISTEN,
     TCP_SYN_SENT,
     TCP_SYN_RECIEVED,
@@ -42,6 +46,7 @@ typedef struct tcp_data {
     uint32_t recv_buff_size;
 
     bool recv_waiting;
+    uint32_t retrys;
 
     semaphore_t semaphore;
 
@@ -214,6 +219,18 @@ static void tcp_control_send(sock_t *sock, uint16_t flags, uint16_t window_size)
     //TODO set resend timer
 }
 
+static void tcp_resend_syn(sock_t *sock) {
+    tcp_data_t *data = sock->private;
+
+    uint32_t flags;
+    spin_lock_irqsave(&data->state_lock, &flags);
+
+    data->state = TCP_SYN_SENT;
+    tcp_queue_add(sock, NULL, TCP_FLAG_SYN, 14600, 0, NULL, 0);
+
+    spin_unlock_irqstore(&data->state_lock, flags);
+}
+
 void tcp_handle(packet_t *packet, void *raw, uint16_t len) {
     tcp_header_t *tcp = packet->tran.buff = raw;
     raw = tcp + 1;
@@ -239,22 +256,19 @@ void tcp_handle(packet_t *packet, void *raw, uint16_t len) {
     }
 
     uint32_t ack_num = swap_uint32(tcp->ack_num);
-
-    if(tcp->data_off_flags & TCP_FLAG_ACK) {
-        if(ack_num > data->next_local_ack) {
-            for(uint32_t i = 0; i < ack_num - data->next_local_ack; i++) {
-                list_rm(&list_first(&data->queue, tcp_pending_t, list)->list);
-            }
-
-            data->next_local_ack = ack_num;
-        }
-    }
-
     uint32_t seq_num = swap_uint32(tcp->seq_num);
 
     switch(data->state) {
         case TCP_SYN_SENT: {
             if(tcp->data_off_flags & TCP_FLAG_ACK && tcp->data_off_flags & TCP_FLAG_SYN) {
+                if(ack_num > data->next_local_ack) {
+                    for(uint32_t i = 0; i < ack_num - data->next_local_ack; i++) {
+                        list_rm(&list_first(&data->queue, tcp_pending_t, list)->list);
+                    }
+
+                    data->next_local_ack = ack_num;
+                }
+
                 data->state = TCP_ESTABLISHED;
                 data->next_peer_seq = seq_num + len + 1;
 
@@ -264,16 +278,24 @@ void tcp_handle(packet_t *packet, void *raw, uint16_t len) {
 
                 semaphore_up(&data->semaphore);
             } else {
+                if(data->retrys > TCP_NUM_RETRYS) {
+                    data->state = TCP_CLOSED;
+                    break;
+                }
+
                 if(tcp->data_off_flags & TCP_FLAG_ACK) {
                     data->next_local_ack = ack_num;
                 } else {
                     data->next_local_ack = 0;
                 }
 
-                tcp_control_send(sock, TCP_FLAG_RST, tcp->window_size);
+                tcp_control_send(sock, TCP_FLAG_RST | TCP_FLAG_ACK, tcp->window_size);
 
                 tcp_reset(sock);
-                tcp_queue_add(sock, NULL, TCP_FLAG_SYN, 14600, 0, NULL, 0);
+
+                data->state = TCP_RETRY;
+                data->retrys++;
+                timer_create(50000, (timer_callback_t) tcp_resend_syn, sock);
             }
 
             break;
@@ -301,6 +323,16 @@ void tcp_handle(packet_t *packet, void *raw, uint16_t len) {
             break;
         }
         case TCP_ESTABLISHED: {
+            if(tcp->data_off_flags & TCP_FLAG_ACK) {
+                if(ack_num > data->next_local_ack) {
+                    for(uint32_t i = 0; i < ack_num - data->next_local_ack; i++) {
+                        list_rm(&list_first(&data->queue, tcp_pending_t, list)->list);
+                    }
+
+                    data->next_local_ack = ack_num;
+                }
+            }
+
             if(len > 0) {
                 if(data->next_peer_seq > seq_num) {
                     goto out;
@@ -360,14 +392,12 @@ static void tcp_open(sock_t *sock) {
 
     tcp_reset(sock);
 
+    data->retrys = 0;
     data->recv_buff = page_to_virt(alloc_page(0));
 
     list_init(&data->queue);
     spinlock_init(&data->state_lock);
     semaphore_init(&data->semaphore, 0);
-
-    //do this last, it publishes the socket
-    data->local_port = tcp_bind_port(sock);
 }
 
 static void tcp_close(sock_t *sock) {
@@ -378,7 +408,7 @@ static void tcp_close(sock_t *sock) {
 
     if(data->state != TCP_CLOSED) {
         if(sock->peer.family == AF_INET) {
-            tcp_control_send(sock, TCP_FLAG_RST, 0);
+            tcp_control_send(sock, TCP_FLAG_RST | TCP_FLAG_ACK, 0);
         }
     }
 
@@ -408,17 +438,27 @@ static bool tcp_connect(sock_t *sock, sock_addr_t *addr) {
         data->state = TCP_SYN_SENT;
         data->interface = net_primary_interface();
 
+        if(!(sock->flags & SOCK_FLAG_BOUND)) data->local_port = tcp_bind_port(sock);
+
         tcp_queue_add(sock, NULL, TCP_FLAG_SYN, 14600, 0, NULL, 0);
         data->next_local_seq++;
 
         spin_unlock_irqstore(&data->state_lock, flags);
 
         semaphore_down(&data->semaphore);
-    } else {
-        return false;
+
+        spin_lock_irqsave(&data->state_lock, &flags);
+
+        tcp_state_t state = data->state;
+
+        spin_unlock_irqstore(&data->state_lock, flags);
+
+        if(state == TCP_ESTABLISHED) {
+            return true;
+        }
     }
 
-    return true;
+    return false;
 }
 
 static bool tcp_shutdown(sock_t *sock, int how) {
@@ -430,8 +470,10 @@ static bool tcp_shutdown(sock_t *sock, int how) {
 
         if(how == SHUT_RDWR || (sock->flags & SOCK_FLAG_SHUT_WR && how & SHUT_RD) || (sock->flags & SOCK_FLAG_SHUT_RD && how & SHUT_WR)) {
             data->state = TCP_CLOSED;
-            tcp_control_send(sock, TCP_FLAG_RST, 0);
+            tcp_control_send(sock, TCP_FLAG_RST | TCP_FLAG_ACK, 0);
         }
+
+        spin_unlock_irqstore(&data->state_lock, flags);
     } else {
         return false;
     }
@@ -440,6 +482,18 @@ static bool tcp_shutdown(sock_t *sock, int how) {
 }
 
 static uint32_t tcp_send(sock_t *sock, void *buff, uint32_t len, uint32_t flags) {
+    tcp_data_t *data = sock->private;
+
+    uint32_t f;
+    spin_lock_irqsave(&data->state_lock, &f);
+
+    if(data->state == TCP_CLOSED) {
+        spin_unlock_irqstore(&data->state_lock, f);
+
+        //FIXME errno = ECONNRESET
+        return -1;
+    }
+
     if(sock->peer.family != AF_INET) {
         //FIXME errno = ENOTCONN
         return -1;
@@ -454,6 +508,8 @@ static uint32_t tcp_send(sock_t *sock, void *buff, uint32_t len, uint32_t flags)
 
     tcp_queue_add(sock, NULL, TCP_FLAG_ACK, 14600, 0, buff, len);
 
+    spin_unlock_irqstore(&data->state_lock, f);
+
     return len;
 }
 
@@ -463,17 +519,27 @@ static uint32_t tcp_recv(sock_t *sock, void *buff, uint32_t len, uint32_t flags)
         return -1;
     }
 
-    if(sock->flags & SOCK_FLAG_SHUT_RD) {
-        return 0;
-    }
-
     tcp_data_t *data = sock->private;
 
-    for(uint32_t i = 0; i < len; i++) {
-        uint32_t f;
-        spin_lock_irqsave(&data->state_lock, &f);
+    uint32_t f;
+    spin_lock_irqsave(&data->state_lock, &f);
 
+    if(data->state == TCP_CLOSED) {
+        spin_unlock_irqstore(&data->state_lock, f);
+
+        //FIXME errno = ECONNRESET
+        return -1;
+    }
+
+    for(uint32_t i = 0; i < len; i++) {
         if(data->recv_buff_back + 1 == data->recv_buff_front) {
+            i--;
+
+            if(sock->flags & SOCK_FLAG_SHUT_RD) {
+                len = i;
+                goto out;
+            }
+
             data->recv_waiting = true;
 
             spin_unlock_irqstore(&data->state_lock, f);
@@ -485,19 +551,18 @@ static uint32_t tcp_recv(sock_t *sock, void *buff, uint32_t len, uint32_t flags)
             semaphore_init(&data->semaphore, 0);
 
             if(sock->flags & SOCK_FLAG_SHUT_RD) {
-                return i;
+                len = i;
+                goto out;
             }
-
-            i--;
         } else {
             data->recv_buff_back = (data->recv_buff_back + 1) % data->recv_buff_size;
 
             ((uint8_t *) buff)[i] = data->recv_buff[data->recv_buff_back];
         }
-
-        spin_unlock_irqstore(&data->state_lock, f);
     }
 
+out:
+    spin_unlock_irqstore(&data->state_lock, f);
     return len;
 }
 
