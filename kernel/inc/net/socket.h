@@ -70,6 +70,7 @@ typedef struct sock_family {
 
 struct sock {
     sock_addr_t peer;
+    sock_addr_t local;
     uint32_t flags;
 
     sock_family_t *family;
@@ -86,6 +87,7 @@ struct sock_protocol {
 
     void (*open)(sock_t *);
     void (*close)(sock_t *);
+    bool (*bind)(sock_t *, sock_addr_t *);
     bool (*connect)(sock_t *, sock_addr_t *);
     bool (*shutdown)(sock_t *, int);
     uint32_t (*send)(sock_t *, void *buff, uint32_t len, uint32_t flags);
@@ -111,6 +113,7 @@ struct sock_protocol {
 void register_sock_family(sock_family_t *family);
 
 sock_t * sock_create(uint32_t family, uint32_t type, uint32_t protocol);
+bool sock_bind(sock_t *sock, sock_addr_t *addr);
 bool sock_connect(sock_t *sock, sock_addr_t *addr);
 bool sock_shutdown(sock_t *sock, int how);
 uint32_t sock_send(sock_t *sock, void *buff, uint32_t len, uint32_t flags);

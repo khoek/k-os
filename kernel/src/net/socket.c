@@ -56,6 +56,15 @@ sock_t * sock_create(uint32_t family, uint32_t type, uint32_t protocol) {
     return sock;
 }
 
+bool sock_bind(sock_t *sock, sock_addr_t *addr) {
+    if(sock->flags & SOCK_FLAG_BOUND) {
+        //FIXME errno = EINVAL
+        return false;
+    }
+
+    return sock->proto->bind(sock, addr);
+}
+
 bool sock_connect(sock_t *sock, sock_addr_t *addr) {
     if(!ISCONNECTIONLESS(sock)) {
         if(sock->flags & SOCK_FLAG_CONNECTED) {

@@ -18,6 +18,8 @@
 #include "fs/stream/char.h"
 #include "video/log.h"
 
+#define UFD_FLAG_PRESENT (1 << 0)
+
 #define FREELIST_END (1 << 31)
 
 task_t *current;
@@ -37,7 +39,7 @@ ufd_idx_t ufdt_add(task_t *task, uint32_t flags, gfd_idx_t gfd) {
     spin_lock_irqsave(&task->fd_lock, &f);
 
     ufd_idx_t added = task->fd_next;
-    task->fd[task->fd_next].flags = flags;
+    task->fd[task->fd_next].flags = UFD_FLAG_PRESENT | flags;
     task->fd[task->fd_next].gfd = gfd;
     task->fd_next = task->fd_list[task->fd_next];
 
@@ -51,6 +53,7 @@ void ufdt_rm(task_t *task, ufd_idx_t fd_idx) {
     spin_lock_irqsave(&task->fd_lock, &flags);
 
     task->fd[fd_idx].gfd = -1;
+    task->fd[fd_idx].flags = 0;
     task->fd_list[fd_idx] = task->fd_next;
     task->fd_next = fd_idx;
 
@@ -184,14 +187,15 @@ task_t * task_create(bool kernel, void *ip, void *sp) {
     tmp_fds_list[task->fd_count - 1] = FREELIST_END;
 
     ufd_t *tmp_fds = (ufd_t *) alloc_page_user(0, task, 0x21000);
-    tmp_fds[0].flags = 0;
+    tmp_fds[0].flags = UFD_FLAG_PRESENT;
     tmp_fds[0].gfd = char_stream_alloc();
-    tmp_fds[1].flags = 0;
+    tmp_fds[1].flags = UFD_FLAG_PRESENT;
     tmp_fds[1].gfd = char_stream_alloc();
-    tmp_fds[2].flags = 0;
+    tmp_fds[2].flags = UFD_FLAG_PRESENT;
     tmp_fds[2].gfd = char_stream_alloc();
     for(uint32_t i = 3; i < task->fd_count - 1; i++) {
         tmp_fds[i].gfd = 0;
+        tmp_fds[i].flags = 0;
     }
 
     task->fd_list = (void *) 0x20000;

@@ -82,11 +82,11 @@ static void sys_close(interrupt_t *interrupt) {
     else {
         //TODO sanitize buffer/size arguments
 
+        ufdt_rm(current, interrupt->cpu.reg.ecx);
+
         gfd_t *gfd_ptr = gfdt_get(fd);
         gfd_ptr->ops->close(gfd_ptr);
         gfdt_rm(fd);
-
-        ufdt_rm(current, interrupt->cpu.reg.ecx);
 
         current->ret = 0;
     }
@@ -107,7 +107,35 @@ static void sys_accept(interrupt_t *interrupt) {
 }
 
 static void sys_bind(interrupt_t *interrupt) {
-    current->ret = -1;
+    gfd_idx_t fd = ufd_to_gfd(current, interrupt->cpu.reg.ecx);
+
+    if(fd == FD_INVALID) current->ret = -1;
+    else {
+        //TODO sanitize address/size arguments
+
+        sock_t *sock = gfd_to_sock(fd);
+
+        struct sockaddr *useraddr = (struct sockaddr *) interrupt->cpu.reg.edx;
+
+        sock_addr_t addr;
+        if(interrupt->cpu.reg.ebx < sock->family->addr_len + sizeof(struct sockaddr)) {
+            //FIXME errno = EINVAL
+
+            current->ret = -1;
+        } else if(useraddr->sa_family != sock->family->family) {
+            //FIXME errno = EAFNOSUPPORT
+
+            current->ret = -1;
+        } else {
+            void *rawaddr = kmalloc(sock->family->addr_len);
+            memcpy(rawaddr, &useraddr->sa_data, sock->family->addr_len);
+
+            addr.family = sock->family->family;
+            addr.addr = rawaddr;
+
+            current->ret = sock_bind(sock, &addr) ? 0 : -1;
+        }
+    }
 }
 
 static void sys_connect(interrupt_t *interrupt) {
@@ -137,7 +165,7 @@ static void sys_connect(interrupt_t *interrupt) {
 
                 current->ret = -1;
             } else {
-                void *rawaddr = kmalloc(sock->family->addr_len);\
+                void *rawaddr = kmalloc(sock->family->addr_len);
                 memcpy(rawaddr, &useraddr->sa_data, sock->family->addr_len);
 
                 addr.family = sock->family->family;

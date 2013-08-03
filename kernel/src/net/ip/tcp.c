@@ -77,7 +77,7 @@ typedef struct tcp_pending {
 #define EPHEMERAL_NUM   ((EPHEMERAL_END - EPHEMERAL_START) + 1)
 
 static sock_t * ephemeral_ports_sock[EPHEMERAL_NUM];
-static uint32_t ephemeral_ports_list[EPHEMERAL_NUM];
+static uint32_t ephemeral_ports_next[EPHEMERAL_NUM];
 static uint32_t ephemeral_next = EPHEMERAL_START;
 static DEFINE_SPINLOCK(ephemeral_lock);
 
@@ -89,7 +89,7 @@ static uint16_t tcp_bind_port(sock_t *sock) {
     if(ephemeral_next != FREELIST_END) {
         port = ephemeral_next;
         ephemeral_ports_sock[port] = sock;
-        ephemeral_next = ephemeral_ports_list[ephemeral_next];
+        ephemeral_next = ephemeral_ports_next[ephemeral_next];
     }
 
     spin_unlock_irqstore(&ephemeral_lock, flags);
@@ -104,7 +104,7 @@ static void tcp_unbind_port(uint16_t port) {
     spin_lock_irqsave(&ephemeral_lock, &flags);
 
     ephemeral_ports_sock[port] = NULL;
-    ephemeral_ports_list[port] = ephemeral_next;
+    ephemeral_ports_next[port] = ephemeral_next;
     ephemeral_next = port;
 
     spin_unlock_irqstore(&ephemeral_lock, flags);
@@ -215,8 +215,6 @@ static void tcp_control_send(sock_t *sock, uint16_t flags, uint16_t window_size)
     packet_t *packet = packet_create(data->interface, NULL, NULL, 0);
     tcp_build(packet, peer_addr->ip, swap_uint32(data->next_local_ack), swap_uint32(data->next_peer_seq), flags, swap_uint16(window_size), 0, data->local_port, peer_addr->port);
     packet_send(packet);
-
-    //TODO set resend timer
 }
 
 static void tcp_resend_syn(sock_t *sock) {
@@ -278,8 +276,10 @@ void tcp_handle(packet_t *packet, void *raw, uint16_t len) {
 
                 semaphore_up(&data->semaphore);
             } else {
-                if(data->retrys > TCP_NUM_RETRYS) {
+                if(data->retrys >= TCP_NUM_RETRYS) {
                     data->state = TCP_CLOSED;
+                    semaphore_up(&data->semaphore);
+
                     break;
                 }
 
@@ -360,7 +360,7 @@ void tcp_handle(packet_t *packet, void *raw, uint16_t len) {
             }
 
             if(tcp->data_off_flags & TCP_FLAG_FIN) {
-                //TODO somehow record that the peer will not be sending any more information
+                sock->flags |= SOCK_FLAG_SHUT_RD;
 
                 data->next_peer_seq = seq_num + 1;
             }
@@ -420,6 +420,35 @@ static void tcp_close(sock_t *sock) {
     spin_unlock_irqstore(&data->state_lock, flags);
 
     kfree(sock->private, sizeof(tcp_data_t));
+}
+
+static bool tcp_bind(sock_t *sock, sock_addr_t *addr) {
+    if(addr->family == AF_INET) {
+        sock->local.family = AF_INET;
+        sock->local.addr = addr->addr;
+
+        uint32_t flags;
+        spin_lock_irqsave(&ephemeral_lock, &flags);
+        
+        if(!ephemeral_ports_next[((ip_and_port_t *) sock->local.addr)->port]) {
+            spin_unlock_irqstore(&ephemeral_lock, flags);
+        
+            //FIXME errno = EADDRINUSE
+            return false;
+        }
+        
+        if(ephemeral_next == ((ip_and_port_t *) sock->local.addr)->port) {
+            tcp_bind_port(sock);
+        } else {
+            ;
+        }
+
+        spin_unlock_irqstore(&ephemeral_lock, flags);
+
+        sock->flags |= SOCK_FLAG_BOUND;
+    }
+
+    return false;
 }
 
 static bool tcp_connect(sock_t *sock, sock_addr_t *addr) {
@@ -524,7 +553,7 @@ static uint32_t tcp_recv(sock_t *sock, void *buff, uint32_t len, uint32_t flags)
     uint32_t f;
     spin_lock_irqsave(&data->state_lock, &f);
 
-    if(data->state == TCP_CLOSED) {
+    if(data->recv_buff_back + 1 == data->recv_buff_front && data->state == TCP_CLOSED) {
         spin_unlock_irqstore(&data->state_lock, f);
 
         //FIXME errno = ECONNRESET
@@ -571,6 +600,7 @@ sock_protocol_t tcp_protocol = {
 
     .open = tcp_open,
     .close = tcp_close,
+    .bind = tcp_bind,
     .connect = tcp_connect,
     .shutdown = tcp_shutdown,
     .send = tcp_send,
@@ -578,12 +608,13 @@ sock_protocol_t tcp_protocol = {
 };
 
 static INITCALL ephemeral_init() {
-    for(uint32_t i = 0; i < EPHEMERAL_NUM - 1; i++) {
-        ephemeral_ports_list[i] = i + 1;
+    for(uint32_t i = 0; i < EPHEMERAL_NUM; i++) {
+        ephemeral_ports_sock[i] = NULL;
+        ephemeral_ports_next[i] = i + 1;
     }
-    ephemeral_ports_list[EPHEMERAL_NUM - 1] = FREELIST_END;
+    ephemeral_ports_next[EPHEMERAL_NUM - 1] = FREELIST_END;
 
     return 0;
 }
 
-pure_initcall(ephemeral_init);
+core_initcall(ephemeral_init);
