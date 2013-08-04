@@ -4,11 +4,15 @@
 #include "common/hashtable.h"
 #include "sync/spinlock.h"
 #include "mm/cache.h"
+#include "time/timer.h"
 #include "net/packet.h"
 #include "net/interface.h"
 #include "net/eth/eth.h"
 #include "net/ip/arp.h"
 #include "video/log.h"
+
+#define ARP_RETRYS  5
+#define ARP_TIMEOUT 500
 
 typedef enum arp_cache_entry_state {
     CACHE_UNRESOLVED,
@@ -18,10 +22,14 @@ typedef enum arp_cache_entry_state {
 typedef struct arp_cache_entry {
     hashtable_node_t node;
 
+    net_interface_t *interface;
+
     ip_t ip;
     mac_t mac;
 
     arp_cache_entry_state_t state;
+
+    int8_t retrys;
 
     spinlock_t lock;
     list_head_t pending;
@@ -64,34 +72,63 @@ static arp_cache_entry_t * arp_cache_find(ip_t *ip) {
     return NULL;
 }
 
-static void arp_cache_put_resolved(ip_t ip, mac_t mac) {
+static void arp_watchdog(arp_cache_entry_t *entry) {
+    uint32_t flags;
+    spin_lock_irqsave(&entry->lock, &flags);
+
+    if(entry->state == CACHE_UNRESOLVED) {
+        entry->retrys++;
+
+        if(entry->retrys >= ARP_RETRYS) {
+            entry->retrys = -1;
+
+            packet_t *pending;
+            LIST_FOR_EACH_ENTRY(pending, &entry->pending, list) {
+                pending->state = PSTATE_RESOLVED;
+                pending->result = PRESULT_UNKNOWNHOST;
+
+                packet_send(pending);
+            }
+
+            list_init(&entry->pending);
+        } else {
+            packet_t *request = packet_create(entry->interface, NULL, NULL, NULL, 0);
+            arp_build(request, ARP_OP_REQUEST, *((mac_t *) entry->interface->hard_addr.addr), MAC_NONE, ((ip_interface_t *) entry->interface->ip_data)->ip_addr, entry->ip);
+            packet_send(request);
+
+            timer_create(ARP_TIMEOUT, (timer_callback_t) arp_watchdog, entry);
+        }
+    }
+
+    spin_unlock_irqstore(&entry->lock, flags);
+}
+
+static void arp_cache_put_resolved(net_interface_t *interface, ip_t ip, mac_t mac) {
     arp_cache_entry_t *entry = kmalloc(sizeof(arp_cache_entry_t));
     entry->state = CACHE_RESOLVED;
+    entry->interface = interface;
     entry->ip = ip;
     entry->mac = mac;
-
     spinlock_init(&entry->lock);
-
     list_init(&entry->pending);
 
     hashtable_add(*((uint32_t *) ip.addr), &entry->node, arp_cache);
 }
 
-static void arp_cache_put_unresolved(ip_t ip, packet_t *packet) {
+static void arp_cache_put_unresolved(net_interface_t *interface, ip_t ip, packet_t *packet) {
     arp_cache_entry_t *entry = kmalloc(sizeof(arp_cache_entry_t));
     entry->state = CACHE_UNRESOLVED;
+    entry->interface = packet->interface;
     entry->ip = ip;
-
+    entry->retrys = -1;
     spinlock_init(&entry->lock);
-
     list_init(&entry->pending);
+
     list_add(&packet->list, &entry->pending);
 
     hashtable_add(*((uint32_t *) ip.addr), &entry->node, arp_cache);
 
-    packet_t *request = packet_create(packet->interface, NULL, NULL, NULL, 0);
-    arp_build(request, ARP_OP_REQUEST, *((mac_t *) packet->interface->hard_addr.addr), MAC_NONE, ((ip_interface_t *) packet->interface->ip_data)->ip_addr, ip);
-    packet_send(request);
+    arp_watchdog(entry);
 }
 
 void arp_resolve(packet_t *packet) {
@@ -117,6 +154,8 @@ void arp_resolve(packet_t *packet) {
 
             if(entry->state == CACHE_UNRESOLVED) {
                 list_add(&packet->list, &entry->pending);
+
+                if(entry->retrys == -1) arp_watchdog(entry);
             } else if(entry->state == CACHE_RESOLVED) {
                 packet->route.dst.family = AF_LINK;
                 packet->route.dst.addr = &entry->mac;
@@ -127,7 +166,7 @@ void arp_resolve(packet_t *packet) {
 
             spin_unlock_irqstore(&entry->lock, flags);
         } else {
-            arp_cache_put_unresolved(ip, packet);
+            arp_cache_put_unresolved(packet->interface, ip, packet);
         }
 
         spin_unlock_irqstore(&arp_cache_lock, flags);
@@ -168,7 +207,7 @@ void arp_handle(packet_t *packet, void *raw, uint16_t len) {
             }
         }
     } else {
-        arp_cache_put_resolved(arp->sender_ip, arp->sender_mac);
+        arp_cache_put_resolved(packet->interface, arp->sender_ip, arp->sender_mac);
     }
 
     spin_unlock_irqstore(&arp_cache_lock, flags);

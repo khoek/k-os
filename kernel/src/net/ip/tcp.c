@@ -15,7 +15,8 @@
 
 #include "checksum.h"
 
-#define TCP_NUM_RETRYS 5
+#define TCP_SYN_RETRYS 5
+#define TCP_TIMEOUT    500
 
 typedef enum tcp_state {
     TCP_INITIALIZED,
@@ -45,7 +46,7 @@ typedef struct tcp_data {
     uint32_t recv_buff_size;
 
     bool recv_waiting;
-    uint32_t retrys;
+    uint8_t retrys;
 
     semaphore_t semaphore;
 
@@ -282,7 +283,9 @@ void tcp_handle(packet_t *packet, void *raw, uint16_t len) {
 
                 semaphore_up(&data->semaphore);
             } else {
-                if(data->retrys >= TCP_NUM_RETRYS) {
+                data->retrys++;
+
+                if(data->retrys > TCP_SYN_RETRYS) {
                     data->state = TCP_CLOSED;
                     semaphore_up(&data->semaphore);
 
@@ -300,8 +303,7 @@ void tcp_handle(packet_t *packet, void *raw, uint16_t len) {
                 tcp_reset(sock);
 
                 data->state = TCP_RETRY;
-                data->retrys++;
-                timer_create(50000, (timer_callback_t) tcp_resend_syn, sock);
+                timer_create(TCP_TIMEOUT, (timer_callback_t) tcp_resend_syn, sock);
             }
 
             break;
