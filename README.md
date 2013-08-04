@@ -38,8 +38,32 @@ Design mantra is to "minimize assembly where doing so does not intrude on clarit
 ## Compiling
 Currently K-OS accepts the following optional configuration options:
 
-* CONFIG_OPTIMIZE - Remove assorted bugcheck code which would otherwise make the system unnecessarily slower
-* CONFIG_DEBUG_MM - Enable particularly expensive MM-related bugchecks
+<table>
+<tr>
+<td>
+
+CONFIG_OPTIMIZE 
+
+</td>
+<td>
+
+Remove assorted bugcheck code which would otherwise make the system unnecessarily slower
+
+</td>
+</tr>
+<tr>
+<td>
+
+CONFIG_DEBUG_MM 
+
+</td>
+<td>
+
+Enable particularly expensive MM-related bugchecks
+
+</td>
+</tr>
+</table>
 
 ## License
 
