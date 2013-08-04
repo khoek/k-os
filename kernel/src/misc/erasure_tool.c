@@ -206,8 +206,8 @@ static void run_tool(uint8_t devices) {
     console_puts("Starting Data Erasure Tool...\n\n");
 
     uint8_t *space = (uint8_t *) page_to_virt(alloc_page(0));
-    for (uint32_t i = 1; i < 63; i++) {
-        //alloc_page();
+    for (uint32_t i = 1; i < 64; i++) {
+        alloc_page(0);
         console_putsf("Initializing... %3u%%\r", ((i + 1) * 100) / 64);
     }
     console_puts("Initializing... 100%%\n");
