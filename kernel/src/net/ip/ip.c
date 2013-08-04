@@ -41,7 +41,7 @@ void ip_build(packet_t *packet, uint8_t protocol, ip_t dst) {
     ip_t *dst_copy = kmalloc(sizeof(ip_t));
     memcpy(dst_copy, &dst, sizeof(ip_t));
 
-    packet->state = P_UNRESOLVED;
+    packet->state = PSTATE_UNRESOLVED;
 
     packet->route.protocol = ETH_TYPE_IP;
     packet->route.src.family = AF_INET;

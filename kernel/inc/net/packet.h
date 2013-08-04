@@ -9,15 +9,25 @@ typedef struct packet packet_t;
 #include "net/socket.h"
 #include "net/interface.h"
 
+typedef void (*packet_callback_t)(packet_t *, void *);
+
+typedef enum packet_result {
+    PRESULT_SUCCESS,
+    PRESULT_UNKNOWNHOST,
+} packet_result_t;
+
 typedef enum packet_state {
-    P_UNRESOLVED,
-    P_RESOLVED
+    PSTATE_UNRESOLVED,
+    PSTATE_RESOLVED
 } packet_state_t;
 
 struct packet {
     list_head_t list;
 
-    semaphore_t *dispatch_lock;
+    packet_result_t result;
+
+    packet_callback_t callback;
+    void *data;
 
     packet_state_t state;
     net_interface_t *interface;
@@ -30,7 +40,7 @@ struct packet {
     sock_buff_t payload;
 };
 
-packet_t * packet_create(net_interface_t *interface, semaphore_t *lock, void *payload, uint16_t len);
+packet_t * packet_create(net_interface_t *interface, packet_callback_t callback, void *data, void *payload, uint16_t len);
 void packet_destroy(packet_t *packet);
 void packet_send(packet_t *packet);
 uint32_t packet_expand(void *buff, packet_t *packet, uint32_t minimum_size);

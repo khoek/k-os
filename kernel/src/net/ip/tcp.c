@@ -64,7 +64,7 @@ typedef struct tcp_pending {
     uint16_t src_port_net;
     uint16_t dst_port_net;
 
-    semaphore_t *semaphore;
+    packet_callback_t callback;
 
     sock_buff_t payload;
 } tcp_pending_t;
@@ -180,7 +180,7 @@ static void tcp_reset(sock_t *sock) {
 static void tcp_queue_send(sock_t *sock, tcp_pending_t *pending) {
     tcp_data_t *data = sock->private;
 
-    packet_t *packet = packet_create(data->interface, pending->semaphore, pending->payload.buff, pending->payload.size);
+    packet_t *packet = packet_create(data->interface, pending->callback, sock, pending->payload.buff, pending->payload.size);
     tcp_build(packet, pending->dst_ip, pending->seq_num, pending->ack_num, pending->flags, pending->window_size, pending->urgent, pending->src_port_net, pending->dst_port_net);
 
     packet_send(packet);
@@ -189,7 +189,7 @@ static void tcp_queue_send(sock_t *sock, tcp_pending_t *pending) {
 }
 
 //should only be called when ((tcp_data_t *) sock->private)->state_lock is held
-static void tcp_queue_add(sock_t *sock, semaphore_t *semaphore, uint16_t flags, uint16_t window_size, uint16_t urgent, void *payload_buff, uint32_t payload_size) {
+static void tcp_queue_add(sock_t *sock, packet_callback_t callback, uint16_t flags, uint16_t window_size, uint16_t urgent, void *payload_buff, uint32_t payload_size) {
     tcp_data_t *data = sock->private;
     ip_and_port_t *peer_addr = sock->peer.addr;
 
@@ -205,7 +205,7 @@ static void tcp_queue_add(sock_t *sock, semaphore_t *semaphore, uint16_t flags, 
     pending->dst_port_net = peer_addr->port;
     pending->payload.buff = payload_buff;
     pending->payload.size = payload_size;
-    pending->semaphore = semaphore;
+    pending->callback = callback;
 
     data->next_local_seq += payload_size;
 
@@ -218,7 +218,7 @@ static void tcp_control_send(sock_t *sock, uint16_t flags, uint16_t window_size)
     tcp_data_t *data = sock->private;
     ip_and_port_t *peer_addr = sock->peer.addr;
 
-    packet_t *packet = packet_create(data->interface, NULL, NULL, 0);
+    packet_t *packet = packet_create(data->interface, NULL, NULL, NULL, 0);
     tcp_build(packet, peer_addr->ip, swap_uint32(data->next_local_ack), swap_uint32(data->next_peer_seq), flags, swap_uint16(window_size), 0, ((ip_and_port_t *) sock->local.addr)->port, peer_addr->port);
     packet_send(packet);
 }

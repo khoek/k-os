@@ -135,6 +135,12 @@ static bool udp_connect(sock_t *sock, sock_addr_t *addr) {
     return true;
 }
 
+static void udp_callback(packet_t *packet, sock_t *sock) {
+    udp_data_t *data = (udp_data_t *) sock->private;
+
+    semaphore_up(&data->semaphore);
+}
+
 static uint32_t udp_send(sock_t *sock, void *buff, uint32_t len, uint32_t flags) {
     if(sock->peer.family != AF_INET) {
         //FIXME errno = EDESTADDRREQ
@@ -146,7 +152,7 @@ static uint32_t udp_send(sock_t *sock, void *buff, uint32_t len, uint32_t flags)
 
     udp_data_t *data = (udp_data_t *) sock->private;
 
-    packet_t *packet = packet_create(net_primary_interface(), &data->semaphore, buff, len);
+    packet_t *packet = packet_create(net_primary_interface(), (packet_callback_t) udp_callback, sock, buff, len);
     udp_build(packet, addr_data->ip, data->local_port, addr_data->port);
     packet_send(packet);
 

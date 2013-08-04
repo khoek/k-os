@@ -46,7 +46,7 @@ void arp_build(packet_t *packet, uint16_t op, mac_t sender_mac, mac_t target_mac
     packet->net.buff = hdr;
     packet->net.size = sizeof(arp_header_t);
 
-    packet->state = P_RESOLVED;
+    packet->state = PSTATE_RESOLVED;
 
     packet->route.protocol = ETH_TYPE_ARP;
     packet->route.src.family = AF_LINK;
@@ -89,7 +89,7 @@ static void arp_cache_put_unresolved(ip_t ip, packet_t *packet) {
 
     hashtable_add(*((uint32_t *) ip.addr), &entry->node, arp_cache);
 
-    packet_t *request = packet_create(packet->interface, NULL, NULL, 0);
+    packet_t *request = packet_create(packet->interface, NULL, NULL, NULL, 0);
     arp_build(request, ARP_OP_REQUEST, *((mac_t *) packet->interface->hard_addr.addr), MAC_NONE, ((ip_interface_t *) packet->interface->ip_data)->ip_addr, ip);
     packet_send(request);
 }
@@ -103,7 +103,7 @@ void arp_resolve(packet_t *packet) {
         packet->route.dst.family = AF_LINK;
         packet->route.dst.addr = (mac_t *) &MAC_BROADCAST;
 
-        packet->state = P_RESOLVED;
+        packet->state = PSTATE_RESOLVED;
         packet_send(packet);
     } else {
         uint32_t flags;
@@ -121,7 +121,7 @@ void arp_resolve(packet_t *packet) {
                 packet->route.dst.family = AF_LINK;
                 packet->route.dst.addr = &entry->mac;
 
-                packet->state = P_RESOLVED;
+                packet->state = PSTATE_RESOLVED;
                 packet_send(packet);
             }
 
@@ -138,7 +138,7 @@ void arp_handle(packet_t *packet, void *raw, uint16_t len) {
     arp_header_t *arp = packet->net.buff = raw;
     if(!memcmp(&((ip_interface_t *) packet->interface->ip_data)->ip_addr.addr, &arp->target_ip.addr, sizeof(ip_t))) {
         if(!memcmp(&arp->target_mac, &MAC_NONE, sizeof(mac_t))) {
-            packet_t *response = packet_create(packet->interface, NULL, NULL, 0);
+            packet_t *response = packet_create(packet->interface, NULL, NULL, NULL, 0);
             arp_build(response, ARP_OP_RESPONSE, *((mac_t *) packet->interface->hard_addr.addr), arp->sender_mac, ((ip_interface_t *) packet->interface->ip_data)->ip_addr, arp->sender_ip);
             packet_send(response);
         }
@@ -163,7 +163,7 @@ void arp_handle(packet_t *packet, void *raw, uint16_t len) {
                 pending->route.dst.family = AF_LINK;
                 pending->route.dst.addr = &entry->mac;
 
-                pending->state = P_RESOLVED;
+                pending->state = PSTATE_RESOLVED;
                 packet_send(pending);
             }
         }
