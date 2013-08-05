@@ -1,8 +1,8 @@
 #ifndef KERNEL_COMMON_HASH_H
 #define KERNEL_COMMON_HASH_H
 
-#include <lib/int.h>
-#include <common/compiler.h>
+#include "lib/int.h"
+#include "common/compiler.h"
 
 #define HASH_PRIME 0x9e370001UL
 
