@@ -1,5 +1,6 @@
 #include <stddef.h>
 
+#include "lib/int.h"
 #include "lib/string.h"
 #include "common/init.h"
 #include "common/asm.h"
@@ -99,7 +100,12 @@ static void sys_socket(interrupt_t *interrupt) {
 }
 
 static void sys_listen(interrupt_t *interrupt) {
-    current->ret = -1;
+    gfd_idx_t fd = ufd_to_gfd(current, interrupt->cpu.reg.ecx);
+
+    if(fd == FD_INVALID) current->ret = -1;
+    else {
+        current->ret = sock_listen(gfd_to_sock(fd), interrupt->cpu.reg.edx > MAX_INT32 ? 0 : interrupt->cpu.reg.edx);
+    }
 }
 
 static void sys_accept(interrupt_t *interrupt) {

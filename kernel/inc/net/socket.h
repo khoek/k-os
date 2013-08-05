@@ -30,6 +30,7 @@ typedef enum sock_type {
 #define SOCK_FLAG_SHUT_WR   (1 << 2)
 #define SOCK_FLAG_SHUT_RDWR (SOCK_FLAG_SHUT_RD | SOCK_FLAG_SHUT_WR)
 #define SOCK_FLAG_BOUND     (1 << 3)
+#define SOCK_FLAG_LISTENING (1 << 4)
 
 typedef uint32_t socklen_t;
 typedef unsigned int sa_family_t;
@@ -87,6 +88,7 @@ struct sock_protocol {
 
     void (*open)(sock_t *);
     void (*close)(sock_t *);
+    bool (*listen)(sock_t *, uint32_t backlog);
     bool (*bind)(sock_t *, sock_addr_t *);
     bool (*connect)(sock_t *, sock_addr_t *);
     bool (*shutdown)(sock_t *, int);
@@ -113,6 +115,7 @@ struct sock_protocol {
 void register_sock_family(sock_family_t *family);
 
 sock_t * sock_create(uint32_t family, uint32_t type, uint32_t protocol);
+bool sock_listen(sock_t *sock, uint32_t backlog);
 bool sock_bind(sock_t *sock, sock_addr_t *addr);
 bool sock_connect(sock_t *sock, sock_addr_t *addr);
 bool sock_shutdown(sock_t *sock, int how);

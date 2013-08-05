@@ -56,9 +56,33 @@ sock_t * sock_create(uint32_t family, uint32_t type, uint32_t protocol) {
     return sock;
 }
 
+bool sock_listen(sock_t *sock, uint32_t backlog) {
+    if(sock->flags & SOCK_FLAG_CONNECTED) {
+        //FIXME errno = EINVAL
+        return false;
+    }
+
+    return sock->proto->listen(sock, backlog);
+}
+
 bool sock_bind(sock_t *sock, sock_addr_t *addr) {
+    if((sock->flags & SOCK_FLAG_SHUT_RDWR) == SOCK_FLAG_SHUT_RDWR) {
+        //FIXME errno = EINVAL
+        return false;
+    }
+
     if(sock->flags & SOCK_FLAG_BOUND) {
         //FIXME errno = EINVAL
+        return false;
+    }
+
+    if(sock->flags & SOCK_FLAG_LISTENING) {
+        //FIXME errno = EINVAL
+        return false;
+    }
+
+    if(sock->flags & SOCK_FLAG_CONNECTED) {
+        //FIXME errno = EISCONN
         return false;
     }
 

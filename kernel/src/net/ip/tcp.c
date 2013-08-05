@@ -328,6 +328,7 @@ void tcp_handle(packet_t *packet, void *raw, uint16_t len) {
         case TCP_LISTEN: {
             if(tcp->data_off_flags & TCP_FLAG_SYN && !(tcp->data_off_flags & TCP_FLAG_ACK)) {
                 data->state = TCP_SYN_RECIEVED;
+
                 data->next_peer_seq = tcp->seq_num + len + 1;
 
                 tcp_queue_add(sock, TCP_FLAG_SYN | TCP_FLAG_ACK, 14600, 0, NULL, 0);
@@ -453,6 +454,28 @@ static void tcp_close(sock_t *sock) {
     kfree(sock->private, sizeof(tcp_data_t));
 }
 
+static bool tcp_listen(sock_t *sock, uint32_t backlog) {
+    tcp_data_t *data = sock->private;
+
+    uint32_t flags;
+    spin_lock_irqsave(&data->state_lock, &flags);
+
+    data->state = TCP_LISTEN;
+    data->interface = net_primary_interface();
+
+    if(!(sock->flags & SOCK_FLAG_BOUND)) {
+        ip_and_port_t *local = kmalloc(sizeof(ip_and_port_t));
+        local->ip = IP_ANY;
+        local->port = tcp_bind_port(sock);
+    }
+
+    sock->flags |= SOCK_FLAG_LISTENING;
+
+    spin_unlock_irqstore(&data->state_lock, flags);
+
+    return true;
+}
+
 static bool tcp_bind(sock_t *sock, sock_addr_t *addr) {
     if(addr->family == AF_INET) {
         if(memcmp(&((ip_and_port_t *) addr->addr)->ip, &IP_ANY, sizeof(ip_t))) {
@@ -501,10 +524,7 @@ static bool tcp_bind(sock_t *sock, sock_addr_t *addr) {
 }
 
 static bool tcp_connect(sock_t *sock, sock_addr_t *addr) {
-    if(addr->family == AF_UNSPEC) {
-        sock->peer.family = AF_UNSPEC;
-        sock->peer.addr = (void *) &IP_AND_PORT_NONE;
-    } else if(addr->family == AF_INET) {
+    if(addr->family == AF_INET) {
         sock->peer.family = AF_INET;
         sock->peer.addr = addr->addr;
 
@@ -538,6 +558,8 @@ static bool tcp_connect(sock_t *sock, sock_addr_t *addr) {
         if(state == TCP_ESTABLISHED) {
             return true;
         }
+    } else {
+        //FIXME errno = EAFNOSUPPORT
     }
 
     return false;
@@ -649,15 +671,16 @@ out:
 }
 
 sock_protocol_t tcp_protocol = {
-    .type  = SOCK_STREAM,
+    .type     = SOCK_STREAM,
 
-    .open = tcp_open,
-    .close = tcp_close,
-    .bind = tcp_bind,
-    .connect = tcp_connect,
+    .open     = tcp_open,
+    .close    = tcp_close,
+    .listen   = tcp_listen,
+    .bind     = tcp_bind,
+    .connect  = tcp_connect,
     .shutdown = tcp_shutdown,
-    .send = tcp_send,
-    .recv = tcp_recv,
+    .send     = tcp_send,
+    .recv     = tcp_recv,
 };
 
 static INITCALL ephemeral_init() {
