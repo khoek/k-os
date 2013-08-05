@@ -254,29 +254,8 @@ static void tcp_resend_syn(sock_t *sock) {
     spin_unlock_irqstore(&data->state_lock, flags);
 }
 
-void tcp_handle(packet_t *packet, void *raw, uint16_t len) {
-    tcp_header_t *tcp = packet->tran.buff = raw;
-    raw = tcp + 1;
-    len = swap_uint16(ip_hdr(packet)->total_length) - ((IP_IHL(ip_hdr(packet)->version_ihl) * sizeof(uint32_t)) + (TCP_DATA_OFF(tcp->data_off_flags) * sizeof(uint32_t)));
-
-    uint32_t flags;
-    spin_lock_irqsave(&port_lock, &flags);
-
-    sock_t *sock = ports_sock[swap_uint16(tcp->dst_port)];
-    if(!sock) return;
-
+static void tcp_sock_handle(sock_t *sock, tcp_header_t *tcp, void *raw, uint16_t len) {
     tcp_data_t *data = sock->private;
-
-    uint32_t flags2;
-    spin_lock_irqsave(&data->state_lock, &flags2);
-
-    ip_and_port_t *addr = sock->peer.addr;
-
-    if(memcmp(&addr->ip, &ip_hdr(packet)->src, sizeof(ip_t))
-        || addr->port != tcp->src_port
-        || ((ip_and_port_t *) sock->local.addr)->port != tcp->dst_port) {
-        goto out;
-    }
 
     uint32_t ack_num = swap_uint32(tcp->ack_num);
     uint32_t seq_num = swap_uint32(tcp->seq_num);
@@ -327,6 +306,8 @@ void tcp_handle(packet_t *packet, void *raw, uint16_t len) {
             break;
         }
         case TCP_LISTEN: {
+            logf("SUP");
+
             if(tcp->data_off_flags & TCP_FLAG_SYN && !(tcp->data_off_flags & TCP_FLAG_ACK)) {
                 sock_t *child_sock = sock_open(&af_inet, &tcp_protocol);
 
@@ -355,6 +336,8 @@ void tcp_handle(packet_t *packet, void *raw, uint16_t len) {
             break;
         }
         case TCP_SYN_RECIEVED: {
+            logf("HELLO");
+
             if(data->next_peer_seq == seq_num) {
                 if(tcp->data_off_flags & TCP_FLAG_ACK && !(tcp->data_off_flags & TCP_FLAG_SYN)) {
                     data->state = TCP_ESTABLISHED;
@@ -379,10 +362,10 @@ void tcp_handle(packet_t *packet, void *raw, uint16_t len) {
 
             if(len > 0) {
                 if(data->next_peer_seq > seq_num) {
-                    goto out;
+                    return;
                 } else if (data->next_peer_seq < seq_num) {
                     tcp_control_send(sock, TCP_FLAG_ACK, tcp->window_size);
-                    goto out;
+                    return;
                 } else {
                     data->next_peer_seq = seq_num + len;
 
@@ -421,8 +404,36 @@ void tcp_handle(packet_t *packet, void *raw, uint16_t len) {
         }
         default: break;
     }
+}
 
-out:
+void tcp_handle(packet_t *packet, void *raw, uint16_t len) {
+    tcp_header_t *tcp = packet->tran.buff = raw;
+    raw = tcp + 1;
+    len = swap_uint16(ip_hdr(packet)->total_length) - ((IP_IHL(ip_hdr(packet)->version_ihl) * sizeof(uint32_t)) + (TCP_DATA_OFF(tcp->data_off_flags) * sizeof(uint32_t)));
+
+    uint32_t flags;
+    spin_lock_irqsave(&port_lock, &flags);
+
+    sock_t *sock = ports_sock[swap_uint16(tcp->dst_port)];
+    if(!sock) return;
+
+    tcp_data_t *data = sock->private;
+
+    uint32_t flags2;
+    spin_lock_irqsave(&data->state_lock, &flags2);
+
+    ip_and_port_t *addr = sock->peer.addr;
+
+    if(data->state == TCP_LISTEN) {
+        //TODO look up the correct socket in a hashtable (using the ip/port combo as the key)
+    } else {
+        if(!(memcmp(&addr->ip, &ip_hdr(packet)->src, sizeof(ip_t))
+            || addr->port != tcp->src_port
+            || ((ip_and_port_t *) sock->local.addr)->port != tcp->dst_port)) {
+            tcp_sock_handle(sock, tcp, raw, len);
+        }
+    }
+
     spin_unlock_irqstore(&data->state_lock, flags2);
     spin_unlock_irqstore(&port_lock, flags);
 }
