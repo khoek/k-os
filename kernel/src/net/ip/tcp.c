@@ -163,6 +163,21 @@ static void tcp_build(packet_t *packet, ip_t dst_ip, uint32_t seq_num, uint32_t 
     ip_build(packet, IP_PROT_TCP, dst_ip);
 }
 
+static void tcp_callback(packet_t *packet, sock_t *sock) {
+    tcp_data_t *data = sock->private;
+
+    uint32_t flags;
+    spin_lock_irqsave(&data->state_lock, &flags);
+
+    if(data->state == TCP_SYN_SENT && packet->result != PRESULT_SUCCESS) {
+        data->state = TCP_CLOSED;
+
+        semaphore_up(&data->semaphore);
+    }
+
+    spin_unlock_irqstore(&data->state_lock, flags);
+}
+
 //should only be called when ((tcp_data_t *) sock->private)->state_lock is held (or when the sock is being constructed and is therefore not visible)
 static void tcp_reset(sock_t *sock) {
     sock->flags &= ~SOCK_FLAG_CONNECTED;
@@ -177,20 +192,23 @@ static void tcp_reset(sock_t *sock) {
     data->recv_waiting = false;
 }
 
-//should only be called when ((tcp_data_t *) sock->private)->state_lock is held
+//should only be called when ((tcp_data_t *) sock->private)->state_lock is NOT held
 static void tcp_queue_send(sock_t *sock, tcp_pending_t *pending) {
     tcp_data_t *data = sock->private;
 
-    packet_t *packet = packet_create(data->interface, pending->callback, sock, pending->payload.buff, pending->payload.size);
+    packet_t *packet = packet_create(data->interface, (packet_callback_t) tcp_callback, sock, pending->payload.buff, pending->payload.size);
     tcp_build(packet, pending->dst_ip, pending->seq_num, pending->ack_num, pending->flags, pending->window_size, pending->urgent, pending->src_port_net, pending->dst_port_net);
 
+    //unlock to prevent deadlocks where tcp_callback is called further down in the call stack
+    spin_unlock(&data->state_lock);
     packet_send(packet);
+    spin_lock(&data->state_lock);
 
     //TODO set resend timer (only if !(sock->flags & SOCK_FLAG_SHUT_WR))
 }
 
 //should only be called when ((tcp_data_t *) sock->private)->state_lock is held
-static void tcp_queue_add(sock_t *sock, packet_callback_t callback, uint16_t flags, uint16_t window_size, uint16_t urgent, void *payload_buff, uint32_t payload_size) {
+static void tcp_queue_add(sock_t *sock, uint16_t flags, uint16_t window_size, uint16_t urgent, void *payload_buff, uint32_t payload_size) {
     tcp_data_t *data = sock->private;
     ip_and_port_t *peer_addr = sock->peer.addr;
 
@@ -206,7 +224,6 @@ static void tcp_queue_add(sock_t *sock, packet_callback_t callback, uint16_t fla
     pending->dst_port_net = peer_addr->port;
     pending->payload.buff = payload_buff;
     pending->payload.size = payload_size;
-    pending->callback = callback;
 
     data->next_local_seq += payload_size;
 
@@ -231,7 +248,7 @@ static void tcp_resend_syn(sock_t *sock) {
     spin_lock_irqsave(&data->state_lock, &flags);
 
     data->state = TCP_SYN_SENT;
-    tcp_queue_add(sock, NULL, TCP_FLAG_SYN, 14600, 0, NULL, 0);
+    tcp_queue_add(sock, TCP_FLAG_SYN, 14600, 0, NULL, 0);
 
     spin_unlock_irqstore(&data->state_lock, flags);
 }
@@ -313,7 +330,7 @@ void tcp_handle(packet_t *packet, void *raw, uint16_t len) {
                 data->state = TCP_SYN_RECIEVED;
                 data->next_peer_seq = tcp->seq_num + len + 1;
 
-                tcp_queue_add(sock, NULL, TCP_FLAG_SYN | TCP_FLAG_ACK, 14600, 0, NULL, 0);
+                tcp_queue_add(sock, TCP_FLAG_SYN | TCP_FLAG_ACK, 14600, 0, NULL, 0);
             }
 
             break;
@@ -420,24 +437,36 @@ static void tcp_close(sock_t *sock) {
         }
     }
 
-    tcp_unbind_port(((ip_and_port_t *) sock->local.addr)->port);
+    if(sock->local.addr) {
+        tcp_unbind_port(((ip_and_port_t *) sock->local.addr)->port);
+    }
 
     //Cycle the lock, to ensure that no-one who aquired a ref to the socket uses it after sock->private is freed
     spin_unlock(&data->state_lock);
     spin_lock(&data->state_lock);
     spin_unlock_irqstore(&data->state_lock, flags);
 
-    kfree(sock->local.addr, sizeof(ip_and_port_t));
+    if(sock->local.addr) {
+        kfree(sock->local.addr, sizeof(ip_and_port_t));
+    }
+
     kfree(sock->private, sizeof(tcp_data_t));
 }
 
 static bool tcp_bind(sock_t *sock, sock_addr_t *addr) {
     if(addr->family == AF_INET) {
+        if(memcmp(&((ip_and_port_t *) addr->addr)->ip, &IP_ANY, sizeof(ip_t))) {
+            //TODO check whether this IP is reachable, if it is, add this socket to a list of sockets bound to this address
+
+            //FIXME errno = EADDRNOTAVAIL
+
+            return false;
+        }
+
         sock->local.family = AF_INET;
         sock->local.addr = addr->addr;
 
         uint16_t port = swap_uint16(((ip_and_port_t *) sock->local.addr)->port);
-
         uint16_t ephemeral_port_offset = port - EPHEMERAL_START;
 
         uint32_t flags;
@@ -493,7 +522,7 @@ static bool tcp_connect(sock_t *sock, sock_addr_t *addr) {
             local->port = tcp_bind_port(sock);
         }
 
-        tcp_queue_add(sock, NULL, TCP_FLAG_SYN, 14600, 0, NULL, 0);
+        tcp_queue_add(sock, TCP_FLAG_SYN, 14600, 0, NULL, 0);
         data->next_local_seq++;
 
         spin_unlock_irqstore(&data->state_lock, flags);
@@ -559,7 +588,7 @@ static uint32_t tcp_send(sock_t *sock, void *buff, uint32_t len, uint32_t flags)
 
     //TODO split packets which are too long
 
-    tcp_queue_add(sock, NULL, TCP_FLAG_ACK, 14600, 0, buff, len);
+    tcp_queue_add(sock, TCP_FLAG_ACK, 14600, 0, buff, len);
 
     spin_unlock_irqstore(&data->state_lock, f);
 

@@ -17,6 +17,11 @@
 
 #include "checksum.h"
 
+const ip_t IP_BROADCAST = { .addr = {0xFF, 0xFF, 0xFF, 0xFF} };
+const ip_t IP_NONE = { .addr = {0x00, 0x00, 0x00, 0x00} };
+
+const ip_and_port_t IP_AND_PORT_NONE = { .port = 0, .ip = { .addr = {0x00, 0x00, 0x00, 0x00} } };
+
 void ip_build(packet_t *packet, uint8_t protocol, ip_t dst) {
     ip_header_t *hdr = kmalloc(sizeof(ip_header_t));
 
