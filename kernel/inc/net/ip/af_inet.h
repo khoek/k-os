@@ -16,6 +16,8 @@ typedef struct inet_protocol_t {
     sock_protocol_t *impl;
 } inet_protocol_t;
 
+extern sock_family_t af_inet;
+
 void register_inet_protocol(inet_protocol_t *protocol);
 
 #endif

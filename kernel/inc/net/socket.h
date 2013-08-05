@@ -115,6 +115,7 @@ struct sock_protocol {
 void register_sock_family(sock_family_t *family);
 
 sock_t * sock_create(uint32_t family, uint32_t type, uint32_t protocol);
+sock_t * sock_open(sock_family_t *family, sock_protocol_t *protocol);
 bool sock_listen(sock_t *sock, uint32_t backlog);
 bool sock_bind(sock_t *sock, sock_addr_t *addr);
 bool sock_connect(sock_t *sock, sock_addr_t *addr);

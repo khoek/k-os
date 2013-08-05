@@ -9,6 +9,7 @@
 #include "time/timer.h"
 #include "net/socket.h"
 #include "net/packet.h"
+#include "net/ip/af_inet.h"
 #include "net/ip/ip.h"
 #include "net/ip/tcp.h"
 #include "video/log.h"
@@ -327,11 +328,28 @@ void tcp_handle(packet_t *packet, void *raw, uint16_t len) {
         }
         case TCP_LISTEN: {
             if(tcp->data_off_flags & TCP_FLAG_SYN && !(tcp->data_off_flags & TCP_FLAG_ACK)) {
+                sock_t *child_sock = sock_open(&af_inet, &tcp_protocol);
+
+                child_sock->peer = sock->peer;
+                child_sock->flags |= SOCK_FLAG_CONNECTED;
+
+                tcp_data_t *child_data = child_sock->private;
+
                 data->state = TCP_SYN_RECIEVED;
+                data->interface = net_primary_interface();
 
-                data->next_peer_seq = tcp->seq_num + len + 1;
+                if(!(sock->flags & SOCK_FLAG_BOUND)) {
+                    ip_and_port_t *local = kmalloc(sizeof(ip_and_port_t));
+                    local->ip = IP_ANY;
+                    local->port = tcp_bind_port(sock);
+                }
 
-                tcp_queue_add(sock, TCP_FLAG_SYN | TCP_FLAG_ACK, 14600, 0, NULL, 0);
+                tcp_queue_add(sock, TCP_FLAG_SYN, 14600, 0, NULL, 0);
+                child_data->next_local_ack = data->next_local_seq;
+                child_data->next_local_seq = ++data->next_local_seq;
+                child_data->next_peer_seq = tcp->seq_num + len + 1;
+
+                tcp_queue_add(child_sock, TCP_FLAG_SYN | TCP_FLAG_ACK, 14600, 0, NULL, 0);
             }
 
             break;
@@ -538,8 +556,11 @@ static bool tcp_connect(sock_t *sock, sock_addr_t *addr) {
 
         if(!(sock->flags & SOCK_FLAG_BOUND)) {
             ip_and_port_t *local = kmalloc(sizeof(ip_and_port_t));
-            local->ip = IP_BROADCAST;
+            local->ip = IP_ANY;
             local->port = tcp_bind_port(sock);
+
+            sock->local.family = AF_INET;
+            sock->local.addr = local;
         }
 
         tcp_queue_add(sock, TCP_FLAG_SYN, 14600, 0, NULL, 0);

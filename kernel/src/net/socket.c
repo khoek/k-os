@@ -34,22 +34,35 @@ static void sock_free(sock_t *sock) {
 }
 
 sock_t * sock_create(uint32_t family, uint32_t type, uint32_t protocol) {
+    sock_family_t *family_ptr;
+    sock_t *sock = NULL;
+
     uint32_t flags;
     spin_lock_irqsave(&family_lock, &flags);
 
-    if(!families[family]) {
+    if(!(family_ptr = families[family])) {
         return NULL;
     }
 
-    sock_t *sock = NULL;
-    sock_protocol_t *proto = families[family]->find(type, protocol);
-    if(proto) {
-        sock = sock_alloc();
-        sock->family = families[family];
-        sock->proto = proto;
+    sock_protocol_t *proto = family_ptr->find(type, protocol);
 
-        sock->proto->open(sock);
+    spin_unlock_irqstore(&family_lock, flags);
+
+    if(proto) {
+        sock = sock_open(family_ptr, proto);
     }
+
+    return sock;
+}
+
+sock_t * sock_open(sock_family_t *family, sock_protocol_t *proto) {
+    uint32_t flags;
+    spin_lock_irqsave(&family_lock, &flags);
+
+    sock_t *sock = sock_alloc();
+    sock->family = family;
+    sock->proto = proto;
+    proto->open(sock);
 
     spin_unlock_irqstore(&family_lock, flags);
 
