@@ -2,8 +2,6 @@ display_library: sdl
 
 plugin_ctrl: e1000=1
 
-debug: action=ignore, e1000=report
-
 romimage: file=/usr/share/bochs/BIOS-bochs-latest
 vgaromimage: file=/usr/share/bochs/VGABIOS-lgpl-latest
 
