@@ -27,6 +27,7 @@ clean:
 	rm -f libc.a
 
 test: all main.c
+	make -C ../kernel
 	rm -f ../kernel/build/kernel.elf
 	rm -f ../kernel/build/main.mod
 	/usr/local/cross/bin/i586-elf-gcc -std=gnu99 -c -Iinc -o main.o main.c
