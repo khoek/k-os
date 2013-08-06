@@ -4,6 +4,10 @@
 #include <stdbool.h>
 
 #include "lib/int.h"
+#include "common/list.h"
+#include "common/hashtable.h"
+
+#define SOMAXCONN 128
 
 #define AF_INET   1
 #define AF_INET6  2
@@ -72,11 +76,15 @@ typedef struct sock_family {
 struct sock {
     sock_addr_t peer;
     sock_addr_t local;
+
     uint32_t flags;
 
     sock_family_t *family;
     sock_protocol_t *proto;
     void *private;
+
+    list_head_t list;
+    hashtable_node_t node;
 };
 
 #include "lib/int.h"
