@@ -36,7 +36,7 @@ void panic(char* message) {
         ebp = (uint32_t *) ebp[0];
         eip = ebp[1] - 1;
 
-        if(frame == 2) {
+        if(frame == 4) {
             die();
         }
     }

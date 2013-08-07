@@ -94,7 +94,7 @@ static void sys_close(interrupt_t *interrupt) {
 }
 
 static void sys_socket(interrupt_t *interrupt) {
-    gfd_idx_t fd = sock_create_fd(interrupt->cpu.reg.ecx, interrupt->cpu.reg.edx, interrupt->cpu.reg.ebx);
+    gfd_idx_t fd = sock_create_fd(sock_create(interrupt->cpu.reg.ecx, interrupt->cpu.reg.edx, interrupt->cpu.reg.ebx));
 
     current->ret = fd == FD_INVALID ? -1 : ufdt_add(current, 0, fd);
 }
@@ -109,7 +109,30 @@ static void sys_listen(interrupt_t *interrupt) {
 }
 
 static void sys_accept(interrupt_t *interrupt) {
-    current->ret = -1;
+    gfd_idx_t fd = ufd_to_gfd(current, interrupt->cpu.reg.ecx);
+
+    if(fd == FD_INVALID) current->ret = -1;
+    else {
+        //TODO sanitize address buff/size buff arguments
+
+        sock_t *sock = gfd_to_sock(fd);
+
+        struct sockaddr *useraddr = (struct sockaddr *) interrupt->cpu.reg.edx;
+
+        sock_t *child = sock_accept(sock);
+
+        if(child) {
+            current->ret = ufdt_add(current, 0, sock_create_fd(child));
+
+            if(useraddr) {
+                useraddr->sa_family = child->family->family;
+                memcpy(child->peer.addr, &useraddr->sa_data, child->family->addr_len);
+                *((socklen_t *) interrupt->cpu.reg.ebx) = child->family->addr_len;
+            }
+        } else {
+            current->ret = -1;
+        }
+    }
 }
 
 static void sys_bind(interrupt_t *interrupt) {

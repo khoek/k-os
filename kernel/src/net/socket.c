@@ -5,7 +5,6 @@
 #include "mm/cache.h"
 #include "net/socket.h"
 #include "fs/fd.h"
-#include "video/log.h"
 
 #define ISCONNECTIONLESS(sock) (sock->proto->type == SOCK_DGRAM || sock->proto->type == SOCK_RAW)
 
@@ -76,6 +75,15 @@ bool sock_listen(sock_t *sock, uint32_t backlog) {
     }
 
     return sock->proto->listen(sock, backlog);
+}
+
+sock_t * sock_accept(sock_t *sock) {
+    if(!(sock->flags & SOCK_FLAG_LISTENING)) {
+        //FIXME errno = EINVAL
+        return false;
+    }
+
+    return sock->proto->accept(sock);
 }
 
 bool sock_bind(sock_t *sock, sock_addr_t *addr) {
@@ -187,12 +195,20 @@ uint32_t sock_recv(sock_t *sock, void *buff, uint32_t len, uint32_t flags) {
 }
 
 void sock_close(sock_t *sock) {
-    sock->proto->close(sock);
+    if(!(sock->flags & SOCK_FLAG_CLOSED)) {
+        sock->flags |= SOCK_FLAG_CLOSED;
 
-    sock_free(sock);
+        sock->proto->close(sock);
+
+        sock_free(sock);
+    }
 }
 
 static void sock_close_fd(gfd_t *gfd) {
+    if(!gfd || ((sock_t *) gfd->private)->flags & SOCK_FLAG_CLOSED) {
+        return;
+    }
+
     sock_close(gfd->private);
 }
 
@@ -200,12 +216,6 @@ static fd_ops_t sock_ops = {
     .close = sock_close_fd,
 };
 
-gfd_idx_t sock_create_fd(uint32_t family, uint32_t type, uint32_t protocol) {
-    sock_t *sock = sock_create(family, type, protocol);
-
-    if(sock) {
-        return gfdt_add(FD_SOCK, 0, &sock_ops, sock);
-    } else {
-        return FD_INVALID;
-    }
+gfd_idx_t sock_create_fd(sock_t *sock) {
+    return gfdt_add(FD_SOCK, 0, &sock_ops, sock);
 }

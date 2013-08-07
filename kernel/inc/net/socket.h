@@ -29,12 +29,14 @@ typedef enum sock_type {
 
 #define SOCK_MAX (SOCK_RAW + 1)
 
-#define SOCK_FLAG_CONNECTED (1 << 0)
-#define SOCK_FLAG_SHUT_RD   (1 << 1)
-#define SOCK_FLAG_SHUT_WR   (1 << 2)
+#define SOCK_FLAG_CLOSED    (1 << 0)
+#define SOCK_FLAG_CONNECTED (1 << 1)
+#define SOCK_FLAG_SHUT_RD   (1 << 2)
+#define SOCK_FLAG_SHUT_WR   (1 << 3)
 #define SOCK_FLAG_SHUT_RDWR (SOCK_FLAG_SHUT_RD | SOCK_FLAG_SHUT_WR)
-#define SOCK_FLAG_BOUND     (1 << 3)
-#define SOCK_FLAG_LISTENING (1 << 4)
+#define SOCK_FLAG_BOUND     (1 << 4)
+#define SOCK_FLAG_LISTENING (1 << 5)
+#define SOCK_FLAG_CHILD     (1 << 6)
 
 typedef uint32_t socklen_t;
 typedef unsigned int sa_family_t;
@@ -96,6 +98,7 @@ struct sock_protocol {
 
     void (*open)(sock_t *);
     void (*close)(sock_t *);
+    sock_t * (*accept)(sock_t *);
     bool (*listen)(sock_t *, uint32_t backlog);
     bool (*bind)(sock_t *, sock_addr_t *);
     bool (*connect)(sock_t *, sock_addr_t *);
@@ -125,6 +128,7 @@ void register_sock_family(sock_family_t *family);
 sock_t * sock_create(uint32_t family, uint32_t type, uint32_t protocol);
 sock_t * sock_open(sock_family_t *family, sock_protocol_t *protocol);
 bool sock_listen(sock_t *sock, uint32_t backlog);
+sock_t * sock_accept(sock_t *sock);
 bool sock_bind(sock_t *sock, sock_addr_t *addr);
 bool sock_connect(sock_t *sock, sock_addr_t *addr);
 bool sock_shutdown(sock_t *sock, int how);
@@ -132,7 +136,7 @@ uint32_t sock_send(sock_t *sock, void *buff, uint32_t len, uint32_t flags);
 uint32_t sock_recv(sock_t *sock, void *buff, uint32_t len, uint32_t flags);
 void sock_close(sock_t *sock);
 
-gfd_idx_t sock_create_fd(uint32_t family, uint32_t type, uint32_t protocol);
+gfd_idx_t sock_create_fd(sock_t *sock);
 
 static inline sock_t * gfd_to_sock(gfd_idx_t gfd_idx) {
     return (sock_t *) gfdt_get(gfd_idx)->private;
