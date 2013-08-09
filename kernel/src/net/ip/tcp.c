@@ -414,9 +414,9 @@ void tcp_handle(packet_t *packet, void *raw, uint16_t len) {
 
             sock_t *child;
             HASHTABLE_SIZE_FOR_EACH_COLLISION((*((uint32_t *) &ip_hdr(packet)->src)) * (*((uint16_t *) &tcp->src_port)), child, data->connections, TCP_LISTEN_HASHTABLE_SIZE, node) {
-                if(!(memcmp(&((ip_and_port_t *) child->peer.addr)->ip, &ip_hdr(packet)->src, sizeof(ip_t))
-                    || ((ip_and_port_t *) child->peer.addr)->port != tcp->src_port
-                    || ((ip_and_port_t *) child->local.addr)->port != tcp->dst_port)) {
+                if(!memcmp(&((ip_and_port_t *) child->peer.addr)->ip, &ip_hdr(packet)->src, sizeof(ip_t))
+                    && ((ip_and_port_t *) child->peer.addr)->port == tcp->src_port
+                    && ((ip_and_port_t *) child->local.addr)->port == tcp->dst_port) {
                     tcp_sock_handle(child, tcp, raw, len);
 
                     goto out_listen;
@@ -481,9 +481,9 @@ void tcp_handle(packet_t *packet, void *raw, uint16_t len) {
             uint32_t flags3;
             spin_lock_irqsave(&data->lock, &flags3);
 
-            if(!(memcmp(&((ip_and_port_t *) sock->peer.addr)->ip, &ip_hdr(packet)->src, sizeof(ip_t))
-                || ((ip_and_port_t *) sock->peer.addr)->port != tcp->src_port
-                || ((ip_and_port_t *) sock->local.addr)->port != tcp->dst_port)) {
+            if(!memcmp(&((ip_and_port_t *) sock->peer.addr)->ip, &ip_hdr(packet)->src, sizeof(ip_t))
+                && ((ip_and_port_t *) sock->peer.addr)->port == tcp->src_port
+                && ((ip_and_port_t *) sock->local.addr)->port == tcp->dst_port) {
                 tcp_sock_handle(sock, tcp, raw, len);
             }
 
@@ -532,6 +532,7 @@ static void tcp_close(sock_t *sock) {
 
         if(sock->flags & SOCK_FLAG_CHILD) {
             list_rm(&sock->list);
+            hashtable_rm(&sock->node);
         } else if(sock->local.addr) {
             tcp_unbind_port(((ip_and_port_t *) sock->local.addr)->port);
         }
@@ -541,7 +542,7 @@ static void tcp_close(sock_t *sock) {
         spin_lock(&data->lock);
         spin_unlock_irqstore(&data->lock, flags);
 
-        if(sock->local.addr) {
+        if(!(sock->flags & SOCK_FLAG_CHILD) && sock->local.addr) {
             kfree(sock->local.addr, sizeof(ip_and_port_t));
         }
     }
