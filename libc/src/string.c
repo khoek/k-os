@@ -1,6 +1,5 @@
 #include <stddef.h>
-
-#include "lib/string.h"
+#include <string.h>
 
 int isdigit(char c) {
     return c >= '0' && c <= '9';

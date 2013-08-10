@@ -2,10 +2,10 @@
 
 ASFLAGS=--32 -g
 
-CCFLAGS=-Wall -g -Wextra -Werror -Wno-unused-parameter -m32 -I../inc -std=gnu99 \
-        -nostdlib -nostartfiles -nodefaultlibs -ffreestanding -c
+CCFLAGS=-Wall -g -Wextra -Werror -Wno-unused-parameter -m32 -Iinc -std=gnu99 \
+        -nostdlib -nostartfiles -nodefaultlibs -ffreestanding --sysroot=inc -c
 
-OBJS=	src/crt.o src/syscall.o
+OBJS=	src/crt.o src/syscall.o src/string.o
 
 all: libc.a
 
@@ -30,8 +30,8 @@ test: all main.c
 	make -C ../kernel
 	rm -f ../kernel/build/kernel.elf
 	rm -f ../kernel/build/main.mod
-	/usr/local/cross/bin/i586-elf-gcc -std=gnu99 -c -Iinc -o main.o main.c
-	/usr/local/cross/bin/i586-elf-ld -T linker.ld -o main.mod src/syscall.o src/crt.o main.o
+	/usr/local/cross/bin/i586-elf-gcc --sysroot=inc -std=gnu99 -c -Iinc -o main.o main.c
+	/usr/local/cross/bin/i586-elf-ld -T linker.ld -o main.mod src/syscall.o src/crt.o src/string.o main.o
 	cp main.mod ../kernel/build/
 	make -C ../kernel run
 
