@@ -58,8 +58,8 @@ static int load_elf_exe(void *start, uint32_t length) {
                 break;
             }
             default: //Unsupported phdr
-                logf("UNSUP %u", phdr[i].p_type);
-                return -1;
+                logf("UNSUP %X", phdr[i].p_type);
+                continue;
         }
     }
 
