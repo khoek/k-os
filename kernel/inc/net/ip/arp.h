@@ -3,6 +3,7 @@
 
 #include "lib/int.h"
 #include "common/compiler.h"
+#include "net/interface.h"
 #include "net/eth/eth.h"
 #include "net/ip/ip.h"
 
@@ -23,7 +24,8 @@ typedef struct arp_header {
 
 void arp_build(packet_t *packet, uint16_t op, mac_t sender_mac, mac_t target_mac, ip_t sender_ip, ip_t target_ip);
 void arp_handle(packet_t *packet, void *raw, uint16_t len);
-
 void arp_resolve(packet_t *packet);
+
+void arp_cache_store(net_interface_t *interface, mac_t *mac, ip_t *ip);
 
 #endif

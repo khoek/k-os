@@ -155,16 +155,18 @@ void arp_resolve(packet_t *packet) {
             if(entry->state == CACHE_UNRESOLVED) {
                 list_add(&packet->list, &entry->pending);
 
+                spin_unlock_irqstore(&entry->lock, flags);
+
                 if(entry->retrys == -1) arp_watchdog(entry);
             } else if(entry->state == CACHE_RESOLVED) {
+                spin_unlock_irqstore(&entry->lock, flags);
+
                 packet->route.dst.family = AF_LINK;
                 packet->route.dst.addr = &entry->mac;
 
                 packet->state = PSTATE_RESOLVED;
                 packet_send(packet);
             }
-
-            spin_unlock_irqstore(&entry->lock, flags);
         } else {
             arp_cache_put_unresolved(packet->interface, ip, packet);
         }
@@ -173,27 +175,18 @@ void arp_resolve(packet_t *packet) {
     }
 }
 
-void arp_handle(packet_t *packet, void *raw, uint16_t len) {
-    arp_header_t *arp = packet->net.buff = raw;
-    if(!memcmp(&((ip_interface_t *) packet->interface->ip_data)->ip_addr.addr, &arp->target_ip.addr, sizeof(ip_t))) {
-        if(!memcmp(&arp->target_mac, &MAC_NONE, sizeof(mac_t))) {
-            packet_t *response = packet_create(packet->interface, NULL, NULL, NULL, 0);
-            arp_build(response, ARP_OP_RESPONSE, *((mac_t *) packet->interface->hard_addr.addr), arp->sender_mac, ((ip_interface_t *) packet->interface->ip_data)->ip_addr, arp->sender_ip);
-            packet_send(response);
-        }
-    }
-
+void arp_cache_store(net_interface_t *interface, mac_t *mac, ip_t *ip) {
     uint32_t flags;
     spin_lock_irqsave(&arp_cache_lock, &flags);
 
-    arp_cache_entry_t *entry = arp_cache_find(&arp->sender_ip);
+    arp_cache_entry_t *entry = arp_cache_find(ip);
     if(entry) {
         if(entry->state == CACHE_UNRESOLVED) {
             uint32_t flags;
             spin_lock_irqsave(&entry->lock, &flags);
 
             entry->state = CACHE_RESOLVED;
-            entry->mac = arp->sender_mac;
+            entry->mac = *mac;
 
             spin_unlock_irqstore(&entry->lock, flags);
 
@@ -207,8 +200,21 @@ void arp_handle(packet_t *packet, void *raw, uint16_t len) {
             }
         }
     } else {
-        arp_cache_put_resolved(packet->interface, arp->sender_ip, arp->sender_mac);
+        arp_cache_put_resolved(interface, *ip, *mac);
     }
 
     spin_unlock_irqstore(&arp_cache_lock, flags);
+}
+
+void arp_handle(packet_t *packet, void *raw, uint16_t len) {
+    arp_header_t *arp = packet->net.buff = raw;
+    if(!memcmp(&((ip_interface_t *) packet->interface->ip_data)->ip_addr.addr, &arp->target_ip.addr, sizeof(ip_t))) {
+        if(!memcmp(&arp->target_mac, &MAC_NONE, sizeof(mac_t))) {
+            packet_t *response = packet_create(packet->interface, NULL, NULL, NULL, 0);
+            arp_build(response, ARP_OP_RESPONSE, *((mac_t *) packet->interface->hard_addr.addr), arp->sender_mac, ((ip_interface_t *) packet->interface->ip_data)->ip_addr, arp->sender_ip);
+            packet_send(response);
+        }
+    }
+
+    arp_cache_store(packet->interface, &arp->sender_mac, &arp->sender_ip);
 }

@@ -14,7 +14,8 @@
 #define SEL_KERNEL_DATA 0x10
 #define SEL_USER_CODE   0x18
 #define SEL_USER_DATA   0x20
-#define SEL_TSS         0x28
+#define SEL_USER_TLS    0x28
+#define SEL_TSS         0x30
 
 typedef struct tss {
    uint32_t prev_tss;   // Obsolete
@@ -47,5 +48,7 @@ typedef struct tss {
 } PACKED tss_t;
 
 void tss_set_stack(uint32_t sp);
+
+void gdt_set_tls(uint32_t tls_start);
 
 #endif

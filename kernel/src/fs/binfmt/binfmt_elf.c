@@ -47,18 +47,37 @@ static int load_elf_exe(void *start, uint32_t length) {
                 break;
             case PT_LOAD: {
                 uint32_t page_num = 0;
-                uint32_t bytes_left = phdr[i].p_memsz;
+                uint32_t bytes_left = phdr[i].p_filesz;
+                uint32_t zeroes_left = phdr[i].p_memsz - phdr[i].p_filesz;
+
                 while(bytes_left) {
                     void *new_page = alloc_page_user(0, task, phdr[i].p_vaddr + (page_num * PAGE_SIZE));
                     page_num++;
 
                     memcpy(new_page, (void *) (((uint32_t) start) + phdr[i].p_offset), MIN(bytes_left, PAGE_SIZE));
+
+                    if(bytes_left <= PAGE_SIZE && zeroes_left) {
+                        memset(((uint8_t *) new_page) + bytes_left, 0, MIN(zeroes_left, PAGE_SIZE));
+                        zeroes_left -= bytes_left;
+                    }
+
                     bytes_left -= MIN(bytes_left, PAGE_SIZE);
+                }
+
+                while(zeroes_left) {
+                    void *new_page = alloc_page_user(0, task, phdr[i].p_vaddr + (page_num * PAGE_SIZE));
+                    page_num++;
+
+                    memset(new_page, 0, MIN(zeroes_left, PAGE_SIZE));
+                    zeroes_left -= MIN(zeroes_left, PAGE_SIZE);
                 }
                 break;
             }
-            default: //Unsupported phdr
-                logf("UNSUP %X", phdr[i].p_type);
+            case PT_TLS: {
+                break;
+            }
+            default:
+                logf("binfmt_elf - unsupported phdr type (0x%X)", phdr[i].p_type);
                 continue;
         }
     }
@@ -69,7 +88,7 @@ static int load_elf_exe(void *start, uint32_t length) {
 }
 
 static int load_elf_lib(void UNUSED(*start), uint32_t UNUSED(length)) {
-    return 1;
+    return -1;
 }
 
 static binfmt_t elf = {

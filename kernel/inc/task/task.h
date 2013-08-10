@@ -44,7 +44,7 @@ typedef struct task {
 
 extern task_t *current;
 
-task_t * task_create(bool kernel, void *eip, void *esp);
+task_t * task_create(bool kernel, void *ip, void *sp);
 void task_schedule(task_t *task);
 void task_add_page(task_t *task, page_t *page);
 

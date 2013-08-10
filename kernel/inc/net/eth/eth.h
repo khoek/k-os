@@ -23,6 +23,10 @@ typedef struct eth_header {
     uint16_t type;
 } PACKED eth_header_t;
 
+static inline eth_header_t * eth_hdr(packet_t *packet) {
+    return (eth_header_t *) packet->link.buff;
+}
+
 extern net_link_layer_t eth_link_layer;
 
 #endif

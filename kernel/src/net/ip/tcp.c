@@ -194,8 +194,6 @@ static void tcp_callback(packet_t *packet, sock_t *sock) {
 
 //should only be called when ((tcp_data_conn_t *) sock->private)->lock is held (or when the sock is being constructed and is therefore not visible)
 static void tcp_reset(sock_t *sock) {
-    sock->flags &= ~SOCK_FLAG_CONNECTED;
-
     tcp_data_conn_t *data = sock->private;
 
     data->next_local_seq = data->next_local_ack = rand32();

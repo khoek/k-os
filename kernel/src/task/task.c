@@ -165,6 +165,7 @@ void task_add_page(task_t UNUSED(*task), page_t UNUSED(*page)) {
 
 task_t * task_create(bool kernel, void *ip, void *sp) {
     task_t *task = (task_t *) cache_alloc(task_cache);
+
     task->pid = pid++;
     task->state = TASK_AWAKE;
 

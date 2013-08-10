@@ -21,12 +21,13 @@ cpl_switch:
 
     and $0x7, %ecx
 
-    jz finish # are we are remaining in kernel-land?
+    jz finish # are we are remaining in kernel-land? if so, skip segment register reloading
 
     mov 48(%esp), %ecx
     mov %ecx, %ds
     mov %ecx, %es
     mov %ecx, %fs
+    add $0x8, %ecx
     mov %ecx, %gs
 
 finish:

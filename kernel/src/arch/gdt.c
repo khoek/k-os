@@ -8,7 +8,7 @@
 #include "arch/registers.h"
 #include "video/log.h"
 
-#define GDT_SIZE 6
+#define GDT_SIZE 7
 
 typedef struct gdtd {
     uint16_t size;
@@ -41,7 +41,7 @@ static uint8_t kernel_stack[0x1000];
 #define FLAG_GRANULARITY_BYTE (0 << 7)
 #define FLAG_GRANULARITY_PAGE (1 << 7)
 
-static void create_selector(uint16_t index, uint32_t base, uint32_t limit, uint8_t access, uint8_t flags) {
+static void set_selector(uint16_t index, uint32_t base, uint32_t limit, uint8_t access, uint8_t flags) {
     gdt[index].limit_0_15 = limit & 0xFFFF;
     gdt[index].limit_16_19_and_flags = flags | ((limit >> 16) & 0xF);
     gdt[index].base_0_15  = base & 0xFFFF;
@@ -54,13 +54,18 @@ void tss_set_stack(uint32_t sp) {
     tss.esp0 = sp;
 }
 
+void gdt_set_tls(uint32_t tls_start) {
+    set_selector(5, tls_start , 0xFFFFF,            PRESENT | CPL_USER   | WRITABLE            | SEGMENT, FLAG_BITS_32 | FLAG_GRANULARITY_PAGE | FLAG_AVAILABLE);
+}
+
 static INITCALL gdt_init() {
-    create_selector(0, 0x00000000, 0x00000, 0, 0);
-    create_selector(1, 0x00000000, 0xFFFFF,            PRESENT | CPL_KERNEL | WRITABLE | EXECABLE | SEGMENT, FLAG_BITS_32 | FLAG_GRANULARITY_PAGE);
-    create_selector(2, 0x00000000, 0xFFFFF,            PRESENT | CPL_KERNEL | WRITABLE            | SEGMENT, FLAG_BITS_32 | FLAG_GRANULARITY_PAGE);
-    create_selector(3, 0x00000000, 0xFFFFF,            PRESENT | CPL_USER   | WRITABLE | EXECABLE | SEGMENT, FLAG_BITS_32 | FLAG_GRANULARITY_PAGE | FLAG_AVAILABLE);
-    create_selector(4, 0x00000000, 0xFFFFF,            PRESENT | CPL_USER   | WRITABLE            | SEGMENT, FLAG_BITS_32 | FLAG_GRANULARITY_PAGE | FLAG_AVAILABLE);
-    create_selector(5, (uint32_t) &tss, sizeof(tss_t), PRESENT | CPL_KERNEL |            EXECABLE | TSS    , FLAG_BITS_32 | FLAG_GRANULARITY_BYTE);
+    set_selector(0, 0x00000000, 0x00000, 0, 0);
+    set_selector(1, 0x00000000, 0xFFFFF,            PRESENT | CPL_KERNEL | WRITABLE | EXECABLE | SEGMENT, FLAG_BITS_32 | FLAG_GRANULARITY_PAGE);
+    set_selector(2, 0x00000000, 0xFFFFF,            PRESENT | CPL_KERNEL | WRITABLE            | SEGMENT, FLAG_BITS_32 | FLAG_GRANULARITY_PAGE);
+    set_selector(3, 0x00000000, 0xFFFFF,            PRESENT | CPL_USER   | WRITABLE | EXECABLE | SEGMENT, FLAG_BITS_32 | FLAG_GRANULARITY_PAGE | FLAG_AVAILABLE);
+    set_selector(4, 0x00000000, 0xFFFFF,            PRESENT | CPL_USER   | WRITABLE            | SEGMENT, FLAG_BITS_32 | FLAG_GRANULARITY_PAGE | FLAG_AVAILABLE);
+    set_selector(5, 0x00000000, 0xFFFFF,            PRESENT | CPL_USER   | WRITABLE            | SEGMENT, FLAG_BITS_32 | FLAG_GRANULARITY_PAGE | FLAG_AVAILABLE);
+    set_selector(6, (uint32_t) &tss, sizeof(tss_t), PRESENT | CPL_KERNEL |            EXECABLE | TSS    , FLAG_BITS_32 | FLAG_GRANULARITY_BYTE);
 
     tss.ss0 = SEL_KERNEL_DATA;
 

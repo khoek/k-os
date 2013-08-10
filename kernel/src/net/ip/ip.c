@@ -8,6 +8,7 @@
 #include "net/interface.h"
 #include "net/socket.h"
 #include "net/eth/eth.h"
+#include "net/ip/arp.h"
 #include "net/ip/ip.h"
 #include "net/ip/icmp.h"
 #include "net/ip/tcp.h"
@@ -66,6 +67,8 @@ void ip_handle(packet_t *packet, void *raw, uint16_t len) {
     if(IP_VERSION(ip->version_ihl) != 0x04) {
         logf("ip - unsupported version number (0x%02X)", IP_VERSION(ip->version_ihl));
     } else {
+        arp_cache_store(packet->interface, &eth_hdr(packet)->src, &ip->src);
+
         switch(ip->protocol) {
             case IP_PROT_ICMP: {
                 icmp_handle(packet, raw, len);
