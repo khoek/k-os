@@ -1,7 +1,7 @@
 #include <stddef.h>
 #include <string.h>
 
-int isdigit(char c) {
+int isdigit(int c) {
     return c >= '0' && c <= '9';
 }
 
@@ -84,7 +84,7 @@ char * strcpy(char *dest, const char *src) {
     return ret;
 }
 
-void * memset(void *ptr, char c, size_t bytes) {
+void * memset(void *ptr, int c, size_t bytes) {
     char *p = (char*)ptr;
     size_t i;
     for(i = 0; i < bytes; i++) {

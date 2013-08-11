@@ -2,6 +2,7 @@
 #define LIBC_SYS_SOCKET_H
 
 #include <inttypes.h>
+#include <sys/types.h>
 
 #define AF_INET   1
 #define AF_INET6  2
@@ -21,7 +22,7 @@ typedef enum sock_type {
 } sock_type_t;
 
 typedef uint32_t socklen_t;
-typedef unsigned int sa_family_t;
+typedef uint32_t sa_family_t;
 
 struct sockaddr {
     sa_family_t sa_family;

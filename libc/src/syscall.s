@@ -3,6 +3,7 @@
 .global _sleep
 .global _log
 .global _uptime
+
 .global open
 .global close
 .global socket
@@ -13,6 +14,9 @@
 .global shutdown
 .global send
 .global recv
+
+.global _alloc_page
+.global _free_page
 
 _exit:
     mov $0, %eax
@@ -156,4 +160,16 @@ recv:
 
     pop %ebx
     pop %esi
+    ret
+
+_alloc_page:
+    mov $15, %eax
+    int $0x80
+
+    ret
+
+_free_page:
+    mov $16, %eax
+    int $0x80
+
     ret
