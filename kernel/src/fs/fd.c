@@ -10,12 +10,11 @@ gfd_t *gfdt;
 gfd_idx_t *gfd_list;
 gfd_idx_t gfd_next;
 
-gfd_idx_t gfdt_add(uint32_t type, uint32_t flags, fd_ops_t *ops, void *private) {
+gfd_idx_t gfdt_add(uint32_t flags, fd_ops_t *ops, void *private) {
     BUG_ON(gfd_next == FREELIST_END);
 
     gfd_idx_t added = gfd_next;
 
-    gfdt[added].type = type;
     gfdt[added].flags = flags;
     gfdt[added].ops = ops;
     gfdt[added].private = private;

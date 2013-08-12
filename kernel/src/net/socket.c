@@ -217,5 +217,5 @@ static fd_ops_t sock_ops = {
 };
 
 gfd_idx_t sock_create_fd(sock_t *sock) {
-    return gfdt_add(FD_SOCK, 0, &sock_ops, sock);
+    return gfdt_add(0, &sock_ops, sock);
 }

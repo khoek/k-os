@@ -18,5 +18,5 @@ static fd_ops_t char_stream_ops = {
 gfd_idx_t char_stream_alloc() {
     char_stream_t *c = kmalloc(sizeof(char_stream_t));
 
-    return gfdt_add(FD_CHAR, 0, &char_stream_ops, c);
+    return gfdt_add(0, &char_stream_ops, c);
 }
