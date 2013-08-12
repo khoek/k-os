@@ -1,4 +1,5 @@
 #include <k/sys.h>
+#include <k/math.h>
 
 #include <errno.h>
 #include <unistd.h>
@@ -16,7 +17,7 @@ void * sbrk(intptr_t incr) {
             //FIXME errno = EINVAL
             return (void *) -1;
         } else {
-            for(uint32_t i = 0; i < ((((uint32_t) _data_end) / PAGE_SIZE) * PAGE_SIZE) - (((((uint32_t) _data_end) + incr) / PAGE_SIZE) * PAGE_SIZE); i++) {
+            for(uint32_t i = 0; i < DIV_UP((uint32_t) _data_end, PAGE_SIZE) - DIV_UP(((uint32_t) _data_end) + incr, PAGE_SIZE); i++) {
                 _free_page();
             }
         }
@@ -26,7 +27,7 @@ void * sbrk(intptr_t incr) {
 
         return old_end;
     } else if(incr > 0) {
-        for(uint32_t i = 0; i < (((((uint32_t) _data_end) + incr) / PAGE_SIZE) * PAGE_SIZE) - ((((uint32_t) _data_end) / PAGE_SIZE) * PAGE_SIZE); i++) {
+        for(uint32_t i = 0; i < DIV_UP(((uint32_t) _data_end) + incr, PAGE_SIZE) - DIV_UP((uint32_t) _data_end, PAGE_SIZE); i++) {
             if(_alloc_page() == -1) {
                 errno_t old_errno = errno;
 

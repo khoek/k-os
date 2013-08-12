@@ -240,6 +240,14 @@ static void sys_recv(interrupt_t *interrupt) {
     }
 }
 
+static void sys_alloc_page(interrupt_t *interrupt) {
+    panic("Unimplemented");
+}
+
+static void sys_free_page(interrupt_t *interrupt) {
+    panic("Unimplemented");
+}
+
 static syscall_t syscalls[MAX_SYSCALL] = {
     [ 0] = sys_exit,
     [ 1] = sys_fork,
@@ -256,6 +264,8 @@ static syscall_t syscalls[MAX_SYSCALL] = {
     [12] = sys_shutdown,
     [13] = sys_send,
     [14] = sys_recv,
+    [15] = sys_alloc_page,
+    [16] = sys_free_page,
 };
 
 static void syscall_handler(interrupt_t *interrupt) {
