@@ -104,7 +104,7 @@ static void sys_listen(interrupt_t *interrupt) {
 
     if(fd == FD_INVALID) current->ret = -1;
     else {
-        current->ret = sock_listen(gfd_to_sock(fd), interrupt->cpu.reg.edx > MAX_INT32 ? 0 : interrupt->cpu.reg.edx) ? 0 : -1;
+        current->ret = sock_listen(gfd_to_sock(fd), interrupt->cpu.reg.edx > INT32_MAX ? 0 : interrupt->cpu.reg.edx) ? 0 : -1;
     }
 }
 

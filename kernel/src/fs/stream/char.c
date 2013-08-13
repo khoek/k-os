@@ -7,7 +7,7 @@ typedef struct char_stream {
     uint32_t size;
     uint32_t front;
     uint32_t back;
-    
+
     char *buff;
 } char_stream_t;
 
