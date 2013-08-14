@@ -2,9 +2,11 @@
 
 #include "lib/printf.h"
 #include "common/asm.h"
+#include "common/math.h"
 #include "common/init.h"
 #include "bug/debug.h"
 #include "bug/panic.h"
+#include "arch/gdt.h"
 #include "arch/idt.h"
 #include "mm/mm.h"
 #include "mm/cache.h"
@@ -159,7 +161,6 @@ static ide_channel_t channels[2];
 static ide_device_t ide_devices[4];
 
 static uint8_t ide_buf[2048] = {0};
-//static uint8_t atapi_packet[12] = {0xA8, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0};
 
 static void ide_device_check(uint8_t device) {
     if (device > 3) panicf("IDE - Illegal no such IDE device %u", device);
@@ -420,27 +421,29 @@ static int32_t pata_access(bool write, bool same, uint8_t drive, uint64_t numsec
     // (II) See if drive supports DMA or not;
     dma = false;
 
-    if (lba_mode > 0 /* There is no CHS (lba_mode == 0) for DMA */ && ide_devices[drive].features & ATA_FEATURE_DMA && 0) {
+    if (lba_mode > 0 /* There is no CHS (lba_mode == 0) for DMA */ && ide_devices[drive].features & ATA_FEATURE_DMA) {
         dma = true;
+
         ide_write(channel, ATA_REG_CONTROL, channels[channel].nIEN = ATA_IRQ_ON);
         ide_write_long(channel, ATA_REG_PRDTABLE, (uint32_t) page_to_phys(channels[channel].prdt)); //store the address of the PRDT
+
         uint64_t *prdt = (uint64_t *) page_to_virt(channels[channel].prdt);
         uint64_t bytes = sector_size * (numsects == 0 ? 512 : numsects);
         uint64_t i;
         for (i = 0; i < MAX_PRD_ENTRIES && bytes > (64 * 1024); i++) {
-            *(prdt + i) = PRD(edi + (same ? 0 : ((64 * 1024) * i)), 0 /* 64kb */);
+            *prdt++ = PRD(edi + (same ? 0 : ((64 * 1024) * i)), 0 /* 64kb */);
             transfered += 64 * 1024;//FIXME increment and return this after the operation completes WITHOUT AN ERROR
             bytes -= (64 * 1024);
         }
 
         if (bytes > 0 && i < MAX_PRD_ENTRIES) {
-            *(prdt + i) = PRD(edi + (same ? 0 : ((64 * 1024) * i)), bytes);
+            bytes = MIN(bytes, 64 * 1024);
+
+            *prdt++ = PRD(edi + (same ? 0 : ((64 * 1024) * i)), bytes);
             transfered += bytes;
-        } else {
-            i--;
         }
 
-        *(prdt + (i == 0 ? 512 : i)) |= 0x8000000000000000; // mark last PRD entry as EOT
+        *(prdt - 1) |= 0x8000000000000000; // mark last PRD entry as EOT
     } else {
         ide_write(channel, ATA_REG_CONTROL, channels[channel].nIEN = ATA_IRQ_OFF);
     }
@@ -592,8 +595,8 @@ static void ide_enable(device_t *device) {
     if(once) return;
     once = true;
 
-    idt_register(46, false, handle_irq_primary);
-    idt_register(47, false, handle_irq_secondary);
+    idt_register(46, CPL_KERNEL, handle_irq_primary);
+    idt_register(47, CPL_KERNEL, handle_irq_secondary);
 
     // 1- Detect I/O Ports which interface IDE Controller:
     channels[ATA_PRIMARY  ].base  = (BAR_ADDR_32(pci_device->bar[0])) + 0x1F0 * (!pci_device->bar[0]);
