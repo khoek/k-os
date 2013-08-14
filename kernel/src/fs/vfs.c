@@ -19,25 +19,25 @@ static dentry_t root = {
     .children = LIST_HEAD(root.children),
 };
 
-static DEFINE_LIST(providers);
-static DEFINE_SPINLOCK(provider_lock);
+static DEFINE_LIST(disks);
+static DEFINE_SPINLOCK(disk_lock);
 
-void register_vfs_provider(vfs_provider_t *provider) {
+void register_disk(disk_t *disk) {
     uint32_t flags;
-    spin_lock_irqsave(&provider_lock, &flags);
+    spin_lock_irqsave(&disk_lock, &flags);
 
-    list_add(&provider->list, &providers);
+    list_add(&disk->list, &disks);
 
-    spin_unlock_irqstore(&provider_lock, flags);
+    spin_unlock_irqstore(&disk_lock, flags);
 }
 
-void unregister_vfs_provider(vfs_provider_t *provider) {
+void unregister_disk(disk_t *disk) {
     uint32_t flags;
-    spin_lock_irqsave(&provider_lock, &flags);
+    spin_lock_irqsave(&disk_lock, &flags);
 
-    list_rm(&provider->list);
+    list_rm(&disk->list);
 
-    spin_unlock_irqstore(&provider_lock, flags);
+    spin_unlock_irqstore(&disk_lock, flags);
 }
 
 static INITCALL vfs_init() {

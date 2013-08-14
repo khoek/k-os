@@ -31,8 +31,8 @@ struct dentry {
     list_head_t list;
 };
 
-typedef struct vfs_provider {
+typedef struct disk {
     list_head_t list;
-} vfs_provider_t;
+} disk_t;
 
 #endif
