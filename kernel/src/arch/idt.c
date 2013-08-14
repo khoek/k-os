@@ -91,22 +91,22 @@ static char* exceptions[32] = {
      [30] =    "Security Exception"
 };
 
-static uint16_t get_reg(uint16_t pic, uint8_t reg) {
+/*static uint16_t get_reg(uint16_t pic, uint8_t reg) {
      outb(pic, reg);
      return inb(pic);
-}
+}*/
 
 void interrupt_dispatch(interrupt_t *interrupt) {
     if (interrupt->vector < PIC_MASTER_OFFSET) {
         panicf("Exception #%u: %s\nError Code: 0x%X\nEIP: 0x%p", interrupt->vector, exceptions[interrupt->vector] ? exceptions[interrupt->vector] : "Unknown", interrupt->error, interrupt->cpu.exec.eip);
     }
 
-    if(interrupt->vector == INT_SPURIOUS_MASTER && !(get_reg(MASTER_COMMAND, PIC_REG_IRR) & (1 << IRQ_SPURIOUS))) {
+    /*if(interrupt->vector == INT_SPURIOUS_MASTER && !(get_reg(MASTER_COMMAND, PIC_REG_IRR) & (1 << IRQ_SPURIOUS))) {
         return;
     } else if (interrupt->vector == INT_SPURIOUS_SLAVE && !(get_reg(SLAVE_COMMAND, PIC_REG_IRR) & (1 << IRQ_SPURIOUS))) {
         outb(MASTER_COMMAND, EOI);
         return;
-    }
+    }*/
 
     task_save(&interrupt->cpu);
 
