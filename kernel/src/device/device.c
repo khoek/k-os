@@ -96,7 +96,7 @@ void register_device(device_t *device, node_t *parent) {
     }
 }
 
-static void traverse_log(node_t *node, uint32_t depth) {
+void traverse_log(node_t *node, uint32_t depth) {
     uint32_t bufflen = depth + strlen(node->name) + 1;
     char buff[bufflen];
     char *ptr = buff;
@@ -117,7 +117,7 @@ static void traverse_log(node_t *node, uint32_t depth) {
 
 static INITCALL device_init() {
     logf("device - list start");
-    traverse_log(&root, 1);
+    traverse_log(&root, 0);
     logf("device - list end");
 
     return 0;
