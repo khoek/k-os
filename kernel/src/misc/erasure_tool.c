@@ -1,6 +1,7 @@
 #include <stdbool.h>
 
 #include "lib/string.h"
+#include "common/math.h"
 #include "common/asm.h"
 #include "bug/panic.h"
 #include "arch/idt.h"
@@ -234,7 +235,7 @@ static void run_tool(uint8_t devices) {
                 while(written < ide_device_get_size(i)) {
                     count++;
                     console_putsf("    - Writing to device %u... %3u%%                                             %c\r", device, (written * 100) / ide_device_get_size(i), twirls[(count / 10) % 4]);
-                    written += ide_write_sectors_same(i, ide_device_get_size(i) - written, written, space) / 512;
+                    written += ide_write_sectors_same(i, MIN(ide_device_get_size(i) - written, 64 * 4 * 1024), written, space) / 512;
                 }
                 console_putsf("    - Writing to device %u... 100%%                                              \n", device);
             }
