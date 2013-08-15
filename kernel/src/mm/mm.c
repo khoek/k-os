@@ -71,6 +71,12 @@ page_t * phys_to_page(void *addr) {
     return &pages[((uint32_t) addr) / PAGE_SIZE];
 }
 
+void * virt_to_phys(void *addr) {
+    uint32_t num = ((((uint32_t) addr) & 0xFFFFF000) - VIRTUAL_BASE) / PAGE_SIZE;
+
+    return (void *) ((kernel_page_tables[num / NUM_ENTRIES][num % NUM_ENTRIES] & 0xFFFFF000) | (((uint32_t) addr) & 0xFFF));
+}
+
 static page_t * do_alloc_page(uint32_t UNUSED(flags)) {
     for (uint32_t order = 0; order < MAX_ORDER + 1; order++) {
         if (free_page_list[order] != NULL) {

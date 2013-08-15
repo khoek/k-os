@@ -575,11 +575,11 @@ static void ide_seek(disk_t *disk, size_t block) {
 }
 
 static ssize_t ide_read(disk_t *disk, size_t start, size_t blocks, void *buff) {
-    return pata_access(false, false, containerof(disk, ide_device_t, disk), blocks, start, buff);
+    return pata_access(false, false, containerof(disk, ide_device_t, disk), blocks, start, virt_to_phys(buff));
 }
 
 static ssize_t ide_write(disk_t *disk, size_t start, size_t blocks, void *buff) {
-    return pata_access(true, false, containerof(disk, ide_device_t, disk), blocks, start, buff);
+    return pata_access(true, false, containerof(disk, ide_device_t, disk), blocks, start, virt_to_phys(buff));
 }
 
 static disk_ops_t ide_disk_ops = {
