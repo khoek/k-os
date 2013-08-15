@@ -1,5 +1,5 @@
-#include "common/init.h"
 #include "lib/int.h"
+#include "common/init.h"
 #include "common/list.h"
 #include "common/listener.h"
 #include "sync/spinlock.h"
@@ -43,7 +43,7 @@ void register_disk_type(disk_type_t *disk_type) {
     spin_unlock_irqstore(&disk_type_lock, flags);
 }
 
-static INITCALL vfs_init() {
+static INITCALL disk_recognise() {
     disk_t *disk;
     LIST_FOR_EACH_ENTRY(disk, &disks, list) {
         disk_type_t *disk_type;
@@ -62,4 +62,4 @@ static INITCALL vfs_init() {
     return 0;
 }
 
-subsys_initcall(vfs_init);
+device_initcall(disk_recognise);

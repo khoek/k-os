@@ -38,7 +38,6 @@ struct dentry {
 
 struct disk {
     disk_ops_t *ops;
-    void *private;
 
     disk_type_t *type;
 
@@ -46,9 +45,9 @@ struct disk {
 };
 
 struct disk_ops {
-    ssize_t (*seek)(disk_t *, size_t);
-    ssize_t (*read)(disk_t *, size_t, void *);
-    ssize_t (*write)(disk_t *, size_t, void *);
+    void (*seek)(disk_t *, size_t);
+    ssize_t (*read)(disk_t *, size_t, size_t, void *);
+    ssize_t (*write)(disk_t *, size_t, size_t, void *);
 };
 
 struct disk_type {
