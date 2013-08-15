@@ -39,6 +39,7 @@ struct dentry {
 
 struct disk {
     disk_ops_t *ops;
+    uint32_t block_size;
 
     disk_label_t *type;
 

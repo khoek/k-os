@@ -48,14 +48,13 @@ static INITCALL disk_recognise() {
     LIST_FOR_EACH_ENTRY(disk, &disks, list) {
         disk_label_t *disk_label;
         LIST_FOR_EACH_ENTRY(disk_label, &disk_labels, list) {
-            if(disk_label->match(disk)) {
-                disk->type = disk_label;
-                if(disk_label->probe(disk)) {
-                    break;
-                } else {
-                    disk->type = NULL;
-                }
+            disk->type = disk_label;
+
+            if(disk_label->probe(disk)) {
+                break;
             }
+
+            disk->type = NULL;
         }
     }
 

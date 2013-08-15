@@ -21,6 +21,7 @@ OBJS=	loader.o \
         net/eth/eth.o \
         net/ip/af_inet.o net/ip/ip.o net/ip/arp.o net/ip/icmp.o net/ip/tcp.o net/ip/udp.o net/ip/dhcp.o net/ip/nbns.o net/ip/raw.o \
         fs/vfs.o fs/module.o fs/fd.o \
+        fs/label/msdos.o \
         fs/stream/char.o \
         fs/binfmt/binfmt.o fs/binfmt/binfmt_elf.o \
         driver/bus/pci.o \

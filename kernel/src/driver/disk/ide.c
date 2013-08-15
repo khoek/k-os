@@ -120,8 +120,8 @@
 #define ATA_REG_PRDTABLE        0x12
 
 #define ATA_BMCMD_START         0x01
-#define ATA_BMCMD_READ          0x00
-#define ATA_BMCMD_WRITE         0x08
+#define ATA_BMCMD_READ          0x08
+#define ATA_BMCMD_WRITE         0x00
 
 #define ATA_BMSTATUS_ACTIVE     0x01
 #define ATA_BMSTATUS_ERROR      0x02
@@ -378,8 +378,8 @@ static int32_t pata_access(bool write, bool same, ide_device_t *device, uint64_t
     uint8_t lba_mode /* 0: CHS, 1:LBA28,ide_buf 2: LBA48 */, dma /* 0: No DMA, 1: DMA */;
     uint8_t lba_io[6];
     uint32_t channel = device->channel; // Read the Channel.
-    uint32_t sector_size = 512; // Almost every ATA drive has a sector-size of 512-byte. //FIXME figure this out dynamically if possible
-    uint32_t transfered = 0; //FIXME can this fit the biggest requests?
+    uint32_t sector_size = 512; // Almost every ATA drive has a sector-size of 512-byte. //FIXME figure this out dynamically
+    uint32_t transfered = 0; //FIXME this definitley could overflow
     uint16_t cyl, i;
     uint8_t head, sect, err;
 
@@ -441,9 +441,9 @@ static int32_t pata_access(bool write, bool same, ide_device_t *device, uint64_t
 
         if (bytes > 0 && i < MAX_PRD_ENTRIES) {
             bytes = MIN(bytes, 64 * 1024);
-
-            *prdt++ = PRD(edi + (same ? 0 : ((64 * 1024) * i)), bytes);
             transfered += bytes;
+
+            *prdt++ = PRD(edi + (same ? 0 : ((64 * 1024) * i)), bytes == (64 * 1024) ? 0 : bytes);
         }
 
         *(prdt - 1) |= 0x8000000000000000; // mark last PRD entry as EOT
@@ -470,7 +470,7 @@ static int32_t pata_access(bool write, bool same, ide_device_t *device, uint64_t
     ide_mmio_write(channel, ATA_REG_LBA1,    lba_io[1]);
     ide_mmio_write(channel, ATA_REG_LBA2,    lba_io[2]);
 
-    // (VI) Select the command and send ide_devicesit;
+    // (VI) Select the command and send it;
     // Routine that is followed:
     // If ( DMA & LBA48)    DO_DMA_EXT;
     // If ( DMA & LBA28)    DO_DMA_LBA;
@@ -493,17 +493,11 @@ static int32_t pata_access(bool write, bool same, ide_device_t *device, uint64_t
     if (lba_mode == 2 &&  dma &&  write) ide_mmio_write(channel, ATA_REG_COMMAND, ATA_CMD_DMA_WRITE_EXT);
 
     if (dma) {
-        if (!write) {
-        ide_mmio_write(channel, ATA_REG_BMCOMMAND, ATA_BMCMD_READ);
-        } else {
-        ide_mmio_write(channel, ATA_REG_BMCOMMAND, ATA_BMCMD_WRITE);
-        }
-
-        ide_mmio_write(channel, ATA_REG_BMCOMMAND, ATA_BMCMD_START);
+        ide_mmio_write(channel, ATA_REG_BMCOMMAND, ATA_BMCMD_START | (write ? ATA_BMCMD_WRITE : ATA_BMCMD_READ));
         irq_wait(channel);
     } else {
         if (numsects > 255) {
-        numsects = 0; // restrict the size of PIO read/writes to 256 sectors at a time, for performance.
+            numsects = 0; // restrict the size of PIO read/writes to 256 sectors at a time, for performance.
         }
 
         if (!write) {
@@ -513,7 +507,7 @@ static int32_t pata_access(bool write, bool same, ide_device_t *device, uint64_t
             }
 
             asm("rep insw" : : "c"(sector_size / 2 /* in words */), "d"(channels[channel].base /* bus base */), "D"(edi)); // Receive Data.
-            transfered += sector_size;
+            transfered +=  sector_size;
             edi += sector_size;
         }
         } else {
@@ -531,7 +525,7 @@ static int32_t pata_access(bool write, bool same, ide_device_t *device, uint64_t
         }
     }
 
-    return transfered;
+    return transfered / sector_size;
 }
 
 static void ide_bounds_check(uint8_t drive, uint64_t numsects, uint32_t lba) {
@@ -759,7 +753,9 @@ static void ide_enable(device_t *device) {
             }
 
             ide_devices[d].model[40] = 0; // Terminate String.
+
             ide_devices[d].disk.ops = &ide_disk_ops;
+            ide_devices[d].disk.block_size = 512;
 
             register_disk(&ide_devices[d].disk);
 
