@@ -22,8 +22,8 @@ static dentry_t root = {
 static DEFINE_LIST(disks);
 static DEFINE_SPINLOCK(disk_lock);
 
-static DEFINE_LIST(disk_types);
-static DEFINE_SPINLOCK(disk_type_lock);
+static DEFINE_LIST(disk_labels);
+static DEFINE_SPINLOCK(disk_label_lock);
 
 void register_disk(disk_t *disk) {
     uint32_t flags;
@@ -34,23 +34,23 @@ void register_disk(disk_t *disk) {
     spin_unlock_irqstore(&disk_lock, flags);
 }
 
-void register_disk_type(disk_type_t *disk_type) {
+void register_disk_label(disk_label_t *disk_label) {
     uint32_t flags;
-    spin_lock_irqsave(&disk_type_lock, &flags);
+    spin_lock_irqsave(&disk_label_lock, &flags);
 
-    list_add(&disk_type->list, &disk_types);
+    list_add(&disk_label->list, &disk_labels);
 
-    spin_unlock_irqstore(&disk_type_lock, flags);
+    spin_unlock_irqstore(&disk_label_lock, flags);
 }
 
 static INITCALL disk_recognise() {
     disk_t *disk;
     LIST_FOR_EACH_ENTRY(disk, &disks, list) {
-        disk_type_t *disk_type;
-        LIST_FOR_EACH_ENTRY(disk_type, &disk_types, list) {
-            if(disk_type->match(disk)) {
-                disk->type = disk_type;
-                if(disk_type->probe(disk)) {
+        disk_label_t *disk_label;
+        LIST_FOR_EACH_ENTRY(disk_label, &disk_labels, list) {
+            if(disk_label->match(disk)) {
+                disk->type = disk_label;
+                if(disk_label->probe(disk)) {
                     break;
                 } else {
                     disk->type = NULL;

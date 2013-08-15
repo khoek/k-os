@@ -9,7 +9,7 @@ typedef struct dentry dentry_t;
 
 typedef struct disk disk_t;
 typedef struct disk_ops disk_ops_t;
-typedef struct disk_type disk_type_t;
+typedef struct disk_label disk_label_t;
 
 #include "lib/int.h"
 #include "common/list.h"
@@ -40,7 +40,7 @@ struct dentry {
 struct disk {
     disk_ops_t *ops;
 
-    disk_type_t *type;
+    disk_label_t *type;
 
     list_head_t list;
 };
@@ -51,7 +51,7 @@ struct disk_ops {
     ssize_t (*write)(disk_t *disk, size_t start, size_t blocks, void *buff);
 };
 
-struct disk_type {
+struct disk_label {
     bool (*match)(disk_t *disk);
     bool (*probe)(disk_t *disk);
 
@@ -59,6 +59,6 @@ struct disk_type {
 };
 
 void register_disk(disk_t *disk);
-void register_disk_type(disk_type_t *disk_type);
+void register_disk_label(disk_label_t *disk_label);
 
 #endif
