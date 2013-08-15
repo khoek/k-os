@@ -22,8 +22,9 @@ struct file {
 };
 
 struct file_ops {
-    ssize_t (*read)(file_t *file, void *buff, size_t bytes);
-    ssize_t (*write)(file_t *file, void *buff, size_t bytes);
+    ssize_t (*seek)(file_t *file, size_t bytes);
+    ssize_t (*read)(file_t *file, size_t bytes, void *buff);
+    ssize_t (*write)(file_t *file, size_t bytes, void *buff);
 };
 
 struct dentry {
@@ -45,9 +46,9 @@ struct disk {
 };
 
 struct disk_ops {
-    void (*seek)(disk_t *, size_t);
-    ssize_t (*read)(disk_t *, size_t, size_t, void *);
-    ssize_t (*write)(disk_t *, size_t, size_t, void *);
+    void (*seek)(disk_t *disk, size_t block);
+    ssize_t (*read)(disk_t *disk, size_t start, size_t blocks, void *buff);
+    ssize_t (*write)(disk_t *disk, size_t start, size_t blocks, void *buff);
 };
 
 struct disk_type {
