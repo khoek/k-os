@@ -15,6 +15,12 @@
 void panic(char* message) {
     cli();
 
+    static bool once = false;
+    if(once) {
+        die();
+    }
+    once = true;
+
     console_color(0x0C);
     console_puts("\nKERNEL PANIC: ");
     console_color(0x07);

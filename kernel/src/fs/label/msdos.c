@@ -69,15 +69,15 @@ static bool maybe_fat(mbr_t *mbr) {
     return true;
 }
 
-bool msdos_probe(disk_t *disk) {
-    if(disk->block_size < sizeof(mbr_t)) {
-        return 0;
+bool msdos_probe(block_device_t *device) {
+    if(device->block_size < sizeof(mbr_t)) {
+        return false;
     }
 
-    mbr_t *mbr = kmalloc(disk->block_size);
+    mbr_t *mbr = kmalloc(device->block_size);
     memset(mbr, 0, 512);
 
-    if(disk->ops->read(disk, 0, 1, mbr) != 1) {
+    if(device->ops->read(device, mbr, 0, 1) != 1) {
         goto probe_fail;
     }
 
@@ -108,13 +108,15 @@ bool msdos_probe(disk_t *disk) {
         goto probe_fail;
     }
 
-    //TODO register detected partitions with the VFS subsystem
+    for(uint8_t i = 0; i < NUM_PARTITIONS; i++) {
+        //TODO create sub-block devices
+    }
 
-    kfree(mbr, disk->block_size);
+    kfree(mbr, device->block_size);
     return true;
 
 probe_fail:
-    kfree(mbr, disk->block_size);
+    kfree(mbr, device->block_size);
     return false;
 }
 

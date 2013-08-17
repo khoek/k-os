@@ -6,8 +6,6 @@
 
 #include "common/compiler.h"
 
-//Lists
-
 typedef struct list_head list_head_t;
 
 struct list_head {
@@ -50,6 +48,13 @@ static inline void list_join(list_head_t *first, list_head_t *second) {
     second->prev = first;
 }
 
+static inline void list_replace(list_head_t *old, list_head_t *new) {
+    new->next = old->next;
+    new->next->prev = new;
+    new->prev = old->prev;
+    new->prev->next = new;
+}
+
 static inline void list_rm(list_head_t *entry) {
     list_join(entry->prev, entry->next);
 }
@@ -83,8 +88,6 @@ static inline void list_rotate_left(list_head_t *head) {
     for (pos = list_entry((head)->next, typeof(*pos), member);                  \
          &pos->member != (head);                                                \
          pos = list_entry(pos->member.next, typeof(*pos), member))
-
-//Chains
 
 typedef struct chain_node chain_node_t;
 

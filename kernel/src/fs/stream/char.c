@@ -2,6 +2,7 @@
 #include "mm/cache.h"
 #include "fs/fd.h"
 #include "fs/stream/char.h"
+#include "video/log.h"
 
 typedef struct char_stream {
     uint32_t size;

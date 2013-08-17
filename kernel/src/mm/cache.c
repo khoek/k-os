@@ -180,7 +180,7 @@ static uint32_t kalloc_cache_index(uint32_t size) {
 
 void * kmalloc(uint32_t size) {
     uint32_t index = kalloc_cache_index(size);
-    if(!index) return NULL;
+    if(!index) panicf("cache alloc request too large: %u", size);
 
     return cache_alloc(kalloc_cache[index]);
 }

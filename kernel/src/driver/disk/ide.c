@@ -157,7 +157,7 @@ typedef struct ide_device {
     uint32_t    size;         // Size in Sectors.
     char        model[41];     // Model in string.
 
-    disk_t      disk;
+    block_device_t device;
 } ide_device_t;
 
 static ide_channel_t channels[2];
@@ -570,31 +570,26 @@ int32_t ide_write_sectors_same(uint8_t drive, uint64_t numsects, uint32_t lba, v
         panic("IDE - unknown device type");
 }
 
-static void ide_seek(disk_t *disk, size_t block) {
-    //FIXME unimplemented
+static ssize_t ide_read(block_device_t *device, void *buff, size_t start, size_t blocks) {
+    return pata_access(false, false, containerof(device, ide_device_t, device), blocks, start, virt_to_phys(buff));
 }
 
-static ssize_t ide_read(disk_t *disk, size_t start, size_t blocks, void *buff) {
-    return pata_access(false, false, containerof(disk, ide_device_t, disk), blocks, start, virt_to_phys(buff));
+static ssize_t ide_write(block_device_t *device, void *buff, size_t start, size_t blocks) {
+    return pata_access(true, false, containerof(device, ide_device_t, device), blocks, start, virt_to_phys(buff));
 }
 
-static ssize_t ide_write(disk_t *disk, size_t start, size_t blocks, void *buff) {
-    return pata_access(true, false, containerof(disk, ide_device_t, disk), blocks, start, virt_to_phys(buff));
-}
-
-static disk_ops_t ide_disk_ops = {
-    .seek = ide_seek,
+static block_device_ops_t ide_device_ops = {
     .read = ide_read,
     .write = ide_write,
 };
 
-static char * bridge_name_prefix = "ide";
+static char * controller_name_prefix = "hd";
 
-static char * ide_name(device_t UNUSED(*device)) {
+static char * ide_controller_name(device_t UNUSED(*device)) {
     static int next_id = 0;
 
-    char *name = kmalloc(STRLEN(bridge_name_prefix) + STRLEN(STR(MAX_UINT)) + 1);
-    sprintf(name, "%s%u", bridge_name_prefix, next_id++);
+    char *name = kmalloc(STRLEN(controller_name_prefix) + STRLEN(STR(MAX_UINT)) + 1);
+    sprintf(name, "%s%u", controller_name_prefix, next_id++);
 
     return name;
 }
@@ -754,10 +749,12 @@ static void ide_enable(device_t *device) {
 
             ide_devices[d].model[40] = 0; // Terminate String.
 
-            ide_devices[d].disk.ops = &ide_disk_ops;
-            ide_devices[d].disk.block_size = 512;
+            ide_devices[d].device.ops = &ide_device_ops;
+            ide_devices[d].device.size = ide_devices[d].size / 512;
+            ide_devices[d].device.block_size = 512;
 
-            register_disk(&ide_devices[d].disk);
+            register_block_device(&ide_devices[d].device, "hd");
+            register_disk(&ide_devices[d].device);
 
             d++;
         }
@@ -793,7 +790,7 @@ static pci_driver_t ide_driver = {
     .driver = {
         .bus = &pci_bus,
 
-        .name = ide_name,
+        .name = ide_controller_name,
         .probe = ide_probe,
 
         .enable = ide_enable,

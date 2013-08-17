@@ -189,11 +189,11 @@ task_t * task_create(bool kernel, void *ip, void *sp) {
 
     ufd_t *tmp_fds = (ufd_t *) alloc_page_user(0, task, 0x21000);
     tmp_fds[0].flags = UFD_FLAG_PRESENT;
-    tmp_fds[0].gfd = char_stream_alloc();
+    tmp_fds[0].gfd = char_stream_alloc(512);
     tmp_fds[1].flags = UFD_FLAG_PRESENT;
-    tmp_fds[1].gfd = char_stream_alloc();
+    tmp_fds[1].gfd = char_stream_alloc(512);
     tmp_fds[2].flags = UFD_FLAG_PRESENT;
-    tmp_fds[2].gfd = char_stream_alloc();
+    tmp_fds[2].gfd = char_stream_alloc(512);
     for(uint32_t i = 3; i < task->fd_count - 1; i++) {
         tmp_fds[i].gfd = 0;
         tmp_fds[i].flags = 0;

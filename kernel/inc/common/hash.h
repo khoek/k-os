@@ -2,6 +2,7 @@
 #define KERNEL_COMMON_HASH_H
 
 #include "lib/int.h"
+#include "lib/string.h"
 #include "common/compiler.h"
 
 #define HASH_PRIME 0x9e370001UL
@@ -33,6 +34,16 @@ static inline uint32_t hash_32(uint32_t key, uint32_t bits) {
 	uint32_t hash = key * HASH_PRIME;
 
 	return hash >> (32 - bits);
+}
+
+static inline uint32_t str_to_key(const char *str) {
+    uint32_t key = 1;
+
+    for(uint32_t i = 0; i < strlen(str); i++) {
+        key *= str[i];
+    }
+
+    return key;
 }
 
 #endif
