@@ -12,7 +12,7 @@
 #define MAX_FRAMES      32
 #define BUFFSIZE        512
 
-void panic(char* message) {
+void panic(char *message) {
     cli();
 
     static bool once = false;
@@ -41,16 +41,12 @@ void panic(char* message) {
 
         ebp = (uint32_t *) ebp[0];
         eip = ebp[1] - 1;
-
-        if(frame == 4) {
-            die();
-        }
     }
 
     die();
 }
 
-void panicf(char* fmt, ...) {
+void panicf(char *fmt, ...) {
     char buff[BUFFSIZE];
     va_list va;
     va_start(va, fmt);

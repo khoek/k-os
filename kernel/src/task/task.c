@@ -236,7 +236,7 @@ void task_schedule(task_t *task) {
 }
 
 static void time_tick(clock_event_source_t *source) {
-    if(!(((uint32_t)uptime()) % 50000)) {
+    if(!(((uint32_t) uptime()) % 50000)) {
         need_resched = true;
     }
 }

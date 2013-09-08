@@ -1,18 +1,21 @@
 #include "lib/int.h"
+#include "lib/string.h"
 #include "common/init.h"
 #include "mm/cache.h"
 #include "fs/vfs.h"
 #include "video/log.h"
 
-inode_t * ramfs_inode_lookup(inode_t *inode, dentry_t *dentry) {
+static void ramfs_inode_lookup(inode_t *inode, dentry_t *dentry) {
+    dentry->inode = kmalloc(sizeof(inode_t));
+    dentry->inode->fs = inode->fs;
+    dentry->inode->ops = inode->ops;
+}
+
+static file_t * ramfs_inode_open(inode_t *inode) {
     return NULL;
 }
 
-file_t * ramfs_inode_open(inode_t *inode) {
-    return NULL;
-}
-
-dentry_t * ramfs_inode_mkdir(inode_t *inode, char *name) {
+static dentry_t * ramfs_inode_mkdir(inode_t *inode, char *name) {
     return NULL;
 }
 
@@ -26,8 +29,16 @@ static fs_t * ramfs_open(block_device_t *device) {
     fs_t *fs = kmalloc(sizeof(fs_t));
 
     dentry_t *root = kmalloc(sizeof(dentry_t));
-    list_init(&root->children);
+    root->name = "";
+    hashtable_init(root->children);
     list_init(&root->siblings);
+
+    dentry_t *dev = kmalloc(sizeof(dentry_t));
+    dev->name = "dev";
+    hashtable_init(dev->children);
+    list_init(&dev->siblings);
+
+    hashtable_add(str_to_key(dev->name, strlen(dev->name)), &dev->node, root->children);
 
     fs->root = root;
 

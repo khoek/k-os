@@ -36,10 +36,10 @@ static inline uint32_t hash_32(uint32_t key, uint32_t bits) {
 	return hash >> (32 - bits);
 }
 
-static inline uint32_t str_to_key(const char *str) {
+static inline uint32_t str_to_key(const char *str, uint32_t len) {
     uint32_t key = 1;
 
-    for(uint32_t i = 0; i < strlen(str); i++) {
+    for(uint32_t i = 0; i < len; i++) {
         key *= str[i];
     }
 

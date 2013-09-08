@@ -12,6 +12,7 @@
 #include "time/clock.h"
 #include "task/task.h"
 #include "net/socket.h"
+#include "fs/vfs.h"
 #include "video/log.h"
 
 #define MAX_SYSCALL 256
@@ -73,7 +74,7 @@ static void sys_uptime(interrupt_t *interrupt) {
 }
 
 static void sys_open(interrupt_t *interrupt) {
-    current->ret = -1;
+    logf("OPEN: %s = %X", interrupt->cpu.reg.ecx, vfs_lookup(NULL, (const char *) interrupt->cpu.reg.ecx));
 }
 
 static void sys_close(interrupt_t *interrupt) {

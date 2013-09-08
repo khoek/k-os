@@ -29,6 +29,8 @@
 #define OPT_MESSAGE_TYPE      53
 #define OPT_SERVER_ID         54
 #define OPT_PARAMETER_REQUEST 55
+#define OPT_RENEWAL_TIME      58
+#define OPT_REBINDING_TIME    59
 #define OPT_END               255
 
 #define MSG_DISCOVER 1
@@ -135,6 +137,14 @@ static bool dhcp_parse_options(dhcp_options_t *opts, void *packet, uint16_t len)
             case OPT_PARAMETER_REQUEST: {
                 opts->param_list = ptr++;
                 opts->param_len = opt_len;
+                break;
+            }
+            case OPT_RENEWAL_TIME: {
+                ptr += opt_len;
+                break;
+            }
+            case OPT_REBINDING_TIME: {
+                ptr += opt_len;
                 break;
             }
             default: {

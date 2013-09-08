@@ -1,5 +1,5 @@
-#ifndef KERNEL_fs_type_Vfs_type_H
-#define KERNEL_fs_type_Vfs_type_H
+#ifndef KERNEL_FS_VFS_H
+#define KERNEL_FS_VFS_H
 
 #define PATH_SEPARATOR '/'
 
@@ -28,6 +28,8 @@ typedef struct dentry dentry_t;
 #include "common/list.h"
 #include "common/hashtable.h"
 
+#define DENTRY_HASH_BITS 5
+
 struct block_device {
     fs_t *fs;
 
@@ -52,7 +54,6 @@ struct fs_type {
     uint32_t flags;
 
     fs_t * (*open)(block_device_t *device);
-    void (*mount)(dentry_t *inode);
 
     hashtable_node_t node;
 };
@@ -80,7 +81,7 @@ struct inode {
 };
 
 struct inode_ops {
-    inode_t * (*lookup)(inode_t *inode, dentry_t *target);
+    void (*lookup)(inode_t *inode, dentry_t *target);
     file_t * (*open)(inode_t *inode);
     dentry_t * (*mkdir)(inode_t *inode, char *name);
 };
@@ -91,10 +92,11 @@ struct dentry {
     inode_t *inode;
 
     dentry_t *parent;
-    list_head_t children;
+    DECLARE_HASHTABLE(children, DENTRY_HASH_BITS);
     list_head_t siblings;
 
     list_head_t list;
+    hashtable_node_t node;
 };
 
 void register_block_device(block_device_t *device, char *name);
@@ -102,7 +104,9 @@ void register_disk(block_device_t *device);
 void register_disk_label(disk_label_t *disk_label);
 void register_fs_type(fs_type_t *fs_type);
 
-bool mount(block_device_t *device, const char *type, dentry_t *mountpoint);
-bool umount(dentry_t *d);
+bool vfs_mount(block_device_t *device, const char *type, dentry_t *mountpoint);
+bool vfs_umount(dentry_t *d);
+
+dentry_t * vfs_lookup(dentry_t *d, const char *path);
 
 #endif

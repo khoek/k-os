@@ -6,16 +6,11 @@
 #include "common/listener.h"
 #include "sync/spinlock.h"
 #include "bug/panic.h"
+#include "mm/cache.h"
 #include "fs/vfs.h"
 #include "video/log.h"
 
-static dentry_t root = {
-    .name = "",
-
-    .parent = NULL,
-    .children = LIST_HEAD(root.children),
-    .siblings = LIST_HEAD(root.siblings),
-};
+static dentry_t *root;
 
 static DEFINE_LIST(disk_labels);
 static DEFINE_SPINLOCK(disk_label_lock);
@@ -55,7 +50,7 @@ void register_fs_type(fs_type_t *fs_type) {
     uint32_t flags;
     spin_lock_irqsave(&fs_type_lock, &flags);
 
-    hashtable_add(str_to_key(fs_type->name), &fs_type->node, fs_types);
+    hashtable_add(str_to_key(fs_type->name, strlen(fs_type->name)), &fs_type->node, fs_types);
 
     spin_unlock_irqstore(&fs_type_lock, flags);
 }
@@ -65,7 +60,7 @@ fs_type_t * find_fs_type(const char *name) {
     spin_lock_irqsave(&fs_type_lock, &flags);
 
     fs_type_t *type;
-    HASHTABLE_FOR_EACH_COLLISION(str_to_key(name), type, fs_types, node) {
+    HASHTABLE_FOR_EACH_COLLISION(str_to_key(name, strlen(name)), type, fs_types, node) {
         if(!strcmp(name, type->name)) {
             return type;
         }
@@ -77,18 +72,21 @@ fs_type_t * find_fs_type(const char *name) {
 }
 
 static void swap_dentries(dentry_t *old, dentry_t *new) {
-    if(!list_empty(&old->children)) {
-        list_replace(&old->children, &new->children);
-    }
-
     if(!list_empty(&old->siblings)) {
         list_replace(&old->siblings, &new->siblings);
     }
+
+    if(old->parent) {
+        hashtable_rm(&old->node);
+        hashtable_add(str_to_key(new->name, strlen(new->name)), &new->node, old->parent->children);
+    } else {
+        root = new;
+    }
 }
 
-bool mount(block_device_t *device, const char *raw_type, dentry_t *mountpoint) {
+bool vfs_mount(block_device_t *device, const char *raw_type, dentry_t *mountpoint) {
     fs_type_t *type = find_fs_type(raw_type);
-    if(!type || (device && type->flags & FSTYPE_FLAG_NODEV) || (!device && !(type->flags & FSTYPE_FLAG_NODEV))) {
+    if(!type || (device && (device->fs || type->flags & FSTYPE_FLAG_NODEV)) || !(device || type->flags & FSTYPE_FLAG_NODEV)) {
         return false;
     }
 
@@ -106,7 +104,7 @@ bool mount(block_device_t *device, const char *raw_type, dentry_t *mountpoint) {
     return true;
 }
 
-bool umount(dentry_t *d) {
+bool vfs_umount(dentry_t *d) {
     if(!d->parent) panic("cannot unmount /");
 
     fs_t *fs = d->inode->fs;
@@ -120,8 +118,57 @@ bool umount(dentry_t *d) {
     return true;
 }
 
+dentry_t * vfs_lookup(dentry_t *wd, const char *path) {
+    if(*path == PATH_SEPARATOR) {
+        wd = root;
+        path++;
+    }
+
+    bool finished = false;
+    while(!finished && *path) {
+        if(!wd->inode) return NULL;
+
+        uint32_t len = 0;
+        const char *next = path;
+        while(*next != PATH_SEPARATOR) {
+            next++;
+            len++;
+
+            if(!*next) {
+                finished = true;
+                break;
+            }
+        }
+
+        if(!len) return NULL;
+
+        next++;
+
+        dentry_t *next_dentry;
+        HASHTABLE_FOR_EACH_COLLISION(str_to_key(path, len), next_dentry, wd->children, node) {
+            if(!memcmp(next_dentry->name, path, len)) {
+                goto lookup_next;
+            }
+        }
+
+        return NULL;
+
+lookup_next:
+        wd->inode->ops->lookup(wd->inode, next_dentry);
+        path = next;
+    }
+
+    return wd;
+}
+
 static INITCALL vfs_init() {
-    return mount(NULL, "ramfs", &root) ? 0 : 1;
+    root = kmalloc(sizeof(dentry_t));
+    root->name = "";
+    root->parent = NULL;
+    hashtable_init(root->children);
+    list_init(&root->siblings);
+
+    return vfs_mount(NULL, "ramfs", root) ? 0 : 1;
 }
 
 device_initcall(vfs_init);

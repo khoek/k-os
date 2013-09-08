@@ -19,7 +19,7 @@
 #define TCP_SYN_RETRYS 5
 #define TCP_TIMEOUT    500
 
-#define TCP_LISTEN_HASHTABLE_SIZE log2(PAGE_SIZE / sizeof(hashtable_head_t))
+#define TCP_LISTEN_HASHTABLE_BITS 6
 
 typedef enum tcp_state {
     TCP_RETRY,
@@ -39,7 +39,7 @@ typedef struct tcp_data_listen {
     semaphore_t semaphore;
 
     list_head_t queue;
-    hashtable_head_t *connections;
+    DECLARE_HASHTABLE(connections, TCP_LISTEN_HASHTABLE_BITS);
 } tcp_data_listen_t;
 
 typedef struct tcp_data_conn {
@@ -411,7 +411,7 @@ void tcp_handle(packet_t *packet, void *raw, uint16_t len) {
             spin_lock_irqsave(&data->lock, &flags2);
 
             sock_t *child;
-            HASHTABLE_SIZE_FOR_EACH_COLLISION((*((uint32_t *) &ip_hdr(packet)->src)) * (*((uint16_t *) &tcp->src_port)), child, data->connections, TCP_LISTEN_HASHTABLE_SIZE, node) {
+            HASHTABLE_FOR_EACH_COLLISION((*((uint32_t *) &ip_hdr(packet)->src)) * (*((uint16_t *) &tcp->src_port)), child, data->connections, node) {
                 if(!memcmp(&((ip_and_port_t *) child->peer.addr)->ip, &ip_hdr(packet)->src, sizeof(ip_t))
                     && ((ip_and_port_t *) child->peer.addr)->port == tcp->src_port
                     && ((ip_and_port_t *) child->local.addr)->port == tcp->dst_port) {
@@ -461,7 +461,7 @@ void tcp_handle(packet_t *packet, void *raw, uint16_t len) {
                 spin_lock_irqsave(&child_data->lock, &flags3);
 
                 list_add_before(&child->list, &data->queue);
-                hashtable_add_size((*((uint32_t *) &ip_hdr(packet)->src)) * (*((uint16_t *) &tcp->src_port)), &child->node, data->connections, TCP_LISTEN_HASHTABLE_SIZE);
+                hashtable_add((*((uint32_t *) &ip_hdr(packet)->src)) * (*((uint16_t *) &tcp->src_port)), &child->node, data->connections);
 
                 tcp_queue_add(child, TCP_FLAG_SYN | TCP_FLAG_ACK, 14600, 0, NULL, 0);
                 child_data->next_local_ack++;
@@ -554,9 +554,8 @@ static bool tcp_listen(sock_t *sock, uint32_t backlog) {
     semaphore_init(&data->semaphore, 0);
     data->interface = net_primary_interface();
     data->backlog = backlog && backlog < SOMAXCONN ? backlog : SOMAXCONN;
-    data->connections = page_to_virt(alloc_page(0));
     list_init(&data->queue);
-    hashtable_init_size(data->connections, TCP_LISTEN_HASHTABLE_SIZE);
+    hashtable_init(data->connections);
 
     if(!(sock->flags & SOCK_FLAG_BOUND)) {
         ip_and_port_t *local = kmalloc(sizeof(ip_and_port_t));
