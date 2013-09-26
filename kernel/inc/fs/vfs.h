@@ -27,6 +27,7 @@ typedef struct dentry dentry_t;
 #include "lib/int.h"
 #include "common/list.h"
 #include "common/hashtable.h"
+#include "fs/fd.h"
 
 #define DENTRY_HASH_BITS 5
 
@@ -108,5 +109,6 @@ bool vfs_mount(block_device_t *device, const char *type, dentry_t *mountpoint);
 bool vfs_umount(dentry_t *d);
 
 dentry_t * vfs_lookup(dentry_t *d, const char *path);
+gfd_idx_t vfs_open_file(inode_t *inode);
 
 #endif

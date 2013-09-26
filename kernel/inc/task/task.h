@@ -7,6 +7,7 @@
 #include "arch/registers.h"
 #include "arch/idt.h"
 #include "fs/fd.h"
+#include "fs/vfs.h"
 
 typedef enum task_state {
     TASK_NONE,
@@ -37,7 +38,10 @@ typedef struct task {
     ufd_idx_t fd_next;
     uint32_t fd_count;
     spinlock_t fd_lock;
+    
     task_state_t state;
+    
+    dentry_t *pwd;
 } task_t;
 
 #include "mm/mm.h"

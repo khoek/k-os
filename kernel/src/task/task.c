@@ -170,6 +170,8 @@ task_t * task_create(bool kernel, void *ip, void *sp) {
     task->state = TASK_AWAKE;
 
     task->ret = 0;
+    
+    task->pwd = NULL; //TODO populate this somehow
 
     spinlock_init(&task->fd_lock);
 

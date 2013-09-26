@@ -74,7 +74,12 @@ static void sys_uptime(interrupt_t *interrupt) {
 }
 
 static void sys_open(interrupt_t *interrupt) {
-    logf("OPEN: %s = %X", interrupt->cpu.reg.ecx, vfs_lookup(NULL, (const char *) interrupt->cpu.reg.ecx));
+    //TODO verify that interrupt->cpu.reg.ecx is a pointer to a valid path string
+
+    dentry_t *dentry = vfs_lookup(current->pwd, (const char *) interrupt->cpu.reg.ecx);    
+    if(!dentry) current->ret = -1;
+    
+    current->ret = vfs_open_file(dentry->inode);
 }
 
 static void sys_close(interrupt_t *interrupt) {

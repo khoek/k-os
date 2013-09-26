@@ -7,6 +7,7 @@
 #include "sync/spinlock.h"
 #include "bug/panic.h"
 #include "mm/cache.h"
+#include "fs/fd.h"
 #include "fs/vfs.h"
 #include "video/log.h"
 
@@ -159,6 +160,10 @@ lookup_next:
     }
 
     return wd;
+}
+
+gfd_idx_t vfs_open_file(inode_t *inode) {
+    return 0;
 }
 
 static INITCALL vfs_init() {
