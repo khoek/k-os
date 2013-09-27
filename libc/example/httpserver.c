@@ -1,6 +1,7 @@
 #define NULL ((void *) 0)
 
 #include <k/sys.h>
+#include <k/log.h>
 #include <string.h>
 #include <unistd.h>
 #include <sys/socket.h>
