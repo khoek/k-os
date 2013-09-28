@@ -11,6 +11,8 @@
 #include "fs/vfs.h"
 #include "video/log.h"
 
+static cache_t *file_cache;
+
 static dentry_t *root;
 
 static DEFINE_LIST(disk_labels);
@@ -163,10 +165,30 @@ lookup_next:
 }
 
 gfd_idx_t vfs_open_file(inode_t *inode) {
-    return 0;
+    file_t *file = file_alloc(inode->ops->file_ops);
+    gfd_idx_t gfd = gfdt_add(file);
+    
+    if(gfd != FD_INVALID) {
+        file->ops->open(file, inode);
+    }
+
+    return gfd;
+}
+
+file_t * file_alloc(file_ops_t *ops) {
+    file_t *new = cache_alloc(file_cache);
+    new->ops = ops;
+    
+    return new;
 }
 
 static INITCALL vfs_init() {
+    file_cache = cache_create(sizeof(file_t));
+
+    return 0;
+}
+
+static INITCALL vfs_root_mount() {
     root = kmalloc(sizeof(dentry_t));
     root->name = "";
     root->parent = NULL;
@@ -176,4 +198,5 @@ static INITCALL vfs_init() {
     return vfs_mount(NULL, "ramfs", root) ? 0 : 1;
 }
 
-device_initcall(vfs_init);
+core_initcall(vfs_init);
+device_initcall(vfs_root_mount);

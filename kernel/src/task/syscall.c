@@ -74,29 +74,27 @@ static void sys_uptime(interrupt_t *interrupt) {
 }
 
 static void sys_open(interrupt_t *interrupt) {
-    //TODO verify that interrupt->cpu.reg.ecx is a pointer to a valid path string
+    //TODO verify that interrupt->cpu.reg.ecx is a pointer to a valid path string, and that interrupt->cpu.reg.edx are valid flags
 
     dentry_t *dentry = vfs_lookup(current->pwd, (const char *) interrupt->cpu.reg.ecx);    
     if(!dentry) current->ret = -1;
     
-    current->ret = vfs_open_file(dentry->inode);
+    current->ret = ufdt_add(current, interrupt->cpu.reg.edx, vfs_open_file(dentry->inode));
 }
 
 static void sys_close(interrupt_t *interrupt) {
-    gfd_idx_t fd = ufd_to_gfd(current, interrupt->cpu.reg.ecx);
+    gfd_idx_t fd = ufdt_get(current, interrupt->cpu.reg.ecx);
 
     if(fd == FD_INVALID) current->ret = -1;
     else {
         //TODO sanitize buffer/size arguments
 
-        ufdt_rm(current, interrupt->cpu.reg.ecx);
-
-        gfd_t *gfd_ptr = gfdt_get(fd);
-        gfd_ptr->ops->close(gfd_ptr);
-        gfdt_rm(fd);
+        ufdt_put(current, interrupt->cpu.reg.ecx);
 
         current->ret = 0;
     }
+    
+    ufdt_put(current, interrupt->cpu.reg.ecx);
 }
 
 static void sys_socket(interrupt_t *interrupt) {
@@ -106,16 +104,18 @@ static void sys_socket(interrupt_t *interrupt) {
 }
 
 static void sys_listen(interrupt_t *interrupt) {
-    gfd_idx_t fd = ufd_to_gfd(current, interrupt->cpu.reg.ecx);
+    gfd_idx_t fd = ufdt_get(current, interrupt->cpu.reg.ecx);
 
     if(fd == FD_INVALID) current->ret = -1;
     else {
         current->ret = sock_listen(gfd_to_sock(fd), interrupt->cpu.reg.edx > INT32_MAX ? 0 : interrupt->cpu.reg.edx) ? 0 : -1;
     }
+    
+    ufdt_put(current, interrupt->cpu.reg.ecx);
 }
 
 static void sys_accept(interrupt_t *interrupt) {
-    gfd_idx_t fd = ufd_to_gfd(current, interrupt->cpu.reg.ecx);
+    gfd_idx_t fd = ufdt_get(current, interrupt->cpu.reg.ecx);
 
     if(fd == FD_INVALID) current->ret = -1;
     else {
@@ -139,10 +139,12 @@ static void sys_accept(interrupt_t *interrupt) {
             current->ret = -1;
         }
     }
+    
+    ufdt_put(current, interrupt->cpu.reg.ecx);
 }
 
 static void sys_bind(interrupt_t *interrupt) {
-    gfd_idx_t fd = ufd_to_gfd(current, interrupt->cpu.reg.ecx);
+    gfd_idx_t fd = ufdt_get(current, interrupt->cpu.reg.ecx);
 
     if(fd == FD_INVALID) current->ret = -1;
     else {
@@ -171,10 +173,12 @@ static void sys_bind(interrupt_t *interrupt) {
             current->ret = sock_bind(sock, &addr) ? 0 : -1;
         }
     }
+    
+    ufdt_put(current, interrupt->cpu.reg.ecx);
 }
 
 static void sys_connect(interrupt_t *interrupt) {
-    gfd_idx_t fd = ufd_to_gfd(current, interrupt->cpu.reg.ecx);
+    gfd_idx_t fd = ufdt_get(current, interrupt->cpu.reg.ecx);
 
     if(fd == FD_INVALID) current->ret = -1;
     else {
@@ -210,19 +214,23 @@ static void sys_connect(interrupt_t *interrupt) {
             }
         }
     }
+    
+    ufdt_put(current, interrupt->cpu.reg.ecx);
 }
 
 static void sys_shutdown(interrupt_t *interrupt) {
-    gfd_idx_t fd = ufd_to_gfd(current, interrupt->cpu.reg.ecx);
+    gfd_idx_t fd = ufdt_get(current, interrupt->cpu.reg.ecx);
 
     if(fd == FD_INVALID) current->ret = -1;
     else {
         current->ret = sock_shutdown(gfd_to_sock(fd), interrupt->cpu.reg.edx);
     }
+    
+    ufdt_put(current, interrupt->cpu.reg.ecx);
 }
 
 static void sys_send(interrupt_t *interrupt) {
-    gfd_idx_t fd = ufd_to_gfd(current, interrupt->cpu.reg.ecx);
+    gfd_idx_t fd = ufdt_get(current, interrupt->cpu.reg.ecx);
 
     if(fd == FD_INVALID) current->ret = -1;
     else {
@@ -233,10 +241,12 @@ static void sys_send(interrupt_t *interrupt) {
 
         current->ret = sock_send(gfd_to_sock(fd), buff, interrupt->cpu.reg.ebx, interrupt->cpu.reg.esi);
     }
+    
+    ufdt_put(current, interrupt->cpu.reg.ecx);
 }
 
 static void sys_recv(interrupt_t *interrupt) {
-    gfd_idx_t fd = ufd_to_gfd(current, interrupt->cpu.reg.ecx);
+    gfd_idx_t fd = ufdt_get(current, interrupt->cpu.reg.ecx);
 
     if(fd == FD_INVALID) current->ret = -1;
     else {
@@ -244,6 +254,8 @@ static void sys_recv(interrupt_t *interrupt) {
 
         current->ret = sock_recv(gfd_to_sock(fd), (void *) interrupt->cpu.reg.edx, interrupt->cpu.reg.ebx, interrupt->cpu.reg.esi);
     }
+    
+    ufdt_put(current, interrupt->cpu.reg.ecx);
 }
 
 static void sys_alloc_page(interrupt_t *interrupt) {

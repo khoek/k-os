@@ -5,6 +5,7 @@
 #include "mm/cache.h"
 #include "net/socket.h"
 #include "fs/fd.h"
+#include "fs/vfs.h"
 
 #define ISCONNECTIONLESS(sock) (sock->proto->type == SOCK_DGRAM || sock->proto->type == SOCK_RAW)
 
@@ -204,18 +205,21 @@ void sock_close(sock_t *sock) {
     }
 }
 
-static void sock_close_fd(gfd_t *gfd) {
-    if(!gfd || ((sock_t *) gfd->private)->flags & SOCK_FLAG_CLOSED) {
+static void sock_close_fd(file_t *file) {
+    if(((sock_t *) file->private)->flags & SOCK_FLAG_CLOSED) {
         return;
     }
 
-    sock_close(gfd->private);
+    sock_close(file->private);
 }
 
-static fd_ops_t sock_ops = {
+static file_ops_t sock_ops = {
     .close = sock_close_fd,
 };
 
 gfd_idx_t sock_create_fd(sock_t *sock) {
-    return gfdt_add(0, &sock_ops, sock);
+    file_t *file = file_alloc(&sock_ops);
+    file->private = sock;
+
+    return gfdt_add(file);
 }

@@ -36,7 +36,7 @@ typedef struct task {
     ufd_t *fd;
     ufd_idx_t *fd_list;
     ufd_idx_t fd_next;
-    uint32_t fd_count;
+    ufd_idx_t fd_count;
     spinlock_t fd_lock;
     
     task_state_t state;
@@ -60,8 +60,8 @@ void task_sleep_current();
 void task_wake(task_t *task);
 
 ufd_idx_t ufdt_add(task_t *task, uint32_t flags, gfd_idx_t gfd);
-void ufdt_rm(task_t *task, ufd_idx_t ufd);
-gfd_idx_t ufd_to_gfd(task_t *task, ufd_idx_t ufd);
+gfd_idx_t ufdt_get(task_t *task, ufd_idx_t ufd);
+void ufdt_put(task_t *task, ufd_idx_t ufd);
 
 void task_save(cpu_state_t *cpu);
 

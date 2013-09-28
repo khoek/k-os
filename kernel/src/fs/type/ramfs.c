@@ -5,23 +5,31 @@
 #include "fs/vfs.h"
 #include "video/log.h"
 
+static void ramfs_file_open(file_t *file, inode_t *inode) {
+}
+
+static void ramfs_file_close(file_t *file) {
+}
+
+static file_ops_t ramfs_file_ops = {
+    .open   = ramfs_file_open,
+    .close  = ramfs_file_close,
+};
+
 static void ramfs_inode_lookup(inode_t *inode, dentry_t *dentry) {
     dentry->inode = kmalloc(sizeof(inode_t));
     dentry->inode->fs = inode->fs;
     dentry->inode->ops = inode->ops;
 }
 
-static file_t * ramfs_inode_open(inode_t *inode) {
-    return NULL;
-}
-
 static dentry_t * ramfs_inode_mkdir(inode_t *inode, char *name) {
     return NULL;
 }
 
-static inode_ops_t root_inode_ops = {
+static inode_ops_t ramfs_inode_ops = {
+    .file_ops = &ramfs_file_ops,
+
     .lookup = ramfs_inode_lookup,
-    .open   = ramfs_inode_open,
     .mkdir  = ramfs_inode_mkdir,
 };
 
@@ -46,7 +54,7 @@ static fs_t * ramfs_open(block_device_t *device) {
     root->inode = root_inode;
 
     root_inode->fs = fs;
-    root_inode->ops = &root_inode_ops;
+    root_inode->ops = &ramfs_inode_ops;
 
     return fs;
 }

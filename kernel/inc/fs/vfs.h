@@ -67,13 +67,17 @@ struct fs {
 
 struct file {
     dentry_t *dentry;
+    
+    void *private;
 
     file_ops_t *ops;
 };
 
 struct file_ops {
+    void (*open)(file_t *file, inode_t *inode);
     ssize_t (*seek)(file_t *file, size_t bytes);
     ssize_t (*read)(file_t *file, size_t bytes);
+    void (*close)(file_t *file);
 };
 
 struct inode {
@@ -82,8 +86,9 @@ struct inode {
 };
 
 struct inode_ops {
+    file_ops_t *file_ops;
+
     void (*lookup)(inode_t *inode, dentry_t *target);
-    file_t * (*open)(inode_t *inode);
     dentry_t * (*mkdir)(inode_t *inode, char *name);
 };
 
@@ -99,6 +104,8 @@ struct dentry {
     list_head_t list;
     hashtable_node_t node;
 };
+
+file_t * file_alloc(file_ops_t *ops);
 
 void register_block_device(block_device_t *device, char *name);
 void register_disk(block_device_t *device);

@@ -48,20 +48,43 @@ ufd_idx_t ufdt_add(task_t *task, uint32_t flags, gfd_idx_t gfd) {
     return added;
 }
 
-void ufdt_rm(task_t *task, ufd_idx_t fd_idx) {
+static inline bool ufdt_valid(task_t *task, ufd_idx_t ufd) {
+    return task->fd[ufd].gfd != FD_INVALID;
+}
+
+gfd_idx_t ufdt_get(task_t *task, ufd_idx_t ufd) {
     uint32_t flags;
     spin_lock_irqsave(&task->fd_lock, &flags);
 
-    task->fd[fd_idx].gfd = -1;
-    task->fd[fd_idx].flags = 0;
-    task->fd_list[fd_idx] = task->fd_next;
-    task->fd_next = fd_idx;
+    BUG_ON(task->fd[ufd].gfd == FD_INVALID);
+    
+    task->fd[ufd].refs++;
+    
+    gfd_idx_t gfd = task->fd[ufd].gfd;
 
     spin_unlock_irqstore(&task->fd_lock, flags);
+
+    return gfd;
 }
 
-gfd_idx_t ufd_to_gfd(task_t *task, ufd_idx_t ufd) {
-    return task->fd[ufd].gfd == FD_INVALID ? -1 : task->fd[ufd].gfd;
+void ufdt_put(task_t *task, ufd_idx_t fd_idx) {
+    uint32_t flags;
+    spin_lock_irqsave(&task->fd_lock, &flags);
+    
+    if(task->fd[fd_idx].gfd == FD_INVALID) return;
+
+    task->fd[fd_idx].refs--;
+
+    if(!task->fd[fd_idx].refs) {
+        gfdt_put(task->fd[fd_idx].gfd);
+    
+        task->fd[fd_idx].gfd = FD_INVALID;
+        task->fd[fd_idx].flags = 0;
+        task->fd_list[fd_idx] = task->fd_next;
+        task->fd_next = fd_idx;
+    }
+
+    spin_unlock_irqstore(&task->fd_lock, flags);
 }
 
 static void idle_loop() {
@@ -114,11 +137,9 @@ void task_wake(task_t *task) {
 
 void task_exit(task_t *task, int32_t code) {
     //TODO propagate the exit code somehow
-
-    for(uint32_t i = 0; i < task->fd_count - 1; i++) {
-        if(task->fd[i].flags) {
-            gfdt_get(task->fd[i].gfd)->ops->close(gfdt_get(task->fd[i].gfd));
-            gfdt_rm(task->fd[i].gfd);
+    for(ufd_idx_t i = 0; i < task->fd_count - 1; i++) {
+        if(ufdt_valid(task, i)) {
+            ufdt_put(task, i);
         }
     }
 
@@ -184,7 +205,7 @@ task_t * task_create(bool kernel, void *ip, void *sp) {
     task->fd_next = 3;
 
     uint32_t *tmp_fds_list = (uint32_t *) alloc_page_user(0, task, 0x20000);
-    for(uint32_t i = 3; i < task->fd_count - 1; i++) {
+    for(ufd_idx_t i = 3; i < task->fd_count - 1; i++) {
         tmp_fds_list[i] = i + 1;
     }
     tmp_fds_list[task->fd_count - 1] = FREELIST_END;
@@ -196,8 +217,8 @@ task_t * task_create(bool kernel, void *ip, void *sp) {
     tmp_fds[1].gfd = char_stream_alloc(512);
     tmp_fds[2].flags = UFD_FLAG_PRESENT;
     tmp_fds[2].gfd = char_stream_alloc(512);
-    for(uint32_t i = 3; i < task->fd_count - 1; i++) {
-        tmp_fds[i].gfd = 0;
+    for(ufd_idx_t i = 3; i < task->fd_count - 1; i++) {
+        tmp_fds[i].gfd = FD_INVALID;
         tmp_fds[i].flags = 0;
     }
 
