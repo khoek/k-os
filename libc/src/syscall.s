@@ -18,6 +18,10 @@
 .global _alloc_page
 .global _free_page
 
+.global stat
+.global lstat
+.global fstat
+
 _exit:
     mov $0, %eax
     mov 4(%esp), %ecx
@@ -170,6 +174,30 @@ _alloc_page:
 
 _free_page:
     mov $16, %eax
+    int $0x80
+    
+    ret
+
+stat:
+    mov $17, %eax
+    mov 8(%esp), %edx
+    mov 4(%esp), %ecx
+    int $0x80
+    
+    ret
+
+lstat:
+    mov $18, %eax
+    mov 8(%esp), %edx
+    mov 4(%esp), %ecx
+    int $0x80
+    
+    ret
+
+fstat:
+    mov $19, %eax
+    mov 8(%esp), %edx
+    mov 4(%esp), %ecx
     int $0x80
 
     ret

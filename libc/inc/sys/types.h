@@ -5,5 +5,6 @@
 #include <inttypes.h>
 
 typedef uint32_t ssize_t;
+typedef uint32_t mode_t;
 
 #endif
