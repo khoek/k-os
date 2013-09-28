@@ -153,11 +153,11 @@ static void dispatch(uint16_t code) {
         }
     } else {
         key_state[code] = true;
-        
+
         if(key_state[SYSRQ_KEY] && code != SYSRQ_KEY) {
             sysrq_handle(code);
         }
-        
+
         //FIXME this is for debug
         if(key_state[CTRL_KEY] && code != CTRL_KEY) {
             sysrq_handle(code);

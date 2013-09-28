@@ -38,9 +38,9 @@ typedef struct task {
     ufd_idx_t fd_next;
     ufd_idx_t fd_count;
     spinlock_t fd_lock;
-    
+
     task_state_t state;
-    
+
     dentry_t *pwd;
 } task_t;
 

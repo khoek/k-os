@@ -17,7 +17,7 @@ DEFINE_SPINLOCK(gfd_lock);
 gfd_idx_t gfdt_add(file_t *file) {
     uint32_t flags;
     spin_lock_irqsave(&gfd_lock, &flags);
-    
+
     gfds_in_use++;
 
     BUG_ON(gfd_next == FREELIST_END);
@@ -28,7 +28,7 @@ gfd_idx_t gfdt_add(file_t *file) {
     gfdt[added].file = file;
 
     gfd_next = gfd_list[gfd_next];
-    
+
     spin_unlock_irqstore(&gfd_lock, flags);
 
     return added;
@@ -40,9 +40,9 @@ file_t * gfdt_get(gfd_idx_t gfd) {
 
     BUG_ON(gfd > gfd_max);
     if(!gfdt[gfd].file) return NULL;
-    
+
     gfdt[gfd].refs++;
-    
+
     spin_unlock_irqstore(&gfd_lock, flags);
 
     return gfdt[gfd].file;
@@ -54,19 +54,19 @@ void gfdt_put(gfd_idx_t gfd) {
 
     BUG_ON(gfd > gfd_max);
     BUG_ON(!gfdt[gfd].file);
-    
+
     gfdt[gfd].refs--;
-    
-    if(!gfdt[gfd].refs) {    
+
+    if(!gfdt[gfd].refs) {
         gfdt[gfd].file->ops->close(gfdt[gfd].file);
         gfdt[gfd].file = NULL; //FIXME do we need to free gfdt[gfd].file?
-        
+
         gfd_list[gfd] = gfd_next;
         gfd_next = gfd;
-        
+
         gfds_in_use--;
     }
-    
+
     spin_unlock_irqstore(&gfd_lock, flags);
 }
 

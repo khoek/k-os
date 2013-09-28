@@ -167,7 +167,7 @@ lookup_next:
 gfd_idx_t vfs_open_file(inode_t *inode) {
     file_t *file = file_alloc(inode->ops->file_ops);
     gfd_idx_t gfd = gfdt_add(file);
-    
+
     if(gfd != FD_INVALID) {
         file->ops->open(file, inode);
     }
@@ -178,7 +178,7 @@ gfd_idx_t vfs_open_file(inode_t *inode) {
 file_t * file_alloc(file_ops_t *ops) {
     file_t *new = cache_alloc(file_cache);
     new->ops = ops;
-    
+
     return new;
 }
 

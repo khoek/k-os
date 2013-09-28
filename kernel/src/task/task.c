@@ -58,9 +58,9 @@ gfd_idx_t ufdt_get(task_t *task, ufd_idx_t ufd) {
     spin_lock_irqsave(&task->fd_lock, &flags);
 
     BUG_ON(task->fd[ufd].gfd == FD_INVALID);
-    
+
     task->fd[ufd].refs++;
-    
+
     gfd_idx_t gfd = task->fd[ufd].gfd;
 
     spin_unlock_irqstore(&task->fd_lock, flags);
@@ -71,14 +71,14 @@ gfd_idx_t ufdt_get(task_t *task, ufd_idx_t ufd) {
 void ufdt_put(task_t *task, ufd_idx_t ufd) {
     uint32_t flags;
     spin_lock_irqsave(&task->fd_lock, &flags);
-    
+
     BUG_ON(task->fd[ufd].gfd == FD_INVALID);
 
     task->fd[ufd].refs--;
 
     if(!task->fd[ufd].refs) {
         gfdt_put(task->fd[ufd].gfd);
-    
+
         task->fd[ufd].gfd = FD_INVALID;
         task->fd[ufd].flags = 0;
         task->fd_list[ufd] = task->fd_next;
@@ -138,7 +138,7 @@ void task_wake(task_t *task) {
 
 void task_exit(task_t *task, int32_t code) {
     task_count--;
-    
+
     //TODO propagate the exit code somehow
     for(ufd_idx_t i = 0; i < task->fd_count - 1; i++) {
         if(ufdt_valid(task, i)) {
@@ -196,7 +196,7 @@ task_t * task_create(bool kernel, void *ip, void *sp) {
     task->state = TASK_AWAKE;
 
     task->ret = 0;
-    
+
     task->pwd = NULL; //TODO populate this somehow
 
     spinlock_init(&task->fd_lock);
@@ -225,7 +225,7 @@ task_t * task_create(bool kernel, void *ip, void *sp) {
     tmp_fds[2].flags = UFD_FLAG_PRESENT;
     tmp_fds[2].gfd = char_stream_alloc(512);
     tmp_fds[2].refs = 1;
-    
+
     for(ufd_idx_t i = 3; i < task->fd_count - 1; i++) {
         tmp_fds[i].gfd = FD_INVALID;
         tmp_fds[i].flags = 0;
@@ -284,7 +284,7 @@ static void task_switch_handler(interrupt_t *interrupt) {
 
 static INITCALL task_init() {
     task_cache = cache_create(sizeof(task_t));
-    
+
     task_count = 1;
 
     idle_task = task_create(true, idle_loop, NULL);

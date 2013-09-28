@@ -205,7 +205,7 @@ void free_page(page_t *page) {
     page->next = free_page_list[page->order];
 
     free_page_list[page->order] = page;
-    
+
     pages_in_use--;
 }
 
@@ -327,7 +327,7 @@ void __init mm_init() {
                     pages_avaliable++;
                 }
             }
-                    
+
             pages_in_use = 0;
         }
     }

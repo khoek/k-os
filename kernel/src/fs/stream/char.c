@@ -26,7 +26,7 @@ gfd_idx_t char_stream_alloc(uint32_t size) {
     c->buff = kmalloc(size);
     c->front = 0;
     c->back = 0;
-    
+
     file_t *new = file_alloc(&char_stream_ops);
     new->private = c;
 

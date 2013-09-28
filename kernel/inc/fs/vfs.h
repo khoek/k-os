@@ -67,7 +67,7 @@ struct fs {
 
 struct file {
     dentry_t *dentry;
-    
+
     void *private;
 
     file_ops_t *ops;
