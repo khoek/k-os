@@ -161,6 +161,7 @@ dentry_t * vfs_lookup(dentry_t *wd, const char *path) {
 
 lookup_next:
         wd->inode->ops->lookup(wd->inode, next_dentry);
+        wd = next_dentry;
         path = next;
     }
 
