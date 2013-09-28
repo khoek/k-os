@@ -33,37 +33,25 @@ static inode_ops_t ramfs_inode_ops = {
     .mkdir  = ramfs_inode_mkdir,
 };
 
-static fs_t * ramfs_open(block_device_t *device) {
-    fs_t *fs = kmalloc(sizeof(fs_t));
+static fs_t * ramfs_open(block_device_t *device);
 
-    dentry_t *root = kmalloc(sizeof(dentry_t));
-    root->name = "";
-    hashtable_init(root->children);
-    list_init(&root->siblings);
-
-    dentry_t *dev = kmalloc(sizeof(dentry_t));
-    dev->name = "dev";
-    hashtable_init(dev->children);
-    list_init(&dev->siblings);
-
-    hashtable_add(str_to_key(dev->name, strlen(dev->name)), &dev->node, root->children);
-
-    fs->root = root;
-
-    inode_t *root_inode = kmalloc(sizeof(inode_t));
-    root->inode = root_inode;
-
-    root_inode->fs = fs;
-    root_inode->ops = &ramfs_inode_ops;
-
-    return fs;
-}
-
-fs_type_t ramfs = {
+static fs_type_t ramfs = {
     .name  = "ramfs",
     .flags = FSTYPE_FLAG_NODEV,
     .open  = ramfs_open,
 };
+
+static fs_t * ramfs_open(block_device_t *device) {
+    dentry_t *root = dentry_alloc("");
+    dentry_add_child(dentry_alloc("bin"), root);
+    dentry_add_child(dentry_alloc("dev"), root);
+
+    fs_t *fs = fs_alloc(&ramfs, device, root);
+
+    root->inode = inode_alloc(fs, &ramfs_inode_ops);
+
+    return fs;
+}
 
 static INITCALL ramfs_register() {
     register_fs_type(&ramfs);

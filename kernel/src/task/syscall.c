@@ -78,8 +78,9 @@ static void sys_open(interrupt_t *interrupt) {
 
     dentry_t *dentry = vfs_lookup(current->pwd, (const char *) interrupt->cpu.reg.ecx);
     if(!dentry) current->ret = -1;
-
-    current->ret = ufdt_add(current, interrupt->cpu.reg.edx, vfs_open_file(dentry->inode));
+    else {
+        current->ret = ufdt_add(current, interrupt->cpu.reg.edx, vfs_open_file(dentry->inode));
+    }
 }
 
 static void sys_close(interrupt_t *interrupt) {

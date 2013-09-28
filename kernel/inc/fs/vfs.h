@@ -60,9 +60,10 @@ struct fs_type {
 };
 
 struct fs {
+    fs_type_t *type;
+    block_device_t *device;
     dentry_t *root;
     dentry_t *mountpoint;
-    fs_type_t *type;
 };
 
 struct file {
@@ -105,7 +106,12 @@ struct dentry {
     hashtable_node_t node;
 };
 
+dentry_t * dentry_alloc(char *name);
+inode_t * inode_alloc(fs_t *fs, inode_ops_t *ops);
 file_t * file_alloc(file_ops_t *ops);
+fs_t * fs_alloc(fs_type_t *type, block_device_t *device, dentry_t *root);
+
+void dentry_add_child(dentry_t *child, dentry_t *parent);
 
 void register_block_device(block_device_t *device, char *name);
 void register_disk(block_device_t *device);

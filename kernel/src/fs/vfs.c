@@ -11,7 +11,10 @@
 #include "fs/vfs.h"
 #include "video/log.h"
 
+static cache_t *dentry_cache;
+static cache_t *inode_cache;
 static cache_t *file_cache;
+static cache_t *fs_cache;
 
 static dentry_t *root;
 
@@ -175,6 +178,23 @@ gfd_idx_t vfs_open_file(inode_t *inode) {
     return gfd;
 }
 
+dentry_t * dentry_alloc(char *name) {
+    dentry_t *new = cache_alloc(dentry_cache);
+    new->name = name;
+    hashtable_init(new->children);
+    list_init(&new->siblings);
+
+    return new;
+}
+
+inode_t * inode_alloc(fs_t *fs, inode_ops_t *ops) {
+    inode_t *new = cache_alloc(inode_cache);
+    new->fs = fs;
+    new->ops = ops;
+
+    return new;
+}
+
 file_t * file_alloc(file_ops_t *ops) {
     file_t *new = cache_alloc(file_cache);
     new->ops = ops;
@@ -182,8 +202,24 @@ file_t * file_alloc(file_ops_t *ops) {
     return new;
 }
 
+fs_t * fs_alloc(fs_type_t *type, block_device_t *device, dentry_t *root) {
+    fs_t *new = cache_alloc(fs_cache);
+    new->type = type;
+    new->device = device;
+    new->root = root;
+
+    return new;
+}
+
+void dentry_add_child(dentry_t *child, dentry_t *parent) {
+    hashtable_add(str_to_key(child->name, strlen(child->name)), &child->node, parent->children);
+}
+
 static INITCALL vfs_init() {
+    dentry_cache = cache_create(sizeof(dentry_t));
+    inode_cache = cache_create(sizeof(inode_t));
     file_cache = cache_create(sizeof(file_t));
+    fs_cache = cache_create(sizeof(fs_t));
 
     return 0;
 }
