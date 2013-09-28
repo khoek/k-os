@@ -91,6 +91,7 @@ static void sys_close(interrupt_t *interrupt) {
         //TODO sanitize buffer/size arguments
 
         ufdt_put(current, interrupt->cpu.reg.ecx);
+        ufdt_put(current, interrupt->cpu.reg.ecx);
 
         current->ret = 0;
     }
@@ -108,9 +109,9 @@ static void sys_listen(interrupt_t *interrupt) {
     if(fd == FD_INVALID) current->ret = -1;
     else {
         current->ret = sock_listen(gfd_to_sock(fd), interrupt->cpu.reg.edx > INT32_MAX ? 0 : interrupt->cpu.reg.edx) ? 0 : -1;
-    }
 
-    ufdt_put(current, interrupt->cpu.reg.ecx);
+        ufdt_put(current, interrupt->cpu.reg.ecx);
+    }
 }
 
 static void sys_accept(interrupt_t *interrupt) {
@@ -137,9 +138,9 @@ static void sys_accept(interrupt_t *interrupt) {
         } else {
             current->ret = -1;
         }
-    }
 
-    ufdt_put(current, interrupt->cpu.reg.ecx);
+        ufdt_put(current, interrupt->cpu.reg.ecx);
+    }
 }
 
 static void sys_bind(interrupt_t *interrupt) {
@@ -171,9 +172,9 @@ static void sys_bind(interrupt_t *interrupt) {
 
             current->ret = sock_bind(sock, &addr) ? 0 : -1;
         }
-    }
 
-    ufdt_put(current, interrupt->cpu.reg.ecx);
+        ufdt_put(current, interrupt->cpu.reg.ecx);
+    }
 }
 
 static void sys_connect(interrupt_t *interrupt) {
@@ -212,9 +213,9 @@ static void sys_connect(interrupt_t *interrupt) {
                 current->ret = sock_connect(sock, &addr) ? 0 : -1;
             }
         }
-    }
 
-    ufdt_put(current, interrupt->cpu.reg.ecx);
+        ufdt_put(current, interrupt->cpu.reg.ecx);
+    }
 }
 
 static void sys_shutdown(interrupt_t *interrupt) {
@@ -223,9 +224,9 @@ static void sys_shutdown(interrupt_t *interrupt) {
     if(fd == FD_INVALID) current->ret = -1;
     else {
         current->ret = sock_shutdown(gfd_to_sock(fd), interrupt->cpu.reg.edx);
-    }
 
-    ufdt_put(current, interrupt->cpu.reg.ecx);
+        ufdt_put(current, interrupt->cpu.reg.ecx);
+    }
 }
 
 static void sys_send(interrupt_t *interrupt) {
@@ -239,9 +240,9 @@ static void sys_send(interrupt_t *interrupt) {
         memcpy(buff, (void *) interrupt->cpu.reg.edx, interrupt->cpu.reg.ebx);
 
         current->ret = sock_send(gfd_to_sock(fd), buff, interrupt->cpu.reg.ebx, interrupt->cpu.reg.esi);
-    }
 
-    ufdt_put(current, interrupt->cpu.reg.ecx);
+        ufdt_put(current, interrupt->cpu.reg.ecx);
+    }
 }
 
 static void sys_recv(interrupt_t *interrupt) {
@@ -252,9 +253,9 @@ static void sys_recv(interrupt_t *interrupt) {
         //TODO sanitize buffer/size arguments
 
         current->ret = sock_recv(gfd_to_sock(fd), (void *) interrupt->cpu.reg.edx, interrupt->cpu.reg.ebx, interrupt->cpu.reg.esi);
-    }
 
-    ufdt_put(current, interrupt->cpu.reg.ecx);
+        ufdt_put(current, interrupt->cpu.reg.ecx);
+    }
 }
 
 static void sys_alloc_page(interrupt_t *interrupt) {
@@ -262,6 +263,10 @@ static void sys_alloc_page(interrupt_t *interrupt) {
 }
 
 static void sys_free_page(interrupt_t *interrupt) {
+    panic("Unimplemented");
+}
+
+static void sys_stat(interrupt_t *interrupt) {
     panic("Unimplemented");
 }
 
@@ -283,6 +288,7 @@ static syscall_t syscalls[MAX_SYSCALL] = {
     [14] = sys_recv,
     [15] = sys_alloc_page,
     [16] = sys_free_page,
+    [17] = sys_stat,
 };
 
 static void syscall_handler(interrupt_t *interrupt) {
