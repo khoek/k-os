@@ -29,7 +29,7 @@ OBJS=	loader.o \
         driver/input/keyboard.o \
         driver/disk/ide.o driver/disk/ahci.o \
         driver/net/e1000.o \
-        misc/shell.o misc/sysrq.o misc/erasure_tool.o
+        misc/stats.o misc/sysrq.o  misc/shell.o misc/erasure_tool.o
 
 all: kernel.elf
 

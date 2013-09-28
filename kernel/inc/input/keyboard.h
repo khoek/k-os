@@ -5,6 +5,7 @@
 
 #define B_KEY      0x30
 #define C_KEY      0x2e
+#define S_KEY      0x1f
 
 #define CAPS_KEY   0x3a
 #define LSHIFT_KEY 0x2a

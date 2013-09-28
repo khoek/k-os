@@ -17,6 +17,7 @@
 #include "task/task.h"
 #include "fs/stream/char.h"
 #include "video/log.h"
+#include "misc/stats.h"
 
 #define UFD_FLAG_PRESENT (1 << 0)
 
@@ -136,6 +137,8 @@ void task_wake(task_t *task) {
 }
 
 void task_exit(task_t *task, int32_t code) {
+    task_count--;
+    
     //TODO propagate the exit code somehow
     for(ufd_idx_t i = 0; i < task->fd_count - 1; i++) {
         if(ufdt_valid(task, i)) {
@@ -185,6 +188,8 @@ void task_add_page(task_t UNUSED(*task), page_t UNUSED(*page)) {
 #define FLAG_KERNEL (1 << 0)
 
 task_t * task_create(bool kernel, void *ip, void *sp) {
+    task_count++;
+
     task_t *task = (task_t *) cache_alloc(task_cache);
 
     task->pid = pid++;
@@ -274,6 +279,8 @@ static void task_switch_handler(interrupt_t *interrupt) {
 
 static INITCALL task_init() {
     task_cache = cache_create(sizeof(task_t));
+    
+    task_count = 1;
 
     idle_task = task_create(true, idle_loop, NULL);
 

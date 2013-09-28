@@ -2,6 +2,7 @@
 #include "common/asm.h"
 #include "input/keyboard.h"
 #include "video/log.h"
+#include "misc/stats.h"
 #include "misc/sysrq.h"
 
 char fake_idt = 0;
@@ -15,6 +16,13 @@ void sysrq_handle(uint16_t code) {
         }
         case C_KEY: {
             *((char *) 0) = 0;
+            break;
+        }
+        case S_KEY: {
+            logf("stats:");
+            logf("%u tasks", task_count);
+            logf("%u file descriptors in use", gfds_in_use);
+            logf("%u/%u pages allocated/avaliable", pages_in_use, pages_avaliable);
             break;
         }
     }

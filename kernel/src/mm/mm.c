@@ -14,6 +14,7 @@
 #include "fs/module.h"
 #include "video/console.h"
 #include "video/log.h"
+#include "misc/stats.h"
 
 #define MAX_ORDER 10
 #define ADDRESS_SPACE_SIZE 4294967296ULL
@@ -112,6 +113,8 @@ static page_t * do_alloc_page(uint32_t UNUSED(flags)) {
 
             free_page_list[0] = free_page_list[0]->next;
 
+            pages_in_use++;
+
             return alloced;
         }
     }
@@ -202,6 +205,8 @@ void free_page(page_t *page) {
     page->next = free_page_list[page->order];
 
     free_page_list[page->order] = page;
+    
+    pages_in_use--;
 }
 
 void __init mm_init() {
@@ -297,7 +302,6 @@ void __init mm_init() {
         pages[page].prev = NULL;
     }
 
-    uint32_t available_pages = 0;
     uint32_t malloc_page_end = DIV_UP(malloc_start, PAGE_SIZE) + malloc_num_pages;
 
     for (uint32_t i = (multiboot_info->mmap_length / sizeof(multiboot_memory_map_t)); i > 0; i--) {
@@ -320,9 +324,11 @@ void __init mm_init() {
                 if (j - 1 >= malloc_page_end) {
                     flag_unset(&pages[j - 1], PAGE_FLAG_PERM);
                     free_page(&pages[j - 1]);
-                    available_pages++;
+                    pages_avaliable++;
                 }
             }
+                    
+            pages_in_use = 0;
         }
     }
 
@@ -331,5 +337,5 @@ void __init mm_init() {
     logf("mm - paging: %u MB, malloc: %u MB, avaliable: %u MB",
             DIV_DOWN(DIV_UP(sizeof (uint32_t) * NUM_ENTRIES * NUM_ENTRIES, PAGE_SIZE) * PAGE_SIZE, 1024 * 1024),
             DIV_DOWN(DIV_UP(sizeof (page_t) * NUM_ENTRIES * NUM_ENTRIES, PAGE_SIZE) * PAGE_SIZE, 1024 * 1024),
-            DIV_DOWN(available_pages * PAGE_SIZE, 1024 * 1024));
+            DIV_DOWN(pages_avaliable * PAGE_SIZE, 1024 * 1024));
 }
