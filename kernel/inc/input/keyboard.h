@@ -3,6 +3,16 @@
 
 #include <stdbool.h>
 
+#define B_KEY      0x30
+#define C_KEY      0x2e
+
+#define CAPS_KEY   0x3a
+#define LSHIFT_KEY 0x2a
+#define RSHIFT_KEY 0x36
+#define CTRL_KEY   0x1d
+#define ALT_KEY    0x38
+#define SYSRQ_KEY  0x54
+
 void keyboard_register_key_up(void (*handler)(char));
 void keyboard_register_key_down(void (*handler)(char));
 bool shift_down();

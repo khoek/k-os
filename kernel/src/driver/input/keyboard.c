@@ -6,6 +6,10 @@
 #include "arch/gdt.h"
 #include "arch/idt.h"
 #include "input/keyboard.h"
+#include "misc/sysrq.h"
+#include "video/log.h"
+
+#define RELEASE_BIT (1 << 7)
 
 static bool key_state[128];
 static const char key_map[] = {
@@ -119,20 +123,20 @@ void keyboard_register_key_down(void (*handler)(char)) {
 }
 
 bool shift_down() {
-    return key_state[42] || key_state[54];
+    return key_state[LSHIFT_KEY] || key_state[RSHIFT_KEY];
 }
 
 bool control_down() {
-    return key_state[29];
+    return key_state[CTRL_KEY];
 }
 
 bool alt_down() {
-    return key_state[56];
+    return key_state[ALT_KEY];
 }
 
 static char translate_code(uint16_t code) {
     bool shift = shift_down();
-    if(key_state[58]) {
+    if(key_state[CAPS_KEY]) {
         shift = !shift;
     }
 
@@ -140,8 +144,8 @@ static char translate_code(uint16_t code) {
 }
 
 static void dispatch(uint16_t code) {
-    if(((uint32_t) code) >> 7) {
-        code -= 128;
+    if(code & RELEASE_BIT) {
+        code ^= RELEASE_BIT;
         key_state[code] = false;
 
         if(keyup != 0) {
@@ -149,6 +153,15 @@ static void dispatch(uint16_t code) {
         }
     } else {
         key_state[code] = true;
+        
+        if(key_state[SYSRQ_KEY] && code != SYSRQ_KEY) {
+            sysrq_handle(code);
+        }
+        
+        //FIXME this is for debug
+        if(key_state[CTRL_KEY] && code != CTRL_KEY) {
+            sysrq_handle(code);
+        }
 
         if(keydown != 0) {
             (*keydown)(translate_code(code));
