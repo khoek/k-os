@@ -93,8 +93,6 @@ static void sys_close(interrupt_t *interrupt) {
 
         current->ret = 0;
     }
-    
-    ufdt_put(current, interrupt->cpu.reg.ecx);
 }
 
 static void sys_socket(interrupt_t *interrupt) {

@@ -68,21 +68,21 @@ gfd_idx_t ufdt_get(task_t *task, ufd_idx_t ufd) {
     return gfd;
 }
 
-void ufdt_put(task_t *task, ufd_idx_t fd_idx) {
+void ufdt_put(task_t *task, ufd_idx_t ufd) {
     uint32_t flags;
     spin_lock_irqsave(&task->fd_lock, &flags);
     
-    if(task->fd[fd_idx].gfd == FD_INVALID) return;
+    BUG_ON(task->fd[ufd].gfd == FD_INVALID);
 
-    task->fd[fd_idx].refs--;
+    task->fd[ufd].refs--;
 
-    if(!task->fd[fd_idx].refs) {
-        gfdt_put(task->fd[fd_idx].gfd);
+    if(!task->fd[ufd].refs) {
+        gfdt_put(task->fd[ufd].gfd);
     
-        task->fd[fd_idx].gfd = FD_INVALID;
-        task->fd[fd_idx].flags = 0;
-        task->fd_list[fd_idx] = task->fd_next;
-        task->fd_next = fd_idx;
+        task->fd[ufd].gfd = FD_INVALID;
+        task->fd[ufd].flags = 0;
+        task->fd_list[ufd] = task->fd_next;
+        task->fd_next = ufd;
     }
 
     spin_unlock_irqstore(&task->fd_lock, flags);
@@ -218,13 +218,18 @@ task_t * task_create(bool kernel, void *ip, void *sp) {
     ufd_t *tmp_fds = (ufd_t *) alloc_page_user(0, task, 0x21000);
     tmp_fds[0].flags = UFD_FLAG_PRESENT;
     tmp_fds[0].gfd = char_stream_alloc(512);
+    tmp_fds[0].refs = 1;
     tmp_fds[1].flags = UFD_FLAG_PRESENT;
     tmp_fds[1].gfd = char_stream_alloc(512);
+    tmp_fds[1].refs = 1;
     tmp_fds[2].flags = UFD_FLAG_PRESENT;
     tmp_fds[2].gfd = char_stream_alloc(512);
+    tmp_fds[2].refs = 1;
+    
     for(ufd_idx_t i = 3; i < task->fd_count - 1; i++) {
         tmp_fds[i].gfd = FD_INVALID;
         tmp_fds[i].flags = 0;
+        tmp_fds[i].refs = 0;
     }
 
     task->fd_list = (void *) 0x20000;
