@@ -68,8 +68,7 @@ static void print_tech_info() {
 }
 
 static void run_tool(uint8_t devices) {
-    uint8_t highlighted;
-
+    uint8_t highlighted = 0;
     for (uint8_t i = 0; i < 4; i++) {
         if (ide_device_is_present(i) && ide_device_get_type(i) == 0) {
             highlighted = i;
