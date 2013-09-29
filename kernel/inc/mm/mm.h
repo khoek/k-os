@@ -37,5 +37,6 @@ void * virt_to_phys(void *addr);
 void * alloc_page_user(uint32_t flags, task_t *task, uint32_t vaddr);
 
 void mm_init();
+void mm_postinit_reclaim();
 
 #endif

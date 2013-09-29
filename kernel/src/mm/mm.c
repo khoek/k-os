@@ -30,6 +30,12 @@
 extern uint32_t image_start;
 extern uint32_t image_end;
 
+extern uint32_t init_text_start;
+extern uint32_t init_text_end;
+
+extern uint32_t init_data_start;
+extern uint32_t init_data_end;
+
 static uint32_t kernel_start;
 static uint32_t kernel_end;
 static uint32_t malloc_start;
@@ -209,6 +215,12 @@ void free_page(page_t *page) {
     pages_in_use--;
 }
 
+static void claim_page(uint32_t idx) {
+    flag_unset(&pages[idx - 1], PAGE_FLAG_PERM);
+    free_page(&pages[idx - 1]);
+    pages_avaliable++;
+}
+
 void __init mm_init() {
     kernel_start = ((uint32_t) &image_start);
     kernel_end = ((uint32_t) &image_end);
@@ -322,9 +334,7 @@ void __init mm_init() {
 
             for (uint32_t j = end; j > start; j--) {
                 if (j - 1 >= malloc_page_end) {
-                    flag_unset(&pages[j - 1], PAGE_FLAG_PERM);
-                    free_page(&pages[j - 1]);
-                    pages_avaliable++;
+                    claim_page(j);
                 }
             }
 
@@ -338,4 +348,19 @@ void __init mm_init() {
             DIV_DOWN(DIV_UP(sizeof (uint32_t) * NUM_ENTRIES * NUM_ENTRIES, PAGE_SIZE) * PAGE_SIZE, 1024 * 1024),
             DIV_DOWN(DIV_UP(sizeof (page_t) * NUM_ENTRIES * NUM_ENTRIES, PAGE_SIZE) * PAGE_SIZE, 1024 * 1024),
             DIV_DOWN(pages_avaliable * PAGE_SIZE, 1024 * 1024));
+}
+
+void mm_postinit_reclaim() {
+    uint32_t text_pages = DIV_UP(((uint32_t) &init_text_end) - ((uint32_t) &init_text_start), PAGE_SIZE);
+    uint32_t data_pages = DIV_UP(((uint32_t) &init_data_end) - ((uint32_t) &init_data_start), PAGE_SIZE);
+
+    logf("mm - reclaiming init pages %u/%u (code/data), %u total", text_pages, data_pages, text_pages + data_pages);
+
+    for(uint32_t i = 0; i < text_pages; i++) {
+        claim_page(DIV_DOWN(((uint32_t) &init_text_start), PAGE_SIZE) + i);
+    }
+
+    for(uint32_t i = 0; i < data_pages; i++) {
+        claim_page(DIV_DOWN(((uint32_t) &init_data_start), PAGE_SIZE) + i);
+    }
 }
