@@ -279,7 +279,7 @@ void __init mm_init() {
         }
     }
 
-    if (best_len < DIV_UP(sizeof (uint32_t) * NUM_ENTRIES * NUM_ENTRIES, PAGE_SIZE) * PAGE_SIZE) panic("MM - could not find sufficiently large contiguous memory region");
+    if (best_len < DIV_UP(sizeof (uint32_t) * NUM_ENTRIES * NUM_ENTRIES, PAGE_SIZE) * PAGE_SIZE) panic("MM - could not find a sufficiently large contiguous memory region");
 
     pages = (page_t *) (malloc_start + VIRTUAL_BASE);
 
