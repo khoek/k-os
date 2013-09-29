@@ -5,6 +5,7 @@
 #define UNUSED(v) v __attribute__((unused))
 #define NORETURN    __attribute__((noreturn))
 #define PACKED      __attribute__((packed))
+#define USED        __attribute__((used))
 
 #define STR(s)  #s
 #define XSTR(s) STR(s)

@@ -11,6 +11,8 @@
 #include "task/task.h"
 #include "video/log.h"
 
+#define NUM_VECTORS 256
+
 //command io port of PICs
 #define MASTER_COMMAND  0x20
 #define SLAVE_COMMAND   0xA0
@@ -48,9 +50,9 @@ typedef struct idt_entry {
     uint16_t offset_hi;
 } PACKED idt_entry_t;
 
-static idtd_t idtd;
-static idt_entry_t idt[256];
-static void (*handlers[256 - PIC_MASTER_OFFSET])(interrupt_t *);
+static idtd_t idtd USED;
+static idt_entry_t idt[NUM_VECTORS];
+static void (*handlers[NUM_VECTORS - PIC_MASTER_OFFSET])(interrupt_t *);
 
 void idt_register(uint8_t vector, uint8_t cpl, void(*handler)(interrupt_t *)) {
     BUG_ON(vector < PIC_MASTER_OFFSET || vector >= 256 - PIC_MASTER_OFFSET);
@@ -149,7 +151,7 @@ INITCALL idt_init() {
     outb(MASTER_DATA, 0x0);
     outb(SLAVE_DATA , 0x0);
 
-    idtd.size = (256 * 8) - 1;
+    idtd.size = (NUM_VECTORS * sizeof(idt_entry_t)) - 1;
     idtd.offset = (uint32_t) idt;
 
     lidt(&idtd);

@@ -1,9 +1,9 @@
 -include ../Makefile.local
 
-ASFLAGS=--32 -g
+ASFLAGS=--32
 
-CCFLAGS=-Wall -g -Wextra -Werror -Wno-unused-parameter -m32 -I../inc -std=gnu99 \
-        -nostdlib -nostartfiles -nodefaultlibs -ffreestanding -c
+CCFLAGS=-Wall -Wextra -Werror -Wno-unused-parameter -m32 -I../inc -std=gnu99 \
+        -nostdlib -nostartfiles -nodefaultlibs -ffreestanding -c -O3 -fno-strict-aliasing
 
 OBJS=	loader.o \
         init/kmain.o \
@@ -29,7 +29,7 @@ OBJS=	loader.o \
         driver/input/keyboard.o \
         driver/disk/ide.o driver/disk/ahci.o \
         driver/net/e1000.o \
-        misc/stats.o misc/sysrq.o  misc/shell.o misc/erasure_tool.o
+        misc/stats.o misc/sysrq.o misc/shell.o misc/erasure_tool.o
 
 all: kernel.elf
 

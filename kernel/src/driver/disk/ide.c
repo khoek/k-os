@@ -137,12 +137,12 @@
 #define PRD(address, count)     ((((((uint64_t) (count)) & 0xFFFE) << 32) | (((uint32_t) (address)) & 0xFFFFFFFE)))
 
 typedef struct ide_channel {
-    uint16_t    base;   // I/O Base.
-    uint16_t    ctrl;   // Control Base
-    uint16_t    bmide;  // Bus Master IDE
-    page_t     *prdt;
-    bool        irq;
-    uint8_t     nIEN;   // nIEN (No Interrupt);
+    uint16_t      base;   // I/O Base.
+    uint16_t      ctrl;   // Control Base
+    uint16_t      bmide;  // Bus Master IDE
+    page_t        *prdt;
+    volatile bool irq;
+    uint8_t       nIEN;   // nIEN (No Interrupt);
 } ide_channel_t;
 
 typedef struct ide_device {
@@ -217,6 +217,7 @@ static void ide_mmio_write(uint8_t channel, uint8_t reg, uint8_t data) {
         outb(channels[channel].ctrl  + reg - 0x0A, data);
     else if (reg < 0x16)
         outb(channels[channel].bmide + reg - 0x0E, data);
+    else BUG();
 
     if (reg > 0x07 && reg < 0x0C)
         ide_mmio_write(channel, ATA_REG_CONTROL, channels[channel].nIEN);
@@ -234,6 +235,7 @@ static void ide_mmio_write_long(uint8_t channel, uint8_t reg, uint32_t data) {
         outl(channels[channel].ctrl  + reg - 0x0A, data);
     else if (reg < 0x16)
         outl(channels[channel].bmide + reg - 0x0E, data);
+    else BUG();
 
     if (reg > 0x07 && reg < 0x0C)
         ide_mmio_write(channel, ATA_REG_CONTROL, channels[channel].nIEN);
@@ -252,6 +254,7 @@ static uint8_t ide_mmio_read(uint8_t channel, uint8_t reg) {
         result = inb(channels[channel].ctrl  + reg - 0x0A);
     else if (reg < 0x16)
         result = inb(channels[channel].bmide + reg - 0x0E);
+    else BUG();
 
     if (reg > 0x07 && reg < 0x0C)
         ide_mmio_write(channel, ATA_REG_CONTROL, channels[channel].nIEN);
@@ -270,6 +273,7 @@ static void ide_mmio_read_buffer(uint8_t channel, uint8_t reg, void * buffer, ui
         insl(channels[channel].ctrl  + reg - 0x0A, buffer, quads);
     else if (reg < 0x16)
         insl(channels[channel].bmide + reg - 0x0E, buffer, quads);
+    else BUG();
 
     if (reg > 0x07 && reg < 0x0C)
         ide_mmio_write(channel, ATA_REG_CONTROL, channels[channel].nIEN);
@@ -342,10 +346,10 @@ static void handle_irq_primary(interrupt_t UNUSED(*interrupt)) {
 
     if(status & ATA_BMSTATUS_INTERRUPT) {
         if(status & ATA_BMSTATUS_ACTIVE) {
-        panic("IDE - Primary Channel Interrupt with Active Flag Set");
+            panic("IDE - Primary Channel Interrupt with Active Flag Set");
         } else {
-        ide_mmio_write(ATA_PRIMARY, ATA_REG_BMSTATUS, ATA_BMSTATUS_INTERRUPT);
-        channels[ATA_PRIMARY].irq = true;
+            ide_mmio_write(ATA_PRIMARY, ATA_REG_BMSTATUS, ATA_BMSTATUS_INTERRUPT);
+            channels[ATA_PRIMARY].irq = true;
         }
     } else {
         panic("IDE - Primary Channel IRQ Conflict");
@@ -359,10 +363,10 @@ static void handle_irq_secondary(interrupt_t UNUSED(*interrupt)) {
 
     if(status & ATA_BMSTATUS_INTERRUPT) {
         if(status & ATA_BMSTATUS_ACTIVE) {
-        panic("IDE - Secondary Channel Interrupt with Active Flag Set");
+            panic("IDE - Secondary Channel Interrupt with Active Flag Set");
         } else {
-        ide_mmio_write(ATA_SECONDARY, ATA_REG_BMSTATUS, ATA_BMSTATUS_INTERRUPT);
-        channels[ATA_SECONDARY].irq = true;
+            ide_mmio_write(ATA_SECONDARY, ATA_REG_BMSTATUS, ATA_BMSTATUS_INTERRUPT);
+            channels[ATA_SECONDARY].irq = true;
         }
     } else {
         panic("IDE - Secondary Channel IRQ Conflict");

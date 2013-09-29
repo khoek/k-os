@@ -1,11 +1,12 @@
 #include "lib/int.h"
 #include "common/asm.h"
+#include "common/compiler.h"
 #include "input/keyboard.h"
 #include "video/log.h"
 #include "misc/stats.h"
 #include "misc/sysrq.h"
 
-char fake_idt = 0;
+static char fake_idt USED;
 
 void sysrq_handle(uint16_t code) {
     switch(code) {

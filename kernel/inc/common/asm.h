@@ -16,7 +16,7 @@ static inline void hlt() {
 }
 
 static inline void lidt(void *idtr) {
-   __asm__ volatile("lidt (%0)" :: "p" (idtr));
+   __asm__ volatile("lidt (%0)" :: "r" (idtr));
 }
 
 static inline void outb(uint16_t port, uint8_t value) {
