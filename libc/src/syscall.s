@@ -175,7 +175,7 @@ _alloc_page:
 _free_page:
     mov $16, %eax
     int $0x80
-    
+
     ret
 
 stat:
@@ -183,7 +183,7 @@ stat:
     mov 8(%esp), %edx
     mov 4(%esp), %ecx
     int $0x80
-    
+
     ret
 
 lstat:
@@ -191,7 +191,7 @@ lstat:
     mov 8(%esp), %edx
     mov 4(%esp), %ecx
     int $0x80
-    
+
     ret
 
 fstat:

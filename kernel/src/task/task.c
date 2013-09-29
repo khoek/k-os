@@ -52,13 +52,13 @@ ufd_idx_t ufdt_add(task_t *task, uint32_t flags, gfd_idx_t gfd) {
 
 static inline bool ufdt_valid(task_t *task, ufd_idx_t ufd) {
     bool response;
-    
+
     uint32_t flags;
     spin_lock_irqsave(&task->fd_lock, &flags);
-    
+
     response = task->fd[ufd].gfd != FD_INVALID;
 
-    spin_unlock_irqstore(&task->fd_lock, flags);    
+    spin_unlock_irqstore(&task->fd_lock, flags);
 
     return response;
 }
@@ -67,13 +67,11 @@ gfd_idx_t ufdt_get(task_t *task, ufd_idx_t ufd) {
     uint32_t flags;
     spin_lock_irqsave(&task->fd_lock, &flags);
 
-    gfd_idx_t gfd;
-    if(task->fd[ufd].gfd == FD_INVALID) {
-        gfd = -1;
-    } else {
-        task->fd[ufd].refs++;
+    if(ufd > task->fd_count) return FD_INVALID;
 
-        gfd = task->fd[ufd].gfd;
+    gfd_idx_t gfd = task->fd[ufd].gfd;
+    if(task->fd[ufd].gfd != FD_INVALID) {
+        task->fd[ufd].refs++;
     }
 
     spin_unlock_irqstore(&task->fd_lock, flags);

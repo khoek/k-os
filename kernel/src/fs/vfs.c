@@ -190,6 +190,8 @@ dentry_t * dentry_alloc(char *name) {
 
 inode_t * inode_alloc(fs_t *fs, inode_ops_t *ops) {
     inode_t *new = cache_alloc(inode_cache);
+    memset(new, 0, sizeof(sizeof(inode_t)));
+
     new->fs = fs;
     new->ops = ops;
 
@@ -210,6 +212,29 @@ fs_t * fs_alloc(fs_type_t *type, block_device_t *device, dentry_t *root) {
     new->root = root;
 
     return new;
+}
+
+void vfs_getattr(dentry_t *dentry, stat_t *stat) {
+    if(dentry->inode->ops->getattr) dentry->inode->ops->getattr(dentry, stat);
+    else generic_getattr(dentry->inode, stat);
+}
+
+void generic_getattr(inode_t *inode, stat_t *stat) {
+    stat->st_dev = inode->dev;
+    stat->st_ino = inode->ino;
+    stat->st_mode = inode->mode;
+    stat->st_nlink = inode->nlink;
+    stat->st_uid = inode->uid;
+    stat->st_gid = inode->gid;
+    stat->st_rdev = inode->rdev;
+    stat->st_size = inode->size;
+
+    stat->st_atime = inode->atime;
+    stat->st_mtime = inode->mtime;
+    stat->st_ctime = inode->ctime;
+
+    stat->st_blksize = 1 << inode->blkshift;
+    stat->st_blocks = inode->blocks;
 }
 
 void dentry_add_child(dentry_t *child, dentry_t *parent) {

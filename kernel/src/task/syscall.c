@@ -267,7 +267,30 @@ static void sys_free_page(interrupt_t *interrupt) {
 }
 
 static void sys_stat(interrupt_t *interrupt) {
-    panic("Unimplemented");
+    //TODO verify that interrupt->cpu.reg.ecx is a pointer to a valid path string, and that interrupt->cpu.reg.edx are valid flags
+    dentry_t *dentry = vfs_lookup(current->pwd, (const char *) interrupt->cpu.reg.ecx);
+
+    if(!dentry) current->ret = -1;
+    else {
+        vfs_getattr(dentry, (void *) interrupt->cpu.reg.edx);
+
+        current->ret = 0;
+    }
+}
+
+static void sys_fstat(interrupt_t *interrupt) {
+    gfd_idx_t fd = ufdt_get(current, interrupt->cpu.reg.ecx);
+
+    if(fd == FD_INVALID) current->ret = -1;
+    else {
+        //TODO sanitize stat ptr
+
+        vfs_getattr(gfdt_get(fd)->dentry, (void *) interrupt->cpu.reg.edx);
+
+        current->ret = 0;
+
+        ufdt_put(current, interrupt->cpu.reg.ecx);
+    }
 }
 
 static syscall_t syscalls[MAX_SYSCALL] = {
@@ -289,6 +312,7 @@ static syscall_t syscalls[MAX_SYSCALL] = {
     [15] = sys_alloc_page,
     [16] = sys_free_page,
     [17] = sys_stat,
+    [19] = sys_fstat,
 };
 
 static void syscall_handler(interrupt_t *interrupt) {

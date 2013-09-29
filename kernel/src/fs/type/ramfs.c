@@ -17,9 +17,8 @@ static file_ops_t ramfs_file_ops = {
 };
 
 static void ramfs_inode_lookup(inode_t *inode, dentry_t *dentry) {
-    dentry->inode = kmalloc(sizeof(inode_t));
-    dentry->inode->fs = inode->fs;
-    dentry->inode->ops = inode->ops;
+    dentry->inode = inode_alloc(inode->fs, inode->ops);
+    dentry->inode->mode = 0755;
 }
 
 static dentry_t * ramfs_inode_mkdir(inode_t *inode, char *name) {
@@ -49,6 +48,7 @@ static fs_t * ramfs_open(block_device_t *device) {
     fs_t *fs = fs_alloc(&ramfs, device, root);
 
     root->inode = inode_alloc(fs, &ramfs_inode_ops);
+    root->inode->mode = 0755;
 
     return fs;
 }

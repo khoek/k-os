@@ -24,6 +24,8 @@ typedef struct inode_ops inode_ops_t;
 
 typedef struct dentry dentry_t;
 
+typedef struct stat stat_t;
+
 #include "lib/int.h"
 #include "common/list.h"
 #include "common/hashtable.h"
@@ -84,6 +86,22 @@ struct file_ops {
 struct inode {
     fs_t *fs;
     inode_ops_t *ops;
+
+    uint32_t dev;
+    uint32_t ino;
+    uint32_t mode;
+    uint32_t nlink;
+    uint32_t uid;
+    uint32_t gid;
+    uint32_t rdev;
+    int32_t size;
+
+    uint32_t atime;
+    uint32_t mtime;
+    uint32_t ctime;
+
+    int32_t blkshift;
+    int32_t blocks;
 };
 
 struct inode_ops {
@@ -91,6 +109,7 @@ struct inode_ops {
 
     void (*lookup)(inode_t *inode, dentry_t *target);
     dentry_t * (*mkdir)(inode_t *inode, char *name);
+    void (*getattr)(dentry_t *dentry, stat_t *stat);
 };
 
 struct dentry {
@@ -104,6 +123,24 @@ struct dentry {
 
     list_head_t list;
     hashtable_node_t node;
+};
+
+struct stat {
+    uint32_t st_dev;
+    uint32_t st_ino;
+    uint32_t st_mode;
+    uint32_t st_nlink;
+    uint32_t st_uid;
+    uint32_t st_gid;
+    uint32_t st_rdev;
+    int32_t st_size;
+
+    uint32_t st_atime;
+    uint32_t st_mtime;
+    uint32_t st_ctime;
+
+    int32_t st_blksize;
+    int32_t st_blocks;
 };
 
 dentry_t * dentry_alloc(char *name);
@@ -120,6 +157,9 @@ void register_fs_type(fs_type_t *fs_type);
 
 bool vfs_mount(block_device_t *device, const char *type, dentry_t *mountpoint);
 bool vfs_umount(dentry_t *d);
+
+void vfs_getattr(dentry_t *dentry, stat_t *stat);
+void generic_getattr(inode_t *inode, stat_t *stat);
 
 dentry_t * vfs_lookup(dentry_t *d, const char *path);
 gfd_idx_t vfs_open_file(inode_t *inode);
