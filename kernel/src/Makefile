@@ -23,7 +23,7 @@ OBJS=	loader.o \
         fs/vfs.o fs/module.o fs/fd.o \
         fs/label/msdos.o \
         fs/type/ramfs.o \
-        fs/stream/char.o \
+        fs/file/char.o \
         fs/binfmt/binfmt.o fs/binfmt/binfmt_elf.o \
         driver/bus/pci.o \
         driver/input/keyboard.o \

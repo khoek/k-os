@@ -3,6 +3,6 @@
 
 #include "fs/fd.h"
 
-gfd_idx_t char_stream_alloc();
+gfd_idx_t char_device_open(uint32_t size);
 
 #endif

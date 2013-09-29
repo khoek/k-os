@@ -2,7 +2,7 @@
 #include "mm/cache.h"
 #include "fs/fd.h"
 #include "fs/vfs.h"
-#include "fs/stream/char.h"
+#include "fs/file/char.h"
 
 typedef struct char_stream {
     uint32_t size;
@@ -20,7 +20,7 @@ static file_ops_t char_stream_ops = {
     .close = char_stream_close,
 };
 
-gfd_idx_t char_stream_alloc(uint32_t size) {
+gfd_idx_t char_device_open(uint32_t size) {
     char_stream_t *c = kmalloc(sizeof(char_stream_t));
     c->size = 0;
     c->buff = kmalloc(size);
