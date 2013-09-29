@@ -20,7 +20,7 @@
  */
 
 /*
- *  This file includes modifications made by Keeley Hoek <escortkeel@gmail.com>.
+ *  This file has been modified by Keeley Hoek <escortkeel@gmail.com>.
  */
 
 #include "common/compiler.h"
