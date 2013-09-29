@@ -7,9 +7,9 @@ all: kernel cdrom.iso
 kernel:
 	make -C src all
 
-cdrom.iso: src/kernel.elf build/boot/grub/grub.cfg build/kernel.elf
+cdrom.iso: build/boot/grub/grub.cfg build/kernel.elf
 	@echo "creating image"
-	@grub-mkrescue -o cdrom.iso build
+	@grub-mkrescue -o cdrom.iso build > /dev/null 2>&1
 
 build/kernel.elf: src/kernel.elf
 	@cp src/kernel.elf build/kernel.elf
@@ -19,7 +19,9 @@ build/boot/grub/grub.cfg: boot/grub/grub.cfg
 	@cp -R boot/grub/grub.cfg build/boot/grub/grub.cfg
 
 hdd.img:
-	@dd if=/dev/zero of=hdd.img count=2048
+	@dd if=/dev/zero of=hdd.img count=64000 bs=1k
+	@parted hdd.img -s -- mklabel msdos > /dev/null 2>&1
+	@parted hdd.img -s -- mkpartfs primary fat32 1 -0 > /dev/null 2>&1
 
 image: kernel cdrom.iso
 
