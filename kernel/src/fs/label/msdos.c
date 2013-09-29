@@ -109,7 +109,9 @@ bool msdos_probe(block_device_t *device) {
     }
 
     for(uint8_t i = 0; i < NUM_PARTITIONS; i++) {
-        //TODO create sub-block devices
+        if(mbr->parts[i].type != PART_TYPE_EMPTY) {
+            register_partition(device, mbr->parts[i].start);
+        }
     }
 
     kfree(mbr, device->block_size);

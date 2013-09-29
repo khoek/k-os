@@ -152,6 +152,7 @@ void dentry_add_child(dentry_t *child, dentry_t *parent);
 
 void register_block_device(block_device_t *device, char *name);
 void register_disk(block_device_t *device);
+void register_partition(block_device_t *device, uint32_t start);
 void register_disk_label(disk_label_t *disk_label);
 void register_fs_type(fs_type_t *fs_type);
 

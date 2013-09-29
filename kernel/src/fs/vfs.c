@@ -43,6 +43,10 @@ void register_disk(block_device_t *device) {
     //spin_unlock_irqstore(&disk_label_lock, flags);
 }
 
+void register_partition(block_device_t *device, uint32_t start) {
+    //TODO add this device to /dev
+}
+
 void register_disk_label(disk_label_t *disk_label) {
     uint32_t flags;
     spin_lock_irqsave(&disk_label_lock, &flags);
