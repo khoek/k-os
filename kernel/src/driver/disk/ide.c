@@ -11,11 +11,14 @@
 #include "mm/mm.h"
 #include "mm/cache.h"
 #include "time/clock.h" //FIXME sleep(1) should be microseconds not hundredths of a second
-#include "fs/vfs.h"
+#include "fs/block.h"
+#include "fs/disk.h"
 #include "device/device.h"
 #include "driver/disk/ide.h"
 #include "driver/bus/pci.h"
 #include "video/log.h"
+
+#define IDE_DEVICE_PREFIX       "hd"
 
 #define TYPE_PATA               0x00
 #define TYPE_PATAPI             0x01
@@ -587,13 +590,11 @@ static block_device_ops_t ide_device_ops = {
     .write = ide_write,
 };
 
-static char * controller_name_prefix = "hd";
-
 static char * ide_controller_name(device_t UNUSED(*device)) {
     static int next_id = 0;
 
-    char *name = kmalloc(STRLEN(controller_name_prefix) + STRLEN(STR(MAX_UINT)) + 1);
-    sprintf(name, "%s%u", controller_name_prefix, next_id++);
+    char *name = kmalloc(STRLEN(IDE_DEVICE_PREFIX) + STRLEN(STR(MAX_UINT)) + 1);
+    sprintf(name, "%s%u", IDE_DEVICE_PREFIX, next_id++);
 
     return name;
 }
@@ -757,7 +758,12 @@ static void ide_enable(device_t *device) {
             ide_devices[d].device.size = ide_devices[d].size / 512;
             ide_devices[d].device.block_size = 512;
 
-            register_block_device(&ide_devices[d].device, "hd");
+            char *name = kmalloc(STRLEN(IDE_DEVICE_PREFIX) + 2);
+            memcpy(name, IDE_DEVICE_PREFIX, STRLEN(IDE_DEVICE_PREFIX));
+            name[STRLEN(IDE_DEVICE_PREFIX)] = 'a' + d;
+            name[STRLEN(IDE_DEVICE_PREFIX) + 1] = '\0';
+
+            register_block_device(&ide_devices[d].device, name);
             register_disk(&ide_devices[d].device);
 
             d++;

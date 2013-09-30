@@ -8,11 +8,6 @@
 #define FS_FLAG_STATIC (1 << 0)
 #define FS_FLAG_NODEV  (1 << 1)
 
-typedef struct block_device block_device_t;
-typedef struct block_device_ops block_device_ops_t;
-
-typedef struct disk_label disk_label_t;
-
 typedef struct fs_type fs_type_t;
 typedef struct fs fs_t;
 
@@ -30,27 +25,9 @@ typedef struct stat stat_t;
 #include "common/list.h"
 #include "common/hashtable.h"
 #include "fs/fd.h"
+#include "fs/block.h"
 
 #define DENTRY_HASH_BITS 5
-
-struct block_device {
-    fs_t *fs;
-
-    size_t size;
-    size_t block_size;
-    block_device_ops_t *ops;
-};
-
-struct block_device_ops {
-    ssize_t (*read)(block_device_t * device, void *buff, size_t block, size_t count);
-    ssize_t (*write)(block_device_t * device, void *buff, size_t block, size_t count);
-};
-
-struct disk_label {
-    bool (*probe)(block_device_t *device);
-
-    list_head_t list;
-};
 
 struct fs_type {
     char *name;
@@ -150,10 +127,6 @@ fs_t * fs_alloc(fs_type_t *type, block_device_t *device, dentry_t *root);
 
 void dentry_add_child(dentry_t *child, dentry_t *parent);
 
-void register_block_device(block_device_t *device, char *name);
-void register_disk(block_device_t *device);
-void register_partition(block_device_t *device, uint32_t start);
-void register_disk_label(disk_label_t *disk_label);
 void register_fs_type(fs_type_t *fs_type);
 
 bool vfs_mount(block_device_t *device, const char *type, dentry_t *mountpoint);

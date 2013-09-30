@@ -20,9 +20,9 @@ OBJS=	loader.o \
         net/socket.o \
         net/eth/eth.o \
         net/ip/af_inet.o net/ip/ip.o net/ip/arp.o net/ip/icmp.o net/ip/tcp.o net/ip/udp.o net/ip/dhcp.o net/ip/nbns.o net/ip/raw.o \
-        fs/vfs.o fs/module.o fs/fd.o \
+        fs/module.o fs/fd.o fs/vfs.o fs/block.o fs/subblock.o fs/disk.o \
         fs/label/msdos.o \
-        fs/type/ramfs.o \
+        fs/type/devfs.o fs/type/ramfs.o \
         fs/file/char.o \
         fs/binfmt/binfmt.o fs/binfmt/binfmt_elf.o \
         driver/bus/pci.o \

@@ -18,42 +18,46 @@ static cache_t *fs_cache;
 
 static dentry_t *root;
 
-static DEFINE_LIST(disk_labels);
-static DEFINE_SPINLOCK(disk_label_lock);
-
 static DEFINE_HASHTABLE(fs_types, 5);
 static DEFINE_SPINLOCK(fs_type_lock);
 
-void register_block_device(block_device_t *device, char *name) {
-    //TODO add this device to /dev
+dentry_t * dentry_alloc(char *name) {
+    dentry_t *new = cache_alloc(dentry_cache);
+    new->name = name;
+    hashtable_init(new->children);
+    list_init(&new->siblings);
+
+    return new;
 }
 
-void register_disk(block_device_t *device) {
-    //FIXME after implementing an IO scheduler
-    //uint32_t flags;
-    //spin_lock_irqsave(&disk_label_lock, &flags);
+inode_t * inode_alloc(fs_t *fs, inode_ops_t *ops) {
+    inode_t *new = cache_alloc(inode_cache);
+    memset(new, 0, sizeof(sizeof(inode_t)));
 
-    disk_label_t *disk_label;
-    LIST_FOR_EACH_ENTRY(disk_label, &disk_labels, list) {
-        if(disk_label->probe(device)) {
-            break;
-        }
-    }
+    new->fs = fs;
+    new->ops = ops;
 
-    //spin_unlock_irqstore(&disk_label_lock, flags);
+    return new;
 }
 
-void register_partition(block_device_t *device, uint32_t start) {
-    //TODO add this device to /dev
+file_t * file_alloc(file_ops_t *ops) {
+    file_t *new = cache_alloc(file_cache);
+    new->ops = ops;
+
+    return new;
 }
 
-void register_disk_label(disk_label_t *disk_label) {
-    uint32_t flags;
-    spin_lock_irqsave(&disk_label_lock, &flags);
+fs_t * fs_alloc(fs_type_t *type, block_device_t *device, dentry_t *root) {
+    fs_t *new = cache_alloc(fs_cache);
+    new->type = type;
+    new->device = device;
+    new->root = root;
 
-    list_add(&disk_label->list, &disk_labels);
+    return new;
+}
 
-    spin_unlock_irqstore(&disk_label_lock, flags);
+void dentry_add_child(dentry_t *child, dentry_t *parent) {
+    hashtable_add(str_to_key(child->name, strlen(child->name)), &child->node, parent->children);
 }
 
 void register_fs_type(fs_type_t *fs_type) {
@@ -87,6 +91,8 @@ static void swap_dentries(dentry_t *old, dentry_t *new) {
     }
 
     if(old->parent) {
+    logf("%X", old->parent);
+while(1);
         hashtable_rm(&old->node);
         hashtable_add(str_to_key(new->name, strlen(new->name)), &new->node, old->parent->children);
     } else {
@@ -107,7 +113,6 @@ bool vfs_mount(block_device_t *device, const char *raw_type, dentry_t *mountpoin
     fs->root->parent = mountpoint->parent;
 
     //FIXME the below should be atomic
-
     if(device) device->fs = fs;
     swap_dentries(mountpoint, fs->root);
 
@@ -183,41 +188,6 @@ gfd_idx_t vfs_open_file(inode_t *inode) {
     return gfd;
 }
 
-dentry_t * dentry_alloc(char *name) {
-    dentry_t *new = cache_alloc(dentry_cache);
-    new->name = name;
-    hashtable_init(new->children);
-    list_init(&new->siblings);
-
-    return new;
-}
-
-inode_t * inode_alloc(fs_t *fs, inode_ops_t *ops) {
-    inode_t *new = cache_alloc(inode_cache);
-    memset(new, 0, sizeof(sizeof(inode_t)));
-
-    new->fs = fs;
-    new->ops = ops;
-
-    return new;
-}
-
-file_t * file_alloc(file_ops_t *ops) {
-    file_t *new = cache_alloc(file_cache);
-    new->ops = ops;
-
-    return new;
-}
-
-fs_t * fs_alloc(fs_type_t *type, block_device_t *device, dentry_t *root) {
-    fs_t *new = cache_alloc(fs_cache);
-    new->type = type;
-    new->device = device;
-    new->root = root;
-
-    return new;
-}
-
 void vfs_getattr(dentry_t *dentry, stat_t *stat) {
     if(dentry->inode->ops->getattr) dentry->inode->ops->getattr(dentry, stat);
     else generic_getattr(dentry->inode, stat);
@@ -241,10 +211,6 @@ void generic_getattr(inode_t *inode, stat_t *stat) {
     stat->st_blocks = inode->blocks;
 }
 
-void dentry_add_child(dentry_t *child, dentry_t *parent) {
-    hashtable_add(str_to_key(child->name, strlen(child->name)), &child->node, parent->children);
-}
-
 static INITCALL vfs_init() {
     dentry_cache = cache_create(sizeof(dentry_t));
     inode_cache = cache_create(sizeof(inode_t));
@@ -255,11 +221,8 @@ static INITCALL vfs_init() {
 }
 
 static INITCALL vfs_root_mount() {
-    root = kmalloc(sizeof(dentry_t));
-    root->name = "";
+    root = dentry_alloc("");
     root->parent = NULL;
-    hashtable_init(root->children);
-    list_init(&root->siblings);
 
     return vfs_mount(NULL, "ramfs", root) ? 0 : 1;
 }

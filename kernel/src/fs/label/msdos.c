@@ -4,7 +4,7 @@
 #include "common/swap.h"
 #include "common/compiler.h"
 #include "mm/cache.h"
-#include "fs/vfs.h"
+#include "fs/disk.h"
 #include "video/log.h"
 
 #define NUM_PARTITIONS 4
@@ -110,7 +110,7 @@ bool msdos_probe(block_device_t *device) {
 
     for(uint8_t i = 0; i < NUM_PARTITIONS; i++) {
         if(mbr->parts[i].type != PART_TYPE_EMPTY) {
-            register_partition(device, mbr->parts[i].start);
+            register_partition(device, i + 1, mbr->parts[i].start, mbr->parts[i].length);
         }
     }
 
