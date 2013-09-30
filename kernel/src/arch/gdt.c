@@ -1,7 +1,7 @@
 #include <stddef.h>
 
 #include "lib/string.h"
-#include "common/init.h"
+#include "init/initcall.h"
 #include "bug/panic.h"
 #include "arch/gdt.h"
 #include "arch/idt.h"

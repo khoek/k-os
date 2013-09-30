@@ -1,9 +1,9 @@
 #include <stddef.h>
 #include <stdbool.h>
 
-#include "boot/multiboot.h"
+#include "init/multiboot.h"
 #include "lib/string.h"
-#include "common/init.h"
+#include "init/initcall.h"
 #include "bug/debug.h"
 #include "mm/mm.h"
 #include "video/log.h"

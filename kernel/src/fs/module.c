@@ -1,6 +1,6 @@
 #include "lib/int.h"
 
-#include "common/init.h"
+#include "init/initcall.h"
 #include "fs/module.h"
 #include "fs/binfmt.h"
 #include "video/log.h"

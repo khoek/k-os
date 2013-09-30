@@ -1,5 +1,5 @@
 #include "lib/int.h"
-#include "common/init.h"
+#include "init/initcall.h"
 #include "sync/spinlock.h"
 #include "net/socket.h"
 #include "net/ip/af_inet.h"

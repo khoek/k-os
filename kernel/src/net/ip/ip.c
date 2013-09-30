@@ -2,7 +2,7 @@
 #include "lib/string.h"
 #include "common/swap.h"
 #include "common/list.h"
-#include "common/init.h"
+#include "init/initcall.h"
 #include "mm/cache.h"
 #include "net/packet.h"
 #include "net/interface.h"

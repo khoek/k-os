@@ -1,6 +1,6 @@
 #include "lib/int.h"
 #include "lib/string.h"
-#include "common/init.h"
+#include "init/initcall.h"
 #include "common/swap.h"
 #include "common/compiler.h"
 #include "mm/cache.h"

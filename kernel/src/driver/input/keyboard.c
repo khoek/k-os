@@ -1,7 +1,7 @@
 #include <stdbool.h>
 
 #include "lib/int.h"
-#include "common/init.h"
+#include "init/initcall.h"
 #include "common/asm.h"
 #include "arch/gdt.h"
 #include "arch/idt.h"

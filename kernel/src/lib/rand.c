@@ -1,4 +1,4 @@
-#include "common/init.h"
+#include "init/initcall.h"
 #include "lib/rand.h"
 #include "arch/tsc.h"
 #include "video/log.h"

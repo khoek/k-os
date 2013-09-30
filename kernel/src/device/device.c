@@ -4,7 +4,7 @@
 #include "lib/string.h"
 #include "lib/printf.h"
 #include "common/list.h"
-#include "common/init.h"
+#include "init/initcall.h"
 #include "bug/debug.h"
 #include "device/device.h"
 #include "mm/cache.h"

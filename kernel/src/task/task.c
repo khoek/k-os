@@ -3,7 +3,7 @@
 #include "lib/int.h"
 #include "lib/string.h"
 #include "common/list.h"
-#include "common/init.h"
+#include "init/initcall.h"
 #include "common/asm.h"
 #include "bug/debug.h"
 #include "bug/panic.h"

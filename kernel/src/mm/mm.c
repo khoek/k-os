@@ -3,7 +3,7 @@
 
 #include "lib/int.h"
 #include "lib/string.h"
-#include "common/init.h"
+#include "init/initcall.h"
 #include "common/math.h"
 #include "common/compiler.h"
 #include "bug/panic.h"
@@ -30,11 +30,8 @@
 extern uint32_t image_start;
 extern uint32_t image_end;
 
-extern uint32_t init_text_start;
-extern uint32_t init_text_end;
-
-extern uint32_t init_data_start;
-extern uint32_t init_data_end;
+extern uint32_t init_mem_start;
+extern uint32_t init_mem_end;
 
 static uint32_t kernel_start;
 static uint32_t kernel_end;
@@ -351,16 +348,11 @@ void __init mm_init() {
 }
 
 void mm_postinit_reclaim() {
-    uint32_t text_pages = DIV_UP(((uint32_t) &init_text_end) - ((uint32_t) &init_text_start), PAGE_SIZE);
-    uint32_t data_pages = DIV_UP(((uint32_t) &init_data_end) - ((uint32_t) &init_data_start), PAGE_SIZE);
+    uint32_t pages = DIV_UP(((uint32_t) &init_mem_end) - ((uint32_t) &init_mem_start), PAGE_SIZE);
 
-    logf("mm - reclaiming init pages %u/%u (code/data), %u total", text_pages, data_pages, text_pages + data_pages);
+    logf("mm - reclaiming %u init pages", pages);
 
-    for(uint32_t i = 0; i < text_pages; i++) {
-        claim_page(DIV_DOWN(((uint32_t) &init_text_start), PAGE_SIZE) + i);
-    }
-
-    for(uint32_t i = 0; i < data_pages; i++) {
-        claim_page(DIV_DOWN(((uint32_t) &init_data_start), PAGE_SIZE) + i);
+    for(uint32_t i = 0; i < pages; i++) {
+        claim_page(DIV_DOWN(((uint32_t) &init_mem_start), PAGE_SIZE) + i);
     }
 }

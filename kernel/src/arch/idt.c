@@ -1,7 +1,7 @@
 #include <stddef.h>
 
 #include "common/compiler.h"
-#include "common/init.h"
+#include "init/initcall.h"
 #include "common/asm.h"
 #include "bug/debug.h"
 #include "bug/panic.h"

@@ -1,7 +1,7 @@
 #include "lib/string.h"
 #include "lib/rand.h"
 #include "common/swap.h"
-#include "common/init.h"
+#include "init/initcall.h"
 #include "common/listener.h"
 #include "mm/cache.h"
 #include "net/packet.h"

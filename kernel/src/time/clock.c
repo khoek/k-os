@@ -1,7 +1,7 @@
 #include <stddef.h>
 
 #include "common/list.h"
-#include "common/init.h"
+#include "init/initcall.h"
 #include "common/asm.h"
 #include "bug/panic.h"
 #include "time/clock.h"

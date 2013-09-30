@@ -6,7 +6,7 @@
 
 #ifdef __LINKER__
 
-#define INITCALL_SECTION(id) *(.initcall.##id)
+#define INITCALL_SECTION(id) *(.init.call.##id)
 
 #else
 
@@ -20,9 +20,9 @@ typedef int (*initcall_t)(void);
 
 extern initcall_t initcall_start, initcall_end;
 
-#define DEFINE_INITCALL(id, fn) \
-	static initcall_t __initcall_##fn##id \
-	__attribute__((section(".initcall." #id), used)) = fn
+#define DEFINE_INITCALL(id, fn)                            \
+	static initcall_t __initcall_##fn##id                  \
+	__attribute__((section(".init.call." #id), used)) = fn
 
 #define early_initcall(fn)    DEFINE_INITCALL(0, fn)
 #define pure_initcall(fn)     DEFINE_INITCALL(1, fn)

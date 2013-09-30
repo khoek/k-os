@@ -15,7 +15,7 @@ struct page {
     page_t *next;
 };
 
-#include "boot/multiboot.h"
+#include "init/multiboot.h"
 #include "task/task.h"
 
 #define PAGE_SIZE 0x1000

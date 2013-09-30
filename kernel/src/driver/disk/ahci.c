@@ -1,6 +1,6 @@
 #include "lib/int.h"
 #include "lib/string.h"
-#include "common/init.h"
+#include "init/initcall.h"
 #include "driver/bus/pci.h"
 #include "video/log.h"
 

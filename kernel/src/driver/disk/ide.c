@@ -3,7 +3,7 @@
 #include "lib/printf.h"
 #include "common/asm.h"
 #include "common/math.h"
-#include "common/init.h"
+#include "init/initcall.h"
 #include "bug/debug.h"
 #include "bug/panic.h"
 #include "arch/gdt.h"

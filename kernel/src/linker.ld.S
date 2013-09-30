@@ -1,4 +1,4 @@
-#include "common/init.h"
+#include "init/initcall.h"
 
 OUTPUT_FORMAT("elf32-i386")
 OUTPUT_ARCH("i386")
@@ -37,20 +37,19 @@ SECTIONS {
         _ebss = .;
     }
 
+    init_mem_start = .;
+
     .init.text ALIGN (0x1000) : AT(ADDR(.init.text) - VIRTUAL_BASE) {
-        init_text_start = .;
-
         *(.init.text)
-
-        init_text_end = .;
     }
 
     .init.data ALIGN (0x1000) : AT(ADDR(.init.data) - VIRTUAL_BASE) {
-        init_data_start = .;
-
         *(.init.data)
+    }
 
+    .init.call ALIGN (0x1000) : AT(ADDR(.init.call) - VIRTUAL_BASE) {
         initcall_start = .;
+
         INITCALL_SECTION(0)
         INITCALL_SECTION(1)
         INITCALL_SECTION(2)
@@ -59,10 +58,19 @@ SECTIONS {
         INITCALL_SECTION(5)
         INITCALL_SECTION(6)
         INITCALL_SECTION(7)
-        initcall_end = .;
 
-        init_data_end = .;
+        initcall_end = .;
     }
+
+    .init.param ALIGN (0x1000) : AT(ADDR(.init.param) - VIRTUAL_BASE) {
+        param_start = .;
+
+        *(.init.param)
+
+        param_end = .;
+    }
+
+    init_mem_end = .;
 
     . -= VIRTUAL_BASE;
 

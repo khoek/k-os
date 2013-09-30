@@ -2,7 +2,7 @@
 #define KERNEL_MM_CACHE_H
 
 #include "lib/int.h"
-#include "common/init.h"
+#include "init/initcall.h"
 
 typedef struct cache cache_t;
 

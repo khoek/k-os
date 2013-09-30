@@ -1,5 +1,5 @@
 #include "lib/int.h"
-#include "common/init.h"
+#include "init/initcall.h"
 #include "common/list.h"
 #include "common/hash.h"
 #include "common/hashtable.h"

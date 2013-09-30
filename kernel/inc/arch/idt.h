@@ -5,7 +5,7 @@
 
 #include "lib/int.h"
 #include "common/compiler.h"
-#include "common/init.h"
+#include "init/initcall.h"
 #include "arch/registers.h"
 
 #define IRQ_OFFSET 0x20

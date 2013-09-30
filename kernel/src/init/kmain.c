@@ -1,8 +1,9 @@
 #include "lib/int.h"
-#include "boot/multiboot.h"
+#include "init/multiboot.h"
+#include "init/param.h"
 #include "common/version.h"
 #include "common/compiler.h"
-#include "common/init.h"
+#include "init/initcall.h"
 #include "bug/panic.h"
 #include "bug/debug.h"
 #include "mm/mm.h"
@@ -25,6 +26,8 @@ void kmain(uint32_t magic, multiboot_info_t *mbd) {
 #ifndef CONFIG_OPTIMIZE
     debug_init();
 #endif
+
+    parse_cmdline();
 
     mm_init();
     cache_init();

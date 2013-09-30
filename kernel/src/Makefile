@@ -6,7 +6,7 @@ CCFLAGS=-Wall -Wextra -Werror -Wno-unused-parameter -m32 -I../inc -std=gnu99 \
         -nostdlib -nostartfiles -nodefaultlibs -ffreestanding -c -O3 -fno-strict-aliasing
 
 OBJS=	loader.o \
-        init/kmain.o \
+        init/kmain.o init/param.o \
         lib/string.o lib/printf.o lib/rand.o \
         bug/debug.o bug/panic.o \
         sync/semaphore.o \

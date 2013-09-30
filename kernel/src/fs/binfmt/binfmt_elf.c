@@ -3,7 +3,7 @@
 #include "lib/int.h"
 #include "lib/string.h"
 #include "common/math.h"
-#include "common/init.h"
+#include "init/initcall.h"
 #include "bug/debug.h"
 #include "mm/mm.h"
 #include "task/task.h"

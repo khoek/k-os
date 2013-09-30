@@ -4,7 +4,7 @@
 #include "common/compiler.h"
 #include "common/math.h"
 #include "common/swap.h"
-#include "common/init.h"
+#include "init/initcall.h"
 #include "common/asm.h"
 #include "sync/spinlock.h"
 #include "arch/gdt.h"
@@ -427,7 +427,6 @@ static pci_driver_t net_825xx_driver = {
 
 static INITCALL net_825xx_init() {
     register_driver(&net_825xx_driver.driver);
-
     return 0;
 }
 

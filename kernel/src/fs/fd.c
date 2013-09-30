@@ -1,4 +1,4 @@
-#include "common/init.h"
+#include "init/initcall.h"
 #include "sync/spinlock.h"
 #include "bug/debug.h"
 #include "mm/mm.h"
