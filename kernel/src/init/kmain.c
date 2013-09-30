@@ -32,10 +32,11 @@ void kmain(uint32_t magic, multiboot_info_t *mbd) {
     mm_init();
     cache_init();
 
-    logf("running initcalls");
+    logf("starting initcalls");
     for(initcall_t *initcall = &initcall_start; initcall < &initcall_end; initcall++) {
         if((*initcall)()) panic("Kernel Boot Failure - initcall aborted with non-zero exit code");
     }
+    logf("done initcalls");
 
     mm_postinit_reclaim();
 
