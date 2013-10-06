@@ -385,10 +385,7 @@ static INITCALL vfs_root_mount() {
 
     logf("mounting root fs");
 
-    vfs_mount("ramfs", NULL, &root_path);
-
-return 0;
-    //return vfs_mount("ramfs", NULL, &root_path) ? 0 : 1;
+    return vfs_mount("ramfs", NULL, &root_path) ? 0 : 1;
 }
 
 core_initcall(vfs_init);
