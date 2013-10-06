@@ -22,6 +22,9 @@
 .global lstat
 .global fstat
 
+.global play
+.global stop
+
 _exit:
     mov $0, %eax
     mov 4(%esp), %ecx
@@ -198,6 +201,19 @@ fstat:
     mov $19, %eax
     mov 8(%esp), %edx
     mov 4(%esp), %ecx
+    int $0x80
+
+    ret
+
+play:
+    mov $20, %eax
+    mov 4(%esp), %ecx
+    int $0x80
+
+    ret
+
+stop:
+    mov $21, %eax
     int $0x80
 
     ret

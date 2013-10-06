@@ -57,13 +57,15 @@ static void cache_alloc_page(cache_t *cache) {
 
     list_add(&cache_page->list, &cache->empty);
 
-    if(!cache_page->left) panicf("0 objects left in a new cache page!");
+    BUG_ON(!cache_page->left); //0 objects left in a new cache page!
 
     cache_page->free = 0;
     cache_page->freelist = (uint32_t *) (((uint8_t *) cache_page) + sizeof(cache_page_t));
+
     for(uint32_t i = 0; i < cache_page->left; i++) {
         cache_page->freelist[i] = i + 1;
     }
+
     cache_page->freelist[cache_page->left - 1] = FREELIST_END;
 
     cache_page->mem = cache_page->freelist + cache_page->left;

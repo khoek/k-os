@@ -47,11 +47,11 @@ static inline void invlpg(uint32_t addr) {
     asm volatile("invlpg (%0)" ::"r" (addr) : "memory");
 }
 
-static uint32_t get_index(page_t * page) {
+static uint32_t get_index(page_t *page) {
     return (((uint32_t) page) - ((uint32_t) pages)) / (sizeof (page_t));
 }
 
-static page_t * get_buddy(page_t * page) {
+static page_t * get_buddy(page_t *page) {
     return page + ((1 << page->order) * ((DIV_DOWN(get_index(page), (1 << page->order)) % 2) ? -1 : 1));
 }
 
@@ -296,10 +296,11 @@ void __init mm_init() {
 
     page_build_directory(page_directory);
 
-    __asm__ volatile("mov %0, %%cr3"::"a" (((uint32_t) page_directory) - VIRTUAL_BASE));
+    __asm__ volatile("mov %0, %%cr3" :: "a" (((uint32_t) page_directory) - VIRTUAL_BASE));
 
     console_map_virtual();
     debug_map_virtual();
+
     multiboot_info = (multiboot_info_t *) mm_map(multiboot_info);
     multiboot_info->mods = (multiboot_module_t *) mm_map(multiboot_info->mods);
     mmap = (multiboot_memory_map_t *) mm_map(mmap);

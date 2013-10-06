@@ -37,7 +37,11 @@ SECTIONS {
         _ebss = .;
     }
 
+    . -= VIRTUAL_BASE;
+
     init_mem_start = .;
+
+    . += VIRTUAL_BASE;
 
     .init.text ALIGN (0x1000) : AT(ADDR(.init.text) - VIRTUAL_BASE) {
         *(.init.text)
@@ -70,9 +74,9 @@ SECTIONS {
         param_end = .;
     }
 
-    init_mem_end = .;
-
     . -= VIRTUAL_BASE;
+
+    init_mem_end = .;
 
     .image_end : AT(ADDR(.image_end) - VIRTUAL_BASE) {
         image_end = .;

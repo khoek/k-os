@@ -293,6 +293,17 @@ static void sys_fstat(interrupt_t *interrupt) {
     }
 }
 
+extern void play(uint32_t freq);
+extern void stop();
+
+static void sys_play(interrupt_t *interrupt) {
+    play(interrupt->cpu.reg.ecx);
+}
+
+static void sys_stop(interrupt_t *interrupt) {
+    stop();
+}
+
 static syscall_t syscalls[MAX_SYSCALL] = {
     [ 0] = sys_exit,
     [ 1] = sys_fork,
@@ -313,6 +324,8 @@ static syscall_t syscalls[MAX_SYSCALL] = {
     [16] = sys_free_page,
     [17] = sys_stat,
     [19] = sys_fstat,
+    [20] = sys_play,
+    [21] = sys_stop,
 };
 
 static void syscall_handler(interrupt_t *interrupt) {
