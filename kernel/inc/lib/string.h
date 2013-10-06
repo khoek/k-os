@@ -13,7 +13,8 @@ int atoi(char *str);
 
 size_t strlen(const char *str);
 int strcmp(const char *a, const char *b);
-char * strcpy (char * dest, const char * src);
+char * strcpy(char * dest, const char * src);
+char * strdup(char *orig);
 
 void * memset(void *ptr, char c, size_t bytes);
 void * memcpy(void *dest, const void *source, size_t bytes);

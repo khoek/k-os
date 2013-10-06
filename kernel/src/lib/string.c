@@ -1,6 +1,7 @@
 #include <stddef.h>
 
 #include "lib/string.h"
+#include "mm/cache.h"
 
 int isdigit(char c) {
     return c >= '0' && c <= '9';
@@ -83,6 +84,11 @@ char * strcpy(char *dest, const char *src) {
        continue;
 
     return ret;
+}
+
+char * strdup(char *orig) {
+    char *new = kmalloc(strlen(orig));
+    strcpy(new, orig);
 }
 
 void * memset(void *ptr, char c, size_t bytes) {
