@@ -89,6 +89,8 @@ char * strcpy(char *dest, const char *src) {
 char * strdup(char *orig) {
     char *new = kmalloc(strlen(orig));
     strcpy(new, orig);
+
+    return new;
 }
 
 void * memset(void *ptr, char c, size_t bytes) {
