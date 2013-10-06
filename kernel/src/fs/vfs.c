@@ -1,11 +1,14 @@
 #include "lib/int.h"
 #include "init/initcall.h"
+#include "common/math.h"
 #include "common/list.h"
 #include "common/hash.h"
 #include "common/hashtable.h"
 #include "common/listener.h"
-#include "sync/spinlock.h"
+#include "bug/debug.h"
 #include "bug/panic.h"
+#include "sync/spinlock.h"
+#include "mm/mm.h"
 #include "mm/cache.h"
 #include "fs/fd.h"
 #include "fs/vfs.h"
@@ -15,15 +18,22 @@ static cache_t *dentry_cache;
 static cache_t *inode_cache;
 static cache_t *file_cache;
 static cache_t *fs_cache;
+static cache_t *mount_cache;
 
 static dentry_t *root;
 
 static DEFINE_HASHTABLE(fs_types, 5);
 static DEFINE_SPINLOCK(fs_type_lock);
 
-dentry_t * dentry_alloc(char *name) {
+static DEFINE_HASHTABLE(mount_hashtable, log2(PAGE_SIZE / sizeof(hashtable_node_t)));
+static DEFINE_SPINLOCK(mount_hashtable_lock);
+
+dentry_t * dentry_alloc(const char *name) {
     dentry_t *new = cache_alloc(dentry_cache);
     new->name = name;
+    new->child = NULL;
+    new->inode = NULL;
+    new->flags = 0;
     hashtable_init(new->children);
     list_init(&new->siblings);
 
@@ -47,20 +57,38 @@ file_t * file_alloc(file_ops_t *ops) {
     return new;
 }
 
-fs_t * fs_alloc(fs_type_t *type, block_device_t *device, dentry_t *root) {
+static fs_t * fs_alloc(fs_type_t *type) {
     fs_t *new = cache_alloc(fs_cache);
     new->type = type;
-    new->device = device;
-    new->root = root;
 
     return new;
 }
 
+static mount_t * mount_alloc(mount_t *parent, fs_t *fs, dentry_t *mountpoint) {
+    mount_t *mount = cache_alloc(mount_cache);
+    mount->parent = parent;
+    mount->fs = fs;
+    mount->mountpoint = mountpoint;
+
+    return mount;
+}
+
 void dentry_add_child(dentry_t *child, dentry_t *parent) {
+    child->parent = parent;
+
     hashtable_add(str_to_key(child->name, strlen(child->name)), &child->node, parent->children);
+
+    if(parent->child) {
+        list_add(&child->siblings, &parent->child->siblings);
+    } else {
+        list_init(&child->siblings);
+        parent->child = child;
+    }
 }
 
 void register_fs_type(fs_type_t *fs_type) {
+    list_init(&fs_type->instances);
+
     uint32_t flags;
     spin_lock_irqsave(&fs_type_lock, &flags);
 
@@ -85,55 +113,83 @@ fs_type_t * find_fs_type(const char *name) {
     return NULL;
 }
 
-static void swap_dentries(dentry_t *old, dentry_t *new) {
-    if(!list_empty(&old->siblings)) {
-        list_replace(&old->siblings, &new->siblings);
-    }
-
-    if(old->parent) {
-    logf("%X", old->parent);
-while(1);
-        hashtable_rm(&old->node);
-        hashtable_add(str_to_key(new->name, strlen(new->name)), &new->node, old->parent->children);
-    } else {
-        root = new;
-    }
+static uint32_t hash_mount(mount_t *mount, dentry_t *mountpoint) {
+    return ((uint32_t) mount) * ((uint32_t) mountpoint);
 }
 
-bool vfs_mount(block_device_t *device, const char *raw_type, dentry_t *mountpoint) {
+static mount_t * get_mount(path_t *mountpoint) {
+    uint32_t flags;
+    spin_lock_irqsave(&mount_hashtable_lock, &flags);
+
+    mount_t *mount;
+    HASHTABLE_FOR_EACH_COLLISION(hash_mount(mountpoint->mount, mountpoint->dentry), mount, mount_hashtable, node) {
+        if(mount->parent == mountpoint->mount && mount->mountpoint == mountpoint->dentry) {
+            goto get_mount_out;
+        }
+    }
+
+    mount = NULL;
+
+get_mount_out:
+    spin_unlock_irqstore(&mount_hashtable_lock, flags);
+
+    return mount;
+}
+
+bool vfs_mount(const char *raw_type, const char *device, path_t *mountpoint) {
+    if(!(mountpoint->dentry->flags & DENTRY_FLAG_DIRECTORY)) return false;
+    if(get_mount(mountpoint)) return false;
+
     fs_type_t *type = find_fs_type(raw_type);
-    if(!type || (device && (device->fs || type->flags & FSTYPE_FLAG_NODEV)) || !(device || type->flags & FSTYPE_FLAG_NODEV)) {
-        return false;
-    }
+    if(!type) return false;
 
-    fs_t *fs = type->open(device);
-    if(!fs) return false;
+    dentry_t *root = type->mount(type, device);
+    if(!root) return false;
 
-    fs->mountpoint = mountpoint;
-    fs->root->parent = mountpoint->parent;
+    fs_t *fs = root->fs;
+    BUG_ON(!fs);
 
-    //FIXME the below should be atomic
-    if(device) device->fs = fs;
-    swap_dentries(mountpoint, fs->root);
+    mount_t *mount = mount_alloc(mountpoint->mount, fs, mountpoint->dentry);
+
+    uint32_t flags;
+    spin_lock_irqsave(&mount_hashtable_lock, &flags);
+
+    hashtable_add(hash_mount(mount->parent, mountpoint->dentry), &mount->node, mount_hashtable);
+
+    spin_unlock_irqstore(&mount_hashtable_lock, flags);
+
+    mountpoint->dentry->flags |= DENTRY_FLAG_MOUNTPOINT;
 
     return true;
 }
 
-bool vfs_umount(dentry_t *d) {
-    if(!d->parent) panic("cannot unmount /");
+bool vfs_umount(path_t *mountpoint) {
+    if(mountpoint->dentry->flags & DENTRY_FLAG_MOUNTPOINT) {
+        mountpoint->dentry->flags &= ~DENTRY_FLAG_MOUNTPOINT;
 
-    fs_t *fs = d->inode->fs;
-    if(d->inode == fs->root->inode) {
-        swap_dentries(fs->root, fs->mountpoint);
+        mount_t *mount = get_mount(mountpoint);
+
+        BUG_ON(!mount);
+
+        uint32_t flags;
+        spin_lock_irqsave(&mount_hashtable_lock, &flags);
+
+        hashtable_rm(&mount->node);
+
+        spin_unlock_irqstore(&mount_hashtable_lock, flags);
+
+        return true;
     } else {
-        //TODO check if this is the dentry for the block_device_t
-        return false;
+        //TODO check if this is the dentry for a device somehow
     }
 
-    return true;
+    return false;
 }
 
-dentry_t * vfs_lookup(dentry_t *wd, const char *path) {
+bool vfs_lookup(path_t *start, const char *path, path_t *out) {
+    mount_t *mount = start->mount;
+    dentry_t *wd = start->dentry;
+
     if(*path == PATH_SEPARATOR) {
         wd = root;
         path++;
@@ -141,7 +197,25 @@ dentry_t * vfs_lookup(dentry_t *wd, const char *path) {
 
     bool finished = false;
     while(!finished && *path) {
-        if(!wd->inode) return NULL;
+        while(true) {
+            if(!wd) return false;
+
+            if(!(wd->flags & DENTRY_FLAG_MOUNTPOINT)) {
+                break;
+            }
+
+            path_t path;
+            path.mount = mount;
+            path.dentry = wd;
+
+            mount_t *submount = get_mount(&path);
+            BUG_ON(!submount);
+
+            mount = submount;
+            wd = submount->fs->root;
+        }
+
+        BUG_ON(!wd->inode);
 
         uint32_t len = 0;
         const char *next = path;
@@ -155,26 +229,59 @@ dentry_t * vfs_lookup(dentry_t *wd, const char *path) {
             }
         }
 
-        if(!len) return NULL;
+        if(!finished && !(wd->flags & DENTRY_FLAG_DIRECTORY)) return false;
 
         next++;
 
-        dentry_t *next_dentry;
+        dentry_t *next_dentry = wd;
+
+        if(!len) goto lookup_next;
+
+        if(next[0] == '.') switch(len) {
+            case 1: {
+                goto lookup_next;
+            }
+            case 2: {
+                if(next[1] == '.') {
+                    if(wd->parent == NULL) {
+                        if(wd->flags & DENTRY_FLAG_MOUNTPOINT) {
+                            BUG_ON(!mount->parent);
+                            wd = mount->mountpoint;
+                            mount = mount->parent;
+                        } else return false;
+                    } else {
+                        next_dentry = wd->parent;
+                    }
+
+                    goto lookup_next;
+                }
+            }
+        }
+
         HASHTABLE_FOR_EACH_COLLISION(str_to_key(path, len), next_dentry, wd->children, node) {
             if(!memcmp(next_dentry->name, path, len)) {
                 goto lookup_next;
             }
         }
 
-        return NULL;
+        next_dentry = dentry_alloc(path);
+        wd->inode->ops->lookup(wd->inode, next_dentry);
+
+        if(next_dentry->inode) goto lookup_next;
+
+        dentry_add_child(next_dentry, wd);
+
+        return false;
 
 lookup_next:
-        wd->inode->ops->lookup(wd->inode, next_dentry);
         wd = next_dentry;
         path = next;
     }
 
-    return wd;
+    out->mount = mount;
+    out->dentry = wd;
+
+    return true;
 }
 
 gfd_idx_t vfs_open_file(inode_t *inode) {
@@ -186,6 +293,52 @@ gfd_idx_t vfs_open_file(inode_t *inode) {
     }
 
     return gfd;
+}
+
+static void fs_add(fs_t *fs) {
+    list_add(&fs->list, &fs->type->instances);
+}
+
+static block_device_t * path_to_dev(path_t *path) {
+    return path->dentry->inode->device.block;
+}
+
+dentry_t * mount_dev(fs_type_t *type, const char *device, void (*fill)(fs_t *fs, block_device_t *device)) {
+    path_t path;
+    if(!vfs_lookup(&current->pwd, device, &path)) return NULL;
+    block_device_t *blk_device = path_to_dev(&path);
+    if(!blk_device) return NULL;
+
+    fs_t *fs = fs_alloc(type);
+    fill(fs, blk_device);
+
+    fs_add(fs);
+
+    BUG_ON(!fs->root);
+
+    return fs->root;
+}
+
+dentry_t * mount_nodev(fs_type_t *type, void (*fill)(fs_t *fs)) {
+    fs_t *fs = fs_alloc(type);
+    fill(fs);
+
+    fs_add(fs);
+
+    return fs->root;
+}
+
+dentry_t * mount_single(fs_type_t *type, void (*fill)(fs_t *fs)) {
+    if(!list_empty(&type->instances)) {
+        return list_first(&type->instances, fs_t, list)->root;
+    }
+
+    fs_t *fs = fs_alloc(type);
+    fill(fs);
+
+    fs_add(fs);
+
+    return fs->root;
 }
 
 void vfs_getattr(dentry_t *dentry, stat_t *stat) {
@@ -216,6 +369,7 @@ static INITCALL vfs_init() {
     inode_cache = cache_create(sizeof(inode_t));
     file_cache = cache_create(sizeof(file_t));
     fs_cache = cache_create(sizeof(fs_t));
+    mount_cache = cache_create(sizeof(mount_t));
 
     return 0;
 }
@@ -223,8 +377,18 @@ static INITCALL vfs_init() {
 static INITCALL vfs_root_mount() {
     root = dentry_alloc("");
     root->parent = NULL;
+    root->flags |= DENTRY_FLAG_DIRECTORY;
 
-    return vfs_mount(NULL, "ramfs", root) ? 0 : 1;
+    path_t root_path;
+    root_path.mount = NULL;
+    root_path.dentry = root;
+
+    logf("mounting root fs");
+
+    vfs_mount("ramfs", NULL, &root_path);
+
+return 0;
+    //return vfs_mount("ramfs", NULL, &root_path) ? 0 : 1;
 }
 
 core_initcall(vfs_init);

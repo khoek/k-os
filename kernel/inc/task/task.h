@@ -41,7 +41,8 @@ typedef struct task {
 
     task_state_t state;
 
-    dentry_t *pwd;
+    path_t root;
+    path_t pwd;
 } task_t;
 
 #include "mm/mm.h"

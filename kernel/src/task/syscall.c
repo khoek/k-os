@@ -76,10 +76,10 @@ static void sys_uptime(interrupt_t *interrupt) {
 static void sys_open(interrupt_t *interrupt) {
     //TODO verify that interrupt->cpu.reg.ecx is a pointer to a valid path string, and that interrupt->cpu.reg.edx are valid flags
 
-    dentry_t *dentry = vfs_lookup(current->pwd, (const char *) interrupt->cpu.reg.ecx);
-    if(!dentry) current->ret = -1;
+    path_t path;
+    if(!vfs_lookup(&current->pwd, (const char *) interrupt->cpu.reg.ecx, &path)) current->ret = -1;
     else {
-        current->ret = ufdt_add(current, interrupt->cpu.reg.edx, vfs_open_file(dentry->inode));
+        current->ret = ufdt_add(current, interrupt->cpu.reg.edx, vfs_open_file(path.dentry->inode));
     }
 }
 
@@ -268,11 +268,11 @@ static void sys_free_page(interrupt_t *interrupt) {
 
 static void sys_stat(interrupt_t *interrupt) {
     //TODO verify that interrupt->cpu.reg.ecx is a pointer to a valid path string, and that interrupt->cpu.reg.edx are valid flags
-    dentry_t *dentry = vfs_lookup(current->pwd, (const char *) interrupt->cpu.reg.ecx);
 
-    if(!dentry) current->ret = -1;
+    path_t path;
+    if(!vfs_lookup(&current->pwd, (const char *) interrupt->cpu.reg.ecx, &path)) current->ret = -1;
     else {
-        vfs_getattr(dentry, (void *) interrupt->cpu.reg.edx);
+        vfs_getattr(path.dentry, (void *) interrupt->cpu.reg.edx);
 
         current->ret = 0;
     }

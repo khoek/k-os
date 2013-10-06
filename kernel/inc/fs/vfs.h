@@ -8,8 +8,15 @@
 #define FS_FLAG_STATIC (1 << 0)
 #define FS_FLAG_NODEV  (1 << 1)
 
+#define DENTRY_FLAG_DIRECTORY  (1 << 0)
+#define DENTRY_FLAG_MOUNTPOINT (1 << 1)
+
 typedef struct fs_type fs_type_t;
 typedef struct fs fs_t;
+
+typedef struct mount mount_t;
+
+typedef struct path path_t;
 
 typedef struct file file_t;
 typedef struct file_ops file_ops_t;
@@ -30,19 +37,36 @@ typedef struct stat stat_t;
 #define DENTRY_HASH_BITS 5
 
 struct fs_type {
-    char *name;
+    const char *name;
     uint32_t flags;
 
-    fs_t * (*open)(block_device_t *device);
+    dentry_t * (*mount)(fs_type_t *fs_type, const char *device);
+    void (*umount)(fs_t *fs);
+
+    list_head_t instances;
 
     hashtable_node_t node;
 };
 
 struct fs {
     fs_type_t *type;
-    block_device_t *device;
+    void *private;
     dentry_t *root;
+
+    list_head_t list;
+};
+
+struct mount {
+    mount_t *parent;
+    fs_t *fs;
     dentry_t *mountpoint;
+
+    hashtable_node_t node;
+};
+
+struct path {
+    mount_t *mount;
+    dentry_t *dentry;
 };
 
 struct file {
@@ -79,6 +103,12 @@ struct inode {
 
     int32_t blkshift;
     int32_t blocks;
+
+    union {
+        block_device_t *block;
+    } device;
+
+    void *private;
 };
 
 struct inode_ops {
@@ -90,15 +120,19 @@ struct inode_ops {
 };
 
 struct dentry {
-    char *name;
+    fs_t *fs;
+    const char *name;
+    uint32_t flags;
 
     inode_t *inode;
 
     dentry_t *parent;
+    dentry_t *child;
     DECLARE_HASHTABLE(children, DENTRY_HASH_BITS);
     list_head_t siblings;
 
-    list_head_t list;
+    void *private;
+
     hashtable_node_t node;
 };
 
@@ -120,22 +154,25 @@ struct stat {
     int32_t st_blocks;
 };
 
-dentry_t * dentry_alloc(char *name);
+dentry_t * dentry_alloc(const char *name);
 inode_t * inode_alloc(fs_t *fs, inode_ops_t *ops);
 file_t * file_alloc(file_ops_t *ops);
-fs_t * fs_alloc(fs_type_t *type, block_device_t *device, dentry_t *root);
 
 void dentry_add_child(dentry_t *child, dentry_t *parent);
 
 void register_fs_type(fs_type_t *fs_type);
 
-bool vfs_mount(block_device_t *device, const char *type, dentry_t *mountpoint);
-bool vfs_umount(dentry_t *d);
+bool vfs_mount(const char *raw_type, const char *device, path_t *mountpoint);
+bool vfs_umount(path_t *mountpoint);
+
+dentry_t * mount_dev(fs_type_t *type, const char *device, void (*fill)(fs_t *fs, block_device_t *device));
+dentry_t * mount_nodev(fs_type_t *type, void (*fill)(fs_t *fs));
+dentry_t * mount_single(fs_type_t *type, void (*fill)(fs_t *fs));
 
 void vfs_getattr(dentry_t *dentry, stat_t *stat);
 void generic_getattr(inode_t *inode, stat_t *stat);
 
-dentry_t * vfs_lookup(dentry_t *d, const char *path);
+bool vfs_lookup(path_t *start, const char *path, path_t *out);
 gfd_idx_t vfs_open_file(inode_t *inode);
 
 #endif

@@ -208,7 +208,8 @@ task_t * task_create(bool kernel, void *ip, void *sp) {
 
     task->ret = 0;
 
-    task->pwd = NULL; //TODO populate this somehow
+    memset(&task->root, 0, sizeof(path_t)); //TODO populate this somehow
+    memset(&task->pwd, 0, sizeof(path_t)); //TODO populate this somehow
 
     spinlock_init(&task->fd_lock);
 
