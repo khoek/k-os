@@ -28,6 +28,8 @@ typedef struct dentry dentry_t;
 
 typedef struct stat stat_t;
 
+extern mount_t *root_mount;
+
 #include "lib/int.h"
 #include "common/list.h"
 #include "common/hashtable.h"
@@ -115,7 +117,7 @@ struct inode_ops {
     file_ops_t *file_ops;
 
     void (*lookup)(inode_t *inode, dentry_t *target);
-    dentry_t * (*mkdir)(inode_t *inode, char *name);
+    dentry_t * (*mkdir)(inode_t *inode, char *name, uint32_t mode);
     void (*getattr)(dentry_t *dentry, stat_t *stat);
 };
 
@@ -162,8 +164,10 @@ void dentry_add_child(dentry_t *child, dentry_t *parent);
 
 void register_fs_type(fs_type_t *fs_type);
 
-bool vfs_mount(const char *raw_type, const char *device, path_t *mountpoint);
+mount_t * vfs_mount(const char *raw_type, const char *device, path_t *mountpoint);
 bool vfs_umount(path_t *mountpoint);
+
+bool vfs_mkdir(path_t *start, const char *pathname, uint32_t mode);
 
 dentry_t * mount_dev(fs_type_t *type, const char *device, void (*fill)(fs_t *fs, block_device_t *device));
 dentry_t * mount_nodev(fs_type_t *type, void (*fill)(fs_t *fs));

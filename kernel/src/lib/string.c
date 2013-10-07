@@ -55,10 +55,10 @@ size_t strlen(const char *str) {
     return len;
 }
 
-const char * strchr(const char *str, const char c) {
+char * strchr(const char *str, const char c) {
     while(*str++) {
         if(*str == c) {
-             return str;
+             return (char *) str;
         }
     }
 
@@ -86,8 +86,8 @@ char * strcpy(char *dest, const char *src) {
     return ret;
 }
 
-char * strdup(char *orig) {
-    char *new = kmalloc(strlen(orig));
+char * strdup(const char *orig) {
+    char *new = kmalloc(strlen(orig) + 1);
     strcpy(new, orig);
 
     return new;

@@ -1,4 +1,5 @@
 #include "lib/int.h"
+#include "lib/string.h"
 #include "init/initcall.h"
 #include "common/math.h"
 #include "common/list.h"
@@ -14,13 +15,13 @@
 #include "fs/vfs.h"
 #include "video/log.h"
 
+mount_t *root_mount;
+
 static cache_t *dentry_cache;
 static cache_t *inode_cache;
 static cache_t *file_cache;
 static cache_t *fs_cache;
 static cache_t *mount_cache;
-
-static dentry_t *root;
 
 static DEFINE_HASHTABLE(fs_types, 5);
 static DEFINE_SPINLOCK(fs_type_lock);
@@ -104,13 +105,16 @@ fs_type_t * find_fs_type(const char *name) {
     fs_type_t *type;
     HASHTABLE_FOR_EACH_COLLISION(str_to_key(name, strlen(name)), type, fs_types, node) {
         if(!strcmp(name, type->name)) {
-            return type;
+            goto fs_found;
         }
     }
 
+    type = NULL;
+
+fs_found:
     spin_unlock_irqstore(&fs_type_lock, flags);
 
-    return NULL;
+    return type;
 }
 
 static uint32_t hash_mount(mount_t *mount, dentry_t *mountpoint) {
@@ -136,7 +140,7 @@ get_mount_out:
     return mount;
 }
 
-bool vfs_mount(const char *raw_type, const char *device, path_t *mountpoint) {
+mount_t * vfs_mount(const char *raw_type, const char *device, path_t *mountpoint) {
     if(!(mountpoint->dentry->flags & DENTRY_FLAG_DIRECTORY)) return false;
     if(get_mount(mountpoint)) return false;
 
@@ -160,7 +164,7 @@ bool vfs_mount(const char *raw_type, const char *device, path_t *mountpoint) {
 
     mountpoint->dentry->flags |= DENTRY_FLAG_MOUNTPOINT;
 
-    return true;
+    return mount;
 }
 
 bool vfs_umount(path_t *mountpoint) {
@@ -170,6 +174,7 @@ bool vfs_umount(path_t *mountpoint) {
         mount_t *mount = get_mount(mountpoint);
 
         BUG_ON(!mount);
+        BUG_ON(mount == root_mount);
 
         uint32_t flags;
         spin_lock_irqsave(&mount_hashtable_lock, &flags);
@@ -186,12 +191,39 @@ bool vfs_umount(path_t *mountpoint) {
     return false;
 }
 
+char * last_segment(const char *path) {
+    const char *seg = path;
+    while(*path) {
+        if(*path == PATH_SEPARATOR) seg = path;
+        path++;
+    }
+
+    return (char *) seg;
+}
+
+bool vfs_mkdir(path_t *start, const char *orig_pathname, uint32_t mode) {
+    dentry_t *wd = start->dentry;
+
+    char *pathname = strdup(orig_pathname);
+    char *last = last_segment(pathname);
+    if(last != pathname) {
+        *(last - 1) = '\0';
+
+        path_t path;
+        if(vfs_lookup(start, orig_pathname, &path)) return false;
+
+        wd = path.dentry;
+    }
+
+    return wd->inode->ops->mkdir(wd->inode, last, mode);
+}
+
 bool vfs_lookup(path_t *start, const char *path, path_t *out) {
     mount_t *mount = start->mount;
     dentry_t *wd = start->dentry;
 
     if(*path == PATH_SEPARATOR) {
-        wd = root;
+        wd = root_mount->fs->root;
         path++;
     }
 
@@ -375,7 +407,7 @@ static INITCALL vfs_init() {
 }
 
 static INITCALL vfs_root_mount() {
-    root = dentry_alloc("");
+    dentry_t *root = dentry_alloc("");
     root->parent = NULL;
     root->flags |= DENTRY_FLAG_DIRECTORY;
 
@@ -385,8 +417,10 @@ static INITCALL vfs_root_mount() {
 
     logf("mounting root fs");
 
-    return vfs_mount("ramfs", NULL, &root_path) ? 0 : 1;
+    root_mount = vfs_mount("ramfs", NULL, &root_path);
+
+    return !root_mount;
 }
 
 core_initcall(vfs_init);
-device_initcall(vfs_root_mount);
+subsys_initcall(vfs_root_mount);

@@ -62,6 +62,7 @@ SECTIONS {
         INITCALL_SECTION(5)
         INITCALL_SECTION(6)
         INITCALL_SECTION(7)
+        INITCALL_SECTION(8)
 
         initcall_end = .;
     }

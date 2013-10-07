@@ -11,16 +11,13 @@
 extern cmdline_param_t param_start[], param_end[];
 
 static void handle_param(char *key, char *value, uint32_t value_len) {
-    char *value_copy = kmalloc(value_len + 1);
-    memcpy(value_copy, value, value_len + 1);
-
     for(uint32_t i = 0; i < (((uint32_t) param_end) - ((uint32_t) param_start)) / sizeof(cmdline_param_t); i++) {
         if(!strcmp(key, param_start[i].name)) {
             if(!param_start[i].handle) {
                 logf("param \"%s\": duplicate ignored", key);
-            } else if(!param_start[i].handle(value_copy)) {
+            } else if(!param_start[i].handle(value)) {
                 logf("param \"%s\": invalid value \"%s\"", key, value);
-                kfree(value_copy, value_len);
+                kfree(value, value_len);
             }
 
             param_start[i].handle = NULL;

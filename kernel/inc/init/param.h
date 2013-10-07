@@ -15,9 +15,9 @@ struct cmdline_param {
 void parse_cmdline();
 
 #define cmdline_param(key, func)                      \
-    static cmdline_param_t param_##key                \
+    static cmdline_param_t param_##func               \
     __attribute__((section(".init.param"), used)) = { \
-        .name = #key,                                 \
+        .name = key,                                  \
         .handle = func,                               \
     }
 

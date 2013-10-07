@@ -1,4 +1,5 @@
 #include "init/initcall.h"
+#include "init/param.h"
 #include "common/list.h"
 #include "mm/cache.h"
 #include "fs/vfs.h"
@@ -85,23 +86,60 @@ void devfs_add_device(block_device_t *device, char *name) {
     logf("devfs - added /dev/%s", name);
 }
 
+static char *mntpoint;
+
+static bool devfs_set_mntpoint(char *point) {
+    mntpoint = point;
+
+    return true;
+}
+
+cmdline_param("devfs.mount", devfs_set_mntpoint);
+
+static bool create_path(path_t *start, char *orig_path) {
+    char *path = strdup(orig_path);
+    char *part = path;
+
+    while(*part) {
+        part = strchr(part, '/');
+
+        if(part) part[0] = '\0';
+        if(!vfs_mkdir(start, path, 0755)) return false;
+        if(part) part[0] = '/';
+
+        part++;
+    }
+
+    kfree(path, strlen(orig_path) + 1);
+
+    return true;
+}
+
 static INITCALL devfs_init() {
     register_fs_type(&devfs);
 
     return 0;
 }
 
-core_initcall(devfs_init);
+static INITCALL devfs_automount() {
+    if(mntpoint) {
+        path_t wd, target;
+        wd.mount = root_mount;
+        wd.dentry = root_mount->fs->root;
 
-static INITCALL devfs_print() {
-    if(!root) return 0;
+        create_path(&wd, mntpoint);
 
-    dentry_t *child;
-    LIST_FOR_EACH_ENTRY(child, &root->child->siblings, siblings) {
-        logf("%s", child->name);
+        if(!vfs_lookup(&wd, mntpoint, &target)) {
+            logf("devfs - could not lookup \"%s\"", mntpoint);
+        } else if(!vfs_mount("devfs", NULL, &target)) {
+            logf("devfs - could not mount at \"%s\"", mntpoint);
+        } else {
+            logf("devfs - mounted at \"%s\"", mntpoint);
+        }
     }
 
     return 0;
 }
 
-module_initcall(devfs_print);
+core_initcall(devfs_init);
+fs_initcall(devfs_automount);

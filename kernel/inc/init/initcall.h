@@ -30,8 +30,9 @@ extern initcall_t initcall_start, initcall_end;
 #define postcore_initcall(fn) DEFINE_INITCALL(3, fn)
 #define arch_initcall(fn)     DEFINE_INITCALL(4, fn)
 #define subsys_initcall(fn)   DEFINE_INITCALL(5, fn)
-#define device_initcall(fn)   DEFINE_INITCALL(6, fn)
-#define module_initcall(fn)   DEFINE_INITCALL(7, fn)
+#define fs_initcall(fn)       DEFINE_INITCALL(6, fn)
+#define device_initcall(fn)   DEFINE_INITCALL(7, fn)
+#define module_initcall(fn)   DEFINE_INITCALL(8, fn)
 
 #endif
 

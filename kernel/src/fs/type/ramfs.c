@@ -24,7 +24,7 @@ static void ramfs_inode_lookup(inode_t *inode, dentry_t *dentry) {
     }
 }
 
-static dentry_t * ramfs_inode_mkdir(inode_t *inode, char *name) {
+static dentry_t * ramfs_inode_mkdir(inode_t *inode, char *name, uint32_t mode) {
     return NULL;
 }
 
