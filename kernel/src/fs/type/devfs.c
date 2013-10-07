@@ -2,6 +2,7 @@
 #include "init/param.h"
 #include "common/list.h"
 #include "mm/cache.h"
+#include "task/task.h"
 #include "fs/vfs.h"
 #include "fs/type/devfs.h"
 #include "video/log.h"
@@ -13,8 +14,10 @@ typedef struct devfs_device {
     block_device_t *device;
 } devfs_device_t;
 
-static dentry_t *root;
+static fs_t *devfs;
+static task_t *devfs_task;
 static DEFINE_LIST(devfs_devices);
+static DEFINE_LIST(devfs_pending);
 
 static void devfs_dev_file_open(file_t *file, inode_t *inode) {
 }
@@ -39,51 +42,41 @@ static inode_ops_t root_inode_ops = {
 };
 
 static inode_t * devfs_inode_alloc(devfs_device_t *device) {
-    inode_t *inode = inode_alloc(root->fs, &devfs_dev_inode_ops);
+    inode_t *inode = inode_alloc(devfs, &devfs_dev_inode_ops);
     inode->private = device;
 
     return inode;
 }
 
-static dentry_t * devfs_mount(fs_type_t *fs_type, const char *device);
+static dentry_t * devfs_create(fs_type_t *fs_type, const char *device);
 
-static fs_type_t devfs = {
+static fs_type_t devfs_type = {
     .name  = "devfs",
     .flags = FSTYPE_FLAG_NODEV,
-    .mount  = devfs_mount,
+    .create  = devfs_create,
 };
 
 static void devfs_fill(fs_t *fs) {
-    fs->root = root = dentry_alloc("");
-    root->inode = inode_alloc(fs, &root_inode_ops);
-
-    devfs_device_t *device;
-    LIST_FOR_EACH_ENTRY(device, &devfs_devices, list) {
-        dentry_t *new = device->device->dentry;
-        new->inode = devfs_inode_alloc(device);
-
-        dentry_add_child(new, root);
-    }
+    fs->root = dentry_alloc("");
+    fs->root->fs = fs;
+    fs->root->inode = inode_alloc(fs, &root_inode_ops);
+    fs->root->inode->flags |= INODE_FLAG_DIRECTORY;
 }
 
-static dentry_t * devfs_mount(fs_type_t *fs_type, const char *device) {
-    return mount_single(fs_type, devfs_fill);
+static dentry_t * devfs_create(fs_type_t *fs_type, const char *device) {
+    return fs_create_single(fs_type, devfs_fill);
 }
 
 void devfs_add_device(block_device_t *device, char *name) {
     devfs_device_t *d = kmalloc(sizeof(devfs_device_t));
     d->name = name;
     d->device = device;
-    list_add(&d->list, &devfs_devices);
-
+    list_add_before(&d->list, &devfs_pending);
     device->dentry = dentry_alloc(d->name);
 
-    if(root) {
-        device->dentry->inode = devfs_inode_alloc(d);
-        dentry_add_child(device->dentry, root);
-    }
-
     logf("devfs - added /dev/%s", name);
+
+    if(devfs_task) task_wake(devfs_task);
 }
 
 static char *mntpoint;
@@ -100,14 +93,15 @@ static bool create_path(path_t *start, char *orig_path) {
     char *path = strdup(orig_path);
     char *part = path;
 
-    while(*part) {
+    while(part && *part) {
         part = strchr(part, '/');
 
         if(part) part[0] = '\0';
         if(!vfs_mkdir(start, path, 0755)) return false;
-        if(part) part[0] = '/';
-
-        part++;
+        if(part) {
+            part[0] = '/';
+            part++;
+        }
     }
 
     kfree(path, strlen(orig_path) + 1);
@@ -115,28 +109,50 @@ static bool create_path(path_t *start, char *orig_path) {
     return true;
 }
 
+static void devfs_run() {
+    while(true) {
+        if(list_empty(&devfs_pending)) {
+            task_sleep(devfs_task);
+        } else {
+            devfs_device_t *d = list_first(&devfs_pending, devfs_device_t, list);
+            d->device->dentry->inode = devfs_inode_alloc(d);
+
+            dentry_add_child(d->device->dentry, devfs->root);
+
+            list_move(&d->list, &devfs_devices);
+
+            logf("devfs - added /dev/%s", d->device->dentry->name);
+        }
+    }
+}
+
 static INITCALL devfs_init() {
-    register_fs_type(&devfs);
+    register_fs_type(&devfs_type);
 
     return 0;
 }
 
 static INITCALL devfs_automount() {
+    devfs = vfs_fs_create("devfs", NULL);
+    devfs_task = task_create(true, devfs_run, NULL);
+
     if(mntpoint) {
         path_t wd, target;
         wd.mount = root_mount;
         wd.dentry = root_mount->fs->root;
 
-        create_path(&wd, mntpoint);
-
-        if(!vfs_lookup(&wd, mntpoint, &target)) {
+        if(!create_path(&wd, mntpoint)) {
+            logf("devfs - could not create path \"%s\"", mntpoint);
+        } else if(!vfs_lookup(&wd, mntpoint, &target)) {
             logf("devfs - could not lookup \"%s\"", mntpoint);
-        } else if(!vfs_mount("devfs", NULL, &target)) {
-            logf("devfs - could not mount at \"%s\"", mntpoint);
-        } else {
+        } else if(vfs_do_mount(devfs, &target)) {
             logf("devfs - mounted at \"%s\"", mntpoint);
+        } else {
+            logf("devfs - could not mount at \"%s\"", mntpoint);
         }
     }
+
+    task_schedule(devfs_task);
 
     return 0;
 }

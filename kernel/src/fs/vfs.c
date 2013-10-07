@@ -41,9 +41,15 @@ dentry_t * dentry_alloc(const char *name) {
     return new;
 }
 
+void dentry_free(dentry_t *dentry) {
+    kfree((char *) dentry->name, strlen(dentry->name) + 1);
+
+    cache_free(dentry_cache, dentry);
+}
+
 inode_t * inode_alloc(fs_t *fs, inode_ops_t *ops) {
     inode_t *new = cache_alloc(inode_cache);
-    memset(new, 0, sizeof(sizeof(inode_t)));
+    memset(new, 0, sizeof(inode_t));
 
     new->fs = fs;
     new->ops = ops;
@@ -65,11 +71,11 @@ static fs_t * fs_alloc(fs_type_t *type) {
     return new;
 }
 
-static mount_t * mount_alloc(mount_t *parent, fs_t *fs, dentry_t *mountpoint) {
+static mount_t * mount_alloc(fs_t *fs) {
     mount_t *mount = cache_alloc(mount_cache);
-    mount->parent = parent;
+    mount->mountpoint = NULL;
+    mount->parent = NULL;
     mount->fs = fs;
-    mount->mountpoint = mountpoint;
 
     return mount;
 }
@@ -141,35 +147,76 @@ get_mount_out:
 }
 
 mount_t * vfs_mount(const char *raw_type, const char *device, path_t *mountpoint) {
-    if(!(mountpoint->dentry->flags & DENTRY_FLAG_DIRECTORY)) return false;
-    if(get_mount(mountpoint)) return false;
+    fs_t *fs = vfs_fs_create(raw_type, device);
+    if(!fs) return false;
 
+    return vfs_do_mount(fs, mountpoint);
+}
+
+fs_t * vfs_fs_create(const char *raw_type, const char *device) {
     fs_type_t *type = find_fs_type(raw_type);
     if(!type) return false;
 
-    dentry_t *root = type->mount(type, device);
+    dentry_t *root = type->create(type, device);
     if(!root) return false;
 
     fs_t *fs = root->fs;
     BUG_ON(!fs);
 
-    mount_t *mount = mount_alloc(mountpoint->mount, fs, mountpoint->dentry);
+    return fs;
+}
+
+void vfs_fs_destroy(fs_t *fs) {
+    //TODO implement this
+}
+
+mount_t * vfs_do_mount(fs_t *fs, path_t *mountpoint) {
+    mount_t *mount = vfs_mount_create(fs);
+    if(mount) {
+        if(!vfs_mount_add(mount, mountpoint)) {
+            vfs_mount_destroy(mount);
+            mount = NULL;
+        }
+
+        goto mount_success;
+    }
+
+    vfs_fs_destroy(fs);
+
+mount_success:
+    return mount;
+}
+
+mount_t * vfs_mount_create(fs_t *fs) {
+    return mount_alloc(fs);
+}
+
+bool vfs_mount_add(mount_t *mount, path_t *mountpoint) {
+    if(!(mountpoint->dentry->inode->flags & INODE_FLAG_DIRECTORY)) return false;
+    if(get_mount(mountpoint)) return false;
+
+    mount->parent = mountpoint->mount;
+    mount->mountpoint = mountpoint->dentry;
 
     uint32_t flags;
     spin_lock_irqsave(&mount_hashtable_lock, &flags);
 
-    hashtable_add(hash_mount(mount->parent, mountpoint->dentry), &mount->node, mount_hashtable);
+    hashtable_add(hash_mount(mount->parent, mount->mountpoint), &mount->node, mount_hashtable);
 
     spin_unlock_irqstore(&mount_hashtable_lock, flags);
 
-    mountpoint->dentry->flags |= DENTRY_FLAG_MOUNTPOINT;
+    mount->mountpoint->inode->flags |= INODE_FLAG_MOUNTPOINT;
 
-    return mount;
+    return true;
+}
+
+void vfs_mount_destroy(mount_t *mount) {
+    //TODO implement this
 }
 
 bool vfs_umount(path_t *mountpoint) {
-    if(mountpoint->dentry->flags & DENTRY_FLAG_MOUNTPOINT) {
-        mountpoint->dentry->flags &= ~DENTRY_FLAG_MOUNTPOINT;
+    if(mountpoint->dentry->inode->flags & INODE_FLAG_MOUNTPOINT) {
+        mountpoint->dentry->inode->flags &= ~INODE_FLAG_MOUNTPOINT;
 
         mount_t *mount = get_mount(mountpoint);
 
@@ -191,17 +238,22 @@ bool vfs_umount(path_t *mountpoint) {
     return false;
 }
 
-char * last_segment(const char *path) {
+static char * last_segment(const char *path) {
     const char *seg = path;
     while(*path) {
-        if(*path == PATH_SEPARATOR) seg = path;
+        if(*path == PATH_SEPARATOR && *(path + 1)) seg = path + 1;
         path++;
     }
 
     return (char *) seg;
 }
 
-bool vfs_mkdir(path_t *start, const char *orig_pathname, uint32_t mode) {
+typedef struct wd_and_file {
+    dentry_t *wd;
+    char *last;
+} wd_and_file_t;
+
+static bool get_path_wd(path_t *start, const char *orig_pathname, wd_and_file_t *out) {
     dentry_t *wd = start->dentry;
 
     char *pathname = strdup(orig_pathname);
@@ -210,21 +262,51 @@ bool vfs_mkdir(path_t *start, const char *orig_pathname, uint32_t mode) {
         *(last - 1) = '\0';
 
         path_t path;
-        if(vfs_lookup(start, orig_pathname, &path)) return false;
+        if(!vfs_lookup(start, (!*pathname && *orig_pathname == PATH_SEPARATOR) ? PATH_SEPARATOR_STR : pathname, &path)) {
+            kfree(pathname, strlen(orig_pathname) + 1);
+            return false;
+        }
 
         wd = path.dentry;
     }
 
-    return wd->inode->ops->mkdir(wd->inode, last, mode);
+    out->wd = wd;
+    out->last = strdup(last);
+
+    kfree(pathname, strlen(orig_pathname) + 1);
+
+    return true;
 }
 
-bool vfs_lookup(path_t *start, const char *path, path_t *out) {
-    mount_t *mount = start->mount;
-    dentry_t *wd = start->dentry;
+bool vfs_mkdir(path_t *start, const char *pathname, uint32_t mode) {
+    wd_and_file_t data;
+    if(!get_path_wd(start, pathname, &data)) return false;
 
-    if(*path == PATH_SEPARATOR) {
+    dentry_t *newdir = data.wd->inode->ops->mkdir(data.wd->inode, data.last, mode);
+    if(!newdir) return false;
+
+    dentry_add_child(newdir, data.wd);
+
+    return true;
+}
+
+bool vfs_lookup(path_t *start, const char *orig_path, path_t *out) {
+    char *path = strdup(orig_path);
+    char *new_path = path;
+
+    mount_t *mount;
+    if(start == NULL) {
+        mount = root_mount;
+    } else {
+        mount = start->mount;
+    }
+
+    dentry_t *wd;
+    if(*path == PATH_SEPARATOR || start == NULL) {
         wd = root_mount->fs->root;
         path++;
+    } else {
+        wd = start->dentry;
     }
 
     bool finished = false;
@@ -232,7 +314,9 @@ bool vfs_lookup(path_t *start, const char *path, path_t *out) {
         while(true) {
             if(!wd) return false;
 
-            if(!(wd->flags & DENTRY_FLAG_MOUNTPOINT)) {
+            BUG_ON(!wd->inode);
+
+            if(!(wd->inode->flags & INODE_FLAG_MOUNTPOINT)) {
                 break;
             }
 
@@ -247,10 +331,10 @@ bool vfs_lookup(path_t *start, const char *path, path_t *out) {
             wd = submount->fs->root;
         }
 
-        BUG_ON(!wd->inode);
+        if(!(wd->inode->flags & INODE_FLAG_DIRECTORY)) goto lookup_fail;
 
         uint32_t len = 0;
-        const char *next = path;
+        char *next = path;
         while(*next != PATH_SEPARATOR) {
             next++;
             len++;
@@ -261,9 +345,7 @@ bool vfs_lookup(path_t *start, const char *path, path_t *out) {
             }
         }
 
-        if(!finished && !(wd->flags & DENTRY_FLAG_DIRECTORY)) return false;
-
-        next++;
+        *next++ = '\0';
 
         dentry_t *next_dentry = wd;
 
@@ -276,11 +358,11 @@ bool vfs_lookup(path_t *start, const char *path, path_t *out) {
             case 2: {
                 if(next[1] == '.') {
                     if(wd->parent == NULL) {
-                        if(wd->flags & DENTRY_FLAG_MOUNTPOINT) {
+                        if(wd->inode->flags & INODE_FLAG_MOUNTPOINT) {
                             BUG_ON(!mount->parent);
                             wd = mount->mountpoint;
                             mount = mount->parent;
-                        } else return false;
+                        } else goto lookup_fail;
                     } else {
                         next_dentry = wd->parent;
                     }
@@ -296,14 +378,12 @@ bool vfs_lookup(path_t *start, const char *path, path_t *out) {
             }
         }
 
-        next_dentry = dentry_alloc(path);
+        next_dentry = dentry_alloc(strdup(path));
         wd->inode->ops->lookup(wd->inode, next_dentry);
-
         if(next_dentry->inode) goto lookup_next;
 
-        dentry_add_child(next_dentry, wd);
-
-        return false;
+        dentry_free(next_dentry);
+        goto lookup_fail;
 
 lookup_next:
         wd = next_dentry;
@@ -313,7 +393,14 @@ lookup_next:
     out->mount = mount;
     out->dentry = wd;
 
+    kfree(new_path, strlen(new_path) + 1);
+
     return true;
+
+lookup_fail:
+    kfree(new_path, strlen(new_path) + 1);
+
+    return false;
 }
 
 gfd_idx_t vfs_open_file(inode_t *inode) {
@@ -335,7 +422,7 @@ static block_device_t * path_to_dev(path_t *path) {
     return path->dentry->inode->device.block;
 }
 
-dentry_t * mount_dev(fs_type_t *type, const char *device, void (*fill)(fs_t *fs, block_device_t *device)) {
+dentry_t * fs_create_dev(fs_type_t *type, const char *device, void (*fill)(fs_t *fs, block_device_t *device)) {
     path_t path;
     if(!vfs_lookup(&current->pwd, device, &path)) return NULL;
     block_device_t *blk_device = path_to_dev(&path);
@@ -351,7 +438,7 @@ dentry_t * mount_dev(fs_type_t *type, const char *device, void (*fill)(fs_t *fs,
     return fs->root;
 }
 
-dentry_t * mount_nodev(fs_type_t *type, void (*fill)(fs_t *fs)) {
+dentry_t * fs_create_nodev(fs_type_t *type, void (*fill)(fs_t *fs)) {
     fs_t *fs = fs_alloc(type);
     fill(fs);
 
@@ -360,7 +447,7 @@ dentry_t * mount_nodev(fs_type_t *type, void (*fill)(fs_t *fs)) {
     return fs->root;
 }
 
-dentry_t * mount_single(fs_type_t *type, void (*fill)(fs_t *fs)) {
+dentry_t * fs_create_single(fs_type_t *type, void (*fill)(fs_t *fs)) {
     if(!list_empty(&type->instances)) {
         return list_first(&type->instances, fs_t, list)->root;
     }
@@ -407,19 +494,12 @@ static INITCALL vfs_init() {
 }
 
 static INITCALL vfs_root_mount() {
-    dentry_t *root = dentry_alloc("");
-    root->parent = NULL;
-    root->flags |= DENTRY_FLAG_DIRECTORY;
-
-    path_t root_path;
-    root_path.mount = NULL;
-    root_path.dentry = root;
-
     logf("mounting root fs");
 
-    root_mount = vfs_mount("ramfs", NULL, &root_path);
+    fs_t *rootfs = vfs_fs_create("ramfs", NULL);
+    if(!rootfs) return 1;
 
-    return !root_mount;
+    return !(root_mount = vfs_mount_create(rootfs));
 }
 
 core_initcall(vfs_init);

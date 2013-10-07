@@ -208,8 +208,11 @@ task_t * task_create(bool kernel, void *ip, void *sp) {
 
     task->ret = 0;
 
-    memset(&task->root, 0, sizeof(path_t)); //TODO populate this somehow
-    memset(&task->pwd, 0, sizeof(path_t)); //TODO populate this somehow
+    task->root.mount = root_mount;
+    task->root.dentry = root_mount ? root_mount->fs->root : NULL;
+
+    task->pwd.mount = root_mount;
+    task->pwd.dentry = root_mount ? root_mount->fs->root : NULL;
 
     spinlock_init(&task->fd_lock);
 

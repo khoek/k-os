@@ -16,17 +16,8 @@ static file_ops_t ramfs_file_ops = {
     .close  = ramfs_file_close,
 };
 
-static void ramfs_inode_lookup(inode_t *inode, dentry_t *dentry) {
-    if(!strcmp(dentry->name, "dev")) {
-        dentry->fs = inode->fs;
-        dentry->inode = inode_alloc(inode->fs, inode->ops);
-        dentry->inode->mode = 0755;
-    }
-}
-
-static dentry_t * ramfs_inode_mkdir(inode_t *inode, char *name, uint32_t mode) {
-    return NULL;
-}
+static void ramfs_inode_lookup(inode_t *inode, dentry_t *dentry);
+static dentry_t * ramfs_inode_mkdir(inode_t *inode, char *name, uint32_t mode);
 
 static inode_ops_t ramfs_inode_ops = {
     .file_ops = &ramfs_file_ops,
@@ -35,12 +26,24 @@ static inode_ops_t ramfs_inode_ops = {
     .mkdir  = ramfs_inode_mkdir,
 };
 
-static dentry_t * ramfs_mount(fs_type_t *type, const char *device);
+static void ramfs_inode_lookup(inode_t *inode, dentry_t *dentry) {
+}
+
+static dentry_t * ramfs_inode_mkdir(inode_t *inode, char *name, uint32_t mode) {
+    dentry_t *new = dentry_alloc(name);
+    new->inode = inode_alloc(inode->fs, &ramfs_inode_ops);
+    new->inode->flags |= INODE_FLAG_DIRECTORY;
+    new->inode->mode = mode;
+
+    return new;
+}
+
+static dentry_t * ramfs_create(fs_type_t *type, const char *device);
 
 static fs_type_t ramfs = {
     .name  = "ramfs",
     .flags = FSTYPE_FLAG_NODEV,
-    .mount  = ramfs_mount,
+    .create  = ramfs_create,
 };
 
 static void ramfs_fill(fs_t *fs) {
@@ -48,11 +51,12 @@ static void ramfs_fill(fs_t *fs) {
     root->fs = fs;
 
     root->inode = inode_alloc(fs, &ramfs_inode_ops);
+    root->inode->flags |= INODE_FLAG_DIRECTORY;
     root->inode->mode = 0755;
 }
 
-static dentry_t * ramfs_mount(fs_type_t *type, const char *device) {
-    return mount_nodev(type, ramfs_fill);
+static dentry_t * ramfs_create(fs_type_t *type, const char *device) {
+    return fs_create_nodev(type, ramfs_fill);
 }
 
 static INITCALL ramfs_register() {

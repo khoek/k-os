@@ -2,14 +2,15 @@
 #define KERNEL_FS_VFS_H
 
 #define PATH_SEPARATOR '/'
+#define PATH_SEPARATOR_STR "/"
 
 #define FSTYPE_FLAG_NODEV (1 << 0)
 
 #define FS_FLAG_STATIC (1 << 0)
 #define FS_FLAG_NODEV  (1 << 1)
 
-#define DENTRY_FLAG_DIRECTORY  (1 << 0)
-#define DENTRY_FLAG_MOUNTPOINT (1 << 1)
+#define INODE_FLAG_DIRECTORY  (1 << 0)
+#define INODE_FLAG_MOUNTPOINT (1 << 1)
 
 typedef struct fs_type fs_type_t;
 typedef struct fs fs_t;
@@ -42,8 +43,8 @@ struct fs_type {
     const char *name;
     uint32_t flags;
 
-    dentry_t * (*mount)(fs_type_t *fs_type, const char *device);
-    void (*umount)(fs_t *fs);
+    dentry_t * (*create)(fs_type_t *fs_type, const char *device);
+    void (*destroy)(fs_t *fs);
 
     list_head_t instances;
 
@@ -89,6 +90,8 @@ struct file_ops {
 struct inode {
     fs_t *fs;
     inode_ops_t *ops;
+
+    uint32_t flags;
 
     uint32_t dev;
     uint32_t ino;
@@ -165,13 +168,20 @@ void dentry_add_child(dentry_t *child, dentry_t *parent);
 void register_fs_type(fs_type_t *fs_type);
 
 mount_t * vfs_mount(const char *raw_type, const char *device, path_t *mountpoint);
+fs_t * vfs_fs_create(const char *raw_type, const char *device);
+void vfs_fs_destroy(fs_t *fs);
+mount_t * vfs_do_mount(fs_t *fs, path_t *mountpoint);
+mount_t * vfs_mount_create(fs_t *fs);
+bool vfs_mount_add(mount_t *mount, path_t *mountpoint);
+void vfs_mount_destroy(mount_t *mount);
+
 bool vfs_umount(path_t *mountpoint);
 
 bool vfs_mkdir(path_t *start, const char *pathname, uint32_t mode);
 
-dentry_t * mount_dev(fs_type_t *type, const char *device, void (*fill)(fs_t *fs, block_device_t *device));
-dentry_t * mount_nodev(fs_type_t *type, void (*fill)(fs_t *fs));
-dentry_t * mount_single(fs_type_t *type, void (*fill)(fs_t *fs));
+dentry_t * fs_create_dev(fs_type_t *type, const char *device, void (*fill)(fs_t *fs, block_device_t *device));
+dentry_t * fs_create_nodev(fs_type_t *type, void (*fill)(fs_t *fs));
+dentry_t * fs_create_single(fs_type_t *type, void (*fill)(fs_t *fs));
 
 void vfs_getattr(dentry_t *dentry, stat_t *stat);
 void generic_getattr(inode_t *inode, stat_t *stat);
