@@ -15,11 +15,11 @@
 void panic(char *message) {
     cli();
 
-    static bool once = false;
-    if(once) {
+    static volatile bool panic_in_progress = false;
+    if(panic_in_progress) {
         die();
     }
-    once = true;
+    panic_in_progress = true;
 
     console_color(0x0C);
     console_puts("\nKERNEL PANIC: ");
