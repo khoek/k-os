@@ -7,6 +7,8 @@
 #include "fs/disk.h"
 #include "video/log.h"
 
+#define MSDOS_HEADER_SECTOR 0
+
 #define NUM_PARTITIONS 4
 
 #define MSDOS_MAGIC 0xAA55
@@ -69,14 +71,12 @@ static bool maybe_fat(mbr_t *mbr) {
     return true;
 }
 
-bool msdos_probe(block_device_t *device) {
+static bool msdos_probe(block_device_t *device) {
     if(device->block_size < sizeof(mbr_t)) {
         return false;
     }
 
     mbr_t *mbr = kmalloc(device->block_size);
-    memset(mbr, 0, 512);
-
     if(device->ops->read(device, mbr, 0, 1) != 1) {
         goto probe_fail;
     }

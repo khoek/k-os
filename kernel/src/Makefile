@@ -21,7 +21,7 @@ OBJS=	loader.o \
         net/eth/eth.o \
         net/ip/af_inet.o net/ip/ip.o net/ip/arp.o net/ip/icmp.o net/ip/tcp.o net/ip/udp.o net/ip/dhcp.o net/ip/nbns.o net/ip/raw.o \
         fs/module.o fs/fd.o fs/vfs.o fs/block.o fs/subblock.o fs/disk.o \
-        fs/label/msdos.o \
+        fs/label/msdos.o fs/label/gpt.o \
         fs/file/char.o \
         fs/type/devfs.o fs/type/ramfs.o \
         fs/binfmt/binfmt.o fs/binfmt/binfmt_elf.o \
@@ -29,7 +29,7 @@ OBJS=	loader.o \
         driver/input/keyboard.o \
         driver/disk/ide.o driver/disk/ahci.o \
         driver/net/e1000.o \
-        misc/stats.o misc/sysrq.o misc/shell.o misc/erasure_tool.o
+        misc/stats.o misc/sysrq.o
 
 all: kernel.elf
 

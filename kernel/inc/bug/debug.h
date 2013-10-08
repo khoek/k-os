@@ -3,20 +3,15 @@
 
 #ifndef CONFIG_OPTIMIZE
 
+#define NOP do {} while(0)
+
 #include "bug/panic.h"
-#define DEPENDS(m, c) if(!(c)) panic("Dependency assertion on \"%s\" failed!", m)
-#define ASSERT(c)     if(!(c)) panic("Assertion failed!")
-#define BUG_ON(c)     if((c))  panic("Bug!")
-#define BUG()         panic("Bug!")
-
+#define BUG() panicf("Bugcheck failed in %s:%u", __FILE__, __LINE__)
 #else
-
-#define DEPENDS(m, c)
-#define ASSERT(c)
-#define BUG_ON(c)
-#define BUG()
-
+#define BUG() NOP
 #endif
+
+#define BUG_ON(c) if((c)) BUG()
 
 #include "fs/elf.h"
 

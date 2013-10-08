@@ -14,7 +14,6 @@
 #include "fs/block.h"
 #include "fs/disk.h"
 #include "device/device.h"
-#include "driver/disk/ide.h"
 #include "driver/bus/pci.h"
 #include "video/log.h"
 
@@ -159,6 +158,7 @@ typedef struct ide_device {
     uint32_t    commandSets;    // Command Sets Supported.
     uint32_t    size;         // Size in Sectors.
     char        model[41];     // Model in string.
+    uint32_t    num;
 
     block_device_t device;
 } ide_device_t;
@@ -167,46 +167,6 @@ static ide_channel_t channels[2];
 static ide_device_t ide_devices[4];
 
 static uint8_t ide_buf[2048] = {0};
-
-static void ide_device_check(uint8_t device) {
-    if (device > 3) panicf("IDE - Illegal no such IDE device %u", device);
-}
-
-static void ide_device_check_present(uint8_t device) {
-    if (!ide_device_is_present(device)) panicf("IDE - IDE device %u not present", device);
-}
-
-bool ide_device_is_present(uint8_t device) {
-    ide_device_check(device);
-    return ide_devices[device].present;
-}
-
-int8_t ide_device_get_type(uint8_t device) {
-    ide_device_check_present(device);
-    return ide_devices[device].type;
-}
-
-uint32_t ide_device_get_size(uint8_t device) {
-    ide_device_check_present(device);
-    return ide_devices[device].size;
-}
-
-char * ide_device_get_string(uint8_t device, uint8_t string) {
-    ide_device_check(device);
-
-    switch(string) {
-        case IDE_STRING_MODEL:
-        return ide_devices[device].model;
-        default:
-        panicf("IDE - Illegal string %u for device %u", string, device);
-    }
-}
-
-bool ide_device_is_dma_capable(uint8_t device) {
-    ide_device_check(device);
-
-    return (ide_devices[device].features & ATA_FEATURE_LBA) && (ide_devices[device].features & ATA_FEATURE_DMA);
-}
 
 static void ide_mmio_write(uint8_t channel, uint8_t reg, uint8_t data) {
     if (reg > 0x07 && reg < 0x0C)
@@ -348,10 +308,12 @@ static void handle_irq_primary(interrupt_t UNUSED(*interrupt)) {
     if(status & ATA_BMSTATUS_ERROR) panic("IDE - Primary Channel Data Transfer Error");
 
     if(status & ATA_BMSTATUS_INTERRUPT) {
+        ide_mmio_write(ATA_PRIMARY, ATA_REG_BMSTATUS, ATA_BMSTATUS_INTERRUPT);
+
         if(status & ATA_BMSTATUS_ACTIVE) {
             panic("IDE - Primary Channel Interrupt with Active Flag Set");
         } else {
-            ide_mmio_write(ATA_PRIMARY, ATA_REG_BMSTATUS, ATA_BMSTATUS_INTERRUPT);
+            ide_mmio_write(ATA_PRIMARY, ATA_REG_BMCOMMAND, 0);
             channels[ATA_PRIMARY].irq = true;
         }
     } else {
@@ -365,10 +327,12 @@ static void handle_irq_secondary(interrupt_t UNUSED(*interrupt)) {
     if(status & ATA_BMSTATUS_ERROR) panic("IDE - Secondary Channel Data Transfer Error");
 
     if(status & ATA_BMSTATUS_INTERRUPT) {
+        ide_mmio_write(ATA_SECONDARY, ATA_REG_BMSTATUS, ATA_BMSTATUS_INTERRUPT);
+
         if(status & ATA_BMSTATUS_ACTIVE) {
             panic("IDE - Secondary Channel Interrupt with Active Flag Set");
         } else {
-            ide_mmio_write(ATA_SECONDARY, ATA_REG_BMSTATUS, ATA_BMSTATUS_INTERRUPT);
+            ide_mmio_write(ATA_SECONDARY, ATA_REG_BMCOMMAND, 0);
             channels[ATA_SECONDARY].irq = true;
         }
     } else {
@@ -381,7 +345,7 @@ static void irq_wait(uint8_t channel) {
     channels[channel].irq = false;
 }
 
-static int32_t pata_access(bool write, bool same, ide_device_t *device, uint64_t numsects, uint32_t lba, void * edi) {
+static int32_t pata_access(bool write, bool same, ide_device_t *device, uint64_t numsects, uint32_t lba, void *edi) {
     uint8_t lba_mode /* 0: CHS, 1:LBA28,ide_buf 2: LBA48 */, dma /* 0: No DMA, 1: DMA */;
     uint8_t lba_io[6];
     uint32_t channel = device->channel; // Read the Channel.
@@ -433,6 +397,8 @@ static int32_t pata_access(bool write, bool same, ide_device_t *device, uint64_t
 
     if (lba_mode > 0 /* There is no CHS (lba_mode == 0) for DMA */ && device->features & ATA_FEATURE_DMA) {
         dma = true;
+
+        edi = virt_to_phys(edi); //Translate to physical address
 
         ide_mmio_write(channel, ATA_REG_CONTROL, channels[channel].nIEN = ATA_IRQ_ON);
         ide_mmio_write_long(channel, ATA_REG_PRDTABLE, (uint32_t) page_to_phys(channels[channel].prdt)); //store the address of the PRDT
@@ -535,54 +501,38 @@ static int32_t pata_access(bool write, bool same, ide_device_t *device, uint64_t
     return transfered / sector_size;
 }
 
-static void ide_bounds_check(uint8_t drive, uint64_t numsects, uint32_t lba) {
-    BUG_ON(drive > 3 || ide_devices[drive].present == 0);
-    BUG_ON(((lba + numsects) > ide_devices[drive].size) && (ide_devices[drive].type == TYPE_PATA));
+static int32_t ide_read_sectors(ide_device_t *device, uint64_t numsects, uint32_t lba, void *edi) {
+    if((lba + numsects) > device->size) return 0;
+
+    if (device->type == TYPE_PATA) {
+        return pata_access(ATA_READ, false, device, numsects, lba, edi);
+    } else if (device->type == TYPE_PATAPI) {
+        //TODO implement ATAPI
+        return 0;
+    } else {
+        panic("IDE - unknown device type");
+    }
 }
 
-int32_t ide_read_sectors(uint8_t drive, uint64_t numsects, uint32_t lba, void * edi) {
-    ide_bounds_check(drive, numsects, lba);
-    if (ide_devices[drive].type == TYPE_PATA)
-        return pata_access(ATA_READ, false, &ide_devices[drive], numsects, lba, edi);
-    else if (ide_devices[drive].type == TYPE_PATAPI)
-        //for (i = 0; i < numsects; i++)
+static int32_t ide_write_sectors(ide_device_t *device, uint64_t numsects, uint32_t lba, void *edi) {
+    if((lba + numsects) > device->size) return 0;
+
+    if (device->type == TYPE_PATA) {
+        return pata_access(ATA_WRITE, false, device, numsects, lba, edi);
+    } else if (device->type == TYPE_PATAPI) {
+        //TODO implement ATAPI
         return 0;
-    else
+    } else {
         panic("IDE - unknown device type");
-        //panic("IDE ATAPI read not supported");
-        //err = patapi_access_read(drive, lba + i, 1, es, edi + (i*2048));
-}
-
-int32_t ide_write_sectors(uint8_t drive, uint64_t numsects, uint32_t lba, void * edi) {
-    ide_bounds_check(drive, numsects, lba);
-
-    if (ide_devices[drive].type == TYPE_PATA)
-        return pata_access(ATA_WRITE, false, &ide_devices[drive], numsects, lba, edi);
-    else if (ide_devices[drive].type == TYPE_PATAPI)
-        return 0;
-        //panic("IDE ATAPI write not supported");
-    else
-        panic("IDE - unknown device type");
-}
-
-int32_t ide_write_sectors_same(uint8_t drive, uint64_t numsects, uint32_t lba, void * edi) {
-    ide_bounds_check(drive, numsects, lba);
-
-    if (ide_devices[drive].type == TYPE_PATA)
-        return pata_access(ATA_WRITE, true, &ide_devices[drive], numsects, lba, edi);
-    else if (ide_devices[drive].type == TYPE_PATAPI)
-        return 0;
-        //panic("IDE ATAPI write not supported");
-    else
-        panic("IDE - unknown device type");
+    }
 }
 
 static ssize_t ide_read(block_device_t *device, void *buff, size_t start, size_t blocks) {
-    return pata_access(false, false, containerof(device, ide_device_t, device), blocks, start, virt_to_phys(buff));
+    return ide_read_sectors(containerof(device, ide_device_t, device), blocks, start, buff);
 }
 
 static ssize_t ide_write(block_device_t *device, void *buff, size_t start, size_t blocks) {
-    return pata_access(true, false, containerof(device, ide_device_t, device), blocks, start, virt_to_phys(buff));
+    return ide_write_sectors(containerof(device, ide_device_t, device), blocks, start, buff);
 }
 
 static block_device_ops_t ide_device_ops = {
@@ -681,7 +631,7 @@ static void ide_enable(device_t *device) {
             ide_devices[d].features     = *((uint16_t *) (ide_buf + ATA_IDENT_FEATURES));
             ide_devices[d].commandSets = *((uint32_t *) (ide_buf + ATA_IDENT_COMMANDSETS));
 
-            //FIXME make this work! :D (autodecteting the best hdd speeds and setting them
+            //FIXME does this work? (autodecteting the best hdd speeds and setting them)
 
             int8_t mode = -1;
             if (ide_devices[d].features & ATA_FEATURE_DMA) {
@@ -752,11 +702,16 @@ static void ide_enable(device_t *device) {
                 ide_devices[d].model[k + 1] = ide_buf[ATA_IDENT_MODEL + k];
             }
 
+            ide_devices[d].num = d;
             ide_devices[d].model[40] = 0; // Terminate String.
 
             ide_devices[d].device.ops = &ide_device_ops;
             ide_devices[d].device.size = ide_devices[d].size / 512;
             ide_devices[d].device.block_size = 512;
+
+            logf("ide - %s %7uMB",
+            (const char *[]){"ATA  ", "ATAPI"}[ide_devices[i].type],
+            ide_devices[i].size / 1024 / 2);
 
             char *name = kmalloc(STRLEN(IDE_DEVICE_PREFIX) + 2);
             memcpy(name, IDE_DEVICE_PREFIX, STRLEN(IDE_DEVICE_PREFIX));
@@ -767,15 +722,6 @@ static void ide_enable(device_t *device) {
             register_disk(&ide_devices[d].device);
 
             d++;
-        }
-    }
-
-    // 4- Print Summary:
-    for (uint8_t i = 0; i < 4; i++) {
-        if (ide_devices[i].present == 1) {
-        logf("ide - %s %7uMB",
-            (const char *[]){"ATA  ", "ATAPI"}[ide_devices[i].type],
-            ide_devices[i].size / 1024 / 2);
         }
     }
 }

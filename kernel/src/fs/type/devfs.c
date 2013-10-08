@@ -74,8 +74,6 @@ void devfs_add_device(block_device_t *device, char *name) {
     list_add_before(&d->list, &devfs_pending);
     device->dentry = dentry_alloc(d->name);
 
-    logf("devfs - added /dev/%s", name);
-
     if(devfs_task) task_wake(devfs_task);
 }
 
