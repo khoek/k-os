@@ -81,42 +81,65 @@ void * virt_to_phys(void *addr) {
     return (void *) ((kernel_page_tables[num / NUM_ENTRIES][num % NUM_ENTRIES] & 0xFFFFF000) | (((uint32_t) addr) & 0xFFF));
 }
 
-static page_t * do_alloc_page(uint32_t UNUSED(flags)) {
-    for (uint32_t order = 0; order < MAX_ORDER + 1; order++) {
+static inline void add_to_freelist(page_t *page) {
+    page->next = free_page_list[page->order];
+    if(free_page_list[page->order]) free_page_list[page->order]->prev = page;
+    free_page_list[page->order] = page;
+}
+
+static inline page_t * split_block(page_t *master) {
+    uint32_t order = master->order;
+    BUG_ON(!order);
+
+    master->order--;
+
+    page_t *buddy = get_buddy(master);
+    BUG_ON(!buddy);
+
+    buddy->order = master->order;
+
+    return buddy;
+}
+
+static inline page_t * alloc_block_exact(uint32_t order, uint32_t actual) {
+    page_t *block = free_page_list[order];
+    if(block->next) block->next->prev = NULL;
+    free_page_list[order] = block->next;
+
+    page_t *current = block;
+    page_t *buddy;
+
+    while(actual) {
+        buddy = split_block(current);
+        order--;
+
+        BUG_ON(order != buddy->order);
+
+        if(actual <= (uint32_t) (1 << order)) {
+            add_to_freelist(buddy);
+        } else {
+            current = buddy;
+        }
+
+        if(actual >= (uint32_t) (1 << order)) {
+            actual -= 1 << order;
+        }
+    }
+
+    return block;
+}
+
+static page_t * do_alloc_pages(uint32_t number, uint32_t UNUSED(flags)) {
+    uint32_t target_order = fls32(number);
+    if(number ^ (1 << target_order)) {
+        target_order++;
+    }
+
+    for (uint32_t order = target_order; order < MAX_ORDER + 1; order++) {
         if (free_page_list[order] != NULL) {
-            for (; order > 0; order--) {
-                page_t * page = free_page_list[order];
-                page->order--;
+            page_t *alloced = alloc_block_exact(order, number);
 
-                page_t * buddy = get_buddy(page);
-
-                free_page_list[order] = page->next;
-
-                page->prev = NULL;
-
-                if (buddy == NULL) {
-                    page->next = free_page_list[order - 1];
-                } else {
-                    page->next = buddy;
-
-                    buddy->order = page->order;
-                    buddy->prev = page;
-                    buddy->next = free_page_list[order - 1];
-                }
-
-                free_page_list[order - 1] = page;
-            }
-
-            page_t *alloced = free_page_list[0];
-            flag_set(alloced, PAGE_FLAG_USED);
-
-            if (free_page_list[0]->next) {
-                free_page_list[0]->next->prev = NULL;
-            }
-
-            free_page_list[0] = free_page_list[0]->next;
-
-            pages_in_use++;
+            pages_in_use += number;
 
             return alloced;
         }
@@ -168,7 +191,14 @@ void * alloc_page_user(uint32_t flags, task_t *task, uint32_t addr) {
 }
 
 page_t * alloc_page(uint32_t flags) {
-    page_t *page = do_alloc_page(flags);
+    page_t *page = do_alloc_pages(1, flags);
+    page->addr = (uint32_t) mm_map(page_to_phys(page));
+
+    return page;
+}
+
+page_t * alloc_pages(uint32_t pages, uint32_t flags) {
+    page_t *page = do_alloc_pages(pages, flags);
     page->addr = (uint32_t) mm_map(page_to_phys(page));
 
     return page;

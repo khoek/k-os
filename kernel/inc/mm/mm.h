@@ -26,6 +26,7 @@ void * mm_map(const void *phys);
 void page_build_directory(uint32_t directory[]);
 
 page_t * alloc_page(uint32_t flags);
+page_t * alloc_pages(uint32_t pages, uint32_t flags);
 
 void free_page(page_t *page);
 
