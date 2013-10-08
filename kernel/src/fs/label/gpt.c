@@ -91,29 +91,31 @@ static bool gpt_probe(block_device_t *device) {
     ssize_t sectors = DIV_UP(gpt->part_size * gpt->part_count, device->block_size);
     uint32_t pages = DIV_UP(sectors * device->block_size, PAGE_SIZE);
     page_t *start = alloc_pages(pages, 0);
-    gpt_part_t *parts = page_to_virt(start);
-    if(device->ops->read(device, parts, gpt->part_lba, sectors) != sectors) {
+    gpt_part_t *part = page_to_virt(start);
+    if(device->ops->read(device, part, gpt->part_lba, sectors) != sectors) {
         goto probe_table_fail;
     }
 
     for(uint8_t i = 0; i < gpt->part_count; i++) {
-        if( !memcmp(&parts[i].type, PART_TYPE_UEFI        , sizeof(guid_t)) ||
-            !memcmp(&parts[i].type, PART_TYPE_LINUX_DATA  , sizeof(guid_t)) ||
-            !memcmp(&parts[i].type, PART_TYPE_WINDOWS_DATA, sizeof(guid_t))) {
-            register_partition(device, i + 1, parts[i].first_lba, parts[i].last_lba - parts[i].first_lba);
-        } else if(!memcmp(&parts[i].type, PART_TYPE_LINUX_SWAP, sizeof(guid_t))) {
+        if( !memcmp(&part->type, PART_TYPE_UEFI        , sizeof(guid_t)) ||
+            !memcmp(&part->type, PART_TYPE_LINUX_DATA  , sizeof(guid_t)) ||
+            !memcmp(&part->type, PART_TYPE_WINDOWS_DATA, sizeof(guid_t))) {
+            register_partition(device, i + 1, part->first_lba, part->last_lba - part->first_lba);
+        } else if(!memcmp(&part->type, PART_TYPE_LINUX_SWAP, sizeof(guid_t))) {
             //TODO call register_swap() (not yet implemented)
-        } else if(memcmp(&parts[i].type, PART_TYPE_UNUSED, sizeof(guid_t))) {
-            logf("gpt - unrecognised GPT type guid: %X%X%X%X-%X%X-%X%X-%X%X-%X%X%X%X%X%X",
-                parts[i].type[ 3], parts[i].type[ 2],
-                parts[i].type[ 1], parts[i].type[ 0],
-                parts[i].type[ 5], parts[i].type[ 4],
-                parts[i].type[ 7], parts[i].type[ 6],
-                parts[i].type[ 9], parts[i].type[ 8],
-                parts[i].type[10], parts[i].type[11],
-                parts[i].type[12], parts[i].type[13],
-                parts[i].type[14], parts[i].type[15]);
+        } else if(memcmp(&part->type, PART_TYPE_UNUSED, sizeof(guid_t))) {
+            logf("gpt - unrecognised type guid: %02X%02X%02X%02X-%02X%02X-%02X%02X-%02X%02X-%02X%02X%02X%02X%02X%02X",
+                part->type[ 3], part->type[ 2],
+                part->type[ 1], part->type[ 0],
+                part->type[ 5], part->type[ 4],
+                part->type[ 7], part->type[ 6],
+                part->type[ 9], part->type[ 8],
+                part->type[10], part->type[11],
+                part->type[12], part->type[13],
+                part->type[14], part->type[15]);
         }
+
+        part = (void *) (((uint32_t) part) + gpt->part_size);
     }
 
     free_pages(start, pages);
