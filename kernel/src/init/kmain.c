@@ -6,7 +6,6 @@
 #include "common/compiler.h"
 #include "bug/panic.h"
 #include "bug/debug.h"
-#include "arch/registers.h"
 #include "mm/mm.h"
 #include "mm/cache.h"
 #include "task/task.h"

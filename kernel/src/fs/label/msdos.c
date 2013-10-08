@@ -77,7 +77,7 @@ static bool msdos_probe(block_device_t *device) {
     }
 
     mbr_t *mbr = kmalloc(device->block_size);
-    if(device->ops->read(device, mbr, 0, 1) != 1) {
+    if(device->ops->read(device, mbr, MSDOS_HEADER_SECTOR, 1) != 1) {
         goto probe_fail;
     }
 
