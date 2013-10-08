@@ -2,6 +2,7 @@
 #include "lib/string.h"
 #include "init/initcall.h"
 #include "common/math.h"
+#include "mm/mm.h"
 #include "mm/cache.h"
 #include "fs/disk.h"
 #include "video/log.h"
@@ -88,7 +89,9 @@ static bool gpt_probe(block_device_t *device) {
     }
 
     ssize_t sectors = DIV_UP(gpt->part_size * gpt->part_count, device->block_size);
-    gpt_part_t *parts = kmalloc(sectors * device->block_size);
+    uint32_t pages = DIV_UP(sectors * device->block_size, PAGE_SIZE);
+    page_t *start = alloc_pages(pages, 0);
+    gpt_part_t *parts = page_to_virt(start);
     if(device->ops->read(device, parts, gpt->part_lba, sectors) != sectors) {
         goto probe_table_fail;
     }
@@ -113,12 +116,12 @@ static bool gpt_probe(block_device_t *device) {
         }
     }
 
-    kfree(parts, sectors * device->block_size);
+    free_pages(start, pages);
     kfree(gpt, device->block_size);
     return true;
 
 probe_table_fail:
-    kfree(parts, sectors * device->block_size);
+    free_pages(start, pages);
 probe_header_fail:
     kfree(gpt, device->block_size);
     return false;
