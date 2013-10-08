@@ -109,7 +109,7 @@ static bool gpt_probe(block_device_t *device) {
                 part->type[ 1], part->type[ 0],
                 part->type[ 5], part->type[ 4],
                 part->type[ 7], part->type[ 6],
-                part->type[ 9], part->type[ 8],
+                part->type[ 8], part->type[ 9],
                 part->type[10], part->type[11],
                 part->type[12], part->type[13],
                 part->type[14], part->type[15]);
