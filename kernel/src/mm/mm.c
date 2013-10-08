@@ -198,10 +198,16 @@ page_t * alloc_page(uint32_t flags) {
 }
 
 page_t * alloc_pages(uint32_t pages, uint32_t flags) {
-    page_t *page = do_alloc_pages(pages, flags);
-    page->addr = (uint32_t) mm_map(page_to_phys(page));
+    page_t *start = do_alloc_pages(pages, flags);
+    page_t *current = start;
 
-    return page;
+    //FIXME ensure this is consecutive
+    for(uint32_t i = 0; i < pages; i++) {
+        current->addr = (uint32_t) mm_map(page_to_phys(current));
+        current++;
+    }
+
+    return start;
 }
 
 void free_page(page_t *page) {
@@ -240,6 +246,13 @@ void free_page(page_t *page) {
     free_page_list[page->order] = page;
 
     pages_in_use--;
+}
+
+void free_pages(page_t *first, uint32_t count) {
+    for(uint32_t i = 0; i < count; i++) {
+        free_page(first);
+        first++;
+    }
 }
 
 static void claim_page(uint32_t idx) {

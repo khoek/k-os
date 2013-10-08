@@ -29,6 +29,7 @@ page_t * alloc_page(uint32_t flags);
 page_t * alloc_pages(uint32_t pages, uint32_t flags);
 
 void free_page(page_t *page);
+void free_pages(page_t *first, uint32_t count);
 
 void * page_to_phys(page_t *page);
 void * page_to_virt(page_t *page);
