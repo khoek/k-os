@@ -193,6 +193,7 @@ void * alloc_page_user(uint32_t flags, task_t *task, uint32_t addr) {
 page_t * alloc_page(uint32_t flags) {
     page_t *page = do_alloc_pages(1, flags);
     page->addr = (uint32_t) mm_map(page_to_phys(page));
+    page->flags |= PAGE_FLAG_USED;
 
     return page;
 }
@@ -204,6 +205,7 @@ page_t * alloc_pages(uint32_t pages, uint32_t flags) {
     //FIXME ensure this is consecutive
     for(uint32_t i = 0; i < pages; i++) {
         current->addr = (uint32_t) mm_map(page_to_phys(current));
+        current->flags |= PAGE_FLAG_USED;
         current++;
     }
 
