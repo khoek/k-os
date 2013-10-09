@@ -268,7 +268,7 @@ static bool net_825xx_probe(device_t *device) {
         return false;
     }
 
-    net_825xx_t *net_device = pci_device->private = kmalloc(sizeof(net_825xx_t));
+    net_825xx_t *net_device = pci_device->device.private = kmalloc(sizeof(net_825xx_t));
 
     spinlock_init(&net_device->state_lock);
 
@@ -367,7 +367,7 @@ static bool net_825xx_probe(device_t *device) {
 
 static void net_825xx_enable(device_t *device) {
     pci_device_t *pci_device = containerof(device, pci_device_t, device);
-    net_825xx_t *net_device = pci_device->private;
+    net_825xx_t *net_device = pci_device->device.private;
 
     list_add(&net_device->list, &net_825xx_devices); //FIXME this is probably not thread-safe
 
@@ -386,7 +386,7 @@ static void net_825xx_enable(device_t *device) {
 
 static void net_825xx_disable(device_t *device) {
     pci_device_t *pci_device = containerof(device, pci_device_t, device);
-    net_825xx_t *net_device = pci_device->private;
+    net_825xx_t *net_device = pci_device->device.private;
 
     list_rm(&net_device->list); //FIXME this is probably not thread-safe
 
@@ -404,7 +404,8 @@ static pci_ident_t net_825xx_idents[] = {
     {
         .vendor =     0x8086,
         .device =     0x100E,
-        .class  =     0x02000000,
+        //.class  =     0x02000000,
+        .class  =     0x00000000,
         .class_mask = 0xFFFF0000
     }
 };

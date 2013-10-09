@@ -556,6 +556,7 @@ static bool ide_probe(device_t UNUSED(*device)) {
 static void ide_enable(device_t *device) {
     pci_device_t *pci_device = containerof(device, pci_device_t, device);
 
+    //FIXME this is VERY hacky
     static bool once = false;
     if(once) return;
     once = true;

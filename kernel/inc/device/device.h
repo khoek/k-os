@@ -48,6 +48,8 @@ struct device {
     bus_t *bus;
     driver_t *driver;
 
+    void *private;
+
     list_head_t list;
 };
 
