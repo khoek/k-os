@@ -1,41 +1,45 @@
 #include <stddef.h>
 
-#include "common/compiler.h"
 #include "init/initcall.h"
+#include "common/compiler.h"
 #include "common/asm.h"
+#include "common/list.h"
 #include "bug/debug.h"
 #include "bug/panic.h"
 #include "arch/idt.h"
 #include "arch/gdt.h"
 #include "arch/cpl.h"
+#include "mm/cache.h"
 #include "task/task.h"
 #include "video/log.h"
 
 #define NUM_VECTORS 256
 
 //command io port of PICs
-#define MASTER_COMMAND  0x20
-#define SLAVE_COMMAND   0xA0
+#define MASTER_COMMAND 0x20
+#define SLAVE_COMMAND  0xA0
 
 //data io port of PICs
-#define MASTER_DATA     0x21
-#define SLAVE_DATA      0xA1
+#define MASTER_DATA 0x21
+#define SLAVE_DATA  0xA1
+
+#define PIC_NUM_PINS 8
 
 //interrupt vector offset
-#define PIC_MASTER_OFFSET 0x20
-#define PIC_SLAVE_OFFSET  0x28
+#define PIC_MASTER_OFFSET IRQ_OFFSET
+#define PIC_SLAVE_OFFSET  (PIC_MASTER_OFFSET + PIC_NUM_PINS)
 
 //PIC commands
 #define INIT 0x11 //enter "init" mode
 #define EOI  0x20 //end of interrupt handler
 
 //Potential spurious vectors
-#define IRQ_SPURIOUS 7
+#define IRQ_SPURIOUS (PIC_NUM_PINS - 1)
 #define INT_SPURIOUS_MASTER (PIC_MASTER_OFFSET + IRQ_SPURIOUS)
 #define INT_SPURIOUS_SLAVE  (PIC_SLAVE_OFFSET + IRQ_SPURIOUS)
 
-#define PIC_REG_IRR    0x0A
-#define PIC_REG_ISR    0x0B
+#define PIC_REG_IRR 0x0A
+#define PIC_REG_ISR 0x0B
 
 typedef struct idtd {
 	uint16_t size;
@@ -50,15 +54,25 @@ typedef struct idt_entry {
     uint16_t offset_hi;
 } PACKED idt_entry_t;
 
+typedef struct irq_handler {
+    isr_t isr;
+    void *data;
+
+    list_head_t list;
+} irq_handler_t;
+
 static idtd_t idtd USED;
 static idt_entry_t idt[NUM_VECTORS];
-static void (*handlers[NUM_VECTORS - PIC_MASTER_OFFSET])(interrupt_t *);
+static list_head_t isrs[NUM_VECTORS - IRQ_OFFSET];
 
-void idt_register(uint8_t vector, uint8_t cpl, void(*handler)(interrupt_t *)) {
-    BUG_ON(vector < PIC_MASTER_OFFSET || vector >= 256 - PIC_MASTER_OFFSET);
-    BUG_ON(handlers[vector - PIC_MASTER_OFFSET]);
+void register_isr(uint8_t vector, uint8_t cpl, isr_t handler, void *data) {
+    BUG_ON(vector < IRQ_OFFSET);
 
-    handlers[vector - PIC_MASTER_OFFSET] = handler;
+    irq_handler_t *new = kmalloc(sizeof(irq_handler_t));
+    new->isr = handler;
+    new->data = data;
+    list_add(&new->list, &isrs[vector - IRQ_OFFSET]);
+
     idt[vector].type |= cpl;
 }
 
@@ -99,7 +113,7 @@ static char* exceptions[32] = {
 }*/
 
 void interrupt_dispatch(interrupt_t *interrupt) {
-    if (interrupt->vector < PIC_MASTER_OFFSET) {
+    if(interrupt->vector < PIC_MASTER_OFFSET) {
         panicf("Exception #%u: %s\nError Code: 0x%X\nEIP: 0x%p", interrupt->vector, exceptions[interrupt->vector] ? exceptions[interrupt->vector] : "Unknown", interrupt->error, interrupt->cpu.exec.eip);
     }
 
@@ -112,11 +126,14 @@ void interrupt_dispatch(interrupt_t *interrupt) {
 
     task_save(&interrupt->cpu);
 
-    if (handlers[interrupt->vector - PIC_MASTER_OFFSET]) {
-        handlers[interrupt->vector - PIC_MASTER_OFFSET](interrupt);
+    if(!list_empty(&isrs[interrupt->vector - IRQ_OFFSET])) {
+        irq_handler_t *isr;
+        LIST_FOR_EACH_ENTRY(isr, &isrs[interrupt->vector - IRQ_OFFSET], list) {
+            isr->isr(interrupt, isr->data);
+        }
     }
 
-    if (interrupt->vector >= PIC_SLAVE_OFFSET) {
+    if(interrupt->vector >= PIC_SLAVE_OFFSET) {
           outb(SLAVE_COMMAND, EOI);
     }
 
@@ -125,11 +142,11 @@ void interrupt_dispatch(interrupt_t *interrupt) {
     task_run_scheduler();
 }
 
-extern void isr_init();
+extern void register_isr_stubs();
 
 //indirect, invoked by gdt_init()
-INITCALL idt_init() {
-    isr_init();
+INITCALL idt_setup() {
+    register_isr_stubs();
 
     //send INIT command
     outb(MASTER_COMMAND, INIT);
@@ -162,3 +179,13 @@ INITCALL idt_init() {
 
     return 0;
 }
+
+static INITCALL idt_init() {
+    for(uint32_t i = 0; i < NUM_VECTORS - IRQ_OFFSET; i++) {
+        list_init(&isrs[i]);
+    }
+
+    return 0;
+}
+
+core_initcall(idt_init);

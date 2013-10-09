@@ -7,6 +7,7 @@
 
 #define TIMER_FREQ 1000
 
+#define PIT_IRQ 0
 #define PIT_CLOCK 1193182
 
 /*
@@ -20,11 +21,10 @@
 */
 
 static uint64_t ticks;
+
 static uint64_t pit_read() {
     return ticks;
 }
-
-static void handle_pit(interrupt_t UNUSED(*interrupt));
 
 static clock_t pit_clock = {
     .name = "pit",
@@ -63,7 +63,7 @@ void beep() {
     stop();
 }
 
-static void handle_pit(interrupt_t UNUSED(*interrupt)) {
+static void handle_pit(interrupt_t *interrupt, void *data) {
     ticks++;
 
     pit_clock_event_source.event(&pit_clock_event_source);
@@ -73,7 +73,7 @@ static INITCALL pit_init() {
     register_clock(&pit_clock);
     register_clock_event_source(&pit_clock_event_source);
 
-    idt_register(32, CPL_KERNEL, handle_pit);
+    register_isr(PIT_IRQ + IRQ_OFFSET, CPL_KERNEL, handle_pit, NULL);
     outb(0x43, 0x36);
     outb(0x40, (PIT_CLOCK / TIMER_FREQ) & 0xff);
     outb(0x40, ((PIT_CLOCK / TIMER_FREQ) >> 8) & 0xff);

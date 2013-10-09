@@ -20,6 +20,9 @@
 
 #define IDE_DEVICE_PREFIX       "hd"
 
+#define PRIMARY_IRQ   14
+#define SECONDARY_IRQ 15
+
 #define TYPE_PATA               0x00
 #define TYPE_PATAPI             0x01
 
@@ -269,7 +272,7 @@ uint8_t ide_print_error(uint32_t drive, uint8_t err) {
     return err;
 }
 
-static void handle_irq_primary(interrupt_t UNUSED(*interrupt)) {
+static void handle_irq_primary(interrupt_t *interrupt, void *data) {
     uint8_t status = ide_mmio_read(ATA_PRIMARY, ATA_REG_BMSTATUS);
 
     if(status & ATA_BMSTATUS_ERROR) panic("IDE - Primary Channel Data Transfer Error");
@@ -288,7 +291,7 @@ static void handle_irq_primary(interrupt_t UNUSED(*interrupt)) {
     }
 }
 
-static void handle_irq_secondary(interrupt_t UNUSED(*interrupt)) {
+static void handle_irq_secondary(interrupt_t *interrupt, void *data) {
     uint8_t status = ide_mmio_read(ATA_SECONDARY, ATA_REG_BMSTATUS);
 
     if(status & ATA_BMSTATUS_ERROR) panic("IDE - Secondary Channel Data Transfer Error");
@@ -528,8 +531,8 @@ static void ide_enable(device_t *device) {
     if(once) return;
     once = true;
 
-    idt_register(46, CPL_KERNEL, handle_irq_primary);
-    idt_register(47, CPL_KERNEL, handle_irq_secondary);
+    register_isr(PRIMARY_IRQ + IRQ_OFFSET, CPL_KERNEL, handle_irq_primary, NULL);
+    register_isr(SECONDARY_IRQ + IRQ_OFFSET, CPL_KERNEL, handle_irq_secondary, NULL);
 
     // 1- Detect I/O Ports which interface IDE Controller:
     channels[ATA_PRIMARY  ].base  = (BAR_ADDR_32(pci_device->bar[0])) + 0x1F0 * (!pci_device->bar[0]);

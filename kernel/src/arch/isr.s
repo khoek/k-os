@@ -1,4 +1,4 @@
-.global isr_init
+.global register_isr_stubs
 
 .extern interrupt_dispatch
 .extern idt_set_isr
@@ -38,8 +38,8 @@ isr_common:
     isr \vector, 1
 .endm
 
-.type isr_init, @function
-isr_init:
+.type register_isr_stubs, @function
+register_isr_stubs:
     isr       0
     isr       1
     isr       2
@@ -298,4 +298,4 @@ isr_init:
     isr     255
 
     ret
-.size isr_init, .-isr_init
+.size register_isr_stubs, .-register_isr_stubs

@@ -1,4 +1,5 @@
 #include <stdbool.h>
+#include <stddef.h>
 
 #include "lib/int.h"
 #include "init/initcall.h"
@@ -8,6 +9,8 @@
 #include "input/keyboard.h"
 #include "misc/sysrq.h"
 #include "video/log.h"
+
+#define KEYBOARD_IRQ 1
 
 #define RELEASE_BIT (1 << 7)
 
@@ -169,13 +172,13 @@ static void dispatch(uint16_t code) {
     }
 }
 
-static void handle_keyboard(interrupt_t UNUSED(*interrupt)) {
+static void handle_keyboard(interrupt_t *interrupt, void *data) {
     while(inb(0x64) & 2);
     dispatch(inb(0x60));
 }
 
 static INITCALL keyboard_init() {
-    idt_register(33, CPL_KERNEL, handle_keyboard);
+    register_isr(KEYBOARD_IRQ + IRQ_OFFSET, CPL_KERNEL, handle_keyboard, NULL);
 
     return 0;
 }

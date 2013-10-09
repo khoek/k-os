@@ -293,7 +293,7 @@ static clock_event_listener_t clock_listener = {
     .handle = time_tick
 };
 
-static void task_switch_handler(interrupt_t *interrupt) {
+static void task_switch_handler(interrupt_t *interrupt, void *data) {
     task_do_switch();
 }
 
@@ -306,7 +306,7 @@ static INITCALL task_init() {
 
     register_clock_event_listener(&clock_listener);
 
-    idt_register(0x79, CPL_KERNEL, task_switch_handler);
+    register_isr(0x7F, CPL_KERNEL, task_switch_handler, NULL);
 
     logf("task - tasking initialized");
 

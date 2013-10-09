@@ -82,7 +82,7 @@ static INITCALL gdt_init() {
 
     logf("gdt - gdt and tss are active!");
 
-    return idt_init();
+    return idt_setup();
 }
 
 arch_initcall(gdt_init);

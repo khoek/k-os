@@ -207,7 +207,7 @@ static void net_825xx_poll(net_interface_t *interface) {
     }
 }
 
-static void handle_network(interrupt_t UNUSED(*interrupt)) {
+static void handle_network(interrupt_t *interrupt, void *data) {
     net_825xx_t *net_device;
     LIST_FOR_EACH_ENTRY(net_device, &net_825xx_devices, list) {
         uint32_t icr = mmio_read(net_device, REG_ICR);
@@ -279,7 +279,7 @@ static bool net_825xx_probe(device_t *device) {
         mm_map((void *) (addr + BAR_ADDR_32(pci_device->bar[0])));
     }
 
-    idt_register(IRQ_OFFSET + pci_device->interrupt, CPL_KERNEL, handle_network);
+    register_isr(pci_device->interrupt + IRQ_OFFSET, CPL_KERNEL, handle_network, NULL);
 
     mac_t *mac = kmalloc(sizeof(mac_t));
 

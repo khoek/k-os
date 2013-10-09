@@ -2,6 +2,8 @@
 #include "lib/string.h"
 #include "lib/printf.h"
 #include "init/initcall.h"
+#include "arch/gdt.h"
+#include "arch/idt.h"
 #include "mm/mm.h"
 #include "mm/cache.h"
 #include "time/clock.h"
@@ -398,6 +400,9 @@ static void ahci_sata_identify(ahci_device_t *device) {
     //register_disk(device);
 }
 
+static void handle_ahci_irq(interrupt_t *interrupt, ahci_device_t *device) {
+}
+
 static void ahci_enable(device_t *device) {
     ahci_controller_t *cont = device->private;
     for (int i = 0; i < AHCI_NUM_PORTS; i++) {
@@ -406,11 +411,13 @@ static void ahci_enable(device_t *device) {
                 case AHCI_DEV_SATA:
                     setup_port(cont, i);
 
-                    ahci_device_t *device = kmalloc(sizeof(ahci_device_t));
-                    device->cont = cont;
-                    device->port = i;
+                    ahci_device_t *port = kmalloc(sizeof(ahci_device_t));
+                    port->cont = cont;
+                    port->port = i;
 
-                    ahci_sata_identify(device);
+                    register_isr(IRQ_OFFSET + containerof(device, pci_device_t, device)->interrupt, CPL_KERNEL, (isr_t) handle_ahci_irq, port);
+
+                    ahci_sata_identify(port);
 
                     break;
                 case AHCI_DEV_SATAPI:

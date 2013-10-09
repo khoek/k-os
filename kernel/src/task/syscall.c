@@ -328,7 +328,7 @@ static syscall_t syscalls[MAX_SYSCALL] = {
     [21] = sys_stop,
 };
 
-static void syscall_handler(interrupt_t *interrupt) {
+static void syscall_handler(interrupt_t *interrupt, void *data) {
     if(interrupt->cpu.reg.eax >= MAX_SYSCALL || syscalls[interrupt->cpu.reg.eax] == NULL) {
         panicf("Unregistered Syscall #%u: 0x%X", interrupt->cpu.reg.eax, interrupt->cpu.reg.ecx);
     } else {
@@ -340,7 +340,7 @@ static void syscall_handler(interrupt_t *interrupt) {
 }
 
 static INITCALL syscall_init() {
-    idt_register(0x80, CPL_USER, syscall_handler);
+    register_isr(0x80, CPL_USER, syscall_handler, NULL);
 
     return 0;
 }
