@@ -1,0 +1,38 @@
+#ifndef KERNEL_DRIVER_DISK_ATA_H
+#define KERNEL_DRIVER_DISK_ATA_H
+
+#define ATA_CMD_PIO_READ        0x20
+#define ATA_CMD_PIO_READ_EXT    0x24
+#define ATA_CMD_PIO_WRITE       0x30
+#define ATA_CMD_PIO_WRITE_EXT   0x34
+#define ATA_CMD_DMA_READ        0xC8
+#define ATA_CMD_DMA_READ_EXT    0x25
+#define ATA_CMD_DMA_WRITE       0xCA
+#define ATA_CMD_DMA_WRITE_EXT   0x35
+#define ATA_CMD_CACHE_FLUSH     0xE7
+#define ATA_CMD_CACHE_FLUSH_EXT 0xEA
+#define ATA_CMD_PACKET          0xA0
+#define ATA_CMD_IDENTIFY_PACKET 0xA1
+#define ATA_CMD_IDENTIFY        0xEC
+#define ATA_CMD_SET_FEATURES    0xEF
+
+#define ATAPI_CMD_READ          0xA8
+#define ATAPI_CMD_EJECT         0x1B
+
+#define ATA_IDENT_DEVICETYPE    0
+#define ATA_IDENT_CYLINDERS     2
+#define ATA_IDENT_HEADS         6
+#define ATA_IDENT_SECTORS       12
+#define ATA_IDENT_SERIAL        20
+#define ATA_IDENT_VALID_IDENT   53
+#define ATA_IDENT_MODEL         54
+#define ATA_IDENT_DMA_SINGLE    62
+#define ATA_IDENT_DMA_MULTI     63
+#define ATA_IDENT_UDMA          88
+#define ATA_IDENT_FEATURES      98
+#define ATA_IDENT_FIELDVALID    106
+#define ATA_IDENT_MAX_LBA       120
+#define ATA_IDENT_COMMANDSETS   164
+#define ATA_IDENT_MAX_LBA_EXT   200
+
+#endif
