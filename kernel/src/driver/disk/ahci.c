@@ -4,7 +4,9 @@
 #include "init/initcall.h"
 #include "mm/mm.h"
 #include "mm/cache.h"
+#include "time/clock.h"
 #include "driver/bus/pci.h"
+#include "driver/disk/ata.h"
 #include "video/log.h"
 
 #define AHCI_DEVICE_PREFIX "sd"
@@ -18,10 +20,21 @@
 #define AHCI_PORT_STATUS_DET_PRESENT 0x3
 #define AHCI_PORT_STATUS_IPM_ACTIVE  0x1
 
-#define TYPE_SATA   0x00000101 // SATA drive
-#define TYPE_SATAPI 0xEB140101 // SATAPI drive
-#define TYPE_SEMB   0xC33C0101 // Enclosure management bridge
-#define TYPE_PM     0x96690101 // Port multiplier
+#define PORT_TYPE_SATA   0x00000101 // SATA drive
+#define PORT_TYPE_SATAPI 0xEB140101 // SATAPI drive
+#define PORT_TYPE_SEMB   0xC33C0101 // Enclosure management bridge
+#define PORT_TYPE_PM     0x96690101 // Port multiplier
+
+typedef enum ahci_fis_type {
+    FIS_TYPE_H2D       = 0x27,
+    FIS_TYPE_D2H       = 0x34,
+    FIS_TYPE_DMA_ACT   = 0x39,
+    FIS_TYPE_DMA_SETUP = 0x41,
+    FIS_TYPE_DATA      = 0x46,
+    FIS_TYPE_BIST      = 0x58,
+    FIS_TYPE_PIO_SETUP = 0x5F,
+    FIS_TYPE_DEV_BITS  = 0xA1,
+} ahci_fis_type_t;
 
 #define PORT_CMD_ST  (1 << 0)
 #define PORT_CMD_FRE (1 << 4)
@@ -99,8 +112,17 @@ typedef struct ahci_abar {
     ahci_port_t ports[32];
 } PACKED ahci_abar_t;
 
-typedef struct ahci_fis_cmd {
-    uint8_t type;
+typedef struct prd {
+    uint32_t addr_low;
+    uint32_t addr_high;
+    uint32_t zero1;
+    uint32_t dbc:22;
+    uint32_t zero2:9;
+    uint32_t interrupt:1;
+} PACKED prd_t;
+
+typedef struct ahci_fis_h2d {
+    ahci_fis_type_t type;
 
     uint8_t port_multiplier:4;
     uint8_t zero1:3;
@@ -125,49 +147,145 @@ typedef struct ahci_fis_cmd {
     uint8_t control;
 
     uint8_t zero2[4];
-} ahci_fis_cmd_t;
+} ahci_fis_reg_h2d_t;
 
-typedef struct prd {
-    uint32_t addr_low;
-    uint32_t addr_high;
-    uint32_t zero1;
-    uint32_t dbc:22;
-    uint32_t zero2:9;
-    uint32_t interrupt:1;
-} PACKED prd_t;
+typedef struct ahci_fis_reg_d2h {
+    ahci_fis_type_t type;
 
-typedef struct ahci_cmd_table {
-    ahci_fis_cmd_t fis;
+    uint8_t port_multiplier:4;
+    uint8_t zero1:2;
+    uint8_t interrupt:1;
+    uint8_t zero2:1;
+
+    uint8_t status;
+    uint8_t error;
+
+    uint8_t lba0;
+    uint8_t lba1;
+    uint8_t lba2;
+    uint8_t device;
+    uint8_t lba3;
+    uint8_t lba4;
+    uint8_t lba5;
+
+    uint8_t zero3;
+
+    uint8_t count_low;
+    uint8_t count_high;
+
+    uint8_t zero4[6];
+} ahci_fis_reg_d2h_t;
+
+typedef struct ahci_fis_setup_dma {
+    ahci_fis_type_t type;
+
+    uint8_t port_multiplier:4;
+    uint8_t zero1:1;
+    uint8_t read:1;
+    uint8_t interrupt:1;
+    uint8_t autoactivate:1;
+
+    uint16_t zero2;
+
+    uint64_t buff_id;
+
+    uint32_t zero3;
+
+    uint32_t buff_offset;
+    uint32_t byte_count;
+
+    uint32_t zero4;
+} ahci_fis_setup_dma_t;
+
+typedef struct ahci_fis_setup_pio {
+    ahci_fis_type_t type;
+
+    uint8_t port_multiplier:4;
+    uint8_t zero1:1;
+    uint8_t read:1;
+    uint8_t interrupt:1;
+    uint8_t zero2:1;
+
+    uint8_t status;
+    uint8_t error;
+
+    uint8_t lba0;
+    uint8_t lba1;
+    uint8_t lba2;
+    uint8_t device;
+
+    uint8_t lba3;
+    uint8_t lba4;
+    uint8_t lba5;
+    uint8_t zero3;
+
+    uint8_t countl;
+    uint8_t counth;
+    uint8_t zero4;
+    uint8_t new_status;
+
+    uint16_t byte_count;
+    uint16_t zero5;
+} ahci_fis_setup_pio_t;
+
+typedef struct ahci_recv_fis {
+    ahci_fis_setup_dma_t dma;
+
+    uint8_t zero1[0x04];
+
+    ahci_fis_setup_pio_t pio;
+
+    uint8_t zero2[0x0c];
+
+    ahci_fis_reg_d2h_t reg;
+
+    uint8_t zero3[0x04];
+
+    uint8_t set_bits_fis[0x08];
+    uint8_t unknown_fis[0x40];
+
+    uint8_t zero4[0x60];
+} ahci_recv_fis_t;
+
+typedef struct ahci_reg_h2d_table {
+    ahci_fis_reg_h2d_t fis;
     uint8_t atapi_cmd[16];
     uint8_t zero[48];
     prd_t prdt[AHCI_NUM_PRDT_ENTRIES];
-} PACKED ahci_cmd_table_t;
+} PACKED ahci_reg_h2d_table_t;
 
-typedef struct ahci_device {
+typedef struct ahci_controller {
     ahci_abar_t *abar;
 
     ahci_cmd_header_t (*cmd_headers)[AHCI_NUM_PORTS][AHCI_NUM_CMD_HEADERS];
     uint8_t (*fis)[AHCI_NUM_PORTS][AHCI_MAX_FIS_SIZE];
-    ahci_cmd_table_t (*cmd_tables)[AHCI_NUM_PORTS];
+    ahci_reg_h2d_table_t (*cmd_tables)[AHCI_NUM_PORTS];
+} ahci_controller_t;
+
+typedef struct ahci_device {
+    ahci_controller_t *cont;
+    uint32_t port;
+    block_device_t device;
 } ahci_device_t;
 
 void enable_port(ahci_port_t *port) {
-    while(port->cmd & PORT_CMD_CR);
-
     port->cmd |= PORT_CMD_FRE;
+
+    while(port->cmd & PORT_CMD_CR) sleep(1);
     port->cmd |= PORT_CMD_ST;
 }
 
 void disable_port(ahci_port_t *port) {
     port->cmd &= ~PORT_CMD_ST;
-    port->cmd &= ~PORT_CMD_FRE;
+    while(port->cmd & PORT_CMD_CR) sleep(1);
 
-    while(port->cmd & PORT_CMD_FR || port->cmd & PORT_CMD_CR);
+    port->cmd &= ~PORT_CMD_FRE;
+    while(port->cmd & PORT_CMD_FR) sleep(1);
 }
 
 #define VIRT_TO_PHYS(v) ((typeof(v)) virt_to_phys(v))
 
-void setup_port(ahci_device_t *device, int num) {
+void setup_port(ahci_controller_t *device, int num) {
     disable_port(&device->abar->ports[num]);
 
     ahci_port_t *port = &device->abar->ports[num];
@@ -198,11 +316,11 @@ static dev_type_t check_type(ahci_port_t *port) {
           return AHCI_DEV_NULL;
 
      switch (port->sig) {
-          case TYPE_SATAPI:
+          case PORT_TYPE_SATAPI:
                 return AHCI_DEV_SATAPI;
-          case TYPE_SEMB:
+          case PORT_TYPE_SEMB:
                 return AHCI_DEV_SEMB;
-          case TYPE_PM:
+          case PORT_TYPE_PM:
                 return AHCI_DEV_PM;
           default:
                 return AHCI_DEV_SATA;
@@ -222,7 +340,7 @@ static bool ahci_probe(device_t *device) {
     pci_device_t *pci_device = containerof(device, pci_device_t, device);
     if(!pci_device->bar[5]) return false;
 
-    ahci_device_t *cont = kmalloc(sizeof(ahci_device_t));
+    ahci_controller_t *cont = kmalloc(sizeof(ahci_controller_t));
     cont->abar = (ahci_abar_t *) mm_map((void *) BAR_ADDR_32(pci_device->bar[5]));
 
     if(!cont->abar->impl_ports) {
@@ -243,18 +361,57 @@ static bool ahci_probe(device_t *device) {
 
 probe_bar_fail:
     //TODO implementation pending mm_unmap(cont->abar);
-    kfree(cont, sizeof(ahci_device_t));
+    kfree(cont, sizeof(ahci_controller_t));
 
     return false;
 }
 
+static ssize_t ahci_read(block_device_t *device, void *buff, size_t start, size_t blocks) {
+    return -1;
+}
+
+static ssize_t ahci_write(block_device_t *device, void *buff, size_t start, size_t blocks) {
+    return -1;
+}
+
+static block_device_ops_t ahci_device_ops = {
+    .read = ahci_read,
+    .write = ahci_write,
+};
+
+static void ahci_sata_identify(ahci_device_t *device) {
+    static uint32_t device_number = 0;
+    device_number++;
+
+    device->device.ops = &ahci_device_ops;
+    device->device.block_size = 512;
+    //device->device.size =  / device->device.block_size;
+
+    logf("ahci - SATA   %7uMB", 0);
+
+    char *name = kmalloc(STRLEN(AHCI_DEVICE_PREFIX) + 2);
+    memcpy(name, AHCI_DEVICE_PREFIX, STRLEN(AHCI_DEVICE_PREFIX));
+    name[STRLEN(AHCI_DEVICE_PREFIX)] = 'a' + device_number;
+    name[STRLEN(AHCI_DEVICE_PREFIX) + 1] = '\0';
+
+    //register_block_device(device, name);
+    //register_disk(device);
+}
+
 static void ahci_enable(device_t *device) {
-    ahci_device_t *cont = device->private;
+    ahci_controller_t *cont = device->private;
     for (int i = 0; i < AHCI_NUM_PORTS; i++) {
         if (cont->abar->impl_ports & (1 << i)) {
             switch(check_type(&cont->abar->ports[i])) {
                 case AHCI_DEV_SATA:
-                    logf("ahci - port %u: SATA", i);
+                    setup_port(cont, i);
+
+                    ahci_device_t *device = kmalloc(sizeof(ahci_device_t));
+                    device->cont = cont;
+                    device->port = i;
+
+                    ahci_sata_identify(device);
+
                     break;
                 case AHCI_DEV_SATAPI:
                     logf("ahci - port %u: SATAPI", i);
@@ -268,8 +425,6 @@ static void ahci_enable(device_t *device) {
                 default:
                     continue;
             }
-
-            setup_port(cont, i);
         }
     }
 }

@@ -15,6 +15,7 @@
 #include "fs/disk.h"
 #include "device/device.h"
 #include "driver/bus/pci.h"
+#include "driver/disk/ata.h"
 #include "video/log.h"
 
 #define IDE_DEVICE_PREFIX       "hd"
@@ -44,40 +45,6 @@
 #define ATA_ER_ABRT             0x04
 #define ATA_ER_TK0NF            0x02
 #define ATA_ER_AMNF             0x01
-
-#define ATA_CMD_PIO_READ        0x20
-#define ATA_CMD_PIO_READ_EXT    0x24
-#define ATA_CMD_PIO_WRITE       0x30
-#define ATA_CMD_PIO_WRITE_EXT   0x34
-#define ATA_CMD_DMA_READ        0xC8
-#define ATA_CMD_DMA_READ_EXT    0x25
-#define ATA_CMD_DMA_WRITE       0xCA
-#define ATA_CMD_DMA_WRITE_EXT   0x35
-#define ATA_CMD_CACHE_FLUSH     0xE7
-#define ATA_CMD_CACHE_FLUSH_EXT 0xEA
-#define ATA_CMD_PACKET          0xA0
-#define ATA_CMD_IDENTIFY_PACKET 0xA1
-#define ATA_CMD_IDENTIFY        0xEC
-#define ATA_CMD_SET_FEATURES    0xEF
-
-#define ATAPI_CMD_READ          0xA8
-#define ATAPI_CMD_EJECT         0x1B
-
-#define ATA_IDENT_DEVICETYPE    0
-#define ATA_IDENT_CYLINDERS     2
-#define ATA_IDENT_HEADS         6
-#define ATA_IDENT_SECTORS       12
-#define ATA_IDENT_SERIAL        20
-#define ATA_IDENT_VALID_IDENT   53
-#define ATA_IDENT_MODEL         54
-#define ATA_IDENT_DMA_SINGLE    62
-#define ATA_IDENT_DMA_MULTI     63
-#define ATA_IDENT_UDMA          88
-#define ATA_IDENT_FEATURES      98
-#define ATA_IDENT_FIELDVALID    106
-#define ATA_IDENT_MAX_LBA       120
-#define ATA_IDENT_COMMANDSETS   164
-#define ATA_IDENT_MAX_LBA_EXT   200
 
 #define ATA_SET_FEATURES_DMA    0x03
 
@@ -711,7 +678,7 @@ static void ide_enable(device_t *device) {
             ide_devices[d].device.block_size = 512;
 
             logf("ide - %s %7uMB",
-            (const char *[]){"ATA  ", "ATAPI"}[ide_devices[i].type],
+            (const char *[]){"PATA  ", "PATAPI"}[ide_devices[i].type],
             ide_devices[i].size / 1024 / 2);
 
             char *name = kmalloc(STRLEN(IDE_DEVICE_PREFIX) + 2);
