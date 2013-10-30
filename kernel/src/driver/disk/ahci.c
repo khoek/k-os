@@ -17,6 +17,22 @@ typedef struct ahci_controller {
     void *base;
 } ahci_controller_t;
 
+typedef struct ahci_port {
+    uint32_t num;
+    ahci_controller_t *cont;
+
+    uint8_t *cmdlist;
+    uint32_t cmdlist_phys;
+
+    uint8_t *recvfis;
+    uint32_t recvfis_phys;
+
+    uint8_t *cmdtable;
+    uint32_t cmdtable_phys;
+    
+    block_device_t device;
+} ahci_port_t;
+
 #define AHCI_DEVICE_PREFIX "sd"
 
 static char * ahci_controller_name(device_t UNUSED(*device)) {
@@ -35,7 +51,6 @@ static bool ahci_probe(device_t *device) {
     ahci_controller_t *cont = device->private = kmalloc(sizeof(ahci_controller_t));
 
     cont->base = mm_map((void *) pci_device->bar[5]);
-    logf("%X %X", pci_device->bar[5], cont->base);
 
     return true;
 }
@@ -48,7 +63,7 @@ static ssize_t ahci_write(block_device_t *device, void *buff, size_t start, size
     return -1;
 }
 
-/*static*/ block_device_ops_t ahci_device_ops = {
+static block_device_ops_t ahci_device_ops = {
     .read = ahci_read,
     .write = ahci_write,
 };
@@ -60,13 +75,16 @@ static ssize_t ahci_write(block_device_t *device, void *buff, size_t start, size
 #define AHCI_PORT_BASE 0x100
 #define AHCI_PORT_SIZE 0x080
 
-static inline void * port_to_base(uint32_t num, void *base) {
-    return (void *) (((uint32_t) base) + AHCI_PORT_BASE + (num * AHCI_PORT_SIZE));
+static inline void * port_to_base(ahci_port_t *port) {
+    return (void *) (((uint32_t) port->cont->base) + AHCI_PORT_BASE + (port->num * AHCI_PORT_SIZE));
 }
 
 #define AHCI_NUM_PORTS 32
 
 #define AHCI_ABAR_PORTS_IMPL 0x0C
+
+#define AHCI_PORT_CMD_ST (1 << 0)
+#define AHCI_PORT_CMD_FR (1 << 4)
 
 #define AHCI_PORT_PxCLB  0x00
 #define AHCI_PORT_PxCLBU 0x04
@@ -77,51 +95,44 @@ static inline void * port_to_base(uint32_t num, void *base) {
 #define AHCI_PORT_PxCMD  0x18
 #define AHCI_PORT_PxCI   0x38
 
-static uint8_t *ahci_cmdlist;
-static uint32_t ahci_cmdlist_phys;
+static uint8_t buff[ATA_SECTOR_SIZE];
+static void sata_identify(ahci_port_t *port) {
+    writel(0x00010005, 0x00, port->cmdlist);
+    writel(0, 0x04, port->cmdlist);
+    writel(port->cmdtable_phys, 0x08, port->cmdlist);
+    writel(0, 0x0C, port->cmdlist);
+    writel(0, 0x10, port->cmdlist);
+    writel(0, 0x14, port->cmdlist);
+    writel(0, 0x18, port->cmdlist);
+    writel(0, 0x1C, port->cmdlist);
 
-static uint8_t *ahci_recvfis;
-static uint32_t ahci_recvfis_phys;
+    writel(0x00EC8027, 0x00, port->cmdtable);
+    writel(0, 0x04, port->cmdtable);
+    writel(0, 0x08, port->cmdtable);
+    writel(0, 0x0C, port->cmdtable);
+    writel(0, 0x10, port->cmdtable);
 
-static uint8_t *ahci_cmdtable;
-static uint32_t ahci_cmdtable_phys;
+    writel(((uint32_t) &buff) - VIRTUAL_BASE, 0x80, port->cmdtable);
+    writel(0, 0x84, port->cmdtable);
+    writel(0, 0x88, port->cmdtable);
+    writel(ATA_SECTOR_SIZE - 1, 0x8C, port->cmdtable);
 
-static uint8_t buff[512];
-static void sata_identify(void *port_base, void *base) {
-    writel(0x00010005, 0x00, ahci_cmdlist);
-    writel(0, 0x04, ahci_cmdlist);
-    writel(ahci_cmdtable_phys, 0x08, ahci_cmdlist);
-    writel(0, 0x0C, ahci_cmdlist);
-    writel(0, 0x10, ahci_cmdlist);
-    writel(0, 0x14, ahci_cmdlist);
-    writel(0, 0x18, ahci_cmdlist);
-    writel(0, 0x1C, ahci_cmdlist);
+    writel(0x00, AHCI_PORT_PxIS, port->cont->base);
 
-    writel(0x00EC8027, 0x00, ahci_cmdtable);
-    writel(0, 0x04, ahci_cmdtable);
-    writel(0, 0x08, ahci_cmdtable);
-    writel(0, 0x0C, ahci_cmdtable);
-    writel(0, 0x10, ahci_cmdtable);
-
-    writel(((uint32_t) &buff) - VIRTUAL_BASE, 0x80, ahci_cmdtable);
-    writel(0, 0x84, ahci_cmdtable);
-    writel(0, 0x88, ahci_cmdtable);
-    writel(0x000001FF, 0x8C, ahci_cmdtable);
-
-    writel(0x00, AHCI_PORT_PxIS, base);
+    void *port_base = port_to_base(port);
 
     uint32_t tmp = readl(AHCI_PORT_PxCMD, port_base);
-    tmp |= 1 << 0;
-    tmp |= 1 << 4;
+    tmp |= AHCI_PORT_CMD_ST;
+    tmp |= AHCI_PORT_CMD_FR;
     writel(tmp, AHCI_PORT_PxCMD, port_base);
 
-    writel(0x00000001, AHCI_PORT_PxCI, port_base);
+    writel(1 << port->num, AHCI_PORT_PxCI, port_base);
 
     while(readl(AHCI_PORT_PxCI, port_base));
 
     tmp = readl(AHCI_PORT_PxCMD, port_base);
-    tmp &= ~(1 << 0);
-    tmp &= ~(1 << 4);
+    tmp &= ~AHCI_PORT_CMD_ST;
+    tmp &= ~AHCI_PORT_CMD_FR;
     writel(tmp, AHCI_PORT_PxCMD, port_base);
 
     char model[41];
@@ -134,17 +145,48 @@ static void sata_identify(void *port_base, void *base) {
     uint32_t size = *((uint32_t *) (buff + ATA_IDENT_MAX_LBA_EXT));
 
     logf("ahci - SATA %s %7uMB", model, size / 1024 / 2);
+
+    port->device.ops = &ahci_device_ops;
+    port->device.size = size / ATA_SECTOR_SIZE;
+    port->device.block_size = ATA_SECTOR_SIZE;
+    
+    static uint32_t count = 0;
+    char *name = kmalloc(STRLEN(AHCI_DEVICE_PREFIX) + 2);
+    memcpy(name, AHCI_DEVICE_PREFIX, STRLEN(AHCI_DEVICE_PREFIX));
+    name[STRLEN(AHCI_DEVICE_PREFIX)] = 'a' + count++;
+    name[STRLEN(AHCI_DEVICE_PREFIX) + 1] = '\0';
+    
+    register_block_device(&port->device, name);
+    register_disk(&port->device);
 }
 
-static void port_init(void *port_base, void *base) {
-    writel(ahci_cmdlist_phys, AHCI_PORT_PxCLB, port_base);
+static void port_init(ahci_controller_t *cont, uint32_t num) {
+    ahci_port_t *port = kmalloc(sizeof(ahci_port_t));
+    port->cont = cont;
+    port->num = num;
+    
+    page_t *page = alloc_page(0);
+    port->cmdlist = (uint8_t *) page_to_virt(page);
+    port->cmdlist_phys = (uint32_t) page_to_phys(page);
+
+    page = alloc_page(0);
+    port->recvfis = (uint8_t *) page_to_virt(page);
+    port->recvfis_phys = (uint32_t) page_to_phys(page);
+
+    page = alloc_pages(14, 0);
+    port->cmdtable = (uint8_t *) page_to_virt(page);
+    port->cmdtable_phys = (uint32_t) page_to_phys(page);
+    
+    void *port_base = port_to_base(port);
+
+    writel(port->cmdlist_phys, AHCI_PORT_PxCLB, port_base);
     writel(0, AHCI_PORT_PxCLBU, port_base);
-    writel(ahci_recvfis_phys, AHCI_PORT_PxFB, port_base);
+    writel(port->recvfis_phys, AHCI_PORT_PxFB, port_base);
     writel(0, AHCI_PORT_PxFBU, port_base);
     writel(0, AHCI_PORT_PxIS, port_base);
     writel(0, AHCI_PORT_PxIE, port_base);
 
-    sata_identify(port_base, base);
+    sata_identify(port);
 }
 
 static void ahci_enable(device_t *device) {
@@ -153,7 +195,7 @@ static void ahci_enable(device_t *device) {
     uint32_t ports_impl = readl(AHCI_ABAR_PORTS_IMPL, cont->base);
     for(uint32_t i = 0; i < AHCI_NUM_PORTS; i++) {
         if(ports_impl & 1) {
-            port_init(port_to_base(i, cont->base), cont->base);
+            port_init(cont, i);
             break;
         }
 
@@ -202,19 +244,6 @@ static pci_driver_t ahci_driver = {
 
 static INITCALL ahci_init() {
     register_driver(&ahci_driver.driver);
-
-    page_t *cmdlist_page = alloc_page(0);
-    ahci_cmdlist = (uint8_t *) page_to_virt(cmdlist_page);
-    ahci_cmdlist_phys = (uint32_t) page_to_phys(cmdlist_page);
-
-    page_t *recvfis_page = alloc_page(0);
-    ahci_recvfis = (uint8_t *) page_to_virt(recvfis_page);
-    ahci_recvfis_phys = (uint32_t) page_to_phys(recvfis_page);
-
-    page_t *cmdtable_page = alloc_pages(14, 0);
-    ahci_cmdtable = (uint8_t *) page_to_virt(cmdtable_page);
-    ahci_cmdtable_phys = (uint32_t) page_to_phys(cmdtable_page);
-
     return 0;
 }
 

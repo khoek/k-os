@@ -1,6 +1,8 @@
 #ifndef KERNEL_DRIVER_DISK_ATA_H
 #define KERNEL_DRIVER_DISK_ATA_H
 
+#define ATA_SECTOR_SIZE 512
+
 #define ATA_CMD_PIO_READ        0x20
 #define ATA_CMD_PIO_READ_EXT    0x24
 #define ATA_CMD_PIO_WRITE       0x30
