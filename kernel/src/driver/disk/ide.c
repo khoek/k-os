@@ -599,7 +599,7 @@ static void ide_enable(device_t *device) {
             ide_devices[d].channel     = i;
             ide_devices[d].drive       = j;
             ide_devices[d].signature   = *((uint16_t *) (ide_buf + ATA_IDENT_DEVICETYPE));
-            ide_devices[d].features     = *((uint16_t *) (ide_buf + ATA_IDENT_FEATURES));
+            ide_devices[d].features    = *((uint16_t *) (ide_buf + ATA_IDENT_FEATURES));
             ide_devices[d].commandSets = *((uint32_t *) (ide_buf + ATA_IDENT_COMMANDSETS));
 
             //FIXME does this work? (autodecteting the best hdd speeds and setting them)
@@ -680,9 +680,7 @@ static void ide_enable(device_t *device) {
             ide_devices[d].device.size = ide_devices[d].size / 512;
             ide_devices[d].device.block_size = 512;
 
-            logf("ide - %s %7uMB",
-            (const char *[]){"PATA  ", "PATAPI"}[ide_devices[i].type],
-            ide_devices[i].size / 1024 / 2);
+            logf("ide - %s %s %7uMB", (const char *[]){"PATA  ", "PATAPI"}[ide_devices[i].type], ide_devices[d].model, ide_devices[i].size / 1024 / 2);
 
             char *name = kmalloc(STRLEN(IDE_DEVICE_PREFIX) + 2);
             memcpy(name, IDE_DEVICE_PREFIX, STRLEN(IDE_DEVICE_PREFIX));
