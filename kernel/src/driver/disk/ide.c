@@ -490,7 +490,7 @@ static int32_t ide_write_sectors(ide_device_t *device, uint64_t numsects, uint32
     if (device->type == TYPE_PATA) {
         return pata_access(ATA_WRITE, false, device, numsects, lba, edi);
     } else if (device->type == TYPE_PATAPI) {
-        //TODO implement ATAPI
+        //TODO implement PATAPI
         return 0;
     } else {
         panic("IDE - unknown device type");
