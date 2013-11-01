@@ -4,7 +4,9 @@
 #include "mm/mm.h"
 #include "video/log.h"
 
-#define ACPI_RSDP_SIG "RSD PTR "
+#define ACPI_SIG_RSDP "RSD PTR "
+#define ACPI_SIG_RSDT "RSDT"
+#define ACPI_SIG_MADT "APIC"
 
 #define BIOS_DATA_START (0xE0000)
 #define BIOS_DATA_END   (0xFFFFF + 1)
@@ -15,7 +17,7 @@ typedef struct acpi_rsdp {
     uint8_t checksum;
     uint8_t oem_id[6];
     uint8_t rev;
-    void *rsdt;
+    uint8_t *rsdt;
 } PACKED acpi_rsdp_t;
 
 typedef struct acpi_sdt {
@@ -28,7 +30,14 @@ typedef struct acpi_sdt {
     uint32_t oem_rev;
     uint32_t creator_id;
     uint32_t creator_rev;
+    uint8_t data[];
 } PACKED acpi_sdt_t;
+
+typedef struct acpi_madt {
+    void *lapic_addr;
+    uint32_t flags;
+    uint8_t records[];
+} PACKED acpi_madt_t;
 
 static inline bool acpi_checksum(void *ptr, uint32_t bytes) {
     uint8_t sum = 0;
@@ -39,8 +48,12 @@ static inline bool acpi_checksum(void *ptr, uint32_t bytes) {
     return !sum;
 }
 
+static inline bool acpi_sig_match(void *sig, acpi_sdt_t *sdt) {
+    return !memcmp(sig, sdt->sig, sizeof(sdt->sig));
+}
+
 static inline bool acpi_valid_rsdp(acpi_rsdp_t *rsdp) {
-    if(memcmp(ACPI_RSDP_SIG, rsdp->sig, sizeof(rsdp->sig))) return false;
+    if(memcmp(ACPI_SIG_RSDP, rsdp->sig, sizeof(rsdp->sig))) return false;
     return acpi_checksum(rsdp, sizeof(acpi_rsdp_t));
 }
 
@@ -72,9 +85,28 @@ static INITCALL acpi_init() {
     }
 
     if(rsdp) {
-        rsdt = mm_map(rsdp->rsdt);
-        if(acpi_valid_sdt(rsdt)) {
+        rsdt = mm_map(rsdp->rsdt);        
+        if(acpi_sig_match(ACPI_SIG_RSDT, rsdt) && acpi_valid_sdt(rsdt)) {
             logf("acpi - rsdt load success");
+            
+            void **sdts = (void *) rsdt->data;
+            for(uint32_t i = 0; i < (rsdt->len - sizeof(acpi_sdt_t)) / sizeof(void *); i++) {
+                //FIXME unmap these pages
+                acpi_sdt_t *real = mm_map(sdts[i]);
+                if(acpi_valid_sdt(real)) {
+                    if(acpi_sig_match(ACPI_SIG_MADT, real)) {
+                        //TODO apic and mp initialization
+                        
+                        /*
+                        acpi_madt_t *madt = (void *) &real->data;
+                        
+                        //TODO read out the list of enabled processors and then do something like mp_add()
+                        
+                        apic_init(mm_map(madt->lapic_addr));
+                        */
+                    }
+                }
+            }
         } else {
             rsdt = NULL;
 
