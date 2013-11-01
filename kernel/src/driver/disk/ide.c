@@ -512,8 +512,7 @@ static block_device_ops_t ide_device_ops = {
 
 static char * ide_controller_name(device_t UNUSED(*device)) {
     static int next_id = 0;
-
-    char *name = kmalloc(STRLEN(IDE_DEVICE_PREFIX) + STRLEN(STR(MAX_UINT)) + 1);
+    char *name = kmalloc(STRLEN(IDE_DEVICE_PREFIX) + STRLEN(XSTR(MAX_UINT)) + 1);
     sprintf(name, "%s%u", IDE_DEVICE_PREFIX, next_id++);
 
     return name;

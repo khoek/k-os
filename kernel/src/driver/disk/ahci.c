@@ -314,7 +314,7 @@ static void sata_identify(ahci_port_t *port) {
 static char * ahci_controller_name(device_t UNUSED(*device)) {
     static int next_id = 0;
 
-    char *name = kmalloc(STRLEN(AHCI_DEVICE_PREFIX) + STRLEN(STR(MAX_UINT)) + 1);
+    char *name = kmalloc(STRLEN(AHCI_DEVICE_PREFIX) + STRLEN(XSTR(MAX_UINT)) + 1);
     sprintf(name, "%s%u", AHCI_DEVICE_PREFIX, next_id++);
 
     return name;

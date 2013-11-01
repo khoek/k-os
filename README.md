@@ -6,34 +6,41 @@ K-OS aims to be a C kernel, but routines which need to be written in ASM are sto
 
 ## Features
 
-* Multiboot 1
-* Text UI
-* Memory Managment Suite
+* Multiboot 1 compliant
+* Memory Managment subsystem
     * Page Frame Allocator
     * Cache Allocator
     * Page Mapping Manipulation
 * Drivers
     * PIT
+    * PCI
     * Keyboard
+    * SATA
     * PATA
     * E1000 (Intel 825xx) Ethernet Driver
-* Time
+* Time subsystem
     * Clock and Timer APIs
-* Devices
+* Device subsystem
     * Unified Bus, Device and Driver APIs
-* Networking (functional, in progress)
+* Disk/Filesystem subsystem (functional, in progress)
+    * Disk label support (MSDOS, GPT)
+    * Partition support (FAT32)
+* Network subsystem (functional, in progress)
     * DHCP support
     * 4 layer packet switch
         * Link layer (Ethernet)
         * Network layer (IP, ARP)
         * Transport layer (TCP, UDP)
         * Application layer (ICMP, NBNS)
-* Tasks and Threads (functional, in progress)
+* Scheduler subsystem (functional, in progress)
     * Multitasking
-    * Scheduler
-    * System Calls (exit, fork, sleep, log, uptime)
-* Tools:
-    * Secure Disk Erasure Tool
+    * System Calls (POSIX, in progress)
+        * Process control (exit, fork, etc.)
+        * Filesystem access (open, close, read, write, etc.)
+        * Network access (socket, send, recv, etc.)
+* Misc:
+    * Profiler
+    * SysRq support
 
 ## Compiling
 Currently K-OS accepts the following optional configuration options:
