@@ -4,17 +4,16 @@
 #include "lib/printf.h"
 #include "common/asm.h"
 #include "sync/spinlock.h"
+#include "arch/bios.h"
 #include "mm/mm.h"
 #include "video/console.h"
 
 #define BUFFSIZE 1024
-
-#define VRAM_PHYS 0xb8000
 #define PORT_BASE 0x463
 
 static uint32_t row, col;
 static uint16_t *vga_port = ((uint16_t *) PORT_BASE);
-static char *vram = ((char *) VRAM_PHYS);
+static char *vram = ((char *) BIOS_VRAM);
 static char color = 0x07;
 
 static DEFINE_SPINLOCK(vram_lock);
@@ -23,14 +22,6 @@ static DEFINE_SPINLOCK(buffer_lock);
 void console_map_virtual() {
     vga_port = mm_map(vga_port);
     vram = mm_map(vram);
-}
-
-uint8_t console_row() {
-     return row;
-}
-
-uint8_t console_col() {
-     return col;
 }
 
 void console_color(const char c) {
