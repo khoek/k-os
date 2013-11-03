@@ -6,9 +6,9 @@
 #include "common/compiler.h"
 #include "bug/panic.h"
 #include "bug/debug.h"
+#include "arch/mp.h"
 #include "mm/mm.h"
 #include "mm/cache.h"
-#include "task/task.h"
 #include "video/log.h"
 #include "video/console.h"
 
@@ -32,16 +32,13 @@ void kmain(uint32_t magic, multiboot_info_t *mbd) {
     mm_init();
     cache_init();
 
-    logf("starting initcalls");
+    logf("init - starting initcalls");
     for(initcall_t *initcall = &initcall_start; initcall < &initcall_end; initcall++) {
         if((*initcall)()) panic("Kernel Boot Failure - initcall aborted with non-zero exit code");
     }
-    logf("finished initcalls");
+    logf("init - finished initcalls");
 
     mm_postinit_reclaim();
 
-    logf("entering usermode");
-    task_run();
-
-    panic("kmain returned!");
+    mp_run_cpu(bsp);
 }

@@ -1,6 +1,10 @@
 #ifndef KERNEL_ARCH_ACPI_H
 #define KERNEL_ARCH_ACPI_H
 
+#define MADT_ENTRY_TYPE_LAPIC 0
+
+#define MADT_ENTRY_LAPIC_FLAG_ENABLED (1 << 0)
+
 #include "lib/int.h"
 
 typedef struct acpi_sdt {
@@ -16,7 +20,13 @@ typedef struct acpi_sdt {
     uint8_t data[];
 } PACKED acpi_sdt_t;
 
-static acpi_sdt_t *rsdt;
-static acpi_sdt_t *madt;
+typedef struct acpi_madt {
+    void *lapic_base;
+    uint32_t flags;
+    uint8_t records[];
+} PACKED acpi_madt_t;
+
+extern acpi_sdt_t *rsdt;
+extern acpi_sdt_t *madt;
 
 #endif

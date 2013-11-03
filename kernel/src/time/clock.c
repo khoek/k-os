@@ -13,6 +13,7 @@ static DEFINE_LIST(clock_event_listeners);
 static clock_t *active;
 static clock_event_source_t *active_event_source;
 
+extern void logf(char *c, ...);
 static void handle_clock_event(clock_event_source_t *clock_event_source) {
     clock_event_listener_t *listener;
     LIST_FOR_EACH_ENTRY(listener, &clock_event_listeners, list) {

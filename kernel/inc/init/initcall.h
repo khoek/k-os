@@ -1,7 +1,7 @@
 #ifndef KERNEL_COMMON_INIT_H
 #define KERNEL_COMMON_INIT_H
 
-#define PHYSICAL_BASE 0x00100000
+#define PHYSICAL_BASE 0x00008000
 #define VIRTUAL_BASE  0xC0000000
 
 #ifdef __LINKER__
@@ -29,10 +29,11 @@ extern initcall_t initcall_start, initcall_end;
 #define core_initcall(fn)     DEFINE_INITCALL(2, fn)
 #define postcore_initcall(fn) DEFINE_INITCALL(3, fn)
 #define arch_initcall(fn)     DEFINE_INITCALL(4, fn)
-#define subsys_initcall(fn)   DEFINE_INITCALL(5, fn)
-#define fs_initcall(fn)       DEFINE_INITCALL(6, fn)
-#define device_initcall(fn)   DEFINE_INITCALL(7, fn)
-#define module_initcall(fn)   DEFINE_INITCALL(8, fn)
+#define postarch_initcall(fn) DEFINE_INITCALL(5, fn)
+#define subsys_initcall(fn)   DEFINE_INITCALL(6, fn)
+#define fs_initcall(fn)       DEFINE_INITCALL(7, fn)
+#define device_initcall(fn)   DEFINE_INITCALL(8, fn)
+#define module_initcall(fn)   DEFINE_INITCALL(9, fn)
 
 #endif
 

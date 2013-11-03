@@ -24,7 +24,7 @@ typedef struct gdt_entry {
     uint8_t  base_24_31;
 } PACKED gdt_entry_t;
 
-static gdtd_t gdtd;
+gdtd_t gdtd;
 static gdt_entry_t gdt[GDT_SIZE];
 static tss_t tss;
 

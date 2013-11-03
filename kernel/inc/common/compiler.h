@@ -3,9 +3,11 @@
 
 #define ALIGN(a)    __attribute__((aligned((a))))
 #define UNUSED(v) v __attribute__((unused))
-#define NORETURN    __attribute__((noreturn))
 #define PACKED      __attribute__((packed))
 #define USED        __attribute__((used))
+
+#define __forceinline __attribute__((always_inline))
+#define __noreturn  __attribute__((noreturn))
 
 #define STR(s)  #s
 #define XSTR(s) STR(s)

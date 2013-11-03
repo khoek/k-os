@@ -18,11 +18,8 @@ typedef struct acpi_rsdp {
     uint8_t *rsdt;
 } PACKED acpi_rsdp_t;
 
-typedef struct acpi_madt {
-    void *lapic_addr;
-    uint32_t flags;
-    uint8_t records[];
-} PACKED acpi_madt_t;
+acpi_sdt_t *rsdt;
+acpi_sdt_t *madt;
 
 static inline bool acpi_checksum(void *ptr, uint32_t bytes) {
     uint8_t sum = 0;
@@ -45,9 +42,6 @@ static inline bool acpi_valid_rsdp(acpi_rsdp_t *rsdp) {
 static inline bool acpi_valid_sdt(acpi_sdt_t *sdt) {
     return acpi_checksum(sdt, sdt->len);
 }
-
-static acpi_sdt_t *rsdt;
-static acpi_sdt_t *madt;
 
 static INITCALL acpi_init() {
     acpi_rsdp_t *rsdp;

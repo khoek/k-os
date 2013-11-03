@@ -1,7 +1,9 @@
 #ifndef KERNEL_MM_MM_H
 #define KERNEL_MM_MM_H
 
-#include <stdbool.h>
+#define PAGE_SIZE 0x1000
+#define ALLOC_NONE 0
+#define STACK_NUM_PAGES 4
 
 #include "lib/int.h"
 
@@ -15,11 +17,11 @@ struct page {
     page_t *next;
 };
 
+extern uint32_t page_directory[1024];
+
+#include <stdbool.h>
 #include "init/multiboot.h"
 #include "task/task.h"
-
-#define PAGE_SIZE 0x1000
-#define ALLOC_NONE 0
 
 void * mm_map(const void *phys);
 

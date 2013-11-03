@@ -27,6 +27,8 @@
 #define PAGE_FLAG_PERM (1 << 1)
 #define PAGE_FLAG_USER (1 << 2)
 
+//TODO asynchronously free the boot mem data (as a task after all CPUs have come up)
+
 extern uint32_t image_start;
 extern uint32_t image_end;
 
@@ -37,7 +39,7 @@ static uint32_t kernel_start;
 static uint32_t kernel_end;
 static uint32_t malloc_start;
 
-static uint32_t page_directory[1024] ALIGN(PAGE_SIZE);
+uint32_t page_directory[1024] ALIGN(PAGE_SIZE);
 static uint32_t kernel_page_tables[255][1024] ALIGN(PAGE_SIZE);
 static uint32_t kernel_next_page; //page which will next be mapped to kernel addr space on alloc
 static page_t *pages;

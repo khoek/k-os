@@ -3,25 +3,33 @@
 OUTPUT_FORMAT("elf32-i386")
 OUTPUT_ARCH("i386")
 
-ENTRY(loader)
+ENTRY(entry)
 SECTIONS {
     . = PHYSICAL_BASE;
 
     .image_start : AT(ADDR(.image_start) - VIRTUAL_BASE) {
         image_start = .;
     }
-
+    
+    boot_mem_start = . + VIRTUAL_BASE;
+    
     .header : {
        *(.header)
     }
-
-    .loader : {
-       *(.loader)
+     
+    .entry.ap ALIGN (0x1000) : {            
+        *(.entry.ap)
     }
+
+    .entry : {
+       *(.entry)
+    }
+    
+    boot_mem_end = . + VIRTUAL_BASE;
 
     . += VIRTUAL_BASE;
 
-    .text : AT(ADDR(.text) - VIRTUAL_BASE) {
+    .text ALIGN (0x1000) : AT(ADDR(.text) - VIRTUAL_BASE) {
         *(.text)
         *(.rodata*)
     }
@@ -63,6 +71,7 @@ SECTIONS {
         INITCALL_SECTION(6)
         INITCALL_SECTION(7)
         INITCALL_SECTION(8)
+        INITCALL_SECTION(9)
 
         initcall_end = .;
     }

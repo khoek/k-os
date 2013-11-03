@@ -10,7 +10,7 @@ flush_segment_registers:
     jmp  $0x08, $flush_data_segments
 .size flush_segment_registers, .-flush_segment_registers
 
-.type flush_cs, @function
+.type flush_data_segments, @function
 flush_data_segments:
     movl $0x10, %eax
     movw %ax, %ds

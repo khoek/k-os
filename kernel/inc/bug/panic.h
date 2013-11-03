@@ -2,17 +2,14 @@
 #define KERNEL_BUG_PANIC_H
 
 #include <stdbool.h>
-
 #include "common/compiler.h"
 #include "common/asm.h"
 
-static inline void die() NORETURN;
-
-static inline void die() {
+static inline void __noreturn die() {
     while(true) hlt();
 }
 
-void panic(char* message) NORETURN;
-void panicf(char* fmt, ...) NORETURN;
+void __noreturn panic(char* message);
+void __noreturn panicf(char* fmt, ...);
 
 #endif

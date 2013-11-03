@@ -3,7 +3,8 @@
 ASFLAGS=--32
 
 CCFLAGS=-Wall -Wextra -Werror -Wno-unused-parameter -m32 -I../inc -std=gnu99 \
-        -nostdlib -nostartfiles -nodefaultlibs -ffreestanding -c -g
+        -nostdlib -nostartfiles -nodefaultlibs -ffreestanding -c -O2 -fno-strict-aliasing \
+        -funswitch-loops -ftree-vectorize -fpredictive-commoning -fipa-cp-clone -finline-functions -fgcse-after-reload
 
 OBJS=	loader.o \
         init/kmain.o init/param.o \
@@ -11,7 +12,7 @@ OBJS=	loader.o \
         bug/debug.o bug/panic.o \
         sync/semaphore.o \
         video/console.o video/log.o \
-        arch/gdt.o arch/registers.o arch/idt.o arch/isr.o arch/acpi.o arch/pit.o arch/tsc.o arch/cpl.o arch/atomic.o arch/spinlock.o \
+        arch/gdt.o arch/registers.o arch/idt.o arch/isr.o arch/acpi.o arch/mp.o arch/pit.o arch/tsc.o arch/cpl.o arch/atomic.o arch/spinlock.o \
         mm/mm.o mm/cache.o \
         time/clock.o time/timer.o\
         device/device.o \

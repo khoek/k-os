@@ -1,5 +1,7 @@
 display_library: sdl
 
+cpu: count=4
+
 plugin_ctrl: e1000=1
 
 romimage: file=/usr/share/bochs/BIOS-bochs-latest
