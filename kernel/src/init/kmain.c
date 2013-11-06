@@ -20,8 +20,8 @@ void kmain(uint32_t magic, multiboot_info_t *mbd) {
     console_clear();
 
     logf("starting K-OS (v" XSTR(MAJOR) "." XSTR(MINOR) "." XSTR(PATCH) ")");
-    if (magic != MULTIBOOT_BOOTLOADER_MAGIC)    panic("Kernel Boot Failure - multiboot loader did not pass correct magic number");
-    if (!(mbd->flags & MULTIBOOT_INFO_MEM_MAP)) panic("Kernel Boot Failure - multiboot loader did not pass memory map");
+    if (magic != MULTIBOOT_BOOTLOADER_MAGIC)    panic("init - multiboot loader did not pass correct magic number");
+    if (!(mbd->flags & MULTIBOOT_INFO_MEM_MAP)) panic("init - multiboot loader did not pass memory map");
 
 #ifndef CONFIG_OPTIMIZE
     debug_init();
@@ -34,7 +34,7 @@ void kmain(uint32_t magic, multiboot_info_t *mbd) {
 
     logf("init - starting initcalls");
     for(initcall_t *initcall = &initcall_start; initcall < &initcall_end; initcall++) {
-        if((*initcall)()) panic("Kernel Boot Failure - initcall aborted with non-zero exit code");
+        if((*initcall)()) panic("init - initcall aborted with non-zero exit code");
     }
     logf("init - finished initcalls");
 
