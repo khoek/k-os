@@ -82,9 +82,14 @@ entry_ap:
     # Disable interrupts
     cli
 
-    # Enable the A20 line using the BIOS
-    mov $0x2401, %ax
-    int $0x15
+    # Enable the A20 line (FAST A20)
+    in $0x92, %al
+    test $2, %al
+    jnz .after
+    or $2, %al
+    and $0xFE, %al
+    out %al, $0x92
+    .after:
 
     lgdt boot_gdtr
 
