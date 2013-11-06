@@ -40,5 +40,6 @@ void kmain(uint32_t magic, multiboot_info_t *mbd) {
 
     mm_postinit_reclaim();
 
+    logf("init - system ready");
     mp_run_cpu(bsp);
 }
