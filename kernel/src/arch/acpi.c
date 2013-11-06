@@ -66,6 +66,7 @@ static INITCALL acpi_init() {
 
     if(rsdp) {
         rsdt = mm_map(rsdp->rsdt);
+
         if(acpi_sig_match(ACPI_SIG_RSDT, rsdt) && acpi_valid_sdt(rsdt)) {
             logf("acpi - rsdt load success");
 
@@ -73,6 +74,21 @@ static INITCALL acpi_init() {
             for(uint32_t i = 0; i < (rsdt->len - sizeof(acpi_sdt_t)) / sizeof(void *); i++) {
                 //FIXME unmap these pages
                 acpi_sdt_t *real = mm_map(sdts[i]);
+
+                /* Does the SDT header overflow onto the next page? */
+                if((((uint32_t) real) / PAGE_SIZE) < ((((uint32_t) real) + sizeof(acpi_sdt_t)) / PAGE_SIZE)) {
+                    mm_map((void *) (((uint32_t) sdts[i]) + PAGE_SIZE));
+                }
+
+                if(real->len < sizeof(acpi_sdt_t)) {
+                    continue;
+                }
+
+                /* Does the SDT body overflow onto more pages? */
+                for(uint32_t i = 0; i < ((((uint32_t) real) + real->len) / PAGE_SIZE) - ((((uint32_t) real) + sizeof(acpi_sdt_t)) / PAGE_SIZE); i++) {
+                    mm_map((void *) (((uint32_t) sdts[i]) + (PAGE_SIZE * (i + 1))));
+                }
+
                 if(acpi_valid_sdt(real)) {
                     if(acpi_sig_match(ACPI_SIG_MADT, real)) {
                         madt = real;
