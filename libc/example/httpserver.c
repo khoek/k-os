@@ -8,15 +8,14 @@
 #include <netinet/in.h>
 #include <arpa/inet.h>
 
-char *head_part1 = "HTTP/1.1 200 OK\r\n"
-                   "Content-Type: text/html\r\n"
-                   "Content-Length: ";
+const char *content = "<!doctype html>"
+                    "<html><head><title>K-OS</title></head><body><center><h1 style='font-size:90pt'>K-OS</h1><center><p>Welcome.</p></html>";
 
-char *head_part2 = "\r\n"
-                   "Connection: close\r\n"
-                   "\r\n";
+#define LINE_ENDING "\r\n"
 
-char *page = "<!doctype html><html><head><title>K-OS</title></head><body><center><h1 style='font-size:90pt'>K-OS</h1><center><p>Welcome.</p></html>";
+static void send_str(int fd, const char *str) {
+    send(socket, str, strlen(str), 0);
+}
 
 int main() {
     int fds = socket(AF_INET, SOCK_STREAM, 0);
@@ -27,25 +26,30 @@ int main() {
     local.sin_addr.s_addr = INADDR_ANY;
 
     if(bind(fds, (struct sockaddr *) &local, sizeof(struct sockaddr_in))) {
-        log("ERR: BIND");
+        log("ERR: bind");
         return 1;
     }
 
     if(listen(fds, 128)) {
-        log("ERR: LIST");
+        log("ERR: listen");
         return 2;
     }
 
     while(1) {
         int fd = accept(fds, NULL, 0);
 
-        char page_len[64];
-        itoa(strlen(page), page_len, 10);
-
-        send(fd, head_part1, strlen(head_part1), 0);
-        send(fd, page_len, strlen(page_len), 0);
-        send(fd, head_part2, strlen(head_part2), 0);
-        send(fd, page, strlen(page), 0);
+        send_str(fd, "HTTP/1.1 200 OK" LINE_ENDING);
+        send_str(fd, "Content-Type: text/html" LINE_ENDING);
+        send_str(fd, "Content-Type: ");    
+        
+        char content_len[64];
+        itoa(strlen(content), content_len, 10);            
+        send_str(fd, content_len);
+        send_str(fd, LINE_ENDING);      
+          
+        send_str(fd, LINE_ENDING "Connection: close" LINE_ENDING LINE_ENDING);   
+         
+        send_str(fd, content);
 
         shutdown(fd, SHUT_RDWR);
 
