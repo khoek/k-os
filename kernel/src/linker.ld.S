@@ -10,21 +10,21 @@ SECTIONS {
     .image_start : AT(ADDR(.image_start) - VIRTUAL_BASE) {
         image_start = .;
     }
-    
+
     boot_mem_start = . + VIRTUAL_BASE;
-    
+
     .header : {
        *(.header)
     }
-     
-    .entry.ap ALIGN (0x1000) : {            
+
+    .entry.ap ALIGN (0x1000) : {
         *(.entry.ap)
     }
 
     .entry : {
        *(.entry)
     }
-    
+
     boot_mem_end = . + VIRTUAL_BASE;
 
     . += VIRTUAL_BASE;

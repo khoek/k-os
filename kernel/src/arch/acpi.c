@@ -65,10 +65,10 @@ static INITCALL acpi_init() {
     }
 
     if(rsdp) {
-        rsdt = mm_map(rsdp->rsdt);        
+        rsdt = mm_map(rsdp->rsdt);
         if(acpi_sig_match(ACPI_SIG_RSDT, rsdt) && acpi_valid_sdt(rsdt)) {
             logf("acpi - rsdt load success");
-            
+
             void **sdts = (void *) rsdt->data;
             for(uint32_t i = 0; i < (rsdt->len - sizeof(acpi_sdt_t)) / sizeof(void *); i++) {
                 //FIXME unmap these pages

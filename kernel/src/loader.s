@@ -47,7 +47,7 @@ boot_page_directory:
 
 .section .entry, "ax"
 .align 16
-boot_gdt: 
+boot_gdt:
 .word 0x0000,0x0000,0x0000,0x0000        # Null desciptor
 .word 0xFFFF,0x0000,0x9A00,0x00CF        # 32-bit code descriptor
 .word 0xFFFF,0x0000,0x9200,0x00CF        # 32-bit data descriptor
@@ -55,13 +55,13 @@ boot_gdt_end:
 
 .align 16
 boot_gdtr:
-.word boot_gdt_end - boot_gdt - 1               
+.word boot_gdt_end - boot_gdt - 1
 .long boot_gdt
 
 entry:
     # Disable interrupts
     cli
-    
+
     # Install temporary higher-half page directory
     movl $(boot_page_directory - KERNEL_VIRTUAL_BASE), %ecx
     movl %ecx, %cr3
@@ -81,18 +81,18 @@ entry_ap:
 .code16
     # Disable interrupts
     cli
-    
+
     # Enable the A20 line using the BIOS
-    mov $0x2401, %ax 
+    mov $0x2401, %ax
     int $0x15
-    
+
     lgdt boot_gdtr
-    
+
     # Enter Protected Mode
     mov %cr0, %ecx
     or $0x00000001, %cx
     mov %ecx, %cr0
-    
+
     # Flush code segment selector
     jmp $0x08, $.flush
 .flush:
@@ -111,9 +111,9 @@ entry_ap:
 
     # Enable paging
     mov %cr0, %ecx
-    or $0x80000000, %ecx  
+    or $0x80000000, %ecx
     mov %ecx, %cr0
-    
+
     # Enter higher-half
     lea boot_ap, %ecx
     jmp *%ecx             # NOTE: Must be absolute jump!
@@ -134,10 +134,10 @@ boot_bsp:
 .size boot_bsp, .-boot_bsp
 
 .type boot_ap, @function
-boot_ap:    
+boot_ap:
     # Set up the AP stack
-    mov $boot_stack_ap, %esp  
-    
+    mov $boot_stack_ap, %esp
+
     # C entry point
     call mp_ap_init
 .size boot_ap, .-boot_ap
