@@ -2,7 +2,10 @@
 .global entry_ap                        # AP entry point (page aligned)
 
 .extern kmain                           # UP/BSP startup
-.extern mp_ap_init                      # AP entry startup
+.extern mp_ap_start                     # AP entry startup
+
+.extern page_directory                  # AP startup page directory
+.extern next_ap_stack                   # AP startup stack
 
 # Multiboot header
 .set ALIGN,    1 << 0                   # align loaded modules on page boundaries
@@ -24,10 +27,6 @@
 .align 32
 .skip 0x400  # 16 KiB
 boot_stack:
-
-.align 32
-.skip 0x400  # 16 KiB
-boot_stack_ap:
 
 .section .init.data
 
@@ -63,16 +62,16 @@ entry:
     cli
 
     # Install temporary higher-half page directory
-    movl $(boot_page_directory - KERNEL_VIRTUAL_BASE), %ecx
-    movl %ecx, %cr3
+    mov $(boot_page_directory - KERNEL_VIRTUAL_BASE), %ecx
+    mov %ecx, %cr3
 
     # Enable paging
-    movl %cr0, %ecx
-    orl $0x80000000, %ecx
-    movl %ecx, %cr0
+    mov %cr0, %ecx
+    or $0x80000000, %ecx
+    mov %ecx, %cr0
 
     # Enter higher-half
-    leal boot_bsp, %ecx
+    lea boot_bsp, %ecx
     jmp *%ecx             # NOTE: Must be absolute jump!
 .size entry, .-entry
 
@@ -89,8 +88,8 @@ entry_ap:
     or $2, %al
     and $0xFE, %al
     out %al, $0x92
-    .after:
 
+.after:
     lgdt boot_gdtr
 
     # Enter Protected Mode
@@ -111,8 +110,8 @@ entry_ap:
     mov %ax, %ss
 
     # Install temporary higher-half page directory
-    movl $(boot_page_directory - KERNEL_VIRTUAL_BASE), %ecx
-    movl %ecx, %cr3
+    mov $(boot_page_directory - KERNEL_VIRTUAL_BASE), %ecx
+    mov %ecx, %cr3
 
     # Enable paging
     mov %cr0, %ecx
@@ -128,11 +127,11 @@ entry_ap:
 .type boot, @function
 boot_bsp:
     # Set up the BSP stack
-    movl $boot_stack, %esp
+    mov $boot_stack, %esp
 
     # Multiboot arguments
-    pushl %ebx  # multiboot info
-    pushl %eax  # magic number
+    push %ebx  # multiboot info
+    push %eax  # magic number
 
     # C entry point
     call kmain
@@ -140,9 +139,13 @@ boot_bsp:
 
 .type boot_ap, @function
 boot_ap:
+    # Set up the AP page directory
+    mov $(page_directory - KERNEL_VIRTUAL_BASE), %ecx
+    mov %ecx, %cr3
+
     # Set up the AP stack
-    mov $boot_stack_ap, %esp
+    mov next_ap_stack, %esp
 
     # C entry point
-    call mp_ap_init
+    call mp_ap_start
 .size boot_ap, .-boot_ap

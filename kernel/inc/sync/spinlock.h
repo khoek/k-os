@@ -20,6 +20,7 @@ typedef struct spinlock {
 #define SPINLOCK_LOCKED   {.tickets = {.head = 0, .tail = 1}}
 #define SPINLOCK_UNLOCKED {.tickets = {.head = 0, .tail = 0}}
 
+#define DECLARE_SPINLOCK(name) extern spinlock_t name
 #define DEFINE_SPINLOCK(name) spinlock_t name = SPINLOCK_UNLOCKED
 
 static inline void spinlock_init(spinlock_t *spinlock) {

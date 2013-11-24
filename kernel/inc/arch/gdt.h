@@ -3,19 +3,25 @@
 
 #include "lib/int.h"
 #include "common/compiler.h"
+#include "sched/proc.h"
 
-#define SPL_KERNEL (0x0)
-#define SPL_USER   (0x3)
+#define SPL_KRNL (0x0)
+#define SPL_USER (0x3)
 
-#define CPL_KERNEL (0x0 << 5)
-#define CPL_USER   (0x3 << 5)
+#define CPL_KRNL (0x0 << 5)
+#define CPL_USER (0x3 << 5)
 
-#define SEL_KERNEL_CODE 0x08
-#define SEL_KERNEL_DATA 0x10
-#define SEL_USER_CODE   0x18
-#define SEL_USER_DATA   0x20
-#define SEL_USER_TLS    0x28
-#define SEL_TSS         0x30
+#define SEL_KRNL_CODE 0x08
+#define SEL_KRNL_DATA 0x10
+#define SEL_KRNL_PCPU 0x18
+#define SEL_USER_CODE 0x20
+#define SEL_USER_DATA 0x28
+#define SEL_USER_TLS  0x30
+#define SEL_TSS       0x38
+
+#define SEL_MAX       SEL_TSS
+
+#define GDT_SIZE ((SEL_MAX / sizeof(gdt_entry_t)) + 1)
 
 typedef struct tss {
    uint32_t prev_tss;   // Obsolete
@@ -48,7 +54,8 @@ typedef struct tss {
 } PACKED tss_t;
 
 void tss_set_stack(uint32_t sp);
-
 void gdt_set_tls(uint32_t tls_start);
+
+void gdt_init(processor_t *proc);
 
 #endif

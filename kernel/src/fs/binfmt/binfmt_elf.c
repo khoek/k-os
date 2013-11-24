@@ -6,7 +6,8 @@
 #include "init/initcall.h"
 #include "bug/debug.h"
 #include "mm/mm.h"
-#include "task/task.h"
+#include "sched/sched.h"
+#include "sched/task.h"
 #include "fs/binfmt.h"
 #include "fs/elf.h"
 #include "video/log.h"
@@ -27,9 +28,9 @@ static bool elf_header_valid(Elf32_Ehdr *ehdr) {
 }
 
 static int load_elf_exe(void *start, uint32_t length) {
-    start = mm_map(start);
+    start = map_page(start);
     for(uint32_t mapped = PAGE_SIZE; mapped < length; mapped += PAGE_SIZE) {
-        mm_map((void *) (((uint32_t) start) + mapped));
+        map_page((void *) (((uint32_t) start) + mapped));
     }
 
     Elf32_Ehdr *ehdr = (Elf32_Ehdr *) start;
@@ -82,7 +83,7 @@ static int load_elf_exe(void *start, uint32_t length) {
         }
     }
 
-    task_schedule(task);
+    //task_add(task);
 
     return 0;
 }

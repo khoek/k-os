@@ -15,14 +15,14 @@ cpl_switch:
     mov %ecx, %cr3
 
     # Load the new CS into ecx and test whether we are going to usermode
-    # (by masking the bottom 3 bits). If we are, load the segment registers
-    # (all but CS, SS) with the new SS
+    # (by masking the bottom 3 bits). If we aren't, skip reloading the
+    # segment registers.
     mov 36(%esp), %ecx
-
     and $0x7, %ecx
+    jz .finish
 
-    jz finish # are we are remaining in kernel-land? if so, skip segment register reloading
-
+    # Reload the segment registers (all but CS and SS) with the new SS.
+    # CS and SS will be reloaded when we iret.
     mov 48(%esp), %ecx
     mov %ecx, %ds
     mov %ecx, %es
@@ -30,7 +30,7 @@ cpl_switch:
     add $0x8, %ecx
     mov %ecx, %gs
 
-finish:
+.finish:
     # Preserve eax and edx after popa
     mov %eax, 28(%esp)
     mov %edx, 20(%esp)

@@ -3,8 +3,8 @@
 
 #include "lib/int.h"
 
-#define CONSOLE_WIDTH	80
-#define CONSOLE_HEIGHT	25
+#define CONSOLE_WIDTH  80
+#define CONSOLE_HEIGHT 25
 
 void console_map_virtual();
 

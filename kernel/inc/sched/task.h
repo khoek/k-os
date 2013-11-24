@@ -1,5 +1,14 @@
-#ifndef KERNEL_TASK_TASK_H
-#define KERNEL_TASK_TASK_H
+#ifndef KERNEL_SCHED_TASK_H
+#define KERNEL_SCHED_TASK_H
+
+typedef enum task_state {
+    TASK_AWAKE,
+    TASK_RUNNING,
+    TASK_SLEEPING,
+    TASK_EXITED,
+} task_state_t;
+
+typedef struct task task_t;
 
 #include "lib/int.h"
 #include "common/list.h"
@@ -9,15 +18,10 @@
 #include "fs/fd.h"
 #include "fs/vfs.h"
 
-typedef enum task_state {
-    TASK_NONE,
-    TASK_AWAKE,
-    TASK_SLEEPING
-} task_state_t;
-
-typedef struct task {
+struct task {
     list_head_t list;
     list_head_t wait_list;
+    list_head_t queue_list;
 
     uint32_t kernel_stack;
     uint32_t cpu; //On the top of the kernel stack, updated every interrupt
@@ -43,32 +47,19 @@ typedef struct task {
 
     path_t root;
     path_t pwd;
-} task_t;
+};
 
 #include "mm/mm.h"
 
-extern task_t *current;
-
 task_t * task_create(bool kernel, void *ip, void *sp);
-void task_schedule(task_t *task);
 void task_add_page(task_t *task, page_t *page);
-
-void task_exit(task_t *task, int32_t code);
-
-void task_sleep(task_t *task);
-void task_sleep_current();
-
-void task_wake(task_t *task);
-
-ufd_idx_t ufdt_add(task_t *task, uint32_t flags, gfd_idx_t gfd);
-gfd_idx_t ufdt_get(task_t *task, ufd_idx_t ufd);
-void ufdt_put(task_t *task, ufd_idx_t ufd);
+void task_destroy(task_t *task);
 
 void task_save(cpu_state_t *cpu);
 
-void task_reschedule();
-void task_run_scheduler();
-
-void task_run();
+bool ufdt_valid(task_t *task, ufd_idx_t ufd);
+ufd_idx_t ufdt_add(task_t *task, uint32_t flags, gfd_idx_t gfd);
+gfd_idx_t ufdt_get(task_t *task, ufd_idx_t ufd);
+void ufdt_put(task_t *task, ufd_idx_t ufd);
 
 #endif

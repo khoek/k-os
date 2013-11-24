@@ -6,7 +6,9 @@
 #include "common/compiler.h"
 #include "bug/panic.h"
 #include "bug/debug.h"
-#include "arch/mp.h"
+#include "arch/proc.h"
+#include "sched/proc.h"
+#include "sched/sched.h"
 #include "mm/mm.h"
 #include "mm/cache.h"
 #include "video/log.h"
@@ -40,6 +42,5 @@ void kmain(uint32_t magic, multiboot_info_t *mbd) {
 
     mm_postinit_reclaim();
 
-    logf("init - system ready");
-    mp_run_cpu(bsp);
+    sched_run();
 }

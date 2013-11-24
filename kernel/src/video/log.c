@@ -9,10 +9,10 @@
 
 #define BUFFSIZE 1024
 
-static char buff[BUFFSIZE];
+DEFINE_SPINLOCK(log_lock);
 
+static char buff[BUFFSIZE];
 static DEFINE_SPINLOCK(buff_lock);
-static DEFINE_SPINLOCK(log_lock);
 
 static void print_time() {
     uint32_t time = uptime();

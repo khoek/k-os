@@ -530,8 +530,8 @@ static void ide_enable(device_t *device) {
     if(once) return;
     once = true;
 
-    register_isr(PRIMARY_IRQ + IRQ_OFFSET, CPL_KERNEL, handle_irq_primary, NULL);
-    register_isr(SECONDARY_IRQ + IRQ_OFFSET, CPL_KERNEL, handle_irq_secondary, NULL);
+    register_isr(PRIMARY_IRQ + IRQ_OFFSET, CPL_KRNL, handle_irq_primary, NULL);
+    register_isr(SECONDARY_IRQ + IRQ_OFFSET, CPL_KRNL, handle_irq_secondary, NULL);
 
     // 1- Detect I/O Ports which interface IDE Controller:
     channels[ATA_PRIMARY  ].base  = (BAR_ADDR_32(pci_device->bar[0])) + 0x1F0 * (!pci_device->bar[0]);

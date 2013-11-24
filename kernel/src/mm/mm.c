@@ -10,7 +10,7 @@
 #include "bug/debug.h"
 #include "mm/mm.h"
 #include "mm/cache.h"
-#include "task/task.h"
+#include "sched/task.h"
 #include "fs/module.h"
 #include "video/console.h"
 #include "video/log.h"
@@ -44,6 +44,9 @@ static uint32_t kernel_page_tables[255][1024] ALIGN(PAGE_SIZE);
 static uint32_t kernel_next_page; //page which will next be mapped to kernel addr space on alloc
 static page_t *pages;
 static page_t *free_page_list[MAX_ORDER + 1];
+
+static DEFINE_SPINLOCK(alloc_lock);
+static DEFINE_SPINLOCK(map_lock);
 
 static inline void invlpg(uint32_t addr) {
     asm volatile("invlpg (%0)" ::"r" (addr) : "memory");
@@ -141,6 +144,10 @@ static page_t * do_alloc_pages(uint32_t number, uint32_t UNUSED(flags)) {
         if (free_page_list[order] != NULL) {
             page_t *alloced = alloc_block_exact(order, number);
 
+            for(uint32_t i = 0; i < number; i++) {
+                flag_set(&alloced[i], PAGE_FLAG_USED);
+            }
+
             pages_in_use += number;
 
             return alloced;
@@ -154,10 +161,27 @@ static page_t * do_alloc_pages(uint32_t number, uint32_t UNUSED(flags)) {
 #define WRITABLE    (1 << 1)
 #define USER        (1 << 2)
 
-void * mm_map(const void *phys) {
+static void * do_map_page(const void *phys) {
     kernel_page_tables[kernel_next_page / 1024][kernel_next_page % 1024] = (((uint32_t) phys) & 0xFFFFF000) | WRITABLE | PRESENT;
-
     return (void *) ((kernel_next_page++ * PAGE_SIZE) + (((uint32_t) phys) & 0xFFF) + VIRTUAL_BASE);
+}
+
+void * map_page(const void *phys) {
+    return map_pages(phys, 1);
+}
+
+void * map_pages(const void *phys, uint32_t pages) {
+    uint32_t flags;
+    spin_lock_irqsave(&map_lock, &flags);
+
+    void *virt = do_map_page(phys);
+    for(uint32_t i = 1; i < pages; i++) {
+        do_map_page((void *) (((uint32_t) phys) + (PAGE_SIZE * i)));
+    }
+
+    spin_unlock_irqstore(&map_lock, flags);
+
+    return virt;
 }
 
 void page_build_directory(uint32_t directory[]) {
@@ -193,28 +217,28 @@ void * alloc_page_user(uint32_t flags, task_t *task, uint32_t addr) {
 }
 
 page_t * alloc_page(uint32_t flags) {
-    page_t *page = do_alloc_pages(1, flags);
-    page->addr = (uint32_t) mm_map(page_to_phys(page));
-    page->flags |= PAGE_FLAG_USED;
-
-    return page;
+    return alloc_pages(1, flags);
 }
 
-page_t * alloc_pages(uint32_t pages, uint32_t flags) {
-    page_t *start = do_alloc_pages(pages, flags);
-    page_t *current = start;
+page_t * alloc_pages(uint32_t num, uint32_t flags) {
+    uint32_t f;
+    spin_lock_irqsave(&alloc_lock, &f);
 
-    //FIXME ensure this is consecutive
-    for(uint32_t i = 0; i < pages; i++) {
-        current->addr = (uint32_t) mm_map(page_to_phys(current));
-        current->flags |= PAGE_FLAG_USED;
-        current++;
+    page_t *pages = do_alloc_pages(num, flags);
+    void *first = map_pages(page_to_phys(pages), num);
+    for(uint32_t i = 0; i < num; i++) {
+        pages[i].addr = ((uint32_t) first) + (PAGE_SIZE * i);
     }
 
-    return start;
+    spin_unlock_irqstore(&alloc_lock, f);
+
+    return pages;
 }
 
 void free_page(page_t *page) {
+    uint32_t f;
+    spin_lock_irqsave(&alloc_lock, &f);
+
     BUG_ON(BIT_SET(page->flags, PAGE_FLAG_PERM));
     BUG_ON(!BIT_SET(page->flags, PAGE_FLAG_USED));
 
@@ -222,7 +246,7 @@ void free_page(page_t *page) {
     flag_unset(page, PAGE_FLAG_USER);
 
     page_t *buddy = get_buddy(page);
-    while (buddy != NULL && !BIT_SET(buddy->flags, PAGE_FLAG_USED) && buddy->order == page->order) {
+    while (buddy != NULL && !BIT_SET(buddy->flags, PAGE_FLAG_USED) && buddy->order == page->order && page->order < MAX_ORDER) {
         if (buddy->prev) {
             buddy->prev->next = buddy->next;
         } else {
@@ -250,12 +274,13 @@ void free_page(page_t *page) {
     free_page_list[page->order] = page;
 
     pages_in_use--;
+
+    spin_unlock_irqstore(&alloc_lock, f);
 }
 
-void free_pages(page_t *first, uint32_t count) {
+void free_pages(page_t *pages, uint32_t count) {
     for(uint32_t i = 0; i < count; i++) {
-        free_page(first);
-        first++;
+        free_page(&pages[i]);
     }
 }
 
@@ -348,9 +373,9 @@ void __init mm_init() {
     console_map_virtual();
     debug_map_virtual();
 
-    multiboot_info = (multiboot_info_t *) mm_map(multiboot_info);
-    multiboot_info->mods = (multiboot_module_t *) mm_map(multiboot_info->mods);
-    mmap = (multiboot_memory_map_t *) mm_map(mmap);
+    multiboot_info = (multiboot_info_t *) map_page(multiboot_info);
+    multiboot_info->mods = (multiboot_module_t *) map_page(multiboot_info->mods);
+    mmap = (multiboot_memory_map_t *) map_page(mmap);
 
     for (uint32_t page = 0; page < NUM_ENTRIES * NUM_ENTRIES; page++) {
         pages[page].flags = PAGE_FLAG_PERM | PAGE_FLAG_USED;
@@ -387,7 +412,7 @@ void __init mm_init() {
         }
     }
 
-    //TODO mm_unmap(mmap);
+    //TODO unmap_page(mmap);
 
     logf("mm - paging: %u MB, malloc: %u MB, avaliable: %u MB",
             DIV_DOWN(DIV_UP(sizeof (uint32_t) * NUM_ENTRIES * NUM_ENTRIES, PAGE_SIZE) * PAGE_SIZE, 1024 * 1024),

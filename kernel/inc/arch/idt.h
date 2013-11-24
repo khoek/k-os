@@ -17,8 +17,7 @@ typedef struct interrupt {
 
 typedef void (*isr_t)(interrupt_t *interrupt, void *data);
 
-//indirect, invoked by gdt_init()
-INITCALL idt_setup();
+void idt_init();
 
 void register_isr(uint8_t vector, uint8_t cpl, void (*handler)(interrupt_t *interrupt, void *data), void *data);
 void idt_set_isr(uint32_t gate, uint32_t isr);

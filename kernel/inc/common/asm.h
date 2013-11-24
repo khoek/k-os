@@ -15,7 +15,7 @@ static inline void hlt() {
     __asm__ volatile("hlt");
 }
 
-static inline void lidt(void *idtr) {
+static inline void lidt(volatile void *idtr) {
    __asm__ volatile("lidt (%0)" :: "r" (idtr));
 }
 

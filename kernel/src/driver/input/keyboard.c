@@ -178,7 +178,7 @@ static void handle_keyboard(interrupt_t *interrupt, void *data) {
 }
 
 static INITCALL keyboard_init() {
-    register_isr(KEYBOARD_IRQ + IRQ_OFFSET, CPL_KERNEL, handle_keyboard, NULL);
+    register_isr(KEYBOARD_IRQ + IRQ_OFFSET, CPL_KRNL, handle_keyboard, NULL);
 
     return 0;
 }

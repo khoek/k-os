@@ -1,12 +1,11 @@
 #ifndef KERNEL_ARCH_MP_H
 #define KERNEL_ARCH_MP_H
 
-typedef struct processor processor_t;
-extern processor_t *bsp;
-
+#include "common/list.h"
 #include "common/compiler.h"
+#include "arch/acpi.h"
 
 void __noreturn mp_ap_init();
-void __noreturn mp_run_cpu(processor_t *proc);
+void __init mp_init(acpi_sdt_t *madt);
 
 #endif

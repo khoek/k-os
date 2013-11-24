@@ -2,7 +2,7 @@
 #include "common/list.h"
 #include "sync/spinlock.h"
 #include "sync/semaphore.h"
-#include "task/task.h"
+#include "sched/sched.h"
 
 void semaphore_down(semaphore_t *lock) {
     uint32_t flags;
@@ -14,6 +14,8 @@ void semaphore_down(semaphore_t *lock) {
         spin_unlock_irqstore(&lock->lock, flags);
     } else {
         list_add(&current->wait_list, &lock->waiters);
+
+        //list_add(&current->wait_list, &lock->waiters);
 
         spin_unlock_irqstore(&lock->lock, flags);
 

@@ -71,8 +71,8 @@ void gfdt_put(gfd_idx_t gfd) {
 }
 
 static INITCALL gfdt_init() {
-    gfdt = mm_map(page_to_phys(alloc_page(0)));
-    gfd_list = mm_map(page_to_phys(alloc_page(0)));
+    gfdt = map_page(page_to_phys(alloc_page(0)));
+    gfd_list = map_page(page_to_phys(alloc_page(0)));
     gfd_next = 0;
     gfd_max = (PAGE_SIZE / sizeof(gfd_t)) - 1;
 

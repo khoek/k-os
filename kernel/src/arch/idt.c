@@ -10,7 +10,7 @@
 #include "arch/gdt.h"
 #include "arch/cpl.h"
 #include "mm/cache.h"
-#include "task/task.h"
+#include "sched/sched.h"
 #include "video/log.h"
 
 #define NUM_VECTORS 256
@@ -61,7 +61,6 @@ typedef struct irq_handler {
     list_head_t list;
 } irq_handler_t;
 
-static idtd_t idtd USED;
 static idt_entry_t idt[NUM_VECTORS];
 static list_head_t isrs[NUM_VECTORS - IRQ_OFFSET];
 
@@ -79,7 +78,7 @@ void register_isr(uint8_t vector, uint8_t cpl, isr_t handler, void *data) {
 void idt_set_isr(uint32_t gate, uint32_t isr) {
     idt[gate].offset_lo = isr & 0xffff;
     idt[gate].offset_hi = (isr >> 16) & 0xffff;
-    idt[gate].selector = SEL_KERNEL_CODE;
+    idt[gate].selector = SEL_KRNL_CODE;
     idt[gate].zero = 0;
     idt[gate].type |= 0x80 /* present */ | 0xe /* 32 bit interrupt gate */;
 }
@@ -127,9 +126,9 @@ void interrupt_dispatch(interrupt_t *interrupt) {
     task_save(&interrupt->cpu);
 
     if(!list_empty(&isrs[interrupt->vector - IRQ_OFFSET])) {
-        irq_handler_t *isr;
-        LIST_FOR_EACH_ENTRY(isr, &isrs[interrupt->vector - IRQ_OFFSET], list) {
-            isr->isr(interrupt, isr->data);
+        irq_handler_t *handler;
+        LIST_FOR_EACH_ENTRY(handler, &isrs[interrupt->vector - IRQ_OFFSET], list) {
+            handler->isr(interrupt, handler->data);
         }
     }
 
@@ -139,14 +138,21 @@ void interrupt_dispatch(interrupt_t *interrupt) {
 
     outb(MASTER_COMMAND, EOI);
 
-    task_run_scheduler();
+    sched_try_resched();
+}
+
+void idt_init() {
+    idtd_t idtd;
+    idtd.size = (NUM_VECTORS * sizeof(idt_entry_t)) - 1;
+    idtd.offset = (uint32_t) idt;
+
+    lidt(&idtd);
 }
 
 extern void register_isr_stubs();
 
-//indirect, invoked by gdt_init()
-INITCALL idt_setup() {
-    register_isr_stubs();
+static INITCALL isr_setup() {
+    cli();
 
     //send INIT command
     outb(MASTER_COMMAND, INIT);
@@ -168,19 +174,14 @@ INITCALL idt_setup() {
     outb(MASTER_DATA, 0x0);
     outb(SLAVE_DATA , 0x0);
 
-    idtd.size = (NUM_VECTORS * sizeof(idt_entry_t)) - 1;
-    idtd.offset = (uint32_t) idt;
-
-    lidt(&idtd);
-
     sti();
-
-    logf("idt - interrupts are now enabled!");
 
     return 0;
 }
 
-static INITCALL idt_init() {
+static INITCALL isr_init() {
+    register_isr_stubs();
+
     for(uint32_t i = 0; i < NUM_VECTORS - IRQ_OFFSET; i++) {
         list_init(&isrs[i]);
     }
@@ -188,4 +189,5 @@ static INITCALL idt_init() {
     return 0;
 }
 
-core_initcall(idt_init);
+core_initcall(isr_init);
+postarch_initcall(isr_setup);

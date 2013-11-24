@@ -38,6 +38,14 @@ SECTIONS {
         *(.data)
     }
 
+    .data.percpu ALIGN(0x1000) : AT(ADDR(.data.percpu) - VIRTUAL_BASE) {
+        percpu_data_start = .;
+
+        *(.data.percpu)
+
+        percpu_data_end = .;
+    }
+
     .bss : AT(ADDR(.bss) - VIRTUAL_BASE) {
         _sbss = .;
         *(COMMON)

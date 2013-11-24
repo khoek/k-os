@@ -63,6 +63,8 @@ void beep() {
     stop();
 }
 
+#include "arch/proc.h"
+
 static void handle_pit(interrupt_t *interrupt, void *data) {
     ticks++;
 
@@ -73,7 +75,7 @@ static INITCALL pit_init() {
     register_clock(&pit_clock);
     register_clock_event_source(&pit_clock_event_source);
 
-    register_isr(PIT_IRQ + IRQ_OFFSET, CPL_KERNEL, handle_pit, NULL);
+    register_isr(PIT_IRQ + IRQ_OFFSET, CPL_KRNL, handle_pit, NULL);
     outb(0x43, 0x36);
     outb(0x40, (PIT_CLOCK / TIMER_FREQ) & 0xff);
     outb(0x40, ((PIT_CLOCK / TIMER_FREQ) >> 8) & 0xff);

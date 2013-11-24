@@ -21,9 +21,10 @@ extern uint32_t page_directory[1024];
 
 #include <stdbool.h>
 #include "init/multiboot.h"
-#include "task/task.h"
+#include "sched/task.h"
 
-void * mm_map(const void *phys);
+void * map_page(const void *phys);
+void * map_pages(const void *phys, uint32_t pages);
 
 void page_build_directory(uint32_t directory[]);
 

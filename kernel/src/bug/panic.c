@@ -7,6 +7,9 @@
 #include "bug/debug.h"
 #include "bug/panic.h"
 #include "arch/idt.h"
+#include "sync/spinlock.h"
+#include "sched/proc.h"
+#include "video/log.h"
 #include "video/console.h"
 
 #define MAX_FRAMES      32
@@ -21,8 +24,10 @@ void panic(char *message) {
     }
     panic_in_progress = true;
 
+    spin_lock(&log_lock);
+
     console_color(0x0C);
-    console_puts("\nKERNEL PANIC: ");
+    console_putsf("\nKERNEL PANIC (core %u): ", get_percpu_unsafe(this_proc)->num);
     console_color(0x07);
     console_putsf("%s\n\n", message);
 

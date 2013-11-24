@@ -6,7 +6,7 @@
 #include "misc/stats.h"
 #include "misc/sysrq.h"
 
-static char fake_idt USED;
+static char fake_idt;
 
 void sysrq_handle(uint16_t code) {
     switch(code) {

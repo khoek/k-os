@@ -3,7 +3,7 @@
 ASFLAGS=--32
 
 CCFLAGS=-Wall -Wextra -Werror -Wno-unused-parameter -m32 -I../inc -std=gnu99 \
-        -nostdlib -nostartfiles -nodefaultlibs -ffreestanding -c -O3 -fno-strict-aliasing
+        -nostdlib -nostartfiles -nodefaultlibs -ffreestanding -c -g
 
 OBJS=	loader.o \
         init/kmain.o init/param.o \
@@ -11,11 +11,11 @@ OBJS=	loader.o \
         bug/debug.o bug/panic.o \
         sync/semaphore.o \
         video/console.o video/log.o \
-        arch/gdt.o arch/registers.o arch/idt.o arch/isr.o arch/acpi.o arch/mp.o arch/pit.o arch/tsc.o arch/cpl.o arch/atomic.o arch/spinlock.o \
+        arch/proc.o arch/gdt.o arch/registers.o arch/idt.o arch/isr.o arch/acpi.o arch/mp.o arch/pit.o arch/tsc.o arch/cpl.o arch/atomic.o arch/spinlock.o \
         mm/mm.o mm/cache.o \
         time/clock.o time/timer.o\
         device/device.o \
-        task/task.o task/syscall.o \
+        sched/sched.o sched/proc.o sched/task.o sched/syscall.o \
         net/interface.o net/packet.o \
         net/socket.o \
         net/eth/eth.o \

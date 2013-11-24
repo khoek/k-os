@@ -10,7 +10,7 @@
 #include "mm/cache.h"
 #include "time/timer.h"
 #include "time/clock.h"
-#include "task/task.h"
+#include "sched/sched.h"
 #include "net/socket.h"
 #include "fs/vfs.h"
 #include "video/log.h"
@@ -52,7 +52,7 @@ static void wake_task(task_t *task) {
 static void sys_sleep(interrupt_t *interrupt) {
     task_sleep(current);
     timer_create(interrupt->cpu.reg.ecx, (void (*)(void *)) wake_task, current);
-    task_reschedule();
+    sched_reschedule();
 }
 
 static void sys_log(interrupt_t *interrupt) {

@@ -326,7 +326,7 @@ static bool ahci_probe(device_t *device) {
 
     ahci_controller_t *cont = device->private = kmalloc(sizeof(ahci_controller_t));
 
-    cont->base = mm_map((void *) pci_device->bar[5]);
+    cont->base = map_page((void *) pci_device->bar[5]);
 
     return true;
 }

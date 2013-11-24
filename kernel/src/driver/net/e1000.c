@@ -272,14 +272,14 @@ static bool net_825xx_probe(device_t *device) {
 
     spinlock_init(&net_device->state_lock);
 
-    net_device->mmio = (uint32_t) mm_map((void *) BAR_ADDR_32(pci_device->bar[0]));
+    net_device->mmio = (uint32_t) map_page((void *) BAR_ADDR_32(pci_device->bar[0]));
 
-    //FIXME this assumes that mm_map will map the pages contiguously, this should not be relied upon!
+    //FIXME this assumes that map_page will map the pages contiguously, this should not be relied upon!
     for(uint32_t addr = PAGE_SIZE; addr < (DIV_UP(REG_LAST, PAGE_SIZE) * PAGE_SIZE); addr += PAGE_SIZE) {
-        mm_map((void *) (addr + BAR_ADDR_32(pci_device->bar[0])));
+        map_page((void *) (addr + BAR_ADDR_32(pci_device->bar[0])));
     }
 
-    register_isr(pci_device->interrupt + IRQ_OFFSET, CPL_KERNEL, handle_network, NULL);
+    register_isr(pci_device->interrupt + IRQ_OFFSET, CPL_KRNL, handle_network, NULL);
 
     mac_t *mac = kmalloc(sizeof(mac_t));
 

@@ -2,7 +2,8 @@
 #include "init/param.h"
 #include "common/list.h"
 #include "mm/cache.h"
-#include "task/task.h"
+#include "sched/sched.h"
+#include "sched/task.h"
 #include "fs/vfs.h"
 #include "fs/type/devfs.h"
 #include "video/log.h"
@@ -110,7 +111,7 @@ static bool create_path(path_t *start, char *orig_path) {
 static void devfs_run() {
     while(true) {
         if(list_empty(&devfs_pending)) {
-            task_sleep(devfs_task);
+            task_sleep_current();
         } else {
             devfs_device_t *d = list_first(&devfs_pending, devfs_device_t, list);
             d->device->dentry->inode = devfs_inode_alloc(d);
@@ -150,7 +151,7 @@ static INITCALL devfs_automount() {
         }
     }
 
-    task_schedule(devfs_task);
+    task_add(devfs_task);
 
     return 0;
 }

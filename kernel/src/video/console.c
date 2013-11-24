@@ -20,8 +20,8 @@ static DEFINE_SPINLOCK(vram_lock);
 static DEFINE_SPINLOCK(buffer_lock);
 
 void console_map_virtual() {
-    vga_port = mm_map(vga_port);
-    vram = mm_map(vram);
+    vga_port = map_page(vga_port);
+    vram = map_page(vram);
 }
 
 void console_color(const char c) {

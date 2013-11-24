@@ -5,7 +5,7 @@
 #include "common/list.h"
 #include "common/compiler.h"
 #include "sync/spinlock.h"
-#include "task/task.h"
+#include "sched/task.h"
 
 typedef struct semaphore {
     spinlock_t lock;

@@ -5,6 +5,7 @@
 #include "init/initcall.h"
 #include "bug/debug.h"
 #include "bug/panic.h"
+#include "sync/spinlock.h"
 #include "mm/mm.h"
 #include "mm/cache.h"
 #include "video/log.h"
@@ -33,6 +34,7 @@ struct cache {
     uint32_t size;
     uint32_t max; //while not neccessary it might be good for stats/debugging or something
     uint32_t flags;
+    spinlock_t lock;
     list_head_t full;
     list_head_t partial;
     list_head_t empty;
@@ -42,6 +44,7 @@ static cache_t meta_cache = {
     .size = sizeof(cache_t),
     .max = (PAGE_SIZE - sizeof(cache_page_t)) / (sizeof(cache_t) + sizeof(uint32_t)),
     .flags = CACHE_FLAG_PERM,
+    .lock = SPINLOCK_UNLOCKED,
     .full = LIST_HEAD(meta_cache.full),
     .partial = LIST_HEAD(meta_cache.partial),
     .empty = LIST_HEAD(meta_cache.empty)
@@ -85,6 +88,9 @@ static void cache_do_free(cache_page_t *cache_page, uint32_t free_idx) {
 }
 
 void * cache_alloc(cache_t *cache) {
+    uint32_t flags;
+    spin_lock_irqsave(&cache->lock, &flags);
+
     if(list_empty(&cache->partial) && list_empty(&cache->empty)) cache_alloc_page(cache);
 
     void *alloced = NULL;
@@ -111,10 +117,15 @@ void * cache_alloc(cache_t *cache) {
         panicf("cache_alloc_page() failed to alloc a new page");
     }
 
+    spin_unlock_irqstore(&cache->lock, flags);
+
     return alloced;
 }
 
 void cache_free(cache_t *cache, void *mem) {
+    uint32_t flags;
+    spin_lock_irqsave(&cache->lock, &flags);
+
 #ifdef CONFIG_DEBUG_MM
     cache_page_t *cur, *target = NULL;
     LIST_FOR_EACH_ENTRY(cur, &cache->full, list) {
@@ -151,6 +162,8 @@ void cache_free(cache_t *cache, void *mem) {
     }
 
     cache_do_free(target, (((uint32_t) mem) - ((uint32_t) target->mem)) / cache->size);
+
+    spin_unlock_irqstore(&cache->lock, flags);
 }
 
 cache_t * cache_create(uint32_t size) {
@@ -160,6 +173,8 @@ cache_t * cache_create(uint32_t size) {
     new->size = size;
     new->max = (PAGE_SIZE - sizeof(cache_page_t)) / (size + sizeof(uint32_t));
     new->flags = 0;
+
+    spinlock_init(&new->lock);
 
     list_init(&new->empty);
     list_init(&new->partial);

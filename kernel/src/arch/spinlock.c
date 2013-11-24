@@ -2,6 +2,7 @@
 #include "common/asm.h"
 #include "sync/spinlock.h"
 #include "arch/registers.h"
+#include "video/log.h"
 
 #include "atomic_ops.h"
 

@@ -46,15 +46,15 @@ const elf_symbol_t * debug_lookup_symbol(uint32_t address) {
 void debug_map_virtual() {
     //FIXME this assumes that the pages will be mapped contiguously, which may not be the case
     if(strtabsz && symtabsz) {
-        const char *strtab_reloc = mm_map(strtab);
+        const char *strtab_reloc = map_page(strtab);
         for(uint32_t i = PAGE_SIZE; i < strtabsz; i += PAGE_SIZE) {
-            mm_map((void *)(((uint32_t) strtab) + i));
+            map_page((void *)(((uint32_t) strtab) + i));
         }
         strtab = strtab_reloc;
 
-        const elf_symbol_t *symtab_reloc = mm_map(symtab);
+        const elf_symbol_t *symtab_reloc = map_page(symtab);
         for(uint32_t i = PAGE_SIZE; i < symtabsz; i += PAGE_SIZE) {
-            mm_map((void *)(((uint32_t) symtab) + i));
+            map_page((void *)(((uint32_t) symtab) + i));
         }
         symtab = symtab_reloc;
     }
