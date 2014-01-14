@@ -40,7 +40,7 @@ int main() {
 
         send_str(fd, "HTTP/1.1 200 OK" LINE_ENDING);
         send_str(fd, "Content-Type: text/html" LINE_ENDING);
-        send_str(fd, "Content-Type: ");
+        send_str(fd, "Content-Length: ");
 
         char content_len[64];
         itoa(strlen(content), content_len, 10);
