@@ -2,14 +2,26 @@
 
 .extern interrupt_dispatch
 .extern idt_set_isr
+.extern flush_data_segments
 
 .type isr_common, @function
 isr_common:
     pushl %esp
+
+    mov %gs, %ax
+    mov %ax, %fs
+    mov $0x18, %ax
+    mov %ax, %gs
+
     call interrupt_dispatch
     addl $12, %esp
+
+    mov %fs, %ax
+    mov %ax, %gs
+    mov $0x2b, %ax
+    mov %ax, %fs
+
     popa
-    sti
     iret
 .size isr_common, .-isr_common
 

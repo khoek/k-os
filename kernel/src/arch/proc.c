@@ -2,6 +2,7 @@
 #include "arch/gdt.h"
 #include "arch/idt.h"
 #include "sched/proc.h"
+#include "arch/apic.h"
 #include "arch/proc.h"
 #include "video/log.h"
 

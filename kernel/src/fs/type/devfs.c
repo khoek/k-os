@@ -133,7 +133,7 @@ static INITCALL devfs_init() {
 
 static INITCALL devfs_automount() {
     devfs = vfs_fs_create("devfs", NULL);
-    devfs_task = task_create(true, devfs_run, NULL);
+    devfs_task = task_create("devfs", true, devfs_run, NULL);
 
     if(mntpoint) {
         path_t wd, target;

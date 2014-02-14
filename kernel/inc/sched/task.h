@@ -23,6 +23,8 @@ struct task {
     list_head_t wait_list;
     list_head_t queue_list;
 
+    const char *name;
+
     uint32_t kernel_stack;
     uint32_t cpu; //On the top of the kernel stack, updated every interrupt
     uint32_t cr3;
@@ -51,7 +53,7 @@ struct task {
 
 #include "mm/mm.h"
 
-task_t * task_create(bool kernel, void *ip, void *sp);
+task_t * task_create(const char *name, bool kernel, void *ip, void *sp);
 void task_add_page(task_t *task, page_t *page);
 void task_destroy(task_t *task);
 

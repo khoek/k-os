@@ -10,17 +10,7 @@
 #define PIT_IRQ 0
 #define PIT_CLOCK 1193182
 
-/*
-    The following code shuts down the PIT,
-    it will probably be useful at some point.
-
-    idt_unregister(32);
-    outb_pit(0x43, 0x30);
-    outb_pit(0x40, 0);
-    outb_pit(0x40, 0);
-*/
-
-static uint64_t ticks;
+static volatile uint64_t ticks;
 
 static uint64_t pit_read() {
     return ticks;
@@ -30,14 +20,15 @@ static clock_t pit_clock = {
     .name = "pit",
     .rating = 5,
 
-    .read = pit_read
+    .freq = TIMER_FREQ,
+    .read = pit_read,
 };
 
 static clock_event_source_t pit_clock_event_source = {
     .name = "pit",
     .rating = 10,
 
-    .freq = TIMER_FREQ
+    .freq = TIMER_FREQ,
 };
 
 void play(uint32_t freq) {
@@ -63,26 +54,22 @@ void beep() {
     stop();
 }
 
-#include "arch/proc.h"
-
 static void handle_pit(interrupt_t *interrupt, void *data) {
     ticks++;
 
     pit_clock_event_source.event(&pit_clock_event_source);
 }
 
-static INITCALL pit_init() {
-    register_clock(&pit_clock);
-    register_clock_event_source(&pit_clock_event_source);
+extern void panic(char *s);
+void __init pit_init() {
+    logf("pit - fallback timer registered");
 
-    register_isr(PIT_IRQ + IRQ_OFFSET, CPL_KRNL, handle_pit, NULL);
     outb(0x43, 0x36);
     outb(0x40, (PIT_CLOCK / TIMER_FREQ) & 0xff);
     outb(0x40, ((PIT_CLOCK / TIMER_FREQ) >> 8) & 0xff);
 
-    logf("pit - setting freq to %uHZ", TIMER_FREQ);
+    register_isr(PIT_IRQ + IRQ_OFFSET, CPL_KRNL, handle_pit, NULL);
 
-    return 0;
+    register_clock(&pit_clock);
+    register_clock_event_source(&pit_clock_event_source);
 }
-
-arch_initcall(pit_init);

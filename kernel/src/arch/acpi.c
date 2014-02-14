@@ -4,12 +4,16 @@
 #include "arch/bios.h"
 #include "arch/acpi.h"
 #include "arch/mp.h"
+#include "arch/pit.h"
+#include "arch/hpet.h"
+#include "bug/panic.h"
 #include "mm/mm.h"
 #include "video/log.h"
 
 #define ACPI_SIG_RSDP "RSD PTR "
 #define ACPI_SIG_RSDT "RSDT"
 #define ACPI_SIG_MADT "APIC"
+#define ACPI_SIG_HPET "HPET"
 
 typedef struct acpi_rsdp {
     uint8_t sig[8];
@@ -64,12 +68,11 @@ static INITCALL acpi_init() {
         inc += 16;
     }
 
+    bool hpet_present = false;
     if(rsdp) {
         rsdt = map_page(rsdp->rsdt);
 
         if(acpi_sig_match(ACPI_SIG_RSDT, rsdt) && acpi_valid_sdt(rsdt)) {
-            logf("acpi - rsdt load success");
-
             void **sdts = (void *) rsdt->data;
             for(uint32_t i = 0; i < (rsdt->len - sizeof(acpi_sdt_t)) / sizeof(void *); i++) {
                 //FIXME unmap these pages
@@ -92,6 +95,9 @@ static INITCALL acpi_init() {
                 if(acpi_valid_sdt(real)) {
                     if(acpi_sig_match(ACPI_SIG_MADT, real)) {
                         mp_init(real);
+                    } else if(acpi_sig_match(ACPI_SIG_HPET, real)) {
+                        hpet_present = true;
+                        hpet_init(real);
                     }
                 }
             }
@@ -103,6 +109,12 @@ static INITCALL acpi_init() {
     } else {
         logf("acpi - no rsdp detected");
     }
+
+    if(!hpet_present) {
+        pit_init();
+    }
+
+    logf("acpi - initialized successfully");
 
     return 0;
 }

@@ -3,21 +3,22 @@
 ASFLAGS=--32
 
 CCFLAGS=-Wall -Wextra -Werror -Wno-unused-parameter -m32 -I../inc -std=gnu99 \
-        -nostdlib -nostartfiles -nodefaultlibs -ffreestanding -c -g
+        -nostdlib -nostartfiles -nodefaultlibs -ffreestanding -c -O3 -fno-strict-aliasing
 
 OBJS=	loader.o \
         init/kmain.o init/param.o \
-        lib/string.o lib/printf.o lib/rand.o \
+        lib/string.o lib/printf.o lib/math.o lib/rand.o \
         bug/debug.o bug/panic.o \
         sync/semaphore.o \
         video/console.o video/log.o \
-        arch/proc.o arch/gdt.o arch/registers.o arch/idt.o arch/isr.o arch/acpi.o arch/mp.o arch/pit.o arch/tsc.o arch/cpl.o arch/atomic.o arch/spinlock.o \
+        arch/gdt.o arch/idt.o arch/isr.o arch/registers.o arch/pit.o arch/tsc.o arch/cpl.o \
+        arch/proc.o arch/acpi.o arch/pic.o arch/apic.o arch/mp.o arch/hpet.o \
+        arch/atomic.o arch/spinlock.o \
         mm/mm.o mm/cache.o \
         time/clock.o time/timer.o\
         device/device.o \
         sched/sched.o sched/proc.o sched/task.o sched/syscall.o \
-        net/interface.o net/packet.o \
-        net/socket.o \
+        net/interface.o net/packet.o net/socket.o \
         net/eth/eth.o \
         net/ip/af_inet.o net/ip/ip.o net/ip/arp.o net/ip/icmp.o net/ip/tcp.o net/ip/udp.o net/ip/dhcp.o net/ip/nbns.o net/ip/raw.o \
         fs/module.o fs/fd.o fs/vfs.o fs/block.o fs/subblock.o fs/disk.o \
@@ -46,7 +47,7 @@ linker.ld: linker.ld.S
 	@$(CPP) -I../inc -D__LINKER__ -P linker.ld.S -o linker.ld
 
 kernel.elf: $(OBJS) linker.ld
-	@echo "      ld"
+	@echo "      ld  $@"
 	@$(LD) -T linker.ld -o kernel.elf $(OBJS)
 
 clean:

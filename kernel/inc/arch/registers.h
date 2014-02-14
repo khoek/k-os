@@ -22,5 +22,6 @@ void flush_segment_registers();
 #define EFLAGS_IF (1 << 9)
 
 uint32_t get_eflags();
+void set_eflags(uint32_t flags);
 
 #endif

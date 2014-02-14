@@ -37,11 +37,8 @@ static void idle_loop() {
     while(true) hlt();
 }
 
-static void sched_switch() {
-    cli();
-
-    uint32_t flags;
-    spin_lock_irqsave(&sched_lock, &flags);
+void sched_switch() {
+    spin_lock_irq(&sched_lock);
 
     if(current) {
         spin_lock(&current->lock);
@@ -50,17 +47,16 @@ static void sched_switch() {
             spin_unlock(&current->lock);
 
             kfree(current, sizeof(task_t));
+        } else {
+            if(current->state == TASK_RUNNING) {
+                current->state = TASK_AWAKE;
+                list_add_before(&current->queue_list, &queued_tasks);
+            }
 
-            goto pick_new_task;
-        } else if(current->state == TASK_RUNNING) {
-            current->state = TASK_AWAKE;
-            list_add_before(&current->queue_list, &queued_tasks);
+            spin_unlock(&current->lock);
         }
-
-        spin_unlock(&current->lock);
     }
 
-pick_new_task:
     while(true) {
         if(list_empty(&queued_tasks)) {
             current = NULL;
@@ -88,14 +84,15 @@ pick_new_task:
     }
 
 run_task:
-    spin_unlock_irqstore(&sched_lock, flags);
+    spin_unlock(&sched_lock);
 
     if(!current) {
+        get_percpu_unsafe(switch_time) = 0;
         current = get_percpu_unsafe(idle_task);
     }
 
     tss_set_stack(current->kernel_stack);
-    cpl_switch(current->cr3, (uint32_t) (current->ret & 0xFFFFFFFF), (uint32_t) (current->ret >> 32), current->cpu);
+    cpl_switch(current->cr3, (uint32_t) current->ret, (uint32_t) (current->ret >> 32), current->cpu);
 }
 
 void task_add(task_t *task) {
@@ -109,28 +106,34 @@ void task_add(task_t *task) {
 }
 
 void task_sleep(task_t *task) {
-    put_percpu(this_proc);
+    uint32_t flags;
+    spin_lock_irqsave(&sched_lock, &flags);
+    spin_lock(&task->lock);
 
     task->state = TASK_SLEEPING;
-    list_rm(&task->list);
+    list_rm(&task->queue_list);
+
+    spin_unlock(&task->lock);
+    spin_unlock_irqstore(&sched_lock, flags);
 }
 
 void task_sleep_current() {
-    cli();
+    cli(); //this must be here
 
     task_sleep(current);
-
     sched_switch();
-    sched_reschedule();
-
-    sti();
 }
 
 void task_wake(task_t *task) {
-    if(!task) return;
+    uint32_t flags;
+    spin_lock_irqsave(&sched_lock, &flags);
+    spin_lock(&task->lock);
 
     task->state = TASK_AWAKE;
-    list_move_before(&task->list, &tasks);
+    list_move_before(&task->queue_list, &queued_tasks);
+
+    spin_unlock(&task->lock);
+    spin_unlock_irqstore(&sched_lock, flags);
 }
 
 void task_exit(task_t *task, int32_t code) {
@@ -140,6 +143,9 @@ void task_exit(task_t *task, int32_t code) {
     spin_lock(&task->lock);
     task->state = TASK_EXITED;
     spin_unlock(&task->lock);
+
+    list_rm(&task->list);
+    list_rm(&task->queue_list);
 
     task_count--;
 
@@ -155,7 +161,7 @@ void task_exit(task_t *task, int32_t code) {
 
     spin_unlock_irqstore(&sched_lock, flags);
 
-    sched_reschedule();
+    sched_switch();
 }
 
 void task_save(cpu_state_t *cpu) {
@@ -173,13 +179,9 @@ void sched_run() {
     sched_loop();
 }
 
-void sched_reschedule() {
-    asm volatile("int $0x7F");
-}
-
 void sched_try_resched() {
     if(tasking_up && (!current || get_percpu_unsafe(switch_time) <= uptime())) {
-        sched_reschedule();
+        sched_switch();
     }
 }
 
@@ -188,7 +190,7 @@ void __noreturn sched_loop() {
 
     current = NULL;
     get_percpu_unsafe(switch_time) = 0;
-    get_percpu_unsafe(idle_task) = task_create(true, idle_loop, NULL);
+    get_percpu_unsafe(idle_task) = task_create("idle", true, idle_loop, NULL);
 
     while(!tasking_up);
 
@@ -196,15 +198,3 @@ void __noreturn sched_loop() {
 
     panic("sched_switch returned");
 }
-
-static void sched_switch_handler(interrupt_t *interrupt, void *data) {
-    sched_switch();
-}
-
-static INITCALL sched_init() {
-    register_isr(0x7F, CPL_KRNL, sched_switch_handler, NULL);
-
-    return 0;
-}
-
-core_initcall(sched_init);

@@ -1,5 +1,5 @@
 #include "lib/int.h"
-
+#include "lib/printf.h"
 #include "init/initcall.h"
 #include "fs/module.h"
 #include "fs/binfmt.h"
@@ -11,8 +11,10 @@ static INITCALL module_init() {
 
     logf("module - detected %u module(s)", count);
 
+    char buff[64];
     for(uint32_t i = 0; i < count; i++) {
-        logf("module - #%u load %s", i + 1, binfmt_load_exe((void *) mods[i].start, mods[i].end - mods[i].start) ? "failed" : "OK");
+        sprintf(buff, "module%d", i + 1);
+        logf("module - #%u load %s", i + 1, binfmt_load_exe(buff, (void *) mods[i].start, mods[i].end - mods[i].start) ? "FAIL" : "OK");
     }
 
     return 0;

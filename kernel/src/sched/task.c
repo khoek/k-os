@@ -29,11 +29,12 @@ static uint32_t pid = 1;
 
 static cache_t *task_cache;
 
-task_t * task_create(bool kernel, void *ip, void *sp) {
+task_t * task_create(const char *name, bool kernel, void *ip, void *sp) {
     task_count++;
 
     task_t *task = (task_t *) cache_alloc(task_cache);
 
+    task->name = name;
     task->pid = pid++;
     task->state = TASK_AWAKE;
 
@@ -84,8 +85,8 @@ task_t * task_create(bool kernel, void *ip, void *sp) {
     task->fd = (void *) 0x21000;
 
     //FIXME the address 0x11000 is hardcoded
-    cpu_state_t *cpu = (void *) (((uint32_t) alloc_page_user(0, task, 0x11000)) + PAGE_SIZE - (sizeof(cpu_state_t) + 1));
-    task->kernel_stack = 0x11000 + PAGE_SIZE - 1;
+    cpu_state_t *cpu = (void *) (((uint32_t) alloc_page_user(0, task, 0x11000)) + PAGE_SIZE - (sizeof(cpu_state_t)));
+    task->kernel_stack = 0x11000 + PAGE_SIZE;
     task->cpu = task->kernel_stack - sizeof(cpu_state_t);
 
     memset(&cpu->reg, 0, sizeof(registers_t));

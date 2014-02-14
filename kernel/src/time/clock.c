@@ -4,6 +4,7 @@
 #include "init/initcall.h"
 #include "common/asm.h"
 #include "bug/panic.h"
+#include "bug/debug.h"
 #include "time/clock.h"
 
 static DEFINE_LIST(clocks);
@@ -13,7 +14,6 @@ static DEFINE_LIST(clock_event_listeners);
 static clock_t *active;
 static clock_event_source_t *active_event_source;
 
-extern void logf(char *c, ...);
 static void handle_clock_event(clock_event_source_t *clock_event_source) {
     clock_event_listener_t *listener;
     LIST_FOR_EACH_ENTRY(listener, &clock_event_listeners, list) {
@@ -48,20 +48,20 @@ void register_clock_event_listener(clock_event_listener_t *clock_event_listener)
 uint64_t uptime() {
     if(!active) return 0;
 
-    return active->read();
+    return active->read() / (active->freq / MILLIS_PER_SEC);
 }
 
 void sleep(uint32_t milis) {
     uint64_t then = uptime();
-    while(uptime() - then < milis) hlt(); //FIXME hlt might not work here (or will definitely be inaccurate)
+    while(uptime() - then < milis); //FIXME this is crap
 }
 
-static INITCALL init_clock() {
-    if(!active_event_source) panicf("No registered clock event source");
+static INITCALL clock_init() {
+    if(!active_event_source) panicf("no registered clock event source");
 
     active_event_source->event = handle_clock_event;
 
     return 0;
 }
 
-subsys_initcall(init_clock);
+subsys_initcall(clock_init);

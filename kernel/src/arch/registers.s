@@ -1,6 +1,8 @@
 .global flush_segment_registers
+.global flush_data_segments
 .global flush_tss
 .global get_eflags
+.global set_eflags
 
 .extern set_kernel_stack
 .extern task_usermode
@@ -16,8 +18,9 @@ flush_data_segments:
     movw %ax, %ds
     movw %ax, %es
     movw %ax, %fs
-    movw %ax, %gs
     movw %ax, %ss
+    movl $0x18, %eax
+    movw %ax, %gs
     ret
 .size flush_data_segments, .-flush_data_segments
 
@@ -27,3 +30,12 @@ get_eflags:
     pop %eax
     ret
 .size get_eflags, .-get_eflags
+
+.type set_eflags, @function
+set_eflags:
+    pop %ecx
+    popf
+    sub $4, %esp
+    push %ecx
+    ret
+.size set_eflags, .-set_eflags

@@ -27,7 +27,7 @@ static bool elf_header_valid(Elf32_Ehdr *ehdr) {
         && ehdr->e_machine == EM_386;
 }
 
-static int load_elf_exe(void *start, uint32_t length) {
+static int load_elf_exe(const char *name, void *start, uint32_t length) {
     start = map_page(start);
     for(uint32_t mapped = PAGE_SIZE; mapped < length; mapped += PAGE_SIZE) {
         map_page((void *) (((uint32_t) start) + mapped));
@@ -38,7 +38,7 @@ static int load_elf_exe(void *start, uint32_t length) {
     if(!elf_header_valid(ehdr)) return -1;
     if(ehdr->e_phoff == 0) return -1;
 
-    task_t *task = task_create(false, (void *) ehdr->e_entry, (void *) (0x10000 + PAGE_SIZE - 1));
+    task_t *task = task_create(name, false, (void *) ehdr->e_entry, (void *) (0x10000 + PAGE_SIZE));
     alloc_page_user(0, task, 0x10000); //alloc stack, FIXME hardcoded, might overlap with an elf segment
 
     Elf32_Phdr *phdr = (Elf32_Phdr *) (((uint32_t) start) + ehdr->e_phoff);
@@ -83,18 +83,13 @@ static int load_elf_exe(void *start, uint32_t length) {
         }
     }
 
-    //task_add(task);
+    task_add(task);
 
     return 0;
 }
 
-static int load_elf_lib(void UNUSED(*start), uint32_t UNUSED(length)) {
-    return -1;
-}
-
 static binfmt_t elf = {
     .load_exe = load_elf_exe,
-    .load_lib = load_elf_lib
 };
 
 static INITCALL elf_register_binfmt() {

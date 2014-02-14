@@ -27,7 +27,6 @@ cpl_switch:
     mov %ecx, %ds
     mov %ecx, %es
     mov %ecx, %fs
-    add $0x8, %ecx
     mov %ecx, %gs
 
 .finish:
@@ -37,7 +36,7 @@ cpl_switch:
 
     # The next two instructions should load all registers off the new stack
     # and then perform a task switch, regardless of whether we are going to
-    # kernel or user mode
+    # kernel or user mode.
     popa
 	iret
 .size cpl_switch, .-cpl_switch

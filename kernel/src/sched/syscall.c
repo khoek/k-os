@@ -52,7 +52,7 @@ static void wake_task(task_t *task) {
 static void sys_sleep(interrupt_t *interrupt) {
     task_sleep(current);
     timer_create(interrupt->cpu.reg.ecx, (void (*)(void *)) wake_task, current);
-    sched_reschedule();
+    sched_switch();
 }
 
 static void sys_log(interrupt_t *interrupt) {

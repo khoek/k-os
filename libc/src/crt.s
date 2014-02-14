@@ -7,9 +7,9 @@
 .extern _data_end
 
 _start:
-    pop %eax
-    mov %eax, _data_start
-    mov %eax, _data_end
+#    pop %eax
+#    mov %eax, _data_start
+#    mov %eax, _data_end
 
     call main
     push %eax

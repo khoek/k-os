@@ -27,17 +27,16 @@ typedef struct gdt_entry {
 DEFINE_PER_CPU(gdt_entry_t, gdt[GDT_SIZE]);
 DEFINE_PER_CPU(tss_t, tss);
 
-static uint8_t kernel_stack[0x1000];
-
 #define FLAG_PRESENT (1 << 7)
 
 #define TYPE_TSS ((1 << 0) | FLAG_PRESENT)
 #define TYPE_SEG ((1 << 4) | FLAG_PRESENT)
 
 #define FLAG_AVAILABLE        (1 << 4)
-#define BITS_32          (1 << 6)
 #define FLAG_GRANULARITY_BYTE (0 << 7)
 #define FLAG_GRANULARITY_PAGE (1 << 7)
+
+#define BITS_32          (1 << 6)
 
 #define PERM_W (1 << 1)
 #define PERM_X (1 << 3)
@@ -55,14 +54,12 @@ static inline void set_selector(gdt_entry_t *gdt, uint16_t index, uint32_t base,
 }
 
 void tss_set_stack(uint32_t sp) {
-    tss_t *tss = &get_percpu_unsafe(tss);
-
-    tss->esp0 = sp;
+    get_percpu_unsafe(tss).esp0 = sp;
 }
 
 void gdt_set_tls(uint32_t tls_start) {
     gdt_entry_t *gdt = get_percpu(gdt);
-    set_selector(gdt, SEL_USER_TLS  , tls_start, 0xFFFFF, TYPE_SEG | CPL_USER | PERM_W , BITS_32 | FLAG_GRANULARITY_PAGE | FLAG_AVAILABLE);
+    set_selector(gdt, SEL_USER_TLS ,  tls_start, 0xFFFFF, TYPE_SEG | CPL_USER | PERM_W , BITS_32 | FLAG_GRANULARITY_PAGE | FLAG_AVAILABLE);
 }
 
 extern uint32_t percpu_data_start;
@@ -74,7 +71,7 @@ void gdt_init(processor_t *proc) {
 
     set_selector(gdt, SEL_KRNL_CODE, 0x00000000, 0xFFFFF, TYPE_SEG | CPL_KRNL | PERM_WX, BITS_32 | FLAG_GRANULARITY_PAGE);
     set_selector(gdt, SEL_KRNL_DATA, 0x00000000, 0xFFFFF, TYPE_SEG | CPL_KRNL | PERM_W , BITS_32 | FLAG_GRANULARITY_PAGE);
-    set_selector(gdt, SEL_USER_CODE, 0x00000000, 0xFFFFF, TYPE_SEG | CPL_USER | PERM_W , BITS_32 | FLAG_GRANULARITY_PAGE | FLAG_AVAILABLE);
+    set_selector(gdt, SEL_USER_CODE, 0x00000000, 0xFFFFF, TYPE_SEG | CPL_USER | PERM_WX, BITS_32 | FLAG_GRANULARITY_PAGE | FLAG_AVAILABLE);
     set_selector(gdt, SEL_USER_DATA, 0x00000000, 0xFFFFF, TYPE_SEG | CPL_USER | PERM_W , BITS_32 | FLAG_GRANULARITY_PAGE | FLAG_AVAILABLE);
     set_selector(gdt, SEL_USER_TLS , 0x00000000, 0xFFFFF, TYPE_SEG | CPL_USER | PERM_W , BITS_32 | FLAG_GRANULARITY_PAGE | FLAG_AVAILABLE);
 
@@ -83,16 +80,15 @@ void gdt_init(processor_t *proc) {
     set_selector(gdt, SEL_TSS, (uint32_t) tss, sizeof(tss_t), TYPE_TSS | CPL_KRNL | PERM_X, BITS_32 | FLAG_GRANULARITY_BYTE);
 
     tss->ss0 = SEL_KRNL_DATA;
-    tss->esp0 = ((uint32_t) kernel_stack) + sizeof(kernel_stack) - 1;
+    tss->esp0 = 0xDEADBEEF;
 
-    gdtd_t gdtd;
+    volatile gdtd_t gdtd;
     gdtd.size = (GDT_SIZE * sizeof(gdt_entry_t)) - 1;
     gdtd.offset = (uint32_t) gdt;
 
-    __asm__ volatile("lgdt (%0)" :: "a" (&gdtd));
+    lgdt(&gdtd);
 
     flush_segment_registers();
 
-    __asm__ volatile("mov %0, %%gs" :: "a" (SEL_KRNL_PCPU));
     __asm__ volatile("ltr %%ax" :: "a" (SEL_TSS | SPL_USER));
 }

@@ -4,7 +4,6 @@
 #include "time/timer.h"
 #include "time/clock.h"
 #include "mm/cache.h"
-#include "video/log.h"
 
 typedef struct timer {
     list_head_t list;

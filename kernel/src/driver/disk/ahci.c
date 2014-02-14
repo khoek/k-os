@@ -331,9 +331,11 @@ static bool ahci_probe(device_t *device) {
     return true;
 }
 
-/*static*/ void handle_ahci_irq(interrupt_t *interrupt, ahci_controller_t *cont) {
+/*
+static void handle_ahci_irq(interrupt_t *interrupt, ahci_controller_t *cont) {
 
 }
+*/
 
 static void port_init(ahci_controller_t *cont, uint32_t num) {
     ahci_port_t *port = kmalloc(sizeof(ahci_port_t));
@@ -363,10 +365,10 @@ static void port_init(ahci_controller_t *cont, uint32_t num) {
     writel(port_base, PORT_REG_PxIE  , 0);
 
     if ((readl(port_base, PORT_REG_PxSSTS) & 0x0F) != PORT_STATUS_DET_PRESENT) {
-        logf("ahci - not present");
+        logf("ahci - port #%u: not present");
         return;
     } else if (((readl(port_base, PORT_REG_PxSSTS) >> 8) & 0x0F) != PORT_STATUS_IPM_ACTIVE) {
-        logf("ahci - drive asleep");
+        logf("ahci - port #%i: drive asleep");
         return;
     }
 

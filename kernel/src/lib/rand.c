@@ -1,7 +1,6 @@
 #include "init/initcall.h"
 #include "lib/rand.h"
 #include "arch/tsc.h"
-#include "video/log.h"
 
 static uint32_t holdrand;
 
@@ -25,8 +24,6 @@ uint32_t rand32() {
 
 static INITCALL rand_init() {
     srand((uint32_t) rdtsc());
-
-    logf("rand - seeded unsecure pseudorandom number generator");
 
     return 0;
 }

@@ -4,7 +4,8 @@
 #include "lib/int.h"
 #include "common/list.h"
 
-#define MSEC_IN_SEC 1000
+#define MILLIS_PER_SEC 1000
+#define FEMPTOS_PER_SEC 1000000000000000ULL
 
 typedef struct clock {
     list_head_t list;

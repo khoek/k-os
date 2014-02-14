@@ -1,7 +1,5 @@
 #include <stddef.h>
 #include <stdbool.h>
-#include <stdarg.h>
-
 #include "lib/string.h"
 #include "lib/printf.h"
 #include "bug/debug.h"
@@ -27,7 +25,14 @@ void panic(char *message) {
     spin_lock(&log_lock);
 
     console_color(0x0C);
-    console_putsf("\nKERNEL PANIC (core %u): ", get_percpu_unsafe(this_proc)->num);
+    console_puts("\nKERNEL PANIC (");
+    if(0 && get_percpu_ptr() && get_percpu_unsafe(this_proc)) {
+        console_putsf("core %u", get_percpu_unsafe(this_proc)->num);
+    } else {
+        console_puts("invalid percpu ptr");
+    }
+    console_puts("): ");
+
     console_color(0x07);
     console_putsf("%s\n\n", message);
 
@@ -36,7 +41,7 @@ void panic(char *message) {
     asm("mov %%ebp, %0" : "=r" (ebp));
     eip = ebp[1] - 1;
 
-    for(uint32_t frame = 0; eip != 0 && ebp != 0 && frame < MAX_FRAMES; frame++) {
+    for(uint32_t frame = 0; eip && ebp && frame < MAX_FRAMES; frame++) {
         const elf_symbol_t *symbol = debug_lookup_symbol(eip);
         if(symbol == NULL) {
             console_putsf("    0x%X\n", eip);

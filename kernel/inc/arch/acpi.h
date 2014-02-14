@@ -1,11 +1,13 @@
 #ifndef KERNEL_ARCH_ACPI_H
 #define KERNEL_ARCH_ACPI_H
 
-#define MADT_ENTRY_TYPE_LAPIC 0
+#define MADT_ENTRY_TYPE_LAPIC  0
+#define MADT_ENTRY_TYPE_IOAPIC 1
 
 #define MADT_ENTRY_LAPIC_FLAG_ENABLED (1 << 0)
 
 #include "lib/int.h"
+#include "common/compiler.h"
 
 typedef struct acpi_sdt {
     uint8_t sig[4];
@@ -25,6 +27,14 @@ typedef struct acpi_madt {
     uint32_t flags;
     uint8_t records[];
 } PACKED acpi_madt_t;
+
+typedef struct gas {
+    uint8_t addr_space_id;
+    uint8_t reg_bit_width;
+    uint8_t reg_bit_offset;
+    uint8_t zero;
+    uint64_t addr;
+} PACKED gas_t;
 
 extern acpi_sdt_t *rsdt;
 extern acpi_sdt_t *madt;

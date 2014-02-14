@@ -6,6 +6,7 @@
 #include "lib/int.h"
 #include "common/compiler.h"
 #include "init/initcall.h"
+#include "arch/pic.h"
 #include "arch/registers.h"
 
 #define IRQ_OFFSET 0x20
@@ -16,6 +17,9 @@ typedef struct interrupt {
 } PACKED interrupt_t;
 
 typedef void (*isr_t)(interrupt_t *interrupt, void *data);
+typedef void (*eoi_handler_t)(uint32_t vector);
+
+extern eoi_handler_t eoi_handler;
 
 void idt_init();
 

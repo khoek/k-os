@@ -16,7 +16,7 @@ static DEFINE_SPINLOCK(buff_lock);
 
 static void print_time() {
     uint32_t time = uptime();
-    console_putsf("[%5u.%03u] ", time / MSEC_IN_SEC, time % MSEC_IN_SEC);
+    console_putsf("[%5u.%03u] ", time / MILLIS_PER_SEC, time % MILLIS_PER_SEC);
 }
 
 void log(const char *str) {

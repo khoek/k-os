@@ -15,8 +15,6 @@ void semaphore_down(semaphore_t *lock) {
     } else {
         list_add(&current->wait_list, &lock->waiters);
 
-        //list_add(&current->wait_list, &lock->waiters);
-
         spin_unlock_irqstore(&lock->lock, flags);
 
         task_sleep_current();

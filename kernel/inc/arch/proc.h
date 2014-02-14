@@ -20,11 +20,7 @@ typedef struct processor_arch processor_arch_t;
     }))
 
 #define get_percpu_unsafe(name)                                     \
-    (*({                                                            \
-        uint8_t *__t1;                                              \
-        __asm__ volatile("mov %%gs:(0), %%eax" : "=a" (__t1) );     \
-        &get_percpu_raw(__t1, name);                                \
-    }))
+        get_percpu_raw(get_percpu_ptr(), name)
 
 #define get_percpu(name)            \
     (*({                            \
@@ -50,6 +46,12 @@ struct processor_arch {
     uint32_t apic_id;
     uint32_t acpi_id;
 };
+
+static inline void * get_percpu_ptr() {
+    void *ptr;
+    __asm__ volatile("mov %%gs:(0), %%eax" : "=a" (ptr));
+    return ptr;
+}
 
 void arch_setup_proc(processor_t *proc);
 

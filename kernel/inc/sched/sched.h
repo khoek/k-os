@@ -22,7 +22,7 @@ void task_sleep(task_t *task);
 void task_sleep_current();
 void task_wake(task_t *task);
 
-void sched_reschedule();
+void sched_switch();
 void sched_try_resched();
 
 void sched_run();

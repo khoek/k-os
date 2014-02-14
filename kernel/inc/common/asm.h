@@ -3,6 +3,11 @@
 
 #include "lib/int.h"
 
+#define barrier() \
+    do {                                \
+        asm volatile("" ::: "memory");  \
+    } while (0)
+
 static inline void cli() {
     __asm__ volatile("cli");
 }
@@ -15,8 +20,14 @@ static inline void hlt() {
     __asm__ volatile("hlt");
 }
 
+static inline void lgdt(volatile void *gdtr) {
+   __asm__ volatile("lgdt (%0)" :: "r" (gdtr));
+   barrier();
+}
+
 static inline void lidt(volatile void *idtr) {
    __asm__ volatile("lidt (%0)" :: "r" (idtr));
+   barrier();
 }
 
 static inline void outb(uint16_t port, uint8_t value) {
