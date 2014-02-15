@@ -1,6 +1,7 @@
 #include "init/initcall.h"
 #include "init/param.h"
 #include "common/list.h"
+#include "sync/spinlock.h"
 #include "mm/cache.h"
 #include "sched/sched.h"
 #include "sched/task.h"
@@ -19,6 +20,7 @@ static fs_t *devfs;
 static task_t *devfs_task;
 static DEFINE_LIST(devfs_devices);
 static DEFINE_LIST(devfs_pending);
+static DEFINE_SPINLOCK(devfs_lock);
 
 static void devfs_dev_file_open(file_t *file, inode_t *inode) {
 }
@@ -69,6 +71,9 @@ static dentry_t * devfs_create(fs_type_t *fs_type, const char *device) {
 }
 
 void devfs_add_device(block_device_t *device, char *name) {
+    uint32_t flags;
+    spin_lock_irqsave(&devfs_lock, &flags);
+
     devfs_device_t *d = kmalloc(sizeof(devfs_device_t));
     d->name = name;
     d->device = device;
@@ -76,6 +81,8 @@ void devfs_add_device(block_device_t *device, char *name) {
     device->dentry = dentry_alloc(d->name);
 
     if(devfs_task) task_wake(devfs_task);
+
+    spin_unlock_irqstore(&devfs_lock, flags);
 }
 
 static char *mntpoint;
@@ -108,20 +115,36 @@ static bool create_path(path_t *start, char *orig_path) {
     return true;
 }
 
+static bool devfs_update() {
+    uint32_t flags;
+    spin_lock_irqsave(&devfs_lock, &flags);
+
+    if(list_empty(&devfs_pending)) {
+        return false;
+    }
+
+    devfs_device_t *d = list_first(&devfs_pending, devfs_device_t, list);
+    list_rm(&d->list);
+
+    spin_unlock_irqstore(&devfs_lock, flags);
+
+    d->device->dentry->inode = devfs_inode_alloc(d);
+    dentry_add_child(d->device->dentry, devfs->root);
+
+    spin_lock_irqsave(&devfs_lock, &flags);
+
+    list_add(&d->list, &devfs_devices);
+    logf("devfs - added /dev/%s", d->device->dentry->name);
+
+    spin_unlock_irqstore(&devfs_lock, flags);
+
+    return true;
+}
+
 static void devfs_run() {
     while(true) {
-        if(list_empty(&devfs_pending)) {
-            task_sleep_current();
-        } else {
-            devfs_device_t *d = list_first(&devfs_pending, devfs_device_t, list);
-            d->device->dentry->inode = devfs_inode_alloc(d);
-
-            dentry_add_child(d->device->dentry, devfs->root);
-
-            list_move(&d->list, &devfs_devices);
-
-            logf("devfs - added /dev/%s", d->device->dentry->name);
-        }
+        while(devfs_update());
+        task_sleep_current();
     }
 }
 
@@ -131,9 +154,11 @@ static INITCALL devfs_init() {
     return 0;
 }
 
-static INITCALL devfs_automount() {
+static INITCALL devfs_mount() {
     devfs = vfs_fs_create("devfs", NULL);
-    devfs_task = task_create("devfs", true, devfs_run, NULL);
+    devfs_task = task_create("devfsd", true, devfs_run, NULL);
+
+    while(devfs_update());
 
     if(mntpoint) {
         path_t wd, target;
@@ -157,4 +182,4 @@ static INITCALL devfs_automount() {
 }
 
 core_initcall(devfs_init);
-fs_initcall(devfs_automount);
+fs_initcall(devfs_mount);
