@@ -364,11 +364,13 @@ static void port_init(ahci_controller_t *cont, uint32_t num) {
     writel(port_base, PORT_REG_PxIS  , 0);
     writel(port_base, PORT_REG_PxIE  , 0);
 
+    //Is the port unused?
     if ((readl(port_base, PORT_REG_PxSSTS) & 0x0F) != PORT_STATUS_DET_PRESENT) {
-        logf("ahci - port #%u: not present");
         return;
-    } else if (((readl(port_base, PORT_REG_PxSSTS) >> 8) & 0x0F) != PORT_STATUS_IPM_ACTIVE) {
-        logf("ahci - port #%i: drive asleep");
+    }
+
+    //Is the port powered down?
+    if (((readl(port_base, PORT_REG_PxSSTS) >> 8) & 0x0F) != PORT_STATUS_IPM_ACTIVE) {
         return;
     }
 
