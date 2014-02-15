@@ -30,13 +30,9 @@ test: all main.c
 	make -C ../kernel
 	rm -f ../kernel/build/kernel.elf
 	rm -f ../kernel/build/main.mod
-	rm -f ../kernel/build/song.mod
 	/usr/local/cross/bin/i586-elf-gcc --sysroot=inc -std=gnu99 -c -Iinc -o main.o main.c
-	/usr/local/cross/bin/i586-elf-gcc --sysroot=inc -std=gnu99 -c -Iinc -o song.o song.c
 	/usr/local/cross/bin/i586-elf-ld -T linker.ld -o main.mod main.o libc.a
-	/usr/local/cross/bin/i586-elf-ld -T linker.ld -o song.mod song.o libc.a
 	cp main.mod ../kernel/build/
-	cp song.mod ../kernel/build/
 	make -C ../kernel run
 
 .PHONY: all clean
