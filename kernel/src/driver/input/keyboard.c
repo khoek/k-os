@@ -151,9 +151,7 @@ static void dispatch(uint16_t code) {
         code ^= RELEASE_BIT;
         key_state[code] = false;
 
-        if(keyup != 0) {
-            (*keyup)(translate_code(code));
-        }
+        if(keyup) (*keyup)(translate_code(code));
     } else {
         key_state[code] = true;
 
@@ -166,9 +164,7 @@ static void dispatch(uint16_t code) {
             sysrq_handle(code);
         }
 
-        if(keydown != 0) {
-            (*keydown)(translate_code(code));
-        }
+        if(keydown) (*keydown)(translate_code(code));
     }
 }
 
@@ -177,8 +173,61 @@ static void handle_keyboard(interrupt_t *interrupt, void *data) {
     dispatch(inb(0x60));
 }
 
+#define DISABLE_PORT1 0xAD
+#define DISABLE_PORT2 0xA7
+
+#define IRQ_PORT1 (1 << 0)
+#define IRQ_PORT2 (1 << 1)
+#define TRANSLATION (1 << 6)
+
+#define CLOCK_PORT1 (1 << 4)
+#define CLOCK_PORT2 (1 << 5)
+
 static INITCALL keyboard_init() {
+    outb(0x64, DISABLE_PORT1);
+    outb(0x64, DISABLE_PORT2);
+
+    for(int i = 0; i < 512; i++) {
+        inb(0x60);
+    }
+
+    uint8_t config = inb(0x20);
+    outb(0x60, config & ~(IRQ_PORT1 | IRQ_PORT2 | TRANSLATION));
+
+    outb(0x64, 0xAA);
+    while(inb(0x60) & 1);
+    while(inb(0x60) != 0x55) {
+        logf("kbd - controlled failed BIST!");
+        return 0;
+    }
+
+    bool dual_channel = config & CLOCK_PORT2;
+    if(dual_channel) {
+        outb(0x64, 0xA8);
+
+        dual_channel = !(inb(0x20) & CLOCK_PORT2);
+        if(dual_channel){
+            outb(0x64, 0xA7);
+        }
+    }
+
     register_isr(KEYBOARD_IRQ + IRQ_OFFSET, CPL_KRNL, handle_keyboard, NULL);
+
+    outb(0x64, 0xAB);
+    while(inb(0x60) & 1);
+    if(!inb(0x60)) {
+        outb(0x64, 0xAE);
+    }
+
+    if(dual_channel) {
+        outb(0x64, 0xA9);
+        while(inb(0x60) & 1);
+        if(!inb(0x60)) {
+            outb(0x64, 0xA8);
+        }
+    }
+
+    outb(0x60, inb(0x20) | IRQ_PORT1 | IRQ_PORT2);
 
     return 0;
 }
