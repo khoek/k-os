@@ -30,6 +30,8 @@
 #define PIC_REG_ISR 0x0B
 
 static void pic_eoi(uint32_t vector) {
+    if(vector > PIC_SLAVE_OFFSET + PIC_NUM_PINS) return;
+
     if(vector >= PIC_SLAVE_OFFSET && vector != INT_SPURIOUS_SLAVE) {
         outb(SLAVE_COMMAND , EOI);
     }
