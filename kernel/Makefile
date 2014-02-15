@@ -26,8 +26,8 @@ hdd.img:
 image: kernel cdrom.iso
 
 run: image hdd.img
-	@echo "running bochs"
-	@$(QEMU) -smp cores=2 -boot d -cdrom cdrom.iso -drive id=disk,file=hdd.img,if=none -device ahci,id=ahci -device ide-drive,drive=disk,bus=ahci.0
+	@echo "running qemu"
+	@$(QEMU) -smp cores=8 -boot d -cdrom cdrom.iso -drive id=disk,file=hdd.img,if=none -device ahci,id=ahci -device ide-drive,drive=disk,bus=ahci.0
 
 doc:
 	@echo "running doxygen"
