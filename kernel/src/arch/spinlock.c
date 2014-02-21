@@ -8,6 +8,7 @@
 
 #include "atomic_ops.h"
 
+#define LOCK_ATTEMPTS (1 << 15)
 #define DEADLOCK_THRESHOLD 1000
 
 #ifdef DEBUG_SPINLOCKS
@@ -23,26 +24,34 @@ void _spin_lock(volatile spinlock_t *lock) {
     uint64_t then = uptime();
 #endif
 
-    ticket_pair_t local = {.tail = 1};
+    register ticket_pair_t local = {.tail = 1};
     local = xchg_op(add, &lock->arch, local);
-    barrier();
+    if(likely(local.head == local.tail))
+        goto lock_out;
 
-    while(local.head != local.tail) {
-        local.head = ACCESS_ONCE(lock->arch.head);
-        barrier();
-
-        relax();
+    while(true) {
+        uint32_t attempts = LOCK_ATTEMPTS;
+        do {
+            if(ACCESS_ONCE(lock->arch.head) == local.tail)
+                goto lock_out;
+            relax();
 
 #ifdef DEBUG_SPINLOCKS
-        if(uptime() - then > DEADLOCK_THRESHOLD) {
-            panicf("deadlock detected! state: (%X, %X), offender: 0x%X", ACCESS_ONCE(lock->arch.head), ACCESS_ONCE(lock->arch.tail), lock->holder);
-        }
+            if(uptime() - then > DEADLOCK_THRESHOLD) {
+                panicf("deadlock detected! state: (%X, %X), offender: 0x%X", ACCESS_ONCE(lock->arch.head), ACCESS_ONCE(lock->arch.tail), lock->holder);
+            }
 #endif
+        } while(--attempts);
+
+        //TODO consider blocking
     }
 
 #ifdef DEBUG_SPINLOCKS
     lock->holder = __builtin_return_address(0);
 #endif
+
+lock_out:
+    barrier();
 }
 
 void _spin_unlock(volatile spinlock_t *lock) {
@@ -52,7 +61,6 @@ void _spin_unlock(volatile spinlock_t *lock) {
     lock->holder = NULL;
 #endif
 
-    barrier();
     add(&lock->arch.head, 1);
 }
 
