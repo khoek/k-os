@@ -8,6 +8,11 @@
         asm volatile("" ::: "memory");  \
     } while (0)
 
+#define relax() \
+    do {                                        \
+        asm volatile("rep; nop" ::: "memory");  \
+    } while(0)
+
 static inline void cli() {
     __asm__ volatile("cli");
 }

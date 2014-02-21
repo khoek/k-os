@@ -31,6 +31,8 @@ void _spin_lock(volatile spinlock_t *lock) {
         local.head = ACCESS_ONCE(lock->arch.head);
         barrier();
 
+        relax();
+
 #ifdef DEBUG_SPINLOCKS
         if(uptime() - then > DEADLOCK_THRESHOLD) {
             panicf("deadlock detected! state: (%X, %X), offender: 0x%X", ACCESS_ONCE(lock->arch.head), ACCESS_ONCE(lock->arch.tail), lock->holder);
