@@ -134,7 +134,7 @@ static bool devfs_update() {
     spin_lock_irqsave(&devfs_lock, &flags);
 
     list_add(&d->list, &devfs_devices);
-    logf("devfs - added /dev/%s", d->device->dentry->name);
+    kprintf("devfs - added /dev/%s", d->device->dentry->name);
 
     spin_unlock_irqstore(&devfs_lock, flags);
 
@@ -166,13 +166,13 @@ static INITCALL devfs_mount() {
         wd.dentry = root_mount->fs->root;
 
         if(!create_path(&wd, mntpoint)) {
-            logf("devfs - could not create path \"%s\"", mntpoint);
+            kprintf("devfs - could not create path \"%s\"", mntpoint);
         } else if(!vfs_lookup(&wd, mntpoint, &target)) {
-            logf("devfs - could not lookup \"%s\"", mntpoint);
+            kprintf("devfs - could not lookup \"%s\"", mntpoint);
         } else if(vfs_do_mount(devfs, &target)) {
-            logf("devfs - mounted at \"%s\"", mntpoint);
+            kprintf("devfs - mounted at \"%s\"", mntpoint);
         } else {
-            logf("devfs - could not mount at \"%s\"", mntpoint);
+            kprintf("devfs - could not mount at \"%s\"", mntpoint);
         }
     }
 

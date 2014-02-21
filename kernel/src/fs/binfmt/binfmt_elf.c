@@ -78,7 +78,7 @@ static int load_elf_exe(const char *name, void *start, uint32_t length) {
                 break;
             }
             default:
-                logf("binfmt_elf - unsupported phdr type (0x%X)", phdr[i].p_type);
+                kprintf("binfmt_elf - unsupported phdr type (0x%X)", phdr[i].p_type);
                 continue;
         }
     }

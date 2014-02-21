@@ -294,7 +294,7 @@ static void sata_identify(ahci_port_t *port) {
 
     uint32_t size = *((uint32_t *) (buff + ATA_IDENT_MAX_LBA_EXT));
 
-    logf("ahci - SATA   %s %7uMB", model, size / 1024 / 2);
+    kprintf("ahci - SATA   %s %7uMB", model, size / 1024 / 2);
 
     memset(&port->device, 0, sizeof(block_device_t));
     port->device.ops = &ahci_device_ops;
@@ -376,13 +376,13 @@ static void port_init(ahci_controller_t *cont, uint32_t num) {
 
     switch (readl(port_base, PORT_REG_PxSIG)) {
         case PORT_SIG_SATAPI:
-            logf("ahci - SATAPI unsupported");
+            kprintf("ahci - SATAPI unsupported");
             break;
         case PORT_SIG_SEMB:
-            logf("ahci - SEMB unsupported");
+            kprintf("ahci - SEMB unsupported");
             break;
         case PORT_SIG_PM:
-            logf("ahci - PM unsupported");
+            kprintf("ahci - PM unsupported");
             break;
         default:
             sata_identify(port);

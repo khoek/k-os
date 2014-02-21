@@ -20,10 +20,10 @@ void sysrq_handle(uint16_t code) {
             break;
         }
         case S_KEY: {
-            logf("stats:");
-            logf("%u tasks", task_count);
-            logf("%u file descriptors in use", gfds_in_use);
-            logf("%u/%u pages allocated/avaliable", pages_in_use, pages_avaliable);
+            kprintf("stats:");
+            kprintf("%u tasks", task_count);
+            kprintf("%u file descriptors in use", gfds_in_use);
+            kprintf("%u/%u pages allocated/avaliable", pages_in_use, pages_avaliable);
             break;
         }
     }

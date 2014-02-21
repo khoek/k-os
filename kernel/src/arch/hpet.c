@@ -50,7 +50,7 @@ void __init hpet_init(acpi_sdt_t *hpet) {
     base = map_page((void *) ((uint32_t) data->base.addr));
     caps.raw = readq(base, REG_CAPS);
 
-    logf("hpet - there are %u timers", caps.reg.num_timers + 1);
+    kprintf("hpet - there are %u timers", caps.reg.num_timers + 1);
 
     writeq(base, REG_CONF, 0);
     writeq(base, REG_MCR , 0);

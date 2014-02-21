@@ -62,7 +62,7 @@ static void handle_pit(interrupt_t *interrupt, void *data) {
 
 extern void panic(char *s);
 void __init pit_init() {
-    logf("pit - fallback timer registered");
+    kprintf("pit - fallback timer registered");
 
     outb(0x43, 0x36);
     outb(0x40, (PIT_CLOCK / TIMER_FREQ) & 0xff);

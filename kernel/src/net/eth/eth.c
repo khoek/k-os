@@ -50,7 +50,7 @@ static void eth_handle(packet_t *packet, void *raw, uint16_t length) {
             break;
         }
         default: {
-            logf("eth - unrecognised ethertype (0x%02X)", swap_uint16(header->type));
+            kprintf("eth - unrecognised ethertype (0x%02X)", swap_uint16(header->type));
             break;
         }
     }

@@ -66,14 +66,14 @@ void __init debug_init() {
     }
 
     if(strtabsz) {
-        logf("debug - strtab is present (0x%p)", strtab);
+        kprintf("debug - strtab is present (0x%p)", strtab);
     } else {
-        logf("debug - strtab is not present");
+        kprintf("debug - strtab is not present");
     }
 
     if(symtabsz) {
-        logf("debug - symtab is present (0x%p)", symtab);
+        kprintf("debug - symtab is present (0x%p)", symtab);
     } else {
-        logf("debug - symtab is not present");
+        kprintf("debug - symtab is not present");
     }
 }

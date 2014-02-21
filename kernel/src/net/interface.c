@@ -93,19 +93,19 @@ void net_set_state(net_interface_t *interface, net_state_t state) {
     //TODO better handle active devices, etc
     switch(state) {
         case IF_DOWN: {
-            logf("net - interface is DOWN");
+            kprintf("net - interface is DOWN");
             break;
         }
         case IF_UP: {
-            logf("net - interface is UP");
+            kprintf("net - interface is UP");
             break;
         }
         case IF_READY: {
-            logf("net - interface is READY");
+            kprintf("net - interface is READY");
             break;
         }
         case IF_ERROR: {
-            logf("net - interface error");
+            kprintf("net - interface error");
             break;
         }
         default: break;

@@ -197,7 +197,7 @@ static INITCALL keyboard_init() {
     outb(0x64, 0xAA);
     while(inb(0x60) & 1);
     while(inb(0x60) != 0x55) {
-        logf("kbd - controlled failed BIST!");
+        kprintf("kbd - controlled failed BIST!");
         return 0;
     }
 

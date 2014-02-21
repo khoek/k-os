@@ -216,5 +216,5 @@ void __init cache_init() {
         kalloc_cache[i] = cache_create(1 << i);
     }
 
-    logf("cache - metacache and kmalloc caches initialized");
+    kprintf("cache - metacache and kmalloc caches initialized");
 }

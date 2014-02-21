@@ -5,7 +5,7 @@
 
 DECLARE_SPINLOCK(log_lock);
 
-void log(const char *str);
-void logf(const char *fmt, ...);
+void kprint(const char *str);
+void kprintf(const char *fmt, ...);
 
 #endif

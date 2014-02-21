@@ -65,7 +65,7 @@ void ip_handle(packet_t *packet, void *raw, uint16_t len) {
     len -= sizeof(ip_header_t);
 
     if(IP_VERSION(ip->version_ihl) != 0x04) {
-        logf("ip - unsupported version number (0x%02X)", IP_VERSION(ip->version_ihl));
+        kprintf("ip - unsupported version number (0x%02X)", IP_VERSION(ip->version_ihl));
     } else {
         arp_cache_store(packet->interface, &eth_hdr(packet)->src, &ip->src);
 
@@ -83,7 +83,7 @@ void ip_handle(packet_t *packet, void *raw, uint16_t len) {
                 break;
             }
             default: {
-                logf("ip - unrecognised protocol (0x%02X)", ip->protocol);
+                kprintf("ip - unrecognised protocol (0x%02X)", ip->protocol);
                 break;
             }
         }

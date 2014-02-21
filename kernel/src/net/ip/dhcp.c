@@ -148,7 +148,7 @@ static bool dhcp_parse_options(dhcp_options_t *opts, void *packet, uint16_t len)
                 break;
             }
             default: {
-                logf("dhcp - unknown option: %u", opt);
+                kprintf("dhcp - unknown option: %u", opt);
                 break;
             }
         }
@@ -245,7 +245,7 @@ static void dhcp_send_request(net_interface_t *interface, dhcp_header_t *hdr, dh
 static void dhcp_ack(net_interface_t *interface, dhcp_header_t *hdr) {
     ((ip_interface_t *) interface->ip_data)->ip_addr = hdr->yiaddr;
 
-    logf("dhcp - ip address ACK (%u.%u.%u.%u)", hdr->yiaddr.addr[0], hdr->yiaddr.addr[1], hdr->yiaddr.addr[2], hdr->yiaddr.addr[3]);
+    kprintf("dhcp - ip address ACK (%u.%u.%u.%u)", hdr->yiaddr.addr[0], hdr->yiaddr.addr[1], hdr->yiaddr.addr[2], hdr->yiaddr.addr[3]);
 
     net_set_state(interface, IF_READY);
 }
@@ -276,7 +276,7 @@ void dhcp_handle(packet_t *packet, void *raw, uint16_t len) {
             break;
         }
         default: {
-            logf("dhcp - unknown message type %u", opts.message_type);
+            kprintf("dhcp - unknown message type %u", opts.message_type);
             break;
         }
     }

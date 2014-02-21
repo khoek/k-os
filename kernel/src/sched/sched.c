@@ -186,7 +186,7 @@ void sched_try_resched() {
 }
 
 void __noreturn sched_loop() {
-    logf("sched - cpu #%u is READY", get_percpu_unsafe(this_proc)->num);
+    kprintf("sched - cpu #%u is READY", get_percpu_unsafe(this_proc)->num);
 
     current = NULL;
     get_percpu_unsafe(switch_time) = 0;

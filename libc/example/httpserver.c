@@ -26,12 +26,12 @@ int main() {
     local.sin_addr.s_addr = INADDR_ANY;
 
     if(bind(fds, (struct sockaddr *) &local, sizeof(struct sockaddr_in))) {
-        log("ERR: bind");
+        kprint("ERR: bind");
         return 1;
     }
 
     if(listen(fds, 128)) {
-        log("ERR: listen");
+        kprint("ERR: listen");
         return 2;
     }
 

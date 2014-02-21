@@ -14,9 +14,9 @@ static void handle_param(char *key, char *value, uint32_t value_len) {
     for(uint32_t i = 0; i < (((uint32_t) param_end) - ((uint32_t) param_start)) / sizeof(cmdline_param_t); i++) {
         if(!strcmp(key, param_start[i].name)) {
             if(!param_start[i].handle) {
-                logf("param \"%s\": duplicate ignored", key);
+                kprintf("param \"%s\": duplicate ignored", key);
             } else if(!param_start[i].handle(value)) {
-                logf("param \"%s\": invalid value \"%s\"", key, value);
+                kprintf("param \"%s\": invalid value \"%s\"", key, value);
                 kfree(value, value_len);
             }
 
@@ -26,7 +26,7 @@ static void handle_param(char *key, char *value, uint32_t value_len) {
         }
     }
 
-    logf("param \"%s\": not recognized", key);
+    kprintf("param \"%s\": not recognized", key);
 }
 
 static char *empty_string = "";
@@ -37,12 +37,12 @@ void parse_cmdline() {
     if(cmdline_len > MAX_CMDLINE_LEN) {
         cmdline_len = MAX_CMDLINE_LEN;
 
-        logf("truncated cmdline to %u characters (too long)", MAX_CMDLINE_LEN);
+        kprintf("truncated cmdline to %u characters (too long)", MAX_CMDLINE_LEN);
     }
     memcpy(buff, (void *) multiboot_info->cmdline, cmdline_len);
     buff[cmdline_len + 1] = '\0';
 
-    logf("parsing cmdline: \"%s\"", buff);
+    kprintf("parsing cmdline: \"%s\"", buff);
 
     char *cmdline = buff;
     char *key, *value;

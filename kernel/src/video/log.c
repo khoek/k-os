@@ -19,7 +19,7 @@ static void print_time() {
     console_putsf("[%5u.%03u] ", time / MILLIS_PER_SEC, time % MILLIS_PER_SEC);
 }
 
-void log(const char *str) {
+void kprint(const char *str) {
     uint32_t flags;
     spin_lock_irqsave(&log_lock, &flags);
 
@@ -31,7 +31,7 @@ void log(const char *str) {
     spin_unlock_irqstore(&log_lock, flags);
 }
 
-void logf(const char *fmt, ...) {
+void kprintf(const char *fmt, ...) {
     uint32_t flags;
     spin_lock_irqsave(&buff_lock, &flags);
 
@@ -40,7 +40,7 @@ void logf(const char *fmt, ...) {
     vsprintf(buff, fmt, va);
     va_end(va);
 
-    log(buff);
+    kprint(buff);
 
     spin_unlock_irqstore(&buff_lock, flags);
 }

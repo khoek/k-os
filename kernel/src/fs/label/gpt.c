@@ -104,7 +104,7 @@ static bool gpt_probe(block_device_t *device) {
         } else if(!memcmp(&part->type, PART_TYPE_LINUX_SWAP, sizeof(guid_t))) {
             //TODO call register_swap() (not yet implemented)
         } else if(memcmp(&part->type, PART_TYPE_UNUSED, sizeof(guid_t))) {
-            logf("gpt - unrecognised type guid: %02X%02X%02X%02X-%02X%02X-%02X%02X-%02X%02X-%02X%02X%02X%02X%02X%02X",
+            kprintf("gpt - unrecognised type guid: %02X%02X%02X%02X-%02X%02X-%02X%02X-%02X%02X-%02X%02X%02X%02X%02X%02X",
                 part->type[ 3], part->type[ 2],
                 part->type[ 1], part->type[ 0],
                 part->type[ 5], part->type[ 4],

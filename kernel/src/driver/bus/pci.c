@@ -139,7 +139,7 @@ static void probe_function(uint8_t bus, uint8_t device, uint8_t function) {
     dev->bar[5] = pci_readl(bus, device, function, REG_FULL_BAR5);
     dev->interrupt = pci_readb(bus, device, function, REG_BYTE_INTRPT);
 
-    logf("pci - %02X:%02X:%02X %08X %04X:%04X - %s",
+    kprintf("pci - %02X:%02X:%02X %08X %04X:%04X - %s",
         bus, device, function, dev->ident.class, dev->ident.vendor, dev->ident.device,
         (classes[(dev->ident.class >> 24)] ? classes[(dev->ident.class >> 24)] : "Unknown Type"));
 

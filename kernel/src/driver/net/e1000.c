@@ -192,11 +192,11 @@ static void net_825xx_poll(net_interface_t *interface) {
 
     while(net_device->rx_desc[net_device->rx_front].status & RX_DESC_STATUS_DD) {
         if(!(net_device->rx_desc[net_device->rx_front].status & RX_DESC_STATUS_EOP)) {
-            logf("825xx - rx: no EOP support, dropping");
+            kprintf("825xx - rx: no EOP support, dropping");
         //} else if(net_device->rx_desc[net_device->rx_front].error) {
-        //    logf("825xx - rx: descriptor error (0x%X), dropping", net_device->rx_desc[net_device->rx_front].error);
+        //    kprintf("825xx - rx: descriptor error (0x%X), dropping", net_device->rx_desc[net_device->rx_front].error);
         } else if(net_device->rx_desc[net_device->rx_front].length < 60) {
-            logf("825xx - rx: short packet (%u bytes)", net_device->rx_desc[net_device->rx_front].length);
+            kprintf("825xx - rx: short packet (%u bytes)", net_device->rx_desc[net_device->rx_front].length);
         } else {
             net_recieve(interface, net_device->rx_buff[net_device->rx_front], net_device->rx_desc[net_device->rx_front].length);
         }
@@ -264,7 +264,7 @@ static bool net_825xx_probe(device_t *device) {
     pci_device_t *pci_device = containerof(device, pci_device_t, device);
 
     if(pci_device->bar[0] == 0) {
-        logf("825xx - invalid BAR0");
+        kprintf("825xx - invalid BAR0");
         return false;
     }
 

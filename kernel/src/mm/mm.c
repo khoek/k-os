@@ -301,7 +301,7 @@ void __init mm_init() {
         }
     }
 
-    logf("mm - kernel image 0x%p-0x%p", kernel_start, kernel_end);
+    kprintf("mm - kernel image 0x%p-0x%p", kernel_start, kernel_end);
 
     multiboot_memory_map_t *mmap = multiboot_info->mmap;
     uint32_t best_len = 0;
@@ -414,7 +414,7 @@ void __init mm_init() {
 
     //TODO unmap_page(mmap);
 
-    logf("mm - paging: %u MB, malloc: %u MB, avaliable: %u MB",
+    kprintf("mm - paging: %u MB, malloc: %u MB, avaliable: %u MB",
             DIV_DOWN(DIV_UP(sizeof (uint32_t) * NUM_ENTRIES * NUM_ENTRIES, PAGE_SIZE) * PAGE_SIZE, 1024 * 1024),
             DIV_DOWN(DIV_UP(sizeof (page_t) * NUM_ENTRIES * NUM_ENTRIES, PAGE_SIZE) * PAGE_SIZE, 1024 * 1024),
             DIV_DOWN(pages_avaliable * PAGE_SIZE, 1024 * 1024));
@@ -423,7 +423,7 @@ void __init mm_init() {
 void mm_postinit_reclaim() {
     uint32_t pages = DIV_UP(((uint32_t) &init_mem_end) - ((uint32_t) &init_mem_start), PAGE_SIZE);
 
-    logf("mm - reclaiming %u init pages", pages);
+    kprintf("mm - reclaiming %u init pages", pages);
 
     for(uint32_t i = 0; i < pages; i++) {
         claim_page(DIV_DOWN(((uint32_t) &init_mem_start), PAGE_SIZE) + i);

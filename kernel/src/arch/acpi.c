@@ -104,17 +104,17 @@ static INITCALL acpi_init() {
         } else {
             rsdt = NULL;
 
-            logf("acpi - invalid rsdt");
+            kprintf("acpi - invalid rsdt");
         }
     } else {
-        logf("acpi - no rsdp detected");
+        kprintf("acpi - no rsdp detected");
     }
 
     if(!hpet_present) {
         pit_init();
     }
 
-    logf("acpi - initialized successfully");
+    kprintf("acpi - initialized successfully");
 
     return 0;
 }

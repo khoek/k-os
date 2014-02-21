@@ -264,7 +264,7 @@ uint8_t ide_print_error(uint32_t drive, uint8_t err) {
     } else  if (err == 3)          {kprintf("- Reads Nothing\n       "); err = 23;}
        else  if (err == 4)  {kprintf("- Write Protected\n       "); err = 8;}*/
 
-    logf("ide error - [%s %s] %s",
+    kprintf("ide error - [%s %s] %s",
         (const char *[]){"Primary", "Secondary"}[ide_devices[drive].channel], // Use the channel as an index into the array
         (const char *[]){"Master", "Slave"}[ide_devices[drive].drive], // Same as above, using the drive
         ide_devices[drive].model);
@@ -679,7 +679,7 @@ static void ide_enable(device_t *device) {
             ide_devices[d].device.size = ide_devices[d].size / 512;
             ide_devices[d].device.block_size = 512;
 
-            logf("ide - %s %s %7uMB", (const char *[]){"PATA  ", "PATAPI"}[ide_devices[i].type], ide_devices[d].model, ide_devices[i].size / 1024 / 2);
+            kprintf("ide - %s %s %7uMB", (const char *[]){"PATA  ", "PATAPI"}[ide_devices[i].type], ide_devices[d].model, ide_devices[i].size / 1024 / 2);
 
             char *name = kmalloc(STRLEN(IDE_DEVICE_PREFIX) + 2);
             memcpy(name, IDE_DEVICE_PREFIX, STRLEN(IDE_DEVICE_PREFIX));

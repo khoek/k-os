@@ -41,7 +41,7 @@ void __init mp_init(acpi_sdt_t *madt) {
         panic("mp - no LAPIC detected!");
     }
 
-    logf("mp - MP compliant system detected");
+    kprintf("mp - MP compliant system detected");
 
     acpi_madt_t *madt_data = (void *) madt->data;
     apic_init(madt_data->lapic_base);

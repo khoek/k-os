@@ -495,7 +495,7 @@ static INITCALL vfs_init() {
 }
 
 static INITCALL vfs_root_mount() {
-    logf("fs - mounting root fs");
+    kprintf("fs - mounting root fs");
 
     fs_t *rootfs = vfs_fs_create("ramfs", NULL);
     if(!rootfs) return 1;

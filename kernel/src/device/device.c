@@ -107,7 +107,7 @@ void traverse_log(node_t *node, uint32_t depth) {
 
     strcpy(ptr, node->name);
     buff[bufflen] = '\0';
-    log(buff);
+    kprint(buff);
 
     node_t *child;
     LIST_FOR_EACH_ENTRY(child, &node->children, list) {
@@ -116,9 +116,9 @@ void traverse_log(node_t *node, uint32_t depth) {
 }
 
 static INITCALL device_init() {
-    logf("device - list start");
+    kprintf("device - list start");
     traverse_log(&root, 0);
-    logf("device - list end");
+    kprintf("device - list end");
 
     return 0;
 }

@@ -36,7 +36,7 @@ static inline uint8_t param_8(interrupt_t *interrupt, uint32_t num) {
 typedef void (*syscall_t)(interrupt_t *);
 
 static void sys_exit(interrupt_t *interrupt) {
-    logf("sys_exit: %d", interrupt->cpu.reg.ecx);
+    kprintf("sys_exit: %d", interrupt->cpu.reg.ecx);
 
     task_exit(current, interrupt->cpu.reg.ecx);
 }
@@ -57,13 +57,13 @@ static void sys_sleep(interrupt_t *interrupt) {
 
 static void sys_log(interrupt_t *interrupt) {
     if(interrupt->cpu.reg.edx > 1023) {
-        logf("syscall - task log string too long!");
+        kprintf("syscall - task log string too long!");
     } else {
         char *buff = kmalloc(interrupt->cpu.reg.edx + 1);
         memcpy(buff, (void *) interrupt->cpu.reg.ecx, interrupt->cpu.reg.edx);
         buff[interrupt->cpu.reg.edx] = '\0';
 
-        log(buff);
+        kprint(buff);
 
         kfree(buff, interrupt->cpu.reg.edx + 1);
     }
