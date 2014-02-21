@@ -3,7 +3,7 @@
 #include "lib/string.h"
 #include "mm/cache.h"
 
-int isdigit(char c) {
+int isdigit(int c) {
     return c >= '0' && c <= '9';
 }
 
@@ -55,7 +55,7 @@ size_t strlen(const char *str) {
     return len;
 }
 
-char * strchr(const char *str, const char c) {
+char * strchr(const char *str, const int c) {
     while(*str++) {
         if(*str == c) {
              return (char *) str;
@@ -80,7 +80,7 @@ int strcmp(const char *a, const char *b) {
 char * strcpy(char *dest, const char *src) {
     char *ret = dest;
 
-    while ((*dest++ = *src++) != '\0')
+    while((*dest++ = *src++) != '\0')
        continue;
 
     return ret;
@@ -93,8 +93,8 @@ char * strdup(const char *orig) {
     return new;
 }
 
-void * memset(void *ptr, char c, size_t bytes) {
-    char *p = (char*)ptr;
+void * memset(void *ptr, int c, size_t bytes) {
+    char *p = (char *) ptr;
     size_t i;
     for(i = 0; i < bytes; i++) {
         p[i] = c;
@@ -103,8 +103,8 @@ void * memset(void *ptr, char c, size_t bytes) {
 }
 
 void * memcpy(void *dest, const void *source, size_t bytes) {
-    char *d = (char*)dest;
-    const char *s = (const void*)source;
+    char *d = (char *) dest;
+    const char *s = (const void *) source;
     size_t i;
     for(i = 0; i < bytes; i++) {
         d[i] = s[i];
@@ -113,8 +113,8 @@ void * memcpy(void *dest, const void *source, size_t bytes) {
 }
 
 void * memmove(void *dest, const void *source, size_t bytes) {
-    char *d = (char*)dest;
-    const char *s = (const void*)source;
+    char *d = (char *) dest;
+    const char *s = (const void *) source;
     size_t i;
     if(d < s) {
         for(i = 0; i < bytes; i++) {
@@ -129,8 +129,8 @@ void * memmove(void *dest, const void *source, size_t bytes) {
 }
 
 int memcmp(const void *a, const void *b, size_t bytes) {
-    const char *ca = (const char*)a;
-    const char *cb = (const char*)b;
+    const char *ca = (const char *) a;
+    const char *cb = (const char *) b;
     size_t i;
     for(i = 0; i < bytes; i++) {
         if(ca[i] != cb[i]) {
