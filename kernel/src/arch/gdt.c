@@ -90,5 +90,5 @@ void gdt_init(processor_t *proc) {
 
     flush_segment_registers();
 
-    __asm__ volatile("ltr %%ax" :: "a" (SEL_TSS | SPL_USER));
+    ltr(SEL_TSS | SPL_USER);
 }
