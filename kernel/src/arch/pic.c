@@ -32,8 +32,10 @@
 static void pic_eoi(uint32_t vector) {
     if(vector > PIC_SLAVE_OFFSET + PIC_NUM_PINS) return;
 
-    if(vector >= PIC_SLAVE_OFFSET && vector != INT_SPURIOUS_SLAVE) {
-        outb(SLAVE_COMMAND , EOI);
+    //don't ignore INT_SPURIOUS_MASTER interrupts because that is the IDE
+    //secondary IRQ vector
+    if(vector >= PIC_SLAVE_OFFSET) {
+        outb(SLAVE_COMMAND, EOI);
     }
 
     if(vector != INT_SPURIOUS_MASTER) {
