@@ -49,6 +49,8 @@ static INITCALL acpi_init() {
     acpi_rsdp_t *rsdp;
     acpi_sdt_t *rsdt;
 
+    kprintf("acpi - parsing tables");
+
     uint8_t *search = map_page((void *) BIOS_DATA_START);
 
     uint8_t *page = (uint8_t *) (BIOS_DATA_START + PAGE_SIZE);
