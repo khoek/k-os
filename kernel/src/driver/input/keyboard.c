@@ -184,50 +184,13 @@ static void handle_keyboard(interrupt_t *interrupt, void *data) {
 #define CLOCK_PORT2 (1 << 5)
 
 static INITCALL keyboard_init() {
-    outb(0x64, DISABLE_PORT1);
-    outb(0x64, DISABLE_PORT2);
-
-    for(int i = 0; i < 512; i++) {
-        inb(0x60);
-    }
-
-    uint8_t config = inb(0x20);
-    outb(0x60, config & ~(IRQ_PORT1 | IRQ_PORT2 | TRANSLATION));
-
     outb(0x64, 0xAA);
-    while(inb(0x60) & 1);
-    while(inb(0x60) != 0x55) {
-        kprintf("kbd - controlled failed BIST!");
+    if(inb(0x60) != 0x55) {
+        kprintf("kbd - controller failed BIST!");
         return 0;
     }
 
-    bool dual_channel = config & CLOCK_PORT2;
-    if(dual_channel) {
-        outb(0x64, 0xA8);
-
-        dual_channel = !(inb(0x20) & CLOCK_PORT2);
-        if(dual_channel){
-            outb(0x64, 0xA7);
-        }
-    }
-
     register_isr(KEYBOARD_IRQ + IRQ_OFFSET, CPL_KRNL, handle_keyboard, NULL);
-
-    outb(0x64, 0xAB);
-    while(inb(0x60) & 1);
-    if(!inb(0x60)) {
-        outb(0x64, 0xAE);
-    }
-
-    if(dual_channel) {
-        outb(0x64, 0xA9);
-        while(inb(0x60) & 1);
-        if(!inb(0x60)) {
-            outb(0x64, 0xA8);
-        }
-    }
-
-    outb(0x60, inb(0x20) | IRQ_PORT1 | IRQ_PORT2);
 
     return 0;
 }
