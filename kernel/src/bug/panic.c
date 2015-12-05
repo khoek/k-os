@@ -26,7 +26,7 @@ void panic(char *message) {
 
     console_color(0x0C);
     console_puts("\nKERNEL PANIC (");
-    if(0 && get_percpu_ptr() && get_percpu_unsafe(this_proc)) {
+    if(get_percpu_ptr() && get_percpu_unsafe(this_proc)) {
         console_putsf("core %u", get_percpu_unsafe(this_proc)->num);
     } else {
         console_puts("invalid percpu ptr");
