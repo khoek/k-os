@@ -68,11 +68,12 @@ void __init mp_init(acpi_sdt_t *madt) {
                         page_t *page = alloc_pages(STACK_NUM_PAGES, 0);
                         next_ap_stack = (void *) ((uint32_t) page_to_virt(page) + PAGE_SIZE);
 
+                        waiting = true;
+
                         apic_issue_command(id, APIC_CMD_TYPE_INIT, APIC_CMD_FLAG_ASSERT, 0x00);
                         //TODO sleep for 10ms using the apic timer
                         apic_issue_command(id, APIC_CMD_TYPE_STARTUP, APIC_CMD_FLAG_ASSERT, (((uint32_t) &entry_ap) >> 12) & 0xFF);
 
-                        waiting = true;
                         while(waiting);
                     }
                 }
