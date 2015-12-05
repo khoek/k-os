@@ -16,8 +16,10 @@
 #include "video/log.h"
 #include "misc/stats.h"
 
+#define MMAP_BUFF_SIZE 256
+
 #define MAX_ORDER 10
-#define ADDRESS_SPACE_SIZE 4294967296ULL
+#define ADDRESS_SPACE_SIZE 4294967295ULL
 
 #define NUM_ENTRIES 1024
 
@@ -44,6 +46,7 @@ static uint32_t kernel_page_tables[255][1024] ALIGN(PAGE_SIZE);
 static uint32_t kernel_next_page; //page which will next be mapped to kernel addr space on alloc
 static page_t *pages;
 static page_t *free_page_list[MAX_ORDER + 1];
+static __initdata uint8_t mmap_buff[MMAP_BUFF_SIZE];
 
 static DEFINE_SPINLOCK(alloc_lock);
 static DEFINE_SPINLOCK(map_lock);
@@ -291,21 +294,34 @@ static void claim_page(uint32_t idx) {
 }
 
 void __init mm_init() {
+    multiboot_module_t *mods = multiboot_info->mods;
+    uint32_t mods_count = multiboot_info->mods_count;
+
     kernel_start = ((uint32_t) &image_start);
     kernel_end = ((uint32_t) &image_end);
 
-    for (uint32_t i = 0; i < multiboot_info->mods_count; i++) {
-        uint32_t end = multiboot_info->mods[i].end - 1;
+    for (uint32_t i = 0; i < mods_count; i++) {
+        uint32_t start = mods[i].start;
+        uint32_t end = mods[i].end;
+
+        if (kernel_start > start) {
+            kernel_start = start;
+        }
+
         if (kernel_end < end) {
             kernel_end = end;
         }
     }
 
+    //preserve the mmap_length struct
+    uint32_t mmap_length = multiboot_info->mmap_length;
+    memcpy(mmap_buff, multiboot_info->mmap, mmap_length);
+    multiboot_memory_map_t *mmap = (multiboot_memory_map_t *) mmap_buff;
+
     kprintf("mm - kernel image 0x%p-0x%p", kernel_start, kernel_end);
 
-    multiboot_memory_map_t *mmap = multiboot_info->mmap;
     uint32_t best_len = 0;
-    for (uint32_t i = 0; i < (multiboot_info->mmap_length / sizeof (multiboot_memory_map_t)); i++) {
+    for (uint32_t i = 0; i < mmap_length / sizeof (multiboot_memory_map_t); i++) {
         if (mmap[i].type == MULTIBOOT_MEMORY_AVAILABLE) {
             if (mmap[i].addr >= ADDRESS_SPACE_SIZE) {
                 continue;
@@ -315,7 +331,7 @@ void __init mm_init() {
             uint64_t end = mmap[i].addr + mmap[i].len;
 
             if (end > ADDRESS_SPACE_SIZE) {
-                end = ADDRESS_SPACE_SIZE - 1ULL;
+                end = ADDRESS_SPACE_SIZE;
             }
 
             if (start <= kernel_start && kernel_start < end) {
@@ -374,9 +390,20 @@ void __init mm_init() {
     debug_map_virtual();
 
     multiboot_info = (multiboot_info_t *) map_page(multiboot_info);
-    multiboot_info->mods = (multiboot_module_t *) map_page(multiboot_info->mods);
-    mmap = (multiboot_memory_map_t *) map_page(mmap);
+    if(mods)
+        mods = multiboot_info->mods = (multiboot_module_t *) map_page(mods);
 
+    for (uint32_t i = 0; i < mods_count; i++) {
+        uint32_t start = mods[i].start;
+        uint32_t end = mods[i].end;
+        uint32_t len = end - start;
+        uint32_t num_pages = DIV_UP(end - start, PAGE_SIZE);
+
+        mods[i].start = (uint32_t) map_pages((void*) start, num_pages);
+        mods[i].end = mods[i].start + len;
+    }
+
+    //this may arbitrarily corrupt multiboot data structures, including the mmap structure, which caused a bug
     for (uint32_t page = 0; page < NUM_ENTRIES * NUM_ENTRIES; page++) {
         pages[page].flags = PAGE_FLAG_PERM | PAGE_FLAG_USED;
         pages[page].order = 0;
@@ -386,17 +413,18 @@ void __init mm_init() {
 
     uint32_t malloc_page_end = DIV_UP(malloc_start, PAGE_SIZE) + malloc_num_pages;
 
-    for (uint32_t i = (multiboot_info->mmap_length / sizeof(multiboot_memory_map_t)); i > 0; i--) {
-        if (mmap[i - 1].type == MULTIBOOT_MEMORY_AVAILABLE) {
-            if (mmap[i - 1].addr >= ADDRESS_SPACE_SIZE) {
+    for (uint32_t i = 0; i < mmap_length / sizeof(multiboot_memory_map_t); i++) {
+        if (mmap[i].type == MULTIBOOT_MEMORY_AVAILABLE) {
+
+            if (mmap[i].addr >= ADDRESS_SPACE_SIZE) {
                 continue;
             }
 
-            uint32_t start = mmap[i - 1].addr;
-            uint64_t end = mmap[i - 1].addr + mmap[i - 1].len;
+            uint32_t start = mmap[i].addr;
+            uint64_t end = mmap[i].addr + mmap[i].len;
 
             if (end > ADDRESS_SPACE_SIZE) {
-                end = ADDRESS_SPACE_SIZE - 1ULL;
+                end = ADDRESS_SPACE_SIZE;
             }
 
             start = start == 0 ? 0 : DIV_UP(start, PAGE_SIZE);
