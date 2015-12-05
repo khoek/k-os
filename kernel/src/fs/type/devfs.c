@@ -71,18 +71,17 @@ static dentry_t * devfs_create(fs_type_t *fs_type, const char *device) {
 }
 
 void devfs_add_device(block_device_t *device, char *name) {
-    uint32_t flags;
-    spin_lock_irqsave(&devfs_lock, &flags);
-
     devfs_device_t *d = kmalloc(sizeof(devfs_device_t));
     d->name = name;
     d->device = device;
-    list_add_before(&d->list, &devfs_pending);
     device->dentry = dentry_alloc(d->name);
 
-    if(devfs_task) task_wake(devfs_task);
-
+    uint32_t flags;
+    spin_lock_irqsave(&devfs_lock, &flags);
+    list_add_before(&d->list, &devfs_pending);
     spin_unlock_irqstore(&devfs_lock, flags);
+
+    if(devfs_task) task_wake(devfs_task);
 }
 
 static char *mntpoint;
@@ -120,6 +119,8 @@ static bool devfs_update() {
     spin_lock_irqsave(&devfs_lock, &flags);
 
     if(list_empty(&devfs_pending)) {
+        spin_unlock_irqstore(&devfs_lock, flags);
+
         return false;
     }
 
