@@ -9,15 +9,24 @@
     } while(0)
 
 uint64_t __udivdi3(uint64_t n, uint64_t d) {
-    if(n < d) return 0;
-
     if(!d) __divide_by_zero();
 
-    uint64_t times = 0;
-    while(n > d) {
-        n -= d;
-        times++;
+    uint64_t q = 0, bit = 1;
+
+    while (((int64_t) d) >= 0) {
+        d <<= 1;
+        bit <<= 1;
     }
 
-    return times;
+    while (bit) {
+        if (d <= n) {
+            n -= d;
+            q += bit;
+        }
+
+        d >>= 1;
+        bit >>= 1;
+    }
+
+    return q;
 }
