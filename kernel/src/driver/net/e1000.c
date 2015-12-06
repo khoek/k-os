@@ -23,6 +23,10 @@
 #define NUM_RX_DESCS    128
 #define NUM_TX_DESCS    128
 
+//PCI Command Register bits
+#define PCI_CMD_MAE     (1 << 1)  //Memory Access Enable
+#define PCI_CMD_BME     (1 << 2)  //Bus Mastering Enable
+
 //Registers
 #define REG_CTRL    0x00000 //Control Register
 #define REG_STATUS  0x00008 //Status Register
@@ -356,6 +360,8 @@ static bool net_825xx_probe(device_t *device) {
     net_device->interface.send = net_825xx_send;
     net_device->interface.hard_addr.family = AF_LINK;
     net_device->interface.hard_addr.addr = mac;
+
+    pci_writel(pci_device->loc, PCI_FULL_CMDSTA, pci_readl(pci_device->loc, PCI_FULL_CMDSTA) | PCI_CMD_MAE | PCI_CMD_BME);
 
     return true;
 }
