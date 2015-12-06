@@ -1,6 +1,6 @@
-display_library: sdl
+display_library: sdl2
 
-cpu: count=4
+cpu: count=1
 
 plugin_ctrl: e1000=1
 
@@ -14,4 +14,4 @@ boot: cdrom
 ata0-master: type=cdrom, path="cdrom.iso", status=inserted
 ata1-master: type=disk, path="hdd.img"
 
-#e1000: enabled=1, mac=68:65:64:6c:65:79, ethmod=linux, ethdev=eth0
+e1000: enabled=1, mac=68:65:64:6c:65:79, ethmod=linux, ethdev=eth0
