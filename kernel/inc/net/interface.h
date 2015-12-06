@@ -14,6 +14,7 @@ typedef struct net_link_layer {
 
 typedef enum net_state {
     IF_UNKNOWN=0,
+    IF_INIT,
     IF_DOWN,
     IF_UP,
     IF_READY,

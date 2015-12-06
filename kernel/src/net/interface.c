@@ -19,6 +19,7 @@ void register_net_interface(net_interface_t *interface) {
     interface->tx_total = 0;
 
     interface->ip_data = 0;
+    interface->state = IF_INIT;
 
     uint32_t flags;
     spin_lock_irqsave(&interface_lock, &flags);
