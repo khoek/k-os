@@ -41,6 +41,8 @@ static uint32_t kernel_start;
 static uint32_t kernel_end;
 static uint32_t malloc_start;
 
+__initdata uint32_t mods_count;
+
 uint32_t page_directory[1024] ALIGN(PAGE_SIZE);
 static uint32_t kernel_page_tables[255][1024] ALIGN(PAGE_SIZE);
 static uint32_t kernel_next_page; //page which will next be mapped to kernel addr space on alloc
@@ -288,14 +290,14 @@ void free_pages(page_t *pages, uint32_t count) {
 }
 
 static void claim_page(uint32_t idx) {
-    flag_unset(&pages[idx - 1], PAGE_FLAG_PERM);
-    free_page(&pages[idx - 1]);
+    flag_unset(&pages[idx], PAGE_FLAG_PERM);
+    free_page(&pages[idx]);
     pages_avaliable++;
 }
 
 void __init mm_init() {
     multiboot_module_t *mods = multiboot_info->mods;
-    uint32_t mods_count = multiboot_info->mods_count;
+    mods_count = multiboot_info->mods_count;
 
     kernel_start = ((uint32_t) &image_start);
     kernel_end = ((uint32_t) &image_end);
@@ -411,7 +413,7 @@ void __init mm_init() {
         pages[page].prev = NULL;
     }
 
-    uint32_t malloc_page_end = DIV_UP(malloc_start, PAGE_SIZE) + malloc_num_pages;
+    uint32_t malloc_page_end = DIV_DOWN(malloc_start, PAGE_SIZE) + malloc_num_pages;
 
     for (uint32_t i = 0; i < mmap_length / sizeof(multiboot_memory_map_t); i++) {
         if (mmap[i].type == MULTIBOOT_MEMORY_AVAILABLE) {
@@ -431,7 +433,7 @@ void __init mm_init() {
             end = end == 0 ? 0 : DIV_DOWN(end, PAGE_SIZE);
 
             for (uint32_t j = end; j > start; j--) {
-                if (j - 1 >= malloc_page_end) {
+                if (j >= malloc_page_end) {
                     claim_page(j);
                 }
             }
@@ -439,8 +441,6 @@ void __init mm_init() {
             pages_in_use = 0;
         }
     }
-
-    //TODO unmap_page(mmap);
 
     kprintf("mm - paging: %u MB, malloc: %u MB, avaliable: %u MB",
             DIV_DOWN(DIV_UP(sizeof (uint32_t) * NUM_ENTRIES * NUM_ENTRIES, PAGE_SIZE) * PAGE_SIZE, 1024 * 1024),
