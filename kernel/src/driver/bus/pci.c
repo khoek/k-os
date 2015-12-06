@@ -9,29 +9,10 @@
 #include "driver/bus/pci.h"
 #include "video/log.h"
 
+#define makeLoc(b, d, f) ((pci_loc_t){.bus=(b), .device=(d), .function=(f)})
+
 #define CONFIG_ADDRESS  0xCF8
 #define CONFIG_DATA     0xCFC
-
-#define REG_FULL_BAR0   0x10
-#define REG_FULL_BAR1   0x14
-#define REG_FULL_BAR2   0x18
-#define REG_FULL_BAR3   0x1C
-#define REG_FULL_BAR4   0x20
-#define REG_FULL_BAR5   0x24
-
-#define REG_WORD_VENDOR 0x00
-#define REG_WORD_DEVICE 0x02
-
-//Header type 0x00
-#define REG_BYTE_REVISN 0x08
-#define REG_BYTE_PROGIF 0x09
-#define REG_BYTE_SCLASS 0x0A
-#define REG_BYTE_CLASS  0x0B
-#define REG_BYTE_HEADER 0x0E
-#define REG_BYTE_INTRPT 0x3C
-
-//Header type 0x01
-#define REG_BYTE_2NDBUS 0x19
 
 static char * classes[] = {
     [0x00] = "Unspecified Type",
@@ -55,18 +36,22 @@ static char * classes[] = {
     [0xFF] = "Miscellaneous Device"
 };
 
-static uint32_t pci_readl(uint16_t bus, uint16_t slot, uint16_t func, uint16_t offset) {
-    outl(CONFIG_ADDRESS, (uint32_t)((((uint32_t) 0x80000000) | (uint32_t) bus << 16) | ((uint32_t) slot << 11) | ((uint32_t) func << 8) | (offset & 0xFC)));
+inline uint32_t pci_readl(pci_loc_t loc, uint16_t offset) {
+    outl(CONFIG_ADDRESS, (uint32_t)((((uint32_t) 0x80000000) | (uint32_t) loc.bus << 16) | ((uint32_t) loc.device << 11) | ((uint32_t) loc.function << 8) | (offset & 0xFC)));
     return inl(CONFIG_DATA);
 }
 
-static uint16_t pci_readw(uint16_t bus, uint16_t slot, uint16_t func, uint16_t offset) {
-    outl(CONFIG_ADDRESS, (uint32_t)((((uint32_t) 0x80000000) | (uint32_t) bus << 16) | ((uint32_t) slot << 11) | ((uint32_t) func << 8) | (offset & 0xFC)));
-    return (uint16_t) ((inl(CONFIG_DATA) >> ((offset) * 8)) & 0xFFFF);
+inline uint16_t pci_readw(pci_loc_t loc, uint16_t offset) {
+    return (uint16_t) (pci_readl(loc, offset & ~0x3) >> ((offset & 0x2) * 8));
 }
 
-static uint8_t pci_readb(uint16_t bus, uint16_t slot, uint16_t func, uint16_t offset) {
-    return (uint8_t) (pci_readw(bus, slot, func, offset) & 0xFF);
+inline uint8_t pci_readb(pci_loc_t loc, uint16_t offset) {
+    return (uint16_t) (pci_readw(loc, offset & ~0x1) >> ((offset & 0x1) * 8));
+}
+
+void pci_writel(pci_loc_t loc, uint16_t offset, uint32_t val) {
+    outl(CONFIG_ADDRESS, (uint32_t)((((uint32_t) 0x80000000) | (uint32_t) loc.bus << 16) | ((uint32_t) loc.device << 11) | ((uint32_t) loc.function << 8) | (offset & 0xFC)));
+    outl(CONFIG_DATA, val);
 }
 
 static bool pci_match(device_t *device, driver_t *driver) {
@@ -101,14 +86,14 @@ static void probe_bus(uint8_t bus) {
 }
 
 static void probe_device(uint8_t bus, uint8_t device) {
-    uint16_t vendor = pci_readw(bus, device, 0, REG_WORD_VENDOR);
+    uint16_t vendor = pci_readw(makeLoc(bus, device, 0), PCI_WORD_VENDOR);
 
     if(vendor == 0x0000 || vendor == 0xFFFF) return;
 
     probe_function(bus, device, 0);
-    if((pci_readb(bus, device, 0, REG_BYTE_HEADER) & 0x80) != 0) {
+    if((pci_readb(makeLoc(bus, device, 0), PCI_BYTE_HEADER) & 0x80) != 0) {
         for(int function = 1; function < 8; function++) {
-             if((pci_readw(bus, device, function, REG_WORD_VENDOR)) != 0xFFFF) {
+             if((pci_readw(makeLoc(bus, device, function), PCI_WORD_VENDOR)) != 0xFFFF) {
                  probe_function(bus, device, function);
              }
         }
@@ -124,23 +109,20 @@ static void probe_function(uint8_t bus, uint8_t device, uint8_t function) {
 
     dev->device.bus = &pci_bus;
 
-    dev->ident.vendor = pci_readw(bus, device, function, REG_WORD_VENDOR);
-    dev->ident.device = pci_readw(bus, device, function, REG_WORD_DEVICE);
-    dev->ident.class = (((uint32_t) pci_readb(bus, device, function, REG_BYTE_CLASS)) << 24)
-                    | (((uint32_t) pci_readb(bus, device, function, REG_BYTE_SCLASS)) << 16)
-                    | (((uint32_t) pci_readb(bus, device, function, REG_BYTE_PROGIF)) << 8)
-                    | (((uint32_t) pci_readb(bus, device, function, REG_BYTE_REVISN)));
+    dev->ident.vendor = pci_readw(dev->loc, PCI_WORD_VENDOR);
+    dev->ident.device = pci_readw(dev->loc, PCI_WORD_DEVICE);
+    dev->ident.class  = pci_readl(dev->loc, PCI_FULL_CLASS);
 
-    dev->bar[0] = pci_readl(bus, device, function, REG_FULL_BAR0);
-    dev->bar[1] = pci_readl(bus, device, function, REG_FULL_BAR1);
-    dev->bar[2] = pci_readl(bus, device, function, REG_FULL_BAR2);
-    dev->bar[3] = pci_readl(bus, device, function, REG_FULL_BAR3);
-    dev->bar[4] = pci_readl(bus, device, function, REG_FULL_BAR4);
-    dev->bar[5] = pci_readl(bus, device, function, REG_FULL_BAR5);
-    dev->interrupt = pci_readb(bus, device, function, REG_BYTE_INTRPT);
+    dev->bar[0] = pci_readl(dev->loc, PCI_FULL_BAR0);
+    dev->bar[1] = pci_readl(dev->loc, PCI_FULL_BAR1);
+    dev->bar[2] = pci_readl(dev->loc, PCI_FULL_BAR2);
+    dev->bar[3] = pci_readl(dev->loc, PCI_FULL_BAR3);
+    dev->bar[4] = pci_readl(dev->loc, PCI_FULL_BAR4);
+    dev->bar[5] = pci_readl(dev->loc, PCI_FULL_BAR5);
+    dev->interrupt = pci_readb(dev->loc, PCI_BYTE_INTRPT);
 
-    kprintf("pci - %02X:%02X:%02X %08X %04X:%04X - %s",
-        bus, device, function, dev->ident.class, dev->ident.vendor, dev->ident.device,
+    kprintf("pci - %02X:%02X:%02X %08X %04X:%04X (%X) - %s",
+        bus, device, function, dev->ident.class, dev->ident.vendor, dev->ident.device, dev->interrupt,
         (classes[(dev->ident.class >> 24)] ? classes[(dev->ident.class >> 24)] : "Unknown Type"));
 
     register_device(&dev->device, &pci_bus.node);
@@ -164,7 +146,7 @@ static bool bridge_probe(device_t *UNUSED(device)) {
 static void bridge_enable(device_t *device) {
     pci_device_t *pci_device = containerof(device, pci_device_t, device);
 
-    probe_bus(pci_readb(pci_device->loc.bus, pci_device->loc.device, pci_device->loc.function, REG_BYTE_2NDBUS));
+    probe_bus(pci_readb(pci_device->loc, PCI_BYTE_2NDBUS));
 }
 
 static void bridge_disable(device_t UNUSED(*device)) {
@@ -208,13 +190,13 @@ static INITCALL pci_init() {
 static INITCALL pci_probe() {
     outl(CONFIG_ADDRESS, 0x80000000);
     if(inl(CONFIG_ADDRESS) == 0x80000000) { //does PCI exist?
-        if((pci_readb(0, 0, 0, REG_BYTE_HEADER) & 0x80) == 0) {
+        if((pci_readb(makeLoc(0, 0, 0), PCI_BYTE_HEADER) & 0x80) == 0) {
             //Single PCI host controller
             probe_bus(0);
         } else {
             //Multiple PCI host controllers
             for(unsigned int function = 0; function < 8; function++) {
-                 if(pci_readw(0, 0, function, REG_WORD_VENDOR) != 0xFFFF) break;
+                 if(pci_readw(makeLoc(0, 0, function), PCI_WORD_VENDOR) != 0xFFFF) break;
                  probe_bus(function);
             }
         }
