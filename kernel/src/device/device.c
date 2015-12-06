@@ -85,6 +85,7 @@ void register_device(device_t *device, node_t *parent) {
             list_add(&device->list, &device->bus->devices);
 
             driver->enable(device);
+            break;
         }
     }
 
