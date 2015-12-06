@@ -234,19 +234,20 @@ static void handle_network(interrupt_t *interrupt, void *data) {
 int32_t net_825xx_send(packet_t *packet) {
     net_825xx_t *net_device = containerof(packet->interface, net_825xx_t, interface);
 
-    net_device->tx_desc[net_device->tx_front].length = packet_expand(net_device->tx_buff[net_device->tx_front], packet, ETH_MIN_PACKET_SIZE);
-    net_device->tx_desc[net_device->tx_front].cmd = TX_DESC_CMD_EOP | TX_DESC_CMD_IFCS | TX_DESC_CMD_RS;
+    tx_desc_t *desc = &net_device->tx_desc[net_device->tx_front];
 
-    uint32_t old_tx_front = net_device->tx_front;
+    desc->length = packet_expand(net_device->tx_buff[net_device->tx_front], packet, ETH_MIN_PACKET_SIZE);
+    desc->cmd = TX_DESC_CMD_EOP | TX_DESC_CMD_IFCS | TX_DESC_CMD_RS;
+
     net_device->tx_front = (net_device->tx_front + 1) % NUM_TX_DESCS;
     mmio_write(net_device, REG_TDT, net_device->tx_front);
 
-    while(!(net_device->tx_desc[old_tx_front].sta & 0xF))
+    while(!(desc->sta & 0xF))
         sleep(1);
 
     packet_destroy(packet);
 
-    return net_device->tx_desc[old_tx_front].sta & TX_DESC_STATUS_DD ? 0 : -1;
+    return desc->sta & TX_DESC_STATUS_DD ? 0 : -1;
 }
 
 static char * net_825xx_name_prefix = "net_825xx_";
@@ -259,7 +260,6 @@ static char * net_825xx_name(device_t UNUSED(*device)) {
 
     return name;
 }
-
 static bool net_825xx_probe(device_t *device) {
     pci_device_t *pci_device = containerof(device, pci_device_t, device);
 
@@ -272,13 +272,7 @@ static bool net_825xx_probe(device_t *device) {
 
     spinlock_init(&net_device->state_lock);
 
-    net_device->mmio = (uint32_t) map_page((void *) BAR_ADDR_32(pci_device->bar[0]));
-
-    //FIXME this assumes that map_page will map the pages contiguously, this should not be relied upon!
-    for(uint32_t addr = PAGE_SIZE; addr < (DIV_UP(REG_LAST, PAGE_SIZE) * PAGE_SIZE); addr += PAGE_SIZE) {
-        map_page((void *) (addr + BAR_ADDR_32(pci_device->bar[0])));
-    }
-
+    net_device->mmio = (uint32_t) map_pages((void *) BAR_ADDR_32(pci_device->bar[0]), DIV_UP(REG_LAST, PAGE_SIZE));
     register_isr(pci_device->interrupt + IRQ_OFFSET, CPL_KRNL, handle_network, NULL);
 
     mac_t *mac = kmalloc(sizeof(mac_t));
@@ -345,6 +339,7 @@ static bool net_825xx_probe(device_t *device) {
         page_t *page = alloc_page(0);
 
         net_device->tx_desc[i].address = (uint32_t) page_to_phys(page);
+        net_device->tx_desc[i].sta = 0;
         net_device->tx_desc[i].cmd = 0;
 
         net_device->tx_buff[i] = (uint8_t *) page_to_virt(page);
