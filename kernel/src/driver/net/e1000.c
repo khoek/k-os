@@ -404,8 +404,7 @@ static pci_ident_t net_825xx_idents[] = {
     {
         .vendor =     0x8086,
         .device =     0x100E,
-        //.class  =     0x02000000,
-        .class  =     0x00000000,
+        .class  =     0x02000003,
         .class_mask = 0xFFFF0000
     }
 };
