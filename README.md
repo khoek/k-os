@@ -60,6 +60,8 @@ Currently K-OS accepts the following optional configuration options:
     </tr>
 </table>
 
+To enable/disable these options edit the "kernel/config.h" file.
+
 ## License
 
 Where not explicitly indicated otherwise, all files are licensed under the following terms:

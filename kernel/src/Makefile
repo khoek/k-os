@@ -2,7 +2,7 @@
 
 ASFLAGS=--32
 
-CCFLAGS=-Wall -Wextra -Werror -Wno-unused-parameter -m32 -I../inc -std=gnu99 \
+CCFLAGS=-Wall -Wextra -Werror -Wno-unused-parameter -m32 -I../inc -std=gnu99 -include "common/config.h" \
         -nostdlib -nostartfiles -nodefaultlibs -ffreestanding -c -O3 -fno-strict-aliasing
 
 OBJS=	loader.o \
