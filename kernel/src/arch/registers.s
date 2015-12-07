@@ -33,9 +33,20 @@ get_eflags:
 
 .type set_eflags, @function
 set_eflags:
+# Pop the return address
     pop %ecx
+# Load the EFLAGS register
     popf
-    sub $4, %esp
-    push %ecx
-    ret
+
+# Now we return to the caller's frame in the correct state.
+# Put the stack pointer back to where it was when "call set_eflags" was executed
+    sub $8, %esp
+# Return to the caller's frame
+    jmp *%ecx
+
+# The following three instructions are equivalent (and more intuitive) than the
+# two above.
+#   sub $4, %esp
+#   push %ecx
+#   ret
 .size set_eflags, .-set_eflags
