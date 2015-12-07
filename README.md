@@ -64,7 +64,7 @@ Currently K-OS accepts the following optional configuration options:
 
 Where not explicitly indicated otherwise, all files are licensed under the following terms:
 
-    Copyright (c) 2014, Keeley Hoek
+    Copyright (c) 2015, Keeley Hoek
     All rights reserved.
 
     Redistribution and use in source and binary forms, with or without modification,
