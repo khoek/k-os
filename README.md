@@ -48,7 +48,7 @@ Currently K-OS accepts the following optional configuration options:
 <table>
     <tr>
         <td>CONFIG_OPTIMIZE</td>
-        <td>Remove assorted bugcheck code which would otherwise make the system unnecessarily slower</td>
+        <td>Disable system-wide bugchecks which are normally compiled into the kernel</td>
     </tr>
     <tr>
         <td>CONFIG_DEBUG_MM</td>
