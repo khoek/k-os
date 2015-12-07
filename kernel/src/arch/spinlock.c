@@ -13,7 +13,7 @@
 
 #ifdef DEBUG_SPINLOCKS
 static void check_safe() {
-    if(get_eflags() & 0x200) panic("spinlock usage in interruptible context!");
+    if(get_eflags() & EFLAGS_IF) panic("spinlock usage in interruptible context!");
 }
 #endif
 
