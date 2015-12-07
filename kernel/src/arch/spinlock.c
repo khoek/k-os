@@ -75,7 +75,7 @@ void spin_unlock_irq(volatile spinlock_t *lock) {
 }
 
 void spin_lock_irqsave(volatile spinlock_t *lock, uint32_t *flags) {
-    *flags = get_eflags();
+    *flags = get_eflags() & EFLAGS_IF;
 
     cli(); //TODO SMP fix (disable locally)
     spin_lock(lock);
@@ -84,5 +84,8 @@ void spin_lock_irqsave(volatile spinlock_t *lock, uint32_t *flags) {
 void spin_unlock_irqstore(volatile spinlock_t *lock, uint32_t flags) {
     spin_unlock(lock);
 
-    set_eflags(flags); //TODO SMP fix (disable locally)
+    if(flags & EFLAGS_IF) sti(); //TODO SMP fix (disable locally)
+
+    //Alternatively:
+    //set_eflags((get_eflags() & ~EFLAGS_IF) | flags);
 }
