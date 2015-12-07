@@ -393,7 +393,6 @@ static void tcp_sock_handle(sock_t *sock, tcp_header_t *tcp, void *raw, uint16_t
         default: break;
     }
 }
-
 void tcp_handle(packet_t *packet, void *raw, uint16_t len) {
     tcp_header_t *tcp = packet->tran.buff = raw;
     raw = tcp + 1;
@@ -403,12 +402,14 @@ void tcp_handle(packet_t *packet, void *raw, uint16_t len) {
     spin_lock_irqsave(&port_lock, &flags);
 
     sock_t *sock = ports_sock[swap_uint16(tcp->dst_port)];
+
+    spin_unlock_irqstore(&port_lock, flags);
+
     if(sock) {
         if(sock->flags & SOCK_FLAG_LISTENING) {
             tcp_data_listen_t *data = sock->private;
 
-            uint32_t flags2;
-            spin_lock_irqsave(&data->lock, &flags2);
+            spin_lock_irqsave(&data->lock, &flags);
 
             sock_t *child;
             HASHTABLE_FOR_EACH_COLLISION((*((uint32_t *) &ip_hdr(packet)->src)) * (*((uint16_t *) &tcp->src_port)), child, data->connections, node) {
@@ -417,15 +418,11 @@ void tcp_handle(packet_t *packet, void *raw, uint16_t len) {
                     && ((ip_and_port_t *) child->local.addr)->port == tcp->dst_port) {
                     tcp_sock_handle(child, tcp, raw, len);
 
-                    goto out_listen;
+                    break;
                 }
             }
 
-            if(tcp->data_off_flags & TCP_FLAG_SYN && !(tcp->data_off_flags & TCP_FLAG_ACK)) {
-                if(!data->backlog)  {
-                    goto out_listen;
-                }
-
+            if(tcp->data_off_flags & TCP_FLAG_SYN && !(tcp->data_off_flags & TCP_FLAG_ACK) && data->backlog) {
                 data->backlog--;
 
                 child = sock_open(&af_inet, &tcp_protocol);
@@ -471,13 +468,11 @@ void tcp_handle(packet_t *packet, void *raw, uint16_t len) {
                 spin_unlock_irqstore(&child_data->lock, flags3);
             }
 
-    out_listen:
-            spin_unlock_irqstore(&data->lock, flags2);
+            spin_unlock_irqstore(&data->lock, flags);
         } else {
             tcp_data_conn_t *data = sock->private;
 
-            uint32_t flags3;
-            spin_lock_irqsave(&data->lock, &flags3);
+            spin_lock_irqsave(&data->lock, &flags);
 
             if(!memcmp(&((ip_and_port_t *) sock->peer.addr)->ip, &ip_hdr(packet)->src, sizeof(ip_t))
                 && ((ip_and_port_t *) sock->peer.addr)->port == tcp->src_port
@@ -485,11 +480,9 @@ void tcp_handle(packet_t *packet, void *raw, uint16_t len) {
                 tcp_sock_handle(sock, tcp, raw, len);
             }
 
-            spin_unlock_irqstore(&data->lock, flags3);
+            spin_unlock_irqstore(&data->lock, flags);
         }
     }
-
-    spin_unlock_irqstore(&port_lock, flags);
 }
 
 static void tcp_open(sock_t *sock) {
@@ -746,11 +739,15 @@ static uint32_t tcp_send(sock_t *sock, void *buff, uint32_t len, uint32_t flags)
     }
 
     if(sock->peer.family != AF_INET) {
+        spin_unlock_irqstore(&data->lock, f);
+
         //FIXME errno = ENOTCONN
         return -1;
     }
 
     if(sock->flags & SOCK_FLAG_SHUT_WR) {
+        spin_unlock_irqstore(&data->lock, f);
+
         //FIXME errno = EPIPE
         return -1;
     }
