@@ -11,12 +11,12 @@ typedef struct spinlock spinlock_t;
 struct spinlock {
     spinlock_arch_t arch;
 
-#ifdef DEBUG_SPINLOCKS
+#ifdef CONFIG_DEBUG_SPINLOCKS
     void *holder;
 #endif
 };
 
-#ifdef DEBUG_SPINLOCKS
+#ifdef CONFIG_DEBUG_SPINLOCKS
 #define SPINLOCK_UNLOCKED {SPINLOCK_ARCH_UNLOCKED, NULL}
 #define SPINLOCK_LOCKED   {SPINLOCK_ARCH_LOCKED,   NULL}
 #else

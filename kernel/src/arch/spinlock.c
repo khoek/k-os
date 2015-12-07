@@ -11,14 +11,14 @@
 #define LOCK_ATTEMPTS (1 << 15)
 #define DEADLOCK_THRESHOLD 1000
 
-#ifdef DEBUG_SPINLOCKS
+#ifdef CONFIG_DEBUG_SPINLOCKS
 static void check_safe() {
     if(get_eflags() & EFLAGS_IF) panic("spinlock usage in interruptible context!");
 }
 #endif
 
 void _spin_lock(volatile spinlock_t *lock) {
-#ifdef DEBUG_SPINLOCKS
+#ifdef CONFIG_DEBUG_SPINLOCKS
     check_safe();
 
     uint64_t then = uptime();
@@ -36,7 +36,7 @@ void _spin_lock(volatile spinlock_t *lock) {
                 goto lock_out;
             relax();
 
-#ifdef DEBUG_SPINLOCKS
+#ifdef CONFIG_DEBUG_SPINLOCKS
             if(uptime() - then > DEADLOCK_THRESHOLD) {
                 panicf("deadlock detected! state: (%X, %X), offender: 0x%X", ACCESS_ONCE(lock->arch.head), ACCESS_ONCE(lock->arch.tail), lock->holder);
             }
@@ -46,7 +46,7 @@ void _spin_lock(volatile spinlock_t *lock) {
         //TODO consider blocking
     }
 
-#ifdef DEBUG_SPINLOCKS
+#ifdef CONFIG_DEBUG_SPINLOCKS
     lock->holder = __builtin_return_address(0);
 #endif
 
@@ -55,7 +55,7 @@ lock_out:
 }
 
 void _spin_unlock(volatile spinlock_t *lock) {
-#ifdef DEBUG_SPINLOCKS
+#ifdef CONFIG_DEBUG_SPINLOCKS
     check_safe();
 
     lock->holder = NULL;

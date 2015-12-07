@@ -54,6 +54,10 @@ Currently K-OS accepts the following optional configuration options:
         <td>CONFIG_DEBUG_MM</td>
         <td>Enable particularly expensive MM-related bugchecks</td>
     </tr>
+    <tr>
+        <td>CONFIG_DEBUG_SPINLOCKS</td>
+        <td>Enable particularly expensive spinlock-related bugchecks</td>
+    </tr>
 </table>
 
 ## License
