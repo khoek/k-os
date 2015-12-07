@@ -39,13 +39,14 @@ file_t * gfdt_get(gfd_idx_t gfd) {
     spin_lock_irqsave(&gfd_lock, &flags);
 
     BUG_ON(gfd > gfd_max);
-    if(!gfdt[gfd].file) return NULL;
+    if(!gfdt[gfd].file) goto gfdt_get_out;
 
     gfdt[gfd].refs++;
 
     spin_unlock_irqstore(&gfd_lock, flags);
 
-    return gfdt[gfd].file;
+gfdt_get_out:
+    return gfdt[gfd].file ? gfdt[gfd].file : NULL;
 }
 
 void gfdt_put(gfd_idx_t gfd) {
