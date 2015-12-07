@@ -148,14 +148,19 @@ bool ufdt_valid(task_t *task, ufd_idx_t ufd) {
 }
 
 gfd_idx_t ufdt_get(task_t *task, ufd_idx_t ufd) {
+    gfd_idx_t gfd;
+
     uint32_t flags;
     spin_lock_irqsave(&task->fd_lock, &flags);
 
-    if(ufd > task->fd_count) return FD_INVALID;
+    if(ufd > task->fd_count) {
+        gfd = FD_INVALID;
+    } else {
+        gfd = task->fd[ufd].gfd;
 
-    gfd_idx_t gfd = task->fd[ufd].gfd;
-    if(task->fd[ufd].gfd != FD_INVALID) {
-        task->fd[ufd].refs++;
+        if(gfd != FD_INVALID) {
+            task->fd[ufd].refs++;
+        }
     }
 
     spin_unlock_irqstore(&task->fd_lock, flags);
