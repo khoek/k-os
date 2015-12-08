@@ -123,11 +123,9 @@ bool sock_connect(sock_t *sock, sock_addr_t *addr) {
 }
 
 bool sock_shutdown(sock_t *sock, int how) {
-    if(!ISCONNECTIONLESS(sock)) {
-        if(!(sock->flags & SOCK_FLAG_CONNECTED)) {
-            //FIXME errno = ENOTCONN
-            return false;
-        }
+    if(ISCONNECTIONLESS(sock) || !(sock->flags & SOCK_FLAG_CONNECTED)) {
+        //FIXME errno = ENOTCONN
+        return false;
     }
 
     if(how & (~SHUT_MASK)) {
@@ -135,38 +133,28 @@ bool sock_shutdown(sock_t *sock, int how) {
         return false;
     }
 
-    bool ret = true;
+    int bits = 0;
 
-    if(how == SHUT_RDWR) {
-        if(sock->flags & SOCK_FLAG_SHUT_RD) how &= ~SHUT_RD;
-        if(sock->flags & SOCK_FLAG_SHUT_WR) how &= ~SHUT_WR;
-
-        if(how == SHUT_RDWR) {
-            ret = sock->proto->shutdown(sock, SHUT_RDWR);
-
-            if(ret) {
-                sock->flags |= SOCK_FLAG_SHUT_RDWR;
-            }
-        }
+    switch(how) {
+        case SHUT_RD:
+            bits |= SOCK_FLAG_SHUT_RD;
+            break;
+        case SHUT_WR:
+            bits |= SOCK_FLAG_SHUT_WR;
+            break;
+        case SHUT_RDWR:
+            bits |= SOCK_FLAG_SHUT_RD;
+            bits |= SOCK_FLAG_SHUT_WR;
+            break;
     }
 
-    if(how & SHUT_RD && !(sock->flags & SOCK_FLAG_SHUT_RD)) {
-        ret = sock->proto->shutdown(sock, SHUT_RD);
+    if(!bits) return true;
 
-        if(ret) {
-            sock->flags |= SOCK_FLAG_SHUT_RD;
-        }
-    }
+    //ignore bits which have already been set
+    if(sock->flags & SOCK_FLAG_SHUT_RD) bits &= ~SOCK_FLAG_SHUT_RD;
+    if(sock->flags & SOCK_FLAG_SHUT_WR) bits &= ~SOCK_FLAG_SHUT_WR;
 
-    if(how & SHUT_WR && !(sock->flags & SOCK_FLAG_SHUT_WR)) {
-        ret = sock->proto->shutdown(sock, SHUT_WR);
-
-        if(ret) {
-            sock->flags |= SOCK_FLAG_SHUT_WR;
-        }
-    }
-
-    return 0;
+    return sock->proto->shutdown(sock, bits);
 }
 
 uint32_t sock_send(sock_t *sock, void *buff, uint32_t len, uint32_t flags) {
@@ -200,9 +188,9 @@ void sock_close(sock_t *sock) {
         sock->flags |= SOCK_FLAG_CLOSED;
 
         sock->proto->close(sock);
-
-        sock_free(sock);
     }
+
+    sock_free(sock);
 }
 
 static void sock_close_fd(file_t *file) {

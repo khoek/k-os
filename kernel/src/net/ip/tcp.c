@@ -26,7 +26,8 @@ typedef enum tcp_state {
     TCP_SYN_SENT,
     TCP_SYN_RECIEVED,
     TCP_ESTABLISHED,
-    TCP_FIN_WAIT,
+    TCP_FIN_WAITA,
+    TCP_FIN_WAITB,
     TCP_CLOSED,
 } tcp_state_t;
 
@@ -38,7 +39,7 @@ typedef struct tcp_data_listen {
     uint32_t backlog;
     semaphore_t semaphore;
 
-    list_head_t queue;
+    list_head_t children;
     DECLARE_HASHTABLE(connections, TCP_LISTEN_HASHTABLE_BITS);
 } tcp_data_listen_t;
 
@@ -49,9 +50,7 @@ typedef struct tcp_data_conn {
 
     tcp_state_t state;
 
-    uint32_t next_local_ack;
     uint32_t next_local_seq;
-
     uint32_t next_peer_seq;
 
     uint8_t *recv_buff;
@@ -72,7 +71,6 @@ typedef struct tcp_pending {
 
     ip_t dst_ip;
     uint32_t seq_num;
-    uint32_t ack_num;
     uint16_t flags;
     uint16_t window_size;
     uint16_t urgent;
@@ -196,7 +194,7 @@ static void tcp_callback(packet_t *packet, sock_t *sock) {
 static void tcp_reset(sock_t *sock) {
     tcp_data_conn_t *data = sock->private;
 
-    data->next_local_seq = data->next_local_ack = rand32();
+    data->next_local_seq = rand32();
     data->next_peer_seq = 0;
     data->recv_buff_front = 0;
     data->recv_buff_back = 0 - 1;
@@ -208,15 +206,17 @@ static void tcp_reset(sock_t *sock) {
 static void tcp_queue_send(sock_t *sock, tcp_pending_t *pending) {
     tcp_data_conn_t *data = sock->private;
 
+    uint32_t ack_num = pending->flags & TCP_FLAG_ACK ? swap_uint32(data->next_peer_seq) : 0;
+
     packet_t *packet = packet_create(data->interface, (packet_callback_t) tcp_callback, sock, pending->payload.buff, pending->payload.size);
-    tcp_build(packet, pending->dst_ip, pending->seq_num, pending->ack_num, pending->flags, pending->window_size, pending->urgent, pending->src_port_net, pending->dst_port_net);
+    tcp_build(packet, pending->dst_ip, pending->seq_num, ack_num, pending->flags, pending->window_size, pending->urgent, pending->src_port_net, pending->dst_port_net);
 
     //unlock to prevent deadlocks where tcp_callback is called further down in the call stack
     spin_unlock(&data->lock);
     packet_send(packet);
     spin_lock(&data->lock);
 
-    //TODO set resend timer (only if !(sock->flags & SOCK_FLAG_SHUT_WR))
+    //TODO set resend timer
 }
 
 //should only be called when ((tcp_data_conn_t *) sock->private)->lock is held
@@ -228,7 +228,6 @@ static void tcp_queue_add(sock_t *sock, uint16_t flags, uint16_t window_size, ui
 
     pending->dst_ip = peer_addr->ip;
     pending->seq_num = swap_uint32(data->next_local_seq);
-    pending->ack_num = swap_uint32(data->next_peer_seq);
     pending->flags = flags;
     pending->window_size = window_size;
     pending->urgent = urgent;
@@ -237,20 +236,29 @@ static void tcp_queue_add(sock_t *sock, uint16_t flags, uint16_t window_size, ui
     pending->payload.buff = payload_buff;
     pending->payload.size = payload_size;
 
-    data->next_local_seq += payload_size;
+    data->next_local_seq += payload_size + ((flags & (TCP_FLAG_SYN | TCP_FLAG_FIN)) ? 1 : 0);
 
     list_add_before(&pending->list, &data->queue);
 
     tcp_queue_send(sock, pending);
 }
 
-static void tcp_control_send(sock_t *sock, uint16_t flags, uint16_t window_size) {
+//do not invoke directly, instead use tcp_send_ack() and tcp_send_rst()
+static void _tcp_send_control(sock_t *sock, int flags, uint16_t window_size) {
     tcp_data_conn_t *data = sock->private;
     ip_and_port_t *peer_addr = sock->peer.addr;
 
     packet_t *packet = packet_create(data->interface, NULL, NULL, NULL, 0);
-    tcp_build(packet, peer_addr->ip, swap_uint32(data->next_local_ack), swap_uint32(data->next_peer_seq), flags, swap_uint16(window_size), 0, ((ip_and_port_t *) sock->local.addr)->port, peer_addr->port);
+    tcp_build(packet, peer_addr->ip, swap_uint32(data->next_local_seq), swap_uint32(data->next_peer_seq), flags, swap_uint16(window_size), 0, ((ip_and_port_t *) sock->local.addr)->port, peer_addr->port);
     packet_send(packet);
+}
+
+static void tcp_send_ack(sock_t *sock, uint16_t window_size) {
+    _tcp_send_control(sock, TCP_FLAG_ACK, window_size);
+}
+
+static void tcp_send_rst(sock_t *sock, uint16_t window_size) {
+    _tcp_send_control(sock, TCP_FLAG_RST | TCP_FLAG_ACK, window_size);
 }
 
 static void tcp_resend_syn(sock_t *sock) {
@@ -267,6 +275,21 @@ static void tcp_resend_syn(sock_t *sock) {
     spin_unlock_irqstore(&data->lock, flags);
 }
 
+static void tcp_ack_recieved(tcp_data_conn_t *data, tcp_header_t *tcp) {
+    uint32_t acked = 0;
+    tcp_pending_t *pending;
+    LIST_FOR_EACH_ENTRY(pending, &data->queue, list) {
+        if(pending->seq_num >= swap_uint32(tcp->ack_num)) break;
+
+        acked++;
+        if(pending->flags & TCP_FLAG_FIN) data->state = TCP_FIN_WAITB;
+    }
+
+    for(uint32_t i = 0; i < acked; i++) {
+        list_rm(&list_first(&data->queue, tcp_pending_t, list)->list);
+    }
+}
+
 static void tcp_sock_handle(sock_t *sock, tcp_header_t *tcp, void *raw, uint16_t len) {
     tcp_data_conn_t *data = sock->private;
 
@@ -276,20 +299,14 @@ static void tcp_sock_handle(sock_t *sock, tcp_header_t *tcp, void *raw, uint16_t
     switch(data->state) {
         case TCP_SYN_SENT: {
             if(tcp->data_off_flags & TCP_FLAG_ACK && tcp->data_off_flags & TCP_FLAG_SYN) {
-                if(ack_num > data->next_local_ack) {
-                    for(uint32_t i = 0; i < ack_num - data->next_local_ack; i++) {
-                        list_rm(&list_first(&data->queue, tcp_pending_t, list)->list);
-                    }
-
-                    data->next_local_ack = ack_num;
-                }
+                tcp_ack_recieved(data, tcp);
 
                 data->state = TCP_ESTABLISHED;
                 data->next_peer_seq = seq_num + len + 1;
 
                 sock->flags |= SOCK_FLAG_CONNECTED;
 
-                tcp_control_send(sock, TCP_FLAG_ACK, tcp->window_size);
+                tcp_send_ack(sock, tcp->window_size);
 
                 semaphore_up(&data->semaphore);
             } else {
@@ -302,13 +319,7 @@ static void tcp_sock_handle(sock_t *sock, tcp_header_t *tcp, void *raw, uint16_t
                     break;
                 }
 
-                if(tcp->data_off_flags & TCP_FLAG_ACK) {
-                    data->next_local_ack = ack_num;
-                } else {
-                    data->next_local_ack = 0;
-                }
-
-                tcp_control_send(sock, TCP_FLAG_RST | TCP_FLAG_ACK, tcp->window_size);
+                tcp_send_rst(sock, tcp->window_size);
 
                 tcp_reset(sock);
 
@@ -320,14 +331,12 @@ static void tcp_sock_handle(sock_t *sock, tcp_header_t *tcp, void *raw, uint16_t
         }
         case TCP_SYN_RECIEVED: {
             if(data->next_peer_seq == seq_num) {
-                if(tcp->data_off_flags & TCP_FLAG_ACK && !(tcp->data_off_flags & TCP_FLAG_SYN)) {
-                    if(ack_num != data->next_local_ack) {
+                if((tcp->data_off_flags & TCP_FLAG_ACK) && !(tcp->data_off_flags & TCP_FLAG_SYN)) {
+                    if(ack_num != data->next_local_seq) {
                         break;
                     }
 
                     data->state = TCP_ESTABLISHED;
-                    data->next_local_ack++;
-                    data->next_local_seq++;
 
                     sock->flags |= SOCK_FLAG_CONNECTED;
                 }
@@ -335,22 +344,18 @@ static void tcp_sock_handle(sock_t *sock, tcp_header_t *tcp, void *raw, uint16_t
 
             break;
         }
+        case TCP_FIN_WAITA:
+        case TCP_FIN_WAITB:
         case TCP_ESTABLISHED: {
             if(tcp->data_off_flags & TCP_FLAG_ACK) {
-                if(ack_num > data->next_local_ack) {
-                    for(uint32_t i = 0; i < ack_num - data->next_local_ack; i++) {
-                        list_rm(&list_first(&data->queue, tcp_pending_t, list)->list);
-                    }
-
-                    data->next_local_ack = ack_num;
-                }
+                tcp_ack_recieved(data, tcp);
             }
 
             if(len > 0) {
                 if(data->next_peer_seq > seq_num) {
                     return;
                 } else if (data->next_peer_seq < seq_num) {
-                    tcp_control_send(sock, TCP_FLAG_ACK, tcp->window_size);
+                    tcp_send_ack(sock, tcp->window_size);
                     return;
                 } else {
                     data->next_peer_seq = seq_num + len;
@@ -380,12 +385,14 @@ static void tcp_sock_handle(sock_t *sock, tcp_header_t *tcp, void *raw, uint16_t
                 data->next_peer_seq = seq_num + 1;
             }
 
-            if(tcp->data_off_flags & TCP_FLAG_RST) {
+            if(tcp->data_off_flags & TCP_FLAG_RST || sock->flags & SOCK_FLAG_SHUT_RDWR) {
                 data->state = TCP_CLOSED;
+
+                //TODO tear down socket
             }
 
             if(len > 0 || tcp->data_off_flags & (TCP_FLAG_SYN | TCP_FLAG_FIN)) {
-                tcp_control_send(sock, TCP_FLAG_ACK, tcp->window_size);
+                tcp_send_ack(sock, tcp->window_size);
             }
 
             break;
@@ -393,7 +400,9 @@ static void tcp_sock_handle(sock_t *sock, tcp_header_t *tcp, void *raw, uint16_t
         default: break;
     }
 }
+
 void tcp_handle(packet_t *packet, void *raw, uint16_t len) {
+    bool unknown_peer = true;
     tcp_header_t *tcp = packet->tran.buff = raw;
     raw = tcp + 1;
     len = swap_uint16(ip_hdr(packet)->total_length) - ((IP_IHL(ip_hdr(packet)->version_ihl) * sizeof(uint32_t)) + (TCP_DATA_OFF(tcp->data_off_flags) * sizeof(uint32_t)));
@@ -416,56 +425,58 @@ void tcp_handle(packet_t *packet, void *raw, uint16_t len) {
                 if(!memcmp(&((ip_and_port_t *) child->peer.addr)->ip, &ip_hdr(packet)->src, sizeof(ip_t))
                     && ((ip_and_port_t *) child->peer.addr)->port == tcp->src_port
                     && ((ip_and_port_t *) child->local.addr)->port == tcp->dst_port) {
+                    unknown_peer = false;
                     tcp_sock_handle(child, tcp, raw, len);
 
                     break;
                 }
             }
 
-            if(tcp->data_off_flags & TCP_FLAG_SYN && !(tcp->data_off_flags & TCP_FLAG_ACK) && data->backlog) {
-                data->backlog--;
+            if(unknown_peer) {
+                if(tcp->data_off_flags & TCP_FLAG_SYN && !(tcp->data_off_flags & TCP_FLAG_ACK) && data->backlog) {
+                    unknown_peer = false;
+                    data->backlog--;
 
-                child = sock_open(&af_inet, &tcp_protocol);
+                    child = sock_open(&af_inet, &tcp_protocol);
 
-                ip_and_port_t *peer = kmalloc(sizeof(ip_and_port_t));
-                peer->ip = ip_hdr(packet)->src;
-                peer->port = tcp->src_port;
+                    ip_and_port_t *peer = kmalloc(sizeof(ip_and_port_t));
+                    peer->ip = ip_hdr(packet)->src;
+                    peer->port = tcp->src_port;
 
-                child->peer.family = AF_INET;
-                child->peer.addr = peer;
-                child->local = sock->local;
-                child->flags |= SOCK_FLAG_CONNECTED | SOCK_FLAG_CHILD;
+                    child->peer.family = AF_INET;
+                    child->peer.addr = peer;
+                    child->local = sock->local;
+                    child->flags |= SOCK_FLAG_CONNECTED | SOCK_FLAG_CHILD;
 
-                tcp_data_conn_t *child_data = child->private = kmalloc(sizeof(tcp_data_conn_t));
+                    tcp_data_conn_t *child_data = child->private = kmalloc(sizeof(tcp_data_conn_t));
 
-                tcp_reset(child);
+                    tcp_reset(child);
 
-                child_data->retrys = 0;
-                child_data->recv_buff = page_to_virt(alloc_page(0));
+                    child_data->retrys = 0;
+                    child_data->recv_buff = page_to_virt(alloc_page(0));
 
-                list_init(&child_data->queue);
-                spinlock_init(&child_data->lock);
-                semaphore_init(&child_data->semaphore, 0);
+                    list_init(&child_data->queue);
+                    spinlock_init(&child_data->lock);
+                    semaphore_init(&child_data->semaphore, 0);
 
-                child_data->state = TCP_SYN_RECIEVED;
-                child_data->interface = net_primary_interface();
+                    child_data->state = TCP_SYN_RECIEVED;
+                    child_data->interface = net_primary_interface();
 
-                child_data->next_local_ack = rand32();
-                child_data->next_local_seq = child_data->next_local_ack;
-                child_data->next_peer_seq = swap_uint32(tcp->seq_num) + len + 1;
+                    child_data->next_local_seq = rand32();
+                    child_data->next_peer_seq = swap_uint32(tcp->seq_num) + len + 1;
 
-                uint32_t flags3;
-                spin_lock_irqsave(&child_data->lock, &flags3);
+                    uint32_t flags3;
+                    spin_lock_irqsave(&child_data->lock, &flags3);
 
-                list_add_before(&child->list, &data->queue);
-                hashtable_add((*((uint32_t *) &ip_hdr(packet)->src)) * (*((uint16_t *) &tcp->src_port)), &child->node, data->connections);
+                    list_add_before(&child->list, &data->children);
+                    hashtable_add((*((uint32_t *) &ip_hdr(packet)->src)) * (*((uint16_t *) &tcp->src_port)), &child->node, data->connections);
 
-                tcp_queue_add(child, TCP_FLAG_SYN | TCP_FLAG_ACK, 14600, 0, NULL, 0);
-                child_data->next_local_ack++;
+                    tcp_queue_add(child, TCP_FLAG_SYN | TCP_FLAG_ACK, 14600, 0, NULL, 0);
 
-                semaphore_up(&data->semaphore);
+                    semaphore_up(&data->semaphore);
 
-                spin_unlock_irqstore(&child_data->lock, flags3);
+                    spin_unlock_irqstore(&child_data->lock, flags3);
+                }
             }
 
             spin_unlock_irqstore(&data->lock, flags);
@@ -483,6 +494,8 @@ void tcp_handle(packet_t *packet, void *raw, uint16_t len) {
             spin_unlock_irqstore(&data->lock, flags);
         }
     }
+
+    //TODO if(unknown_peer) tcp_send_rst()
 }
 
 static void tcp_open(sock_t *sock) {
@@ -500,11 +513,11 @@ static void tcp_close(sock_t *sock) {
         spin_lock_irqsave(&data->lock, &flags);
 
         sock_t *child;
-        LIST_FOR_EACH_ENTRY(child, &data->queue, list) {
+        LIST_FOR_EACH_ENTRY(child, &data->children, list) {
             sock_close(child);
         }
 
-        list_init(&data->queue);
+        list_init(&data->children);
 
         tcp_unbind_port(((ip_and_port_t *) sock->local.addr)->port);
 
@@ -517,7 +530,7 @@ static void tcp_close(sock_t *sock) {
 
         if(data->state != TCP_CLOSED) {
             if(sock->peer.family == AF_INET) {
-                tcp_control_send(sock, TCP_FLAG_RST | TCP_FLAG_ACK, 0);
+                tcp_send_rst(sock, 0);
             }
         }
 
@@ -528,7 +541,7 @@ static void tcp_close(sock_t *sock) {
             tcp_unbind_port(((ip_and_port_t *) sock->local.addr)->port);
         }
 
-        //Cycle the lock, to ensure that no-one who aquired a ref to the socket uses it after sock->private is freed
+        //Cycle the lock, to ensure that no-one who aquired a ref to the socket //uses it after sock->private is freed
         spin_unlock(&data->lock);
         spin_lock(&data->lock);
         spin_unlock_irqstore(&data->lock, flags);
@@ -547,7 +560,7 @@ static bool tcp_listen(sock_t *sock, uint32_t backlog) {
     semaphore_init(&data->semaphore, 0);
     data->interface = net_primary_interface();
     data->backlog = backlog && backlog < SOMAXCONN ? backlog : SOMAXCONN;
-    list_init(&data->queue);
+    list_init(&data->children);
     hashtable_init(data->connections);
 
     if(!(sock->flags & SOCK_FLAG_BOUND)) {
@@ -590,7 +603,7 @@ static sock_t * tcp_accept(sock_t *sock) {
                 uint32_t flags2;
                 spin_lock_irqsave(&data->lock, &flags2);
 
-                child = list_first(&data->queue, sock_t, list);
+                child = list_first(&data->children, sock_t, list);
                 list_rm(&child->list);
 
                 spin_unlock_irqstore(&data->lock, flags2);
@@ -683,7 +696,6 @@ static bool tcp_connect(sock_t *sock, sock_addr_t *addr) {
         }
 
         tcp_queue_add(sock, TCP_FLAG_SYN, 14600, 0, NULL, 0);
-        data->next_local_seq++;
 
         spin_unlock_irqstore(&data->lock, flags);
 
@@ -712,9 +724,14 @@ static bool tcp_shutdown(sock_t *sock, int how) {
         uint32_t flags;
         spin_lock_irqsave(&data->lock, &flags);
 
-        if(how == SHUT_RDWR || (sock->flags & SOCK_FLAG_SHUT_WR && how & SHUT_RD) || (sock->flags & SOCK_FLAG_SHUT_RD && how & SHUT_WR)) {
-            data->state = TCP_CLOSED;
-            tcp_control_send(sock, TCP_FLAG_RST | TCP_FLAG_ACK, 0);
+        if(how & SOCK_FLAG_SHUT_RD) sock->flags |= SOCK_FLAG_SHUT_RD;
+
+        if(how & SOCK_FLAG_SHUT_WR) {
+            sock->flags |= SOCK_FLAG_SHUT_WR;
+
+            data->state = TCP_FIN_WAITA;
+
+            tcp_queue_add(sock, TCP_FLAG_FIN | TCP_FLAG_ACK, 14600, 0, NULL, 0);
         }
 
         spin_unlock_irqstore(&data->lock, flags);
