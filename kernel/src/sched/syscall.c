@@ -63,7 +63,7 @@ static void sys_log(interrupt_t *interrupt) {
         memcpy(buff, (void *) interrupt->cpu.reg.ecx, interrupt->cpu.reg.edx);
         buff[interrupt->cpu.reg.edx] = '\0';
 
-        kprint(buff);
+        kprintf("user[%u] - %s", current->pid, buff);
 
         kfree(buff, interrupt->cpu.reg.edx + 1);
     }
