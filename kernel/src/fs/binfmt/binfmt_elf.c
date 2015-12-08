@@ -28,6 +28,7 @@ static bool elf_header_valid(Elf32_Ehdr *ehdr) {
 }
 
 static int load_elf_exe(const char *name, void *start, uint32_t length) {
+    uint8_t *file = start;
     Elf32_Ehdr *ehdr = (Elf32_Ehdr *) start;
 
     if(!elf_header_valid(ehdr)) return -1;
@@ -35,36 +36,54 @@ static int load_elf_exe(const char *name, void *start, uint32_t length) {
 
     task_t *task = task_create(name, false, (void *) ehdr->e_entry, (void *) (0x10000 + PAGE_SIZE));
     alloc_page_user(0, task, 0x10000); //alloc stack, FIXME hardcoded, might overlap with an elf segment
-    Elf32_Phdr *phdr = (Elf32_Phdr *) (((uint32_t) start) + ehdr->e_phoff);
+    Elf32_Phdr *phdr = (Elf32_Phdr *) (file + ehdr->e_phoff);
     for(uint32_t i = 0; i < ehdr->e_phnum; i++) {
         switch(phdr[i].p_type) { //TODO validate the segments as we are going
             case PT_NULL:
                 break;
             case PT_LOAD: {
-                uint32_t page_num = 0;
-                uint32_t bytes_left = MIN(phdr[i].p_filesz, phdr[i].p_memsz);
-                uint32_t zeroes_left = phdr[i].p_memsz - bytes_left;
+                volatile uint32_t data_len = MIN(phdr[i].p_filesz, phdr[i].p_memsz);
+                uint32_t zero_len = phdr[i].p_memsz - data_len;
 
-                while(bytes_left) {
-                    void *new_page = alloc_page_user(0, task, phdr[i].p_vaddr + (page_num * PAGE_SIZE));
-                    page_num++;
+                uint32_t data_coppied = 0;
+                uint32_t zeroes_written = 0;
 
-                    memcpy(new_page, (void *) (((uint32_t) start) + phdr[i].p_offset), MIN(bytes_left, PAGE_SIZE));
+                uint32_t addr = phdr[i].p_vaddr;
+                while(data_coppied < data_len) {
+                    uint8_t *new_page = alloc_page_user(0, task, addr);
 
-                    if(bytes_left <= PAGE_SIZE && zeroes_left) {
-                        memset(((uint8_t *) new_page) + bytes_left, 0, MIN(zeroes_left, PAGE_SIZE));
-                        zeroes_left -= MIN(zeroes_left, bytes_left);
+                    uint32_t data_left = data_len - data_coppied;
+                    uint32_t chunk_len = MIN(data_left, PAGE_SIZE);
+
+                    memcpy(new_page, start + phdr[i].p_offset + data_coppied, chunk_len);
+
+                    data_coppied += chunk_len;
+                    data_left -= chunk_len;
+
+                    //zero the rest of the page
+                    if(!data_left) {
+                        uint32_t zero_chunk_len = PAGE_SIZE - chunk_len;
+
+                        memset(new_page + chunk_len, 0, zero_chunk_len);
+                        zeroes_written += zero_chunk_len;
                     }
 
-                    bytes_left -= MIN(bytes_left, PAGE_SIZE);
+                    //TODO unmap the mapped page
+
+                    addr += PAGE_SIZE;
                 }
 
-                while(zeroes_left) {
-                    void *new_page = alloc_page_user(0, task, phdr[i].p_vaddr + (page_num * PAGE_SIZE));
-                    page_num++;
+                while(zeroes_written < zero_len) {
+                    void *new_page = alloc_page_user(0, task, addr);
 
-                    memset(new_page, 0, MIN(zeroes_left, PAGE_SIZE));
-                    zeroes_left -= MIN(zeroes_left, PAGE_SIZE);
+                    //zero the whole page for security
+                    memset(new_page, 0, PAGE_SIZE);
+
+                    zeroes_written += PAGE_SIZE;
+
+                    //TODO unmap the mapped page
+
+                    addr += PAGE_SIZE;
                 }
                 break;
             }
