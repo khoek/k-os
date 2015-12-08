@@ -26,7 +26,7 @@ processor_t * register_proc(uint32_t num) {
 }
 
 static INITCALL proc_init() {
-    bsp = register_proc(0);
+    bsp = register_proc(BSP_ID);
 
     return 0;
 }

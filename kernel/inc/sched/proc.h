@@ -7,6 +7,8 @@ typedef struct processor processor_t;
 #include "common/list.h"
 #include "arch/proc.h"
 
+#define BSP_ID 0
+
 struct processor {
     uint32_t num;
 
