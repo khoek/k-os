@@ -5,7 +5,7 @@ ASFLAGS=--32
 CCFLAGS=-Wall -Wextra -Werror -Wno-unused-parameter -m32 -Iinc -std=gnu99 \
         -nostdlib -nostartfiles -nodefaultlibs -ffreestanding --sysroot=inc -c -O3 -fno-strict-aliasing
 
-OBJS=	src/crt.o src/syscall.o src/errno.o src/string.o src/log.o src/mm.o
+OBJS=	src/crt.o src/syscall.o src/errno.o src/string.o src/printf.o src/log.o src/mm.o
 
 all: libc.a
 
