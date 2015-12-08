@@ -23,6 +23,8 @@
 
 #define QUANTUM 1000
 
+#define SWITCH_INT 0x81
+
 static volatile bool tasking_up = false;
 
 static DEFINE_LIST(tasks);
@@ -38,6 +40,10 @@ static void idle_loop() {
 }
 
 void sched_switch() {
+    asm volatile ("int $" XSTR(SWITCH_INT));
+}
+
+static void do_sched_switch() {
     spin_lock_irq(&sched_lock);
 
     if(current) {
@@ -106,6 +112,13 @@ void task_add(task_t *task) {
 }
 
 void task_sleep(task_t *task) {
+    // If task_sleep(task=current) succeeds, excecution will stop at the next
+    // interrupt (after an arbitrary length of time). This results in a race
+    // condition, with unpredictable behaviour.
+    //
+    // task_sleep_current() is guaranteed to switch safely.
+    if(task == current && (get_eflags() & EFLAGS_IF)) panic("task_sleep(task=current) in interruptible context!");
+
     uint32_t flags;
     spin_lock_irqsave(&sched_lock, &flags);
     spin_lock(&task->lock);
@@ -118,7 +131,7 @@ void task_sleep(task_t *task) {
 }
 
 void task_sleep_current() {
-    cli(); //this must be here
+    cli(); // This must be here, see task_sleep()
 
     task_sleep(current);
     sched_switch();
@@ -180,7 +193,7 @@ void sched_run() {
 }
 
 void sched_try_resched() {
-    if(tasking_up && (!current || get_percpu_unsafe(switch_time) <= uptime())) {
+    if(tasking_up && (!current || get_percpu_unsafe(switch_time) <= uptime() || current->state != TASK_RUNNING)) {
         sched_switch();
     }
 }
@@ -194,7 +207,19 @@ void __noreturn sched_loop() {
 
     while(!tasking_up);
 
-    sched_switch();
+    do_sched_switch();
 
     panic("sched_switch returned");
 }
+
+static void switch_interrupt(interrupt_t *interrupt, void *data) {
+    do_sched_switch();
+}
+
+static INITCALL sched_init() {
+    register_isr(SWITCH_INT, CPL_KRNL, switch_interrupt, NULL);
+
+    return 0;
+}
+
+subsys_initcall(sched_init);
