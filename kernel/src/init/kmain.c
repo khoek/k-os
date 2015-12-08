@@ -59,5 +59,5 @@ void kmain(uint32_t magic, multiboot_info_t *mbd) {
     //TODO remap the STD(IN/OUT/ERR) of this process to the screen
     task_add(init);
 
-    sched_run();
+    sched_loop();
 }

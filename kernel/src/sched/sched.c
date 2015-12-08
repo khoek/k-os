@@ -184,14 +184,6 @@ void task_save(cpu_state_t *cpu) {
     }
 }
 
-void sched_run() {
-    cli();
-
-    tasking_up = true;
-
-    sched_loop();
-}
-
 void sched_try_resched() {
     if(tasking_up && (!current || get_percpu_unsafe(switch_time) <= uptime() || current->state != TASK_RUNNING)) {
         sched_switch();
@@ -205,7 +197,13 @@ void __noreturn sched_loop() {
     get_percpu_unsafe(switch_time) = 0;
     get_percpu_unsafe(idle_task) = task_create("idle", true, idle_loop, NULL);
 
-    while(!tasking_up);
+    if(get_percpu_unsafe(this_proc)->num == BSP_ID) {
+        tasking_up = true;
+
+        kprintf("sched - activating scheduler");
+    } else {
+        while(!tasking_up);
+    }
 
     do_sched_switch();
 

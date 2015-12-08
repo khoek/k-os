@@ -25,6 +25,4 @@ void task_wake(task_t *task);
 void sched_switch();
 void sched_try_resched();
 
-void sched_run();
-
 #endif
