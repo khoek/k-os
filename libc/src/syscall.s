@@ -147,7 +147,7 @@ send:
     push %ebx
 
     mov $13, %eax
-    mov 24(%esp), %ebx
+    mov 24(%esp), %esi
     mov 20(%esp), %ebx
     mov 16(%esp), %edx
     mov 12(%esp), %ecx
