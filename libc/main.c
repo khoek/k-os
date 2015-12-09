@@ -31,16 +31,16 @@ int main() {
     local.sin_addr.s_addr = INADDR_ANY;
 
     if(bind(fds, (struct sockaddr *) &local, sizeof(struct sockaddr_in))) {
-        kprint("ERR: bind");
+        printf("ERR: bind");
         return 1;
     }
 
     if(listen(fds, 128)) {
-        kprint("ERR: listen");
+        printf("ERR: listen");
         return 2;
     }
 
-    kprintf("HTTP: listen() succeeded");
+    printf("HTTP: listen() succeeded");
 
     int client_num = 1;
     while(1) {
@@ -48,7 +48,7 @@ int main() {
         int len = sprintf(content, "<!doctype html>"
                             "<html><head><title>K-OS</title></head><body><center><h1 style='font-size:90pt'>K-OS</h1><p>Welcome. You are client number %u.</p></center></html>", client_num);
 
-        kprintf("HTTP: accept(), client #%u", client_num);
+        printf("HTTP: accept(), client #%u\n", client_num);
 
         send_str(fd, "HTTP/1.1 200 OK" LINE_ENDING);
         send_str(fd, "Content-Type: text/html" LINE_ENDING);
@@ -61,7 +61,7 @@ int main() {
 
         close(fd);
 
-        kprintf("HTTP: close()");
+        printf("HTTP: close()\n");
 
         client_num++;
     }
