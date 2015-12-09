@@ -25,6 +25,9 @@
 .global play
 .global stop
 
+.global read
+.global write
+
 _exit:
     mov $0, %eax
     mov 4(%esp), %ecx
@@ -216,4 +219,28 @@ stop:
     mov $21, %eax
     int $0x80
 
+    ret
+
+read:
+    push %ebx
+
+    mov $22, %eax
+    mov 16(%esp), %ebx
+    mov 12(%esp), %edx
+    mov 8(%esp), %ecx
+    int $0x80
+
+    pop %ebx
+    ret
+
+write:
+    push %ebx
+
+    mov $23, %eax
+    mov 16(%esp), %ebx
+    mov 12(%esp), %edx
+    mov 8(%esp), %ecx
+    int $0x80
+
+    pop %ebx
     ret

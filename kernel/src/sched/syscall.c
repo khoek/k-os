@@ -237,6 +237,7 @@ static void sys_send(interrupt_t *interrupt) {
     else {
         //TODO sanitize buffer/size arguments
 
+        //This buffer will be freed by the net subsystem
         void *buff = kmalloc(interrupt->cpu.reg.ebx);
         memcpy(buff, (void *) interrupt->cpu.reg.edx, interrupt->cpu.reg.ebx);
 
@@ -305,6 +306,39 @@ static void sys_stop(interrupt_t *interrupt) {
     stop();
 }
 
+static void sys_read(interrupt_t *interrupt) {
+    gfd_idx_t fd = ufdt_get(current, interrupt->cpu.reg.ecx);
+
+    if(fd == FD_INVALID) current->ret = -1;
+    else {
+        //TODO sanitize buffer/size arguments
+
+        void *buff = kmalloc(interrupt->cpu.reg.ebx);
+        memcpy(buff, (void *) interrupt->cpu.reg.edx, interrupt->cpu.reg.ebx);
+
+        current->ret = vfs_read(gfdt_get(fd), buff, interrupt->cpu.reg.ebx);
+        gfdt_put(fd);
+
+        kfree(buff, interrupt->cpu.reg.ebx);
+    }
+
+    ufdt_put(current, interrupt->cpu.reg.ecx);
+}
+
+static void sys_write(interrupt_t *interrupt) {
+    gfd_idx_t fd = ufdt_get(current, interrupt->cpu.reg.ecx);
+
+    if(fd == FD_INVALID) current->ret = -1;
+    else {
+        //TODO sanitize buffer/size arguments
+
+        current->ret = vfs_write(gfdt_get(fd), (void *) interrupt->cpu.reg.edx, interrupt->cpu.reg.ebx);
+        gfdt_put(fd);
+    }
+
+    ufdt_put(current, interrupt->cpu.reg.ecx);
+}
+
 static syscall_t syscalls[MAX_SYSCALL] = {
     [ 0] = sys_exit,
     [ 1] = sys_fork,
@@ -327,6 +361,8 @@ static syscall_t syscalls[MAX_SYSCALL] = {
     [19] = sys_fstat,
     [20] = sys_play,
     [21] = sys_stop,
+    [22] = sys_read,
+    [23] = sys_write,
 };
 
 static void syscall_handler(interrupt_t *interrupt, void *data) {

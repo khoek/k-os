@@ -77,13 +77,16 @@ struct file {
 
     void *private;
 
+    uint32_t offset;
+
     file_ops_t *ops;
 };
 
 struct file_ops {
     void (*open)(file_t *file, inode_t *inode);
     ssize_t (*seek)(file_t *file, size_t bytes);
-    ssize_t (*read)(file_t *file, size_t bytes);
+    ssize_t (*read)(file_t *file, char *buff, size_t bytes);
+    ssize_t (*write) (file_t *file, char *buff, size_t bytes);
     void (*close)(file_t *file);
 };
 
@@ -188,5 +191,7 @@ void generic_getattr(inode_t *inode, stat_t *stat);
 
 bool vfs_lookup(path_t *start, const char *path, path_t *out);
 gfd_idx_t vfs_open_file(inode_t *inode);
+ssize_t vfs_read(file_t *file, char *buff, size_t bytes);
+ssize_t vfs_write(file_t *file, char *buff, size_t bytes);
 
 #endif

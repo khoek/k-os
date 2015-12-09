@@ -415,6 +415,14 @@ gfd_idx_t vfs_open_file(inode_t *inode) {
     return gfd;
 }
 
+ssize_t vfs_read(file_t *file, char *buff, size_t bytes) {
+    return file->ops->read(file, buff, bytes);
+}
+
+ssize_t vfs_write(file_t *file, char *buff, size_t bytes) {
+    return file->ops->write(file, buff, bytes);
+}
+
 static void fs_add(fs_t *fs) {
     list_add(&fs->list, &fs->type->instances);
 }

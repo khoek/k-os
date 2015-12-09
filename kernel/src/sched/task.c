@@ -66,13 +66,13 @@ task_t * task_create(const char *name, bool kernel, void *ip, void *sp) {
 
     ufd_t *tmp_fds = (ufd_t *) alloc_page_user(0, task, 0x21000);
     tmp_fds[0].flags = UFD_FLAG_PRESENT;
-    tmp_fds[0].gfd = char_device_open(512);
+    tmp_fds[0].gfd = char_file_open(512);
     tmp_fds[0].refs = 1;
     tmp_fds[1].flags = UFD_FLAG_PRESENT;
-    tmp_fds[1].gfd = char_device_open(512);
+    tmp_fds[1].gfd = char_file_open(512);
     tmp_fds[1].refs = 1;
     tmp_fds[2].flags = UFD_FLAG_PRESENT;
-    tmp_fds[2].gfd = char_device_open(512);
+    tmp_fds[2].gfd = char_file_open(512);
     tmp_fds[2].refs = 1;
 
     for(ufd_idx_t i = 3; i < task->fd_count - 1; i++) {
