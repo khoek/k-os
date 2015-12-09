@@ -12,7 +12,6 @@
 #include "mm/cache.h"
 #include "sched/task.h"
 #include "fs/module.h"
-#include "video/console.h"
 #include "video/log.h"
 #include "misc/stats.h"
 
@@ -388,7 +387,6 @@ void __init mm_init() {
 
     __asm__ volatile("mov %0, %%cr3" :: "a" (((uint32_t) page_directory) - VIRTUAL_BASE));
 
-    console_map_virtual();
     debug_map_virtual();
 
     multiboot_info = (multiboot_info_t *) map_page(multiboot_info);

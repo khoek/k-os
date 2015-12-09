@@ -10,7 +10,7 @@ OBJS=	loader.o \
         lib/string.o lib/printf.o lib/math.o lib/rand.o \
         bug/debug.o bug/panic.o \
         sync/semaphore.o \
-        video/console.o video/log.o \
+        video/log.o \
         arch/gdt.o arch/idt.o arch/isr.o arch/registers.o arch/pit.o arch/tsc.o arch/cpl.o \
         arch/proc.o arch/acpi.o arch/pic.o arch/apic.o arch/mp.o arch/hpet.o \
         arch/atomic.o arch/spinlock.o \
@@ -27,6 +27,7 @@ OBJS=	loader.o \
         fs/type/devfs.o fs/type/ramfs.o \
         fs/binfmt/binfmt.o fs/binfmt/binfmt_elf.o \
         driver/bus/pci.o \
+        driver/console/console.o \
         driver/input/keyboard.o \
         driver/disk/ide.o driver/disk/ahci.o \
         driver/net/e1000.o \

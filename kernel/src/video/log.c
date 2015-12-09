@@ -5,42 +5,46 @@
 #include "sync/spinlock.h"
 #include "arch/registers.h"
 #include "time/clock.h"
-#include "video/console.h"
+#include "driver/console/console.h"
 
-#define BUFFSIZE 1024
+#define LOGBUFFSIZE 32768
+#define LINEBUFFSIZE 1024
 
-DEFINE_SPINLOCK(log_lock);
+static uint32_t front;
+static char log_buff[LOGBUFFSIZE];
+static DEFINE_SPINLOCK(log_lock);
 
-static char buff[BUFFSIZE];
-static DEFINE_SPINLOCK(buff_lock);
-
-static void print_time() {
-    uint32_t time = uptime();
-    console_putsf("[%5u.%03u] ", time / MILLIS_PER_SEC, time % MILLIS_PER_SEC);
-}
+static char line_buff[LINEBUFFSIZE];
+static DEFINE_SPINLOCK(line_buff_lock);
 
 void kprint(const char *str) {
+    uint32_t time = uptime();
+
     uint32_t flags;
     spin_lock_irqsave(&log_lock, &flags);
 
-    print_time();
+    int len = sprintf(log_buff + front, "[%5u.%03u] %s\n", time / MILLIS_PER_SEC, time % MILLIS_PER_SEC, str, "\n");
 
-    console_puts(str);
-    console_puts("\n");
+    console_t *primary = console_primary();
+    if(primary) {
+        console_puts(primary, log_buff + front);
+    }
+
+    front += len;
 
     spin_unlock_irqstore(&log_lock, flags);
 }
 
 void kprintf(const char *fmt, ...) {
     uint32_t flags;
-    spin_lock_irqsave(&buff_lock, &flags);
+    spin_lock_irqsave(&line_buff_lock, &flags);
 
     va_list va;
     va_start(va, fmt);
-    vsprintf(buff, fmt, va);
+    vsprintf(line_buff, fmt, va);
     va_end(va);
 
-    kprint(buff);
+    kprint(line_buff);
 
-    spin_unlock_irqstore(&buff_lock, flags);
+    spin_unlock_irqstore(&line_buff_lock, flags);
 }

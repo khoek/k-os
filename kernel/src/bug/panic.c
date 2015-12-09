@@ -8,7 +8,7 @@
 #include "sync/spinlock.h"
 #include "sched/proc.h"
 #include "video/log.h"
-#include "video/console.h"
+#include "driver/console/console.h"
 
 #define MAX_FRAMES      32
 #define BUFFSIZE        512
@@ -22,21 +22,21 @@ void panic(char *message) {
     }
     panic_in_progress = true;
 
-    spin_lock(&log_lock);
+    console_t *con = console_primary();
 
-    console_color(0x0C);
-    console_puts("\nKERNEL PANIC (");
+    console_color(con, 0x0C);
+    console_puts(con, "\nKERNEL PANIC (");
     if(get_percpu_ptr() && get_percpu_unsafe(this_proc)) {
-        console_putsf("core %u", get_percpu_unsafe(this_proc)->num);
+        console_putsf(con, "core %u", get_percpu_unsafe(this_proc)->num);
     } else {
-        console_puts("invalid percpu ptr");
+        console_puts(con, "invalid percpu ptr");
     }
-    console_puts("): ");
+    console_puts(con, "): ");
 
-    console_color(0x07);
-    console_putsf("%s\n\n", message);
+    console_color(con, 0x07);
+    console_putsf(con, "%s\n\n", message);
 
-    console_puts("Stack trace:\n");
+    console_puts(con, "Stack trace:\n");
     uint32_t *ebp, eip = -1;
     asm("mov %%ebp, %0" : "=r" (ebp));
     eip = ebp[1] - 1;
@@ -44,9 +44,9 @@ void panic(char *message) {
     for(uint32_t frame = 0; eip && ebp && frame < MAX_FRAMES; frame++) {
         const elf_symbol_t *symbol = debug_lookup_symbol(eip);
         if(symbol == NULL) {
-            console_putsf("    0x%X\n", eip);
+            console_putsf(con, "    0x%X\n", eip);
         } else {
-            console_putsf("    %s+0x%X/0x%X\n", debug_symbol_name(symbol), eip - symbol->value, eip);
+            console_putsf(con, "    %s+0x%X/0x%X\n", debug_symbol_name(symbol), eip - symbol->value, eip);
         }
 
         ebp = (uint32_t *) ebp[0];

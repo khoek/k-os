@@ -12,7 +12,7 @@
 #include "mm/mm.h"
 #include "mm/cache.h"
 #include "video/log.h"
-#include "video/console.h"
+#include "driver/console/console.h"
 
 multiboot_info_t *multiboot_info;
 
@@ -31,8 +31,6 @@ static void user_init() {
 
 void kmain(uint32_t magic, multiboot_info_t *mbd) {
     multiboot_info = mbd;
-
-    console_clear();
 
     kprintf("starting K-OS (v" XSTR(MAJOR) "." XSTR(MINOR) "." XSTR(PATCH) ")");
     if (magic != MULTIBOOT_BOOTLOADER_MAGIC)    panic("init - multiboot loader did not pass correct magic number");
