@@ -9,11 +9,24 @@
 #include "fs/type/devfs.h"
 #include "video/log.h"
 
+typedef enum device_type {
+    CHAR_DEV,
+    BLCK_DEV,
+} device_type_t;
+
 typedef struct devfs_device {
     list_head_t list;
 
     char *name;
-    block_device_t *device;
+
+    dentry_t *dentry;
+
+    device_type_t type;
+    union {
+        void *dev;
+        block_device_t *blockdev;
+        char_device_t *chardev;
+    };
 } devfs_device_t;
 
 static fs_t *devfs;
@@ -22,19 +35,78 @@ static DEFINE_LIST(devfs_devices);
 static DEFINE_LIST(devfs_pending);
 static DEFINE_SPINLOCK(devfs_lock);
 
-static void devfs_dev_file_open(file_t *file, inode_t *inode) {
+static void char_file_open(file_t *file, inode_t *inode) {
+    devfs_device_t *device = inode->private;
+    file->private = device;
 }
 
-static void devfs_dev_file_close(file_t *file) {
+static ssize_t char_file_seek(file_t *file, size_t bytes) {
+    return -1;
 }
 
-static file_ops_t devfs_dev_file_ops = {
-    .open   = devfs_dev_file_open,
-    .close  = devfs_dev_file_close,
+static ssize_t char_file_read(file_t *file, char *buff, size_t bytes) {
+    devfs_device_t *device = file->private;
+    char_device_t *cdev = device->chardev;
+
+    return cdev->ops->read(cdev, buff, bytes);
+}
+
+static ssize_t char_file_write(file_t *file, char *buff, size_t bytes) {
+    devfs_device_t *device = file->private;
+    char_device_t *cdev = device->chardev;
+
+    return cdev->ops->write(cdev, buff, bytes);
+}
+
+static void char_file_close(file_t *file) {
+}
+
+static file_ops_t char_file_ops = {
+    .open = char_file_open,
+    .seek = char_file_seek,
+    .read = char_file_read,
+    .write = char_file_write,
+    .close = char_file_close,
 };
 
-static inode_ops_t devfs_dev_inode_ops = {
-    .file_ops = &devfs_dev_file_ops,
+static inode_ops_t char_inode_ops = {
+    .file_ops = &char_file_ops,
+};
+
+static void block_file_open(file_t *file, inode_t *inode) {
+    devfs_device_t *device = inode->private;
+    file->private = device;
+}
+
+static ssize_t block_file_seek(file_t *file, size_t bytes) {
+    return -1;
+}
+
+static ssize_t block_file_read(file_t *file, char *buff, size_t bytes) {
+    //TODO implement buffered IO scheduler for block abstracted reads
+
+    return -1;
+}
+
+static ssize_t block_file_write(file_t *file, char *buff, size_t bytes) {
+    //TODO implement buffered IO scheduler for block abstracted writes
+
+    return -1;
+}
+
+static void block_file_close(file_t *file) {
+}
+
+static file_ops_t block_file_ops = {
+    .open = block_file_open,
+    .seek = block_file_seek,
+    .read = block_file_read,
+    .write = block_file_write,
+    .close = block_file_close,
+};
+
+static inode_ops_t block_inode_ops = {
+    .file_ops = &block_file_ops,
 };
 
 static void root_inode_lookup(inode_t *inode, dentry_t *target) {
@@ -45,7 +117,18 @@ static inode_ops_t root_inode_ops = {
 };
 
 static inode_t * devfs_inode_alloc(devfs_device_t *device) {
-    inode_t *inode = inode_alloc(devfs, &devfs_dev_inode_ops);
+    void *ops = NULL;
+
+    switch(device->type) {
+        case CHAR_DEV:
+            ops = &char_inode_ops;
+            break;
+        case BLCK_DEV:
+            ops = &block_inode_ops;
+            break;
+    }
+
+    inode_t *inode = inode_alloc(devfs, ops);
     inode->private = device;
 
     return inode;
@@ -70,11 +153,13 @@ static dentry_t * devfs_create(fs_type_t *fs_type, const char *device) {
     return fs_create_single(fs_type, devfs_fill);
 }
 
-void devfs_add_device(block_device_t *device, char *name) {
+static void devfs_add_dev(void *device, device_type_t type, char *name) {
     devfs_device_t *d = kmalloc(sizeof(devfs_device_t));
     d->name = name;
-    d->device = device;
-    device->dentry = dentry_alloc(d->name);
+    d->dentry = dentry_alloc(d->name);
+
+    d->type = type;
+    d->dev = device;
 
     uint32_t flags;
     spin_lock_irqsave(&devfs_lock, &flags);
@@ -82,6 +167,14 @@ void devfs_add_device(block_device_t *device, char *name) {
     spin_unlock_irqstore(&devfs_lock, flags);
 
     if(devfs_task) task_wake(devfs_task);
+}
+
+void devfs_add_chardev(char_device_t *device, char *name) {
+    devfs_add_dev(device, CHAR_DEV, name);
+}
+
+void devfs_add_blockdev(block_device_t *device, char *name) {
+    devfs_add_dev(device, BLCK_DEV, name);
 }
 
 static char *mntpoint;
@@ -129,13 +222,13 @@ static bool devfs_update() {
 
     spin_unlock_irqstore(&devfs_lock, flags);
 
-    d->device->dentry->inode = devfs_inode_alloc(d);
-    dentry_add_child(d->device->dentry, devfs->root);
+    d->dentry->inode = devfs_inode_alloc(d);
+    dentry_add_child(d->dentry, devfs->root);
 
     spin_lock_irqsave(&devfs_lock, &flags);
 
     list_add(&d->list, &devfs_devices);
-    kprintf("devfs - added /dev/%s", d->device->dentry->name);
+    kprintf("devfs - added /dev/%s", d->dentry->name);
 
     spin_unlock_irqstore(&devfs_lock, flags);
 

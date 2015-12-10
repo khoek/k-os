@@ -9,9 +9,6 @@ typedef struct block_device_ops block_device_ops_t;
 #include "fs/vfs.h"
 
 struct block_device {
-    fs_t *fs;
-    dentry_t *dentry;
-
     void *private;
 
     size_t size;

@@ -31,9 +31,7 @@ static block_device_ops_t subblock_ops = {
     .write = subblock_write,
 };
 
-block_device_t * subblock_device_open(block_device_t *parent, uint32_t start, uint32_t size) {
-    BUG_ON(parent->fs);
-
+block_device_t * subblock_device_open(block_device_t *parent, uint32_t start,  uint32_t size) {
     subblock_data_t *data = kmalloc(sizeof(subblock_data_t));
     data->parent = parent;
     data->start = start;

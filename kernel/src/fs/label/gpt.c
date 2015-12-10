@@ -74,7 +74,7 @@ static guid_t PART_TYPE_WINDOWS_DATA = {
     0xD8, 0x47, 0x7D, 0xE4,
 };
 
-static bool gpt_probe(block_device_t *device) {
+static bool gpt_probe(block_device_t *device, char *name) {
     if(device->block_size < sizeof(gpt_header_t)) {
         return false;
     }
@@ -100,7 +100,7 @@ static bool gpt_probe(block_device_t *device) {
         if( !memcmp(&part->type, PART_TYPE_UEFI        , sizeof(guid_t)) ||
             !memcmp(&part->type, PART_TYPE_LINUX_DATA  , sizeof(guid_t)) ||
             !memcmp(&part->type, PART_TYPE_WINDOWS_DATA, sizeof(guid_t))) {
-            register_partition(device, i + 1, part->first_lba, part->last_lba - part->first_lba);
+            register_partition(device, name, i + 1, part->first_lba, part->last_lba - part->first_lba);
         } else if(!memcmp(&part->type, PART_TYPE_LINUX_SWAP, sizeof(guid_t))) {
             //TODO call register_swap() (not yet implemented)
         } else if(memcmp(&part->type, PART_TYPE_UNUSED, sizeof(guid_t))) {

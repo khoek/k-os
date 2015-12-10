@@ -7,11 +7,13 @@
 static cache_t *block_device_cache;
 
 block_device_t * block_device_alloc() {
-    return cache_alloc(block_device_cache);
+    block_device_t *dev = cache_alloc(block_device_cache);
+    spinlock_init(&dev->lock);
+    return dev;
 }
 
 void register_block_device(block_device_t *device, char *name) {
-    devfs_add_device(device, name);
+    devfs_add_blockdev(device, name);
 }
 
 static INITCALL block_device_init() {

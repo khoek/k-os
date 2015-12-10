@@ -71,7 +71,7 @@ static bool maybe_fat(mbr_t *mbr) {
     return true;
 }
 
-static bool msdos_probe(block_device_t *device) {
+static bool msdos_probe(block_device_t *device, char *name) {
     if(device->block_size < sizeof(mbr_t)) {
         return false;
     }
@@ -110,7 +110,7 @@ static bool msdos_probe(block_device_t *device) {
 
     for(uint8_t i = 0; i < NUM_PARTITIONS; i++) {
         if(mbr->parts[i].type != PART_TYPE_EMPTY) {
-            register_partition(device, i + 1, mbr->parts[i].start, mbr->parts[i].length);
+            register_partition(device, name, i + 1, mbr->parts[i].start, mbr->parts[i].length);
         }
     }
 

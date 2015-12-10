@@ -427,26 +427,6 @@ static void fs_add(fs_t *fs) {
     list_add(&fs->list, &fs->type->instances);
 }
 
-static block_device_t * path_to_dev(path_t *path) {
-    return path->dentry->inode->device.block;
-}
-
-dentry_t * fs_create_dev(fs_type_t *type, const char *device, void (*fill)(fs_t *fs, block_device_t *device)) {
-    path_t path;
-    if(!vfs_lookup(&current->pwd, device, &path)) return NULL;
-    block_device_t *blk_device = path_to_dev(&path);
-    if(!blk_device) return NULL;
-
-    fs_t *fs = fs_alloc(type);
-    fill(fs, blk_device);
-
-    fs_add(fs);
-
-    BUG_ON(!fs->root);
-
-    return fs->root;
-}
-
 dentry_t * fs_create_nodev(fs_type_t *type, void (*fill)(fs_t *fs)) {
     fs_t *fs = fs_alloc(type);
     fill(fs);

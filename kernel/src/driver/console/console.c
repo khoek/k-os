@@ -8,6 +8,7 @@
 #include "device/device.h"
 #include "mm/mm.h"
 #include "mm/cache.h"
+#include "fs/char.h"
 #include "driver/console/console.h"
 
 #define BUFFSIZE 1024
@@ -86,11 +87,11 @@ void console_clear(console_t *con) {
     spin_unlock_irqstore(&con->lock, flags);
 }
 
-void console_write(console_t *con, const char *str, const uint8_t len) {
+void console_write(console_t *con, const char *str, const size_t len) {
     uint32_t flags;
     spin_lock_irqsave(&con->lock, &flags);
 
-    for (int i = 0; i < len; i++) {
+    for (size_t i = 0; i < len; i++) {
         if(str[i] == '\n') {
             con->col = 0;
             con->row++;
@@ -177,6 +178,22 @@ static INITCALL console_init() {
     return 0;
 }
 
+static ssize_t console_char_read(char_device_t *cdev, char *buff, size_t len) {
+    //TODO pipe the keyboard through here
+    return -1;
+}
+
+static ssize_t console_char_write(char_device_t *cdev, char *buff, size_t len)        {
+    console_write(cdev->private, buff, len);
+
+    return len;
+}
+
+static char_device_ops_t console_ops = {
+    .read = console_char_read,
+    .write = console_char_write,
+};
+
 static INITCALL console_register() {
     primary = kmalloc(sizeof(console_t));
     primary->vram = map_page((void *) BIOS_VRAM);
@@ -191,6 +208,12 @@ static INITCALL console_register() {
     console_clear(primary);
 
     register_device(&primary->device, &console_bus.node);
+
+    char_device_t *cdev = char_device_alloc();
+    cdev->private = primary;
+    cdev->ops = &console_ops;
+
+    register_char_device(cdev, "console");
 
     return 0;
 }

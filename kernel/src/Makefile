@@ -21,7 +21,7 @@ OBJS=	loader.o \
         net/interface.o net/packet.o net/socket.o \
         net/eth/eth.o \
         net/ip/af_inet.o net/ip/ip.o net/ip/arp.o net/ip/icmp.o net/ip/tcp.o net/ip/udp.o net/ip/dhcp.o net/ip/nbns.o net/ip/raw.o \
-        fs/module.o fs/fd.o fs/vfs.o fs/block.o fs/subblock.o fs/disk.o \
+        fs/module.o fs/fd.o fs/vfs.o fs/char.o fs/block.o fs/subblock.o fs/disk.o \
         fs/label/msdos.o fs/label/gpt.o \
         fs/file/char.o \
         fs/type/devfs.o fs/type/ramfs.o \

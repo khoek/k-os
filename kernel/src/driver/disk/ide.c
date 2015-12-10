@@ -687,7 +687,7 @@ static void ide_enable(device_t *device) {
             name[STRLEN(IDE_DEVICE_PREFIX) + 1] = '\0';
 
             register_block_device(&ide_devices[d].device, name);
-            register_disk(&ide_devices[d].device);
+            register_disk(&ide_devices[d].device, name);
 
             d++;
         }

@@ -112,10 +112,6 @@ struct inode {
     int32_t blkshift;
     int32_t blocks;
 
-    union {
-        block_device_t *block;
-    } device;
-
     void *private;
 };
 
@@ -182,7 +178,6 @@ bool vfs_umount(path_t *mountpoint);
 
 bool vfs_mkdir(path_t *start, const char *pathname, uint32_t mode);
 
-dentry_t * fs_create_dev(fs_type_t *type, const char *device, void (*fill)(fs_t *fs, block_device_t *device));
 dentry_t * fs_create_nodev(fs_type_t *type, void (*fill)(fs_t *fs));
 dentry_t * fs_create_single(fs_type_t *type, void (*fill)(fs_t *fs));
 

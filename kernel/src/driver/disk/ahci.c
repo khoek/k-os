@@ -146,7 +146,7 @@ typedef struct ahci_port {
     ahci_cmdtable_t *cmdtable;
     uint32_t cmdtable_phys;
 
-    block_device_t device;
+    block_device_t *blockdev;
 } ahci_port_t;
 
 #define AHCI_PORT_BASE 0x100
@@ -221,7 +221,7 @@ static ssize_t sata_access(bool write, ahci_port_t *port, void *buff, size_t lba
 }
 
 static ssize_t ahci_read(block_device_t *device, void *buff, size_t start, size_t blocks) {
-    ahci_port_t *port = containerof(device, ahci_port_t, device);
+    ahci_port_t *port = device->private;
     if(port->type == PORT_TYPE_SATA) {
         return sata_access(false, port, buff, start, blocks);
     } else if(port->type == PORT_TYPE_SATAPI) {
@@ -233,7 +233,7 @@ static ssize_t ahci_read(block_device_t *device, void *buff, size_t start, size_
 }
 
 static ssize_t ahci_write(block_device_t *device, void *buff, size_t start, size_t blocks) {
-    ahci_port_t *port = containerof(device, ahci_port_t, device);
+    ahci_port_t *port = device->private;
     if(port->type == PORT_TYPE_SATA) {
         return sata_access(true, port, buff, start, blocks);
     } else if(port->type == PORT_TYPE_SATAPI) {
@@ -296,10 +296,11 @@ static void sata_identify(ahci_port_t *port) {
 
     kprintf("ahci - SATA   %s %7uMB", model, size / 1024 / 2);
 
-    memset(&port->device, 0, sizeof(block_device_t));
-    port->device.ops = &ahci_device_ops;
-    port->device.size = size / ATA_SECTOR_SIZE;
-    port->device.block_size = ATA_SECTOR_SIZE;
+    port->blockdev = block_device_alloc();
+    port->blockdev->ops = &ahci_device_ops;
+    port->blockdev->size = DIV_UP(size, ATA_SECTOR_SIZE);
+    port->blockdev->block_size = ATA_SECTOR_SIZE;
+    port->blockdev->private = port;
 
     static uint32_t count = 0;
     char *name = kmalloc(STRLEN(AHCI_DEVICE_PREFIX) + 2);
@@ -307,8 +308,8 @@ static void sata_identify(ahci_port_t *port) {
     name[STRLEN(AHCI_DEVICE_PREFIX)] = 'a' + count++;
     name[STRLEN(AHCI_DEVICE_PREFIX) + 1] = '\0';
 
-    register_block_device(&port->device, name);
-    register_disk(&port->device);
+    register_block_device(port->blockdev, name);
+    register_disk(port->blockdev, name);
 }
 
 static char * ahci_controller_name(device_t UNUSED(*device)) {

@@ -4,6 +4,6 @@
 #include "lib/int.h"
 #include "common/list.h"
 
-block_device_t * subblock_device_open(block_device_t *device, uint32_t start, uint32_t end);
+block_device_t * subblock_device_open(block_device_t *device, uint32_t start, uint32_t size);
 
 #endif
