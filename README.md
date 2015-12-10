@@ -2,7 +2,7 @@
 
 An operating system written by Keeley Hoek as a hobby. It was inspired by Charlie Somerville's [JSOS](https://github.com/charliesome/JSOS).
 
-K-OS aims to be a C kernel, but routines which need to be written in ASM are stored in separate files because large inline ASM blocks are ugly.
+K-OS is a C kernel, with the exception of the required architecture-specific assembly code.
 
 ## Features
 
