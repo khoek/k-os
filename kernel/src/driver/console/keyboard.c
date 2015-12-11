@@ -4,15 +4,27 @@
 #include "lib/int.h"
 #include "init/initcall.h"
 #include "common/asm.h"
+#include "sync/spinlock.h"
+#include "sync/semaphore.h"
 #include "arch/gdt.h"
 #include "arch/idt.h"
-#include "input/keyboard.h"
-#include "misc/sysrq.h"
+#include "driver/console/console.h"
 #include "video/log.h"
+#include "misc/sysrq.h"
+
+#define KEYBUFFLEN 512
 
 #define KEYBOARD_IRQ 1
 
 #define RELEASE_BIT (1 << 7)
+
+static console_t *the_console;
+
+static uint32_t keybuff_front = 0, keybuff_back = 0;
+static uint8_t keybuff[KEYBUFFLEN];
+static volatile uint32_t read_waiting = 0;
+static DEFINE_SPINLOCK(keybuff_lock);
+static DEFINE_SEMAPHORE(wait_semaphore, 0);
 
 static bool key_state[128];
 static const char key_map[] = {
@@ -114,57 +126,72 @@ static const char key_map[] = {
           0, 0
 };
 
-static void (*keyup)(char);
-static void (*keydown)(char);
+static inline void keybuff_append(uint8_t code) {
+    uint32_t flags;
+    spin_lock_irqsave(&keybuff_lock, &flags);
 
-void keyboard_register_key_up(void (*handler)(char)) {
-    keyup = handler;
-}
+    uint32_t new_front = (keybuff_front + 1) % KEYBUFFLEN;
+    if(new_front == keybuff_back) goto append_out;
 
-void keyboard_register_key_down(void (*handler)(char)) {
-    keydown = handler;
-}
+    keybuff[keybuff_front] = code;
+    keybuff_front = new_front;
 
-bool shift_down() {
-    return key_state[LSHIFT_KEY] || key_state[RSHIFT_KEY];
-}
+    if(read_waiting) {
+        semaphore_up(&wait_semaphore);
 
-bool control_down() {
-    return key_state[CTRL_KEY];
-}
-
-bool alt_down() {
-    return key_state[ALT_KEY];
-}
-
-static char translate_code(uint16_t code) {
-    bool shift = shift_down();
-    if(key_state[CAPS_KEY]) {
-        shift = !shift;
+        read_waiting--;
     }
 
-    return key_map[code * 2 + (shift ? 1 : 0)];
+append_out:
+    spin_unlock_irqstore(&keybuff_lock, flags);
 }
 
-static void dispatch(uint16_t code) {
-    if(code & RELEASE_BIT) {
-        code ^= RELEASE_BIT;
-        key_state[code] = false;
+ssize_t keybuff_read(char *buff, size_t len) {
+    uint32_t coppied = 0;
 
-        if(keyup) (*keyup)(translate_code(code));
-    } else {
-        key_state[code] = true;
+    while(coppied < len) {
+        uint32_t flags;
+        spin_lock_irqsave(&keybuff_lock, &flags);
 
-        if(key_state[SYSRQ_KEY] && code != SYSRQ_KEY) {
-            sysrq_handle(code);
+        if(keybuff_front == keybuff_back) {
+read_retry:
+            read_waiting++;
+
+            spin_unlock_irqstore(&keybuff_lock, flags);
+
+            semaphore_down(&wait_semaphore);
+
+            spin_lock_irqsave(&keybuff_lock, &flags);
+
+            if(keybuff_front == keybuff_back) {
+                    goto read_retry;
+            }
         }
 
-        //FIXME this is for debug
-        if(key_state[CTRL_KEY] && code != CTRL_KEY) {
-            sysrq_handle(code);
-        }
+        uint32_t chunk_len = keybuff_front < keybuff_back ? KEYBUFFLEN - keybuff_back : keybuff_front - keybuff_back;
+        chunk_len = MIN(chunk_len, len - coppied);
 
-        if(keydown) (*keydown)(translate_code(code));
+        memcpy(buff, &keybuff[keybuff_back], chunk_len);
+
+        coppied += chunk_len;
+        buff += chunk_len;
+        keybuff_back = (keybuff_back + chunk_len) % KEYBUFFLEN;
+
+        spin_unlock_irqstore(&keybuff_lock, flags);
+    }
+
+    return coppied;
+}
+
+static void dispatch(uint8_t code) {
+    keybuff_append(code);
+
+    bool press = !(code & RELEASE_BIT);
+    code &= ~RELEASE_BIT;
+    key_state[code] = press;
+
+    if(press && key_state[SYSRQ_KEY] && code != SYSRQ_KEY) {
+        sysrq_handle(code);
     }
 }
 
@@ -173,26 +200,13 @@ static void handle_keyboard(interrupt_t *interrupt, void *data) {
     dispatch(inb(0x60));
 }
 
-#define DISABLE_PORT1 0xAD
-#define DISABLE_PORT2 0xA7
+void keyboard_init(console_t *console) {
+    the_console = console;
 
-#define IRQ_PORT1 (1 << 0)
-#define IRQ_PORT2 (1 << 1)
-#define TRANSLATION (1 << 6)
-
-#define CLOCK_PORT1 (1 << 4)
-#define CLOCK_PORT2 (1 << 5)
-
-static INITCALL keyboard_init() {
     outb(0x64, 0xAA);
     if(inb(0x60) != 0x55) {
         kprintf("kbd - controller failed BIST!");
-        return 0;
     }
 
     register_isr(KEYBOARD_IRQ + IRQ_OFFSET, CPL_KRNL, handle_keyboard, NULL);
-
-    return 0;
 }
-
-subsys_initcall(keyboard_init); //FIXME create input subsystem

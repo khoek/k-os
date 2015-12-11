@@ -27,8 +27,7 @@ OBJS=	loader.o \
         fs/type/devfs.o fs/type/ramfs.o \
         fs/binfmt/binfmt.o fs/binfmt/binfmt_elf.o \
         driver/bus/pci.o \
-        driver/console/console.o \
-        driver/input/keyboard.o \
+        driver/console/console.o driver/console/vram.o driver/console/keyboard.o \
         driver/disk/ide.o driver/disk/ahci.o \
         driver/net/e1000.o \
         misc/stats.o misc/sysrq.o

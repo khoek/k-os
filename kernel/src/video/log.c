@@ -25,9 +25,8 @@ void kprint(const char *str) {
 
     int len = sprintf(log_buff + front, "[%5u.%03u] %s\n", time / MILLIS_PER_SEC, time % MILLIS_PER_SEC, str, "\n");
 
-    console_t *primary = console_primary();
-    if(primary) {
-        console_puts(primary, log_buff + front);
+    if(con_global) {
+        vram_puts(con_global, log_buff + front);
     }
 
     front += len;

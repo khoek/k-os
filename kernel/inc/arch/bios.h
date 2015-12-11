@@ -2,6 +2,7 @@
 #define KERNEL_ARCH_BIOS_H
 
 #define BIOS_VRAM (0xB8000)
+#define VRAM_PORT_BASE 0x463
 
 #define BIOS_DATA_START (0xE0000)
 #define BIOS_DATA_END   (0xFFFFF + 1)

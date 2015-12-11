@@ -1,10 +1,10 @@
 #include "lib/int.h"
 #include "common/asm.h"
 #include "common/compiler.h"
-#include "input/keyboard.h"
 #include "video/log.h"
 #include "misc/stats.h"
 #include "misc/sysrq.h"
+#include "driver/console/console.h"
 
 static char fake_idt;
 
