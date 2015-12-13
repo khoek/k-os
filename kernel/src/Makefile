@@ -3,7 +3,9 @@
 ASFLAGS=--32
 
 CCFLAGS=-Wall -Wextra -Werror -Wno-unused-parameter -m32 -I../inc -std=gnu99 -include "common/config.h" \
-        -nostdlib -nostartfiles -nodefaultlibs -ffreestanding -c -O3 -fno-strict-aliasing
+        -nostdlib -ffreestanding -c -O3 -fno-strict-aliasing
+
+LDFLAGS=-m32 -T linker.ld -o kernel.elf -nostdlib -ffreestanding -O3 -Wl,--build-id=none
 
 OBJS=	loader.o \
         init/kmain.o init/param.o \
@@ -48,7 +50,7 @@ linker.ld: linker.ld.S
 
 kernel.elf: $(OBJS) linker.ld
 	@echo "      ld  $@"
-	@$(LD) -T linker.ld -o kernel.elf $(OBJS)
+	@$(CC) $(LDFLAGS) $(OBJS)
 
 clean:
 	find . -name \*.o -type f -delete
