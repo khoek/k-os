@@ -6,6 +6,8 @@
 
 char * devfs_get_strpath(char *name);
 
+void devfs_publish_pending();
+
 void devfs_add_chardev(char_device_t *device, char *name);
 void devfs_add_blockdev(block_device_t *device, char *name);
 

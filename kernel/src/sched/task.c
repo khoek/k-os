@@ -29,7 +29,7 @@ static uint32_t pid = 1;
 
 static cache_t *task_cache;
 
-task_t * task_create(const char *name, bool kernel, void *ip, void *sp) {
+task_t * task_create(const char *name, bool kernel, void *ip, void *sp, file_t *stdin, file_t *stdout, file_t *stderr) {
     task_count++;
 
     task_t *task = (task_t *) cache_alloc(task_cache);

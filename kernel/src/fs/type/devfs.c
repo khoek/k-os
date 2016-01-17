@@ -247,9 +247,13 @@ static bool devfs_update() {
     return true;
 }
 
+void devfs_publish_pending() {
+    while(devfs_update());
+}
+
 static void devfs_run() {
     while(true) {
-        while(devfs_update());
+        devfs_publish_pending();
         task_sleep_current();
     }
 }
@@ -262,9 +266,9 @@ static INITCALL devfs_init() {
 
 static INITCALL devfs_mount() {
     devfs = vfs_fs_create("devfs", NULL);
-    devfs_task = task_create("devfsd", true, devfs_run, NULL);
+    devfs_task = task_create("devfsd", true, devfs_run, NULL, NULL, NULL, NULL);
 
-    while(devfs_update());
+    devfs_publish_pending();
 
     if(mntpoint) {
         path_t wd, target;

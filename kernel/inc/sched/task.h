@@ -53,7 +53,7 @@ struct task {
 
 #include "mm/mm.h"
 
-task_t * task_create(const char *name, bool kernel, void *ip, void *sp);
+task_t * task_create(const char *name, bool kernel, void *ip, void *sp, file_t *stdin, file_t *stdout, file_t *stderr);
 void task_add_page(task_t *task, page_t *page);
 void task_destroy(task_t *task);
 

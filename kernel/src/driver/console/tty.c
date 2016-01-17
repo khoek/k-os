@@ -151,9 +151,13 @@ static char_device_ops_t tty_ops = {
 };
 
 void tty_create(char *name) {
+    devfs_publish_pending();
+
     path_t out, start = ROOT_PATH(root_mount);
     char *str = devfs_get_strpath(name);
-    if(!vfs_lookup(&start, str, &out)) panic("tty - console lookup failure");
+    if(!vfs_lookup(&start, str, &out)) {
+        panicf("tty - lookup of console (%s) failure", str);
+    }
     kfree(str, strlen(str) + 1);
 
     char_device_t *cdev = char_device_alloc();
@@ -161,6 +165,8 @@ void tty_create(char *name) {
     cdev->ops = &tty_ops;
 
     register_char_device(cdev, "tty");
+
+    devfs_publish_pending();
 
     kprintf("tty - for \"%s\" created", name);
 }

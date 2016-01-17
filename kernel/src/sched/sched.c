@@ -197,7 +197,7 @@ void __noreturn sched_loop() {
 
     current = NULL;
     get_percpu_unsafe(switch_time) = 0;
-    get_percpu_unsafe(idle_task) = task_create("idle", true, idle_loop, NULL);
+    get_percpu_unsafe(idle_task) = task_create("idle", true, idle_loop, NULL, NULL, NULL, NULL);
 
     if(get_percpu_unsafe(this_proc)->num == BSP_ID) {
         tasking_up = true;
