@@ -449,7 +449,7 @@ void __init mm_init() {
 void mm_postinit_reclaim() {
     uint32_t pages = DIV_UP(((uint32_t) &init_mem_end) - ((uint32_t) &init_mem_start), PAGE_SIZE);
 
-    kprintf("mm - reclaiming %u init pages", pages);
+    kprintf("mm - reclaiming %u init pages (0x%X-0x%X)", pages, &init_mem_start, &init_mem_end);
 
     for(uint32_t i = 0; i < pages; i++) {
         claim_page(DIV_DOWN(((uint32_t) &init_mem_start), PAGE_SIZE) + i);
