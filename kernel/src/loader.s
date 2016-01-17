@@ -34,7 +34,7 @@
 .section .data
 
 .align 32
-.skip 0x400  # 16 KiB
+.skip 0x4000    # 16 kB
 boot_stack:
 
 .section .init.data
