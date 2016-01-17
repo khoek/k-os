@@ -18,17 +18,27 @@
 
 multiboot_info_t *multiboot_info;
 
-static void umain() {
-    kprintf("init - welcome to userland");
+static bool try_load_init(char *path) {
+    path_t out, start = ROOT_PATH(root_mount);
+    if(!vfs_lookup(&start, path, &out)) return false;
 
-    //TODO try to execve
-    // /sbin/init
-    // /etc/init
-    // /bin/init
-    // /bin/sh
-    // in that order
-
+    //FIXME attempt to load the executable at the path given by "out"
     while(1);
+
+    //This statement should be unreachable
+    BUG();
+    return true;
+}
+
+static void umain() {
+    kprintf("init - starting init process");
+
+    if(!try_load_init("/sbin/init")
+        && !try_load_init("/etc/init")
+        && !try_load_init("/bin/init")
+        && !try_load_init("/bin/sh")) {
+        panic("init - could not load init process");
+    }
 }
 
 static void user_init() {
