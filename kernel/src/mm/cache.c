@@ -197,14 +197,14 @@ static uint32_t kalloc_cache_index(uint32_t size) {
 
 void * kmalloc(uint32_t size) {
     uint32_t index = kalloc_cache_index(size);
-    if(!index) panicf("cache alloc request too large: %u", size);
+    if(!index) panicf("cache_alloc() request too large: %u", size);
 
     return cache_alloc(kalloc_cache[index]);
 }
 
 void kfree(void *mem, uint32_t size) {
     uint32_t index = kalloc_cache_index(size);
-    if(!index) return;
+    if(!index) panicf("cache_free() request too large: %u", size);
 
     cache_free(kalloc_cache[index], mem);
 }
