@@ -1,42 +1,20 @@
 -include ../Makefile.local
 
-ASFLAGS=--32
+ASFLAGS:=--32
 
-CCFLAGS=-Wall -Wextra -Werror -Wno-unused-parameter -m32 -I../inc -std=gnu99 -include "common/config.h" \
+CCFLAGS:=-Wall -Wextra -Werror -Wno-unused-parameter -m32 -I../inc -std=gnu99 -include "common/config.h" \
         -nostdlib -ffreestanding -c -O3 -fno-strict-aliasing
 
-LDFLAGS=-m32 -T linker.ld -o kernel.elf -nostdlib -ffreestanding -O3 -Wl,--build-id=none
+LDFLAGS:=-m32 -T linker.ld -o kernel.elf -nostdlib -ffreestanding -O3 -Wl,--build-id=none
 
-OBJS=	loader.o \
-        init/kmain.o init/param.o \
-        lib/string.o lib/printf.o lib/math.o lib/rand.o \
-        bug/debug.o bug/panic.o \
-        sync/semaphore.o \
-        log/log.o \
-        arch/bios.o arch/gdt.o arch/idt.o arch/isr.o arch/registers.o arch/pit.o arch/tsc.o arch/cpl.o \
-        arch/proc.o arch/acpi.o arch/pic.o arch/apic.o arch/ioapic.o arch/madt.o arch/mp.o arch/hpet.o \
-        arch/atomic.o arch/spinlock.o \
-        mm/mm.o mm/cache.o \
-        time/clock.o time/timer.o\
-        device/device.o \
-        sched/sched.o sched/proc.o sched/task.o sched/syscall.o \
-        net/interface.o net/packet.o net/socket.o \
-        net/eth/eth.o \
-        net/ip/af_inet.o net/ip/ip.o net/ip/arp.o net/ip/icmp.o net/ip/tcp.o net/ip/udp.o net/ip/dhcp.o net/ip/nbns.o net/ip/raw.o \
-        fs/module.o fs/fd.o fs/vfs.o fs/char.o fs/block.o fs/subblock.o fs/disk.o \
-        fs/label/msdos.o fs/label/gpt.o \
-        fs/file/char.o \
-        fs/type/devfs.o fs/type/ramfs.o \
-        fs/binfmt/binfmt.o fs/binfmt/binfmt_elf.o \
-        driver/bus/pci.o \
-        driver/console/console.o driver/console/vram.o driver/console/keyboard.o \
-        driver/disk/ide.o driver/disk/ahci.o \
-        driver/net/e1000.o \
-        misc/stats.o misc/sysrq.o
+SRCS:= $(shell find . -type f -name "*.s")
+SRCS+= $(shell find . -type f -name "*.c")
+
+OBJS:= $(patsubst %.c,%.o,$(patsubst %.s,%.o,$(SRCS)))
 
 all: kernel.elf
 
-.s.o:
+%.o: %.s
 	@echo "      as  $<"
 	@$(AS) $(ASFLAGS) -o $@ $<
 
