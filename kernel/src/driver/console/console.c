@@ -7,6 +7,7 @@
 #include "mm/cache.h"
 #include "fs/char.h"
 #include "driver/console/console.h"
+#include "driver/console/tty.h"
 
 console_t *con_global = NULL;
 
@@ -97,5 +98,12 @@ static INITCALL console_register() {
     return 0;
 }
 
+static INITCALL tty_register() {
+    tty_create("console");
+
+    return 0;
+}
+
 core_initcall(console_init);
 subsys_initcall(console_register);
+postfs_initcall(tty_register);

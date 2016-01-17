@@ -10,13 +10,10 @@
 #include "arch/idt.h"
 #include "driver/console/console.h"
 #include "log/log.h"
-#include "misc/sysrq.h"
 
 #define KEYBUFFLEN 512
 
 #define KEYBOARD_IRQ 1
-
-#define RELEASE_BIT (1 << 7)
 
 static console_t *the_console;
 
@@ -25,110 +22,6 @@ static uint8_t keybuff[KEYBUFFLEN];
 static volatile uint32_t read_waiting = 0;
 static DEFINE_SPINLOCK(keybuff_lock);
 static DEFINE_SEMAPHORE(wait_semaphore, 0);
-
-static bool key_state[128];
-static const char key_map[] = {
-          // 0x00
-          0, 0,
-          '\1', '\1',
-          '1', '!',
-          '2', '@',
-          '3', '#',
-          '4', '$',
-          '5', '%',
-          '6', '^',
-          '7', '&',
-          '8', '*',
-          '9', '(',
-          '0', ')',
-          '-', '_',
-          '=', '+',
-          '\x7f', '\x7f', // backspace
-          ' ', ' ',
-
-          // 0x10
-          'q', 'Q',
-          'w', 'W',
-          'e', 'E',
-          'r', 'R',
-          't', 'T',
-          'y', 'Y',
-          'u', 'U',
-          'i', 'I',
-          'o', 'O',
-          'p', 'P',
-          '[', '{',
-          ']', '}',
-          '\n', '\n',
-            0, 0,
-          'a', 'A',
-          's', 'S',
-
-          // 0x20
-          'd', 'D',
-          'f', 'F',
-          'g', 'G',
-          'h', 'H',
-          'j', 'J',
-          'k', 'K',
-          'l', 'L',
-          ';', ':',
-          '\'', '\"',
-          '`', '~',
-          0, 0,
-          '\\', '|',
-          'z', 'Z',
-          'x', 'X',
-          'c', 'C',
-          'v', 'V',
-
-          // 0x30
-          'b', 'B',
-          'n', 'N',
-          'm', 'M',
-          ',', '<',
-          '.', '>',
-          '/', '?',
-          0, 0,
-          '*', '*',
-          0, 0,
-          ' ', ' ',
-          0, 0,
-          0, 0,
-          0, 0,
-          0, 0,
-          0, 0,
-          0, 0,
-
-          // 0x40
-          0,  0,
-          0,  0,
-          0,  0,
-          0,  0,
-          0,  0,
-          0,  0,
-          0,  0,
-          '7', '7',
-          '\3', '\3',
-          '9', '9',
-          '-', '-',
-          '4', '4',
-          '5', '5',
-          '6', '6',
-          '+', '+',
-          '1', '1',
-
-          // 0x50
-          '\5', '\5',
-          '3', '3',
-          '0', '0',
-          '.', '.',
-          0, 0
-};
-
-char translate_keycode(uint8_t code) {
-    return key_map[code * 2 + (((key_state[LSHIFT_KEY] | key_state[RSHIFT_KEY]) + key_state[CAPS_KEY]) % 2)];
-}
 
 static inline void keybuff_append(uint8_t code) {
     uint32_t flags;
@@ -187,18 +80,6 @@ read_retry:
     return coppied;
 }
 
-static void dispatch(uint8_t code) {
-    keybuff_append(code);
-
-    bool press = !(code & RELEASE_BIT);
-    code &= ~RELEASE_BIT;
-    key_state[code] = press;
-
-    if(press && key_state[SYSRQ_KEY] && code != SYSRQ_KEY) {
-        sysrq_handle(code);
-    }
-}
-
 #define CTRL_REG 0x64
 #define ENCR_REG 0x60
 
@@ -225,7 +106,7 @@ uint8_t encr_read() {
 }
 
 static void handle_keyboard(interrupt_t *interrupt, void *data) {
-    dispatch(encr_read());
+    keybuff_append(encr_read());
 }
 
 void keyboard_init(console_t *console) {
@@ -242,8 +123,8 @@ void keyboard_init(console_t *console) {
 
     encr_send_cmd(0xEE); //ECHO
     encr_read(); //0xEE = ECHO
-    ctrl_send_cmd(0xAA); //Test PS/2 Controller
 
+    ctrl_send_cmd(0xAA); //Test PS/2 Controller
     if(ctrl_read_status() != 0x55) { //0x55 = SUCCESS
         kprintf("kbd - controller failed BIST!");
     }

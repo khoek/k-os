@@ -34,6 +34,7 @@ static task_t *devfs_task;
 static DEFINE_LIST(devfs_devices);
 static DEFINE_LIST(devfs_pending);
 static DEFINE_SPINLOCK(devfs_lock);
+static const char *mntpoint = "/dev";
 
 static void char_file_open(file_t *file, inode_t *inode) {
     devfs_device_t *device = inode->private;
@@ -169,6 +170,19 @@ static void devfs_add_dev(void *device, device_type_t type, char *name) {
     if(devfs_task) task_wake(devfs_task);
 }
 
+char * devfs_get_strpath(char *name) {
+    uint32_t mntlen = strlen(mntpoint);
+    uint32_t namelen = strlen(name);
+
+    char *str = kmalloc(mntlen + namelen + 2);
+    memcpy(str, mntpoint, mntlen);
+    memcpy(str + mntlen, "/", 1);
+    memcpy(str + mntlen + 1, name, namelen);
+    str[mntlen + namelen + 1] = '\0';
+
+    return str;
+}
+
 void devfs_add_chardev(char_device_t *device, char *name) {
     devfs_add_dev(device, CHAR_DEV, name);
 }
@@ -176,8 +190,6 @@ void devfs_add_chardev(char_device_t *device, char *name) {
 void devfs_add_blockdev(block_device_t *device, char *name) {
     devfs_add_dev(device, BLCK_DEV, name);
 }
-
-static char *mntpoint;
 
 static bool devfs_set_mntpoint(char *point) {
     mntpoint = point;
@@ -187,7 +199,7 @@ static bool devfs_set_mntpoint(char *point) {
 
 cmdline_param("devfs.mount", devfs_set_mntpoint);
 
-static bool create_path(path_t *start, char *orig_path) {
+static bool create_path(path_t *start, const char *orig_path) {
     char *path = strdup(orig_path);
     char *part = path;
 

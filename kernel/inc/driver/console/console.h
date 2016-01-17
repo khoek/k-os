@@ -1,9 +1,11 @@
-#ifndef KERNEL_VIDEO_CONSOLE_H
-#define KERNEL_VIDEO_CONSOLE_H
+#ifndef KERNEL_DRIVER_CONSOLE_CONSOLE_H
+#define KERNEL_DRIVER_CONSOLE_CONSOLE_H
 
 #include "lib/int.h"
 #include "device/device.h"
 #include "fs/char.h"
+
+#define RELEASE_BIT (1 << 7)
 
 #define CONSOLE_WIDTH  80
 #define CONSOLE_HEIGHT 25
@@ -37,7 +39,6 @@ extern console_t *con_global;
 void vram_init(console_t *console);
 void keyboard_init(console_t *console);
 
-char translate_keycode(uint8_t code);
 ssize_t keybuff_read(char* buff, size_t len);
 
 void vram_color(console_t *con, char c);
