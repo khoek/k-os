@@ -70,7 +70,6 @@ static INITCALL console_init() {
     return 0;
 }
 
-void kprintf(char *c, ...);
 static ssize_t console_char_read(char_device_t UNUSED(*cdev), char *buff, size_t len) {
     return keybuff_read(buff, len);
 }

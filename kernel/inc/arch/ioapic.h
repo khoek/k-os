@@ -1,7 +1,7 @@
 #ifndef KERNEL_ARCH_IOAPIC_H
 #define KERNEL_ARCH_IOAPIC_H
 
-#include <stdint.h>
+#include "lib/int.h"
 
 void register_ioapic(uint8_t id, uint32_t base_addr);
 void register_mp_bus(uint8_t id, char name[6]);
