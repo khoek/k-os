@@ -22,13 +22,14 @@ typedef struct processor_arch processor_arch_t;
 #define get_percpu_unsafe(name)                                     \
         get_percpu_raw(get_percpu_ptr(), name)
 
-#define get_percpu(name)            \
-    (*({                            \
-        cli();                      \
-        &get_percpu_unsafe(name);   \
+#define get_percpu(name, flagptr)               \
+    (*({                                        \
+        *flagptr = get_eflags() & EFLAGS_IF;    \
+        cli();                                  \
+        &get_percpu_unsafe(name);               \
     }))
 
-#define put_percpu(name) do {sti();} while(0)
+#define put_percpu(name, flags) do {if(flags) sti();} while(0)
 
 #define current get_percpu_unsafe(current_task)
 

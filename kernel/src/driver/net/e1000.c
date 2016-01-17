@@ -277,7 +277,7 @@ static bool net_825xx_probe(device_t *device) {
     spinlock_init(&net_device->state_lock);
 
     net_device->mmio = (uint32_t) map_pages((void *) BAR_ADDR_32(pci_device->bar[0]), DIV_UP(REG_LAST, PAGE_SIZE));
-    register_isr(pci_device->interrupt + IRQ_OFFSET, CPL_KRNL, handle_network, NULL);
+    register_isr(pci_device->interrupt, CPL_KRNL, handle_network, NULL);
 
     mac_t *mac = kmalloc(sizeof(mac_t));
 

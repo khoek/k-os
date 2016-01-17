@@ -1,11 +1,9 @@
 display_library: sdl2
 
-cpu: count=1
+cpu: count=4
 
-plugin_ctrl: e1000=1
-
-romimage: file=/usr/share/bochs/BIOS-bochs-latest
-vgaromimage: file=/usr/share/bochs/VGABIOS-lgpl-latest
+romimage: file=../../bochs/bios/BIOS-bochs-latest
+vgaromimage: file=../../bochs/bios/VGABIOS-lgpl-latest
 
 magic_break: enabled=1
 port_e9_hack: enabled=1

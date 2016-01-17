@@ -1,11 +1,22 @@
 .global entry                           # UP/BSP entry point
 .global entry_ap                        # AP entry point (page aligned)
 
+.global unmapped_entry_ap_flush
+.global unmapped_boot_gdt
+.global unmapped_boot_gdt_end
+.global unmapped_boot_gdtr
+
 .extern kmain                           # UP/BSP startup
 .extern mp_ap_start                     # AP entry startup
 
 .extern page_directory                  # AP startup page directory
 .extern next_ap_stack                   # AP startup stack
+
+.extern entry_ap
+.extern entry_ap_flush
+.extern boot_gdt
+.extern boot_gdt_end
+.extern boot_gdtr
 
 # Multiboot header
 .set ALIGN,    1 << 0                   # align loaded modules on page boundaries
@@ -20,8 +31,6 @@
 .long FLAGS
 .long CHECKSUM
 
-.set KERNEL_VIRTUAL_BASE, 0xC0000000
-
 .section .data
 
 .align 32
@@ -32,37 +41,25 @@ boot_stack:
 
 .align 0x1000
 boot_page_table:
-.set addr, 1
+.set addr, 0
 .rept 1024
-.long addr
-.set addr, addr+0x1000
+.long addr | 1
+.set addr, addr + 0x1000
 .endr
 
 .align 0x1000
 boot_page_directory:
 .rept 1024
-.long (boot_page_table - KERNEL_VIRTUAL_BASE) + 1
+.long (boot_page_table - 0xC0000000) + 1
 .endr
 
 .section .entry, "ax"
-.align 16
-boot_gdt:
-.word 0x0000,0x0000,0x0000,0x0000        # Null desciptor
-.word 0xFFFF,0x0000,0x9A00,0x00CF        # 32-bit code descriptor
-.word 0xFFFF,0x0000,0x9200,0x00CF        # 32-bit data descriptor
-boot_gdt_end:
-
-.align 16
-boot_gdtr:
-.word boot_gdt_end - boot_gdt - 1
-.long boot_gdt
-
 entry:
     # Disable interrupts
     cli
 
     # Install temporary higher-half page directory
-    mov $(boot_page_directory - KERNEL_VIRTUAL_BASE), %ecx
+    mov $(boot_page_directory - 0xC0000000), %ecx
     mov %ecx, %cr3
 
     # Enable paging
@@ -83,23 +80,28 @@ entry_ap:
 
     # Enable the A20 line (FAST A20)
     in $0x92, %al
-    test $2, %al
-    jnz .after
     or $2, %al
-    and $0xFE, %al
     out %al, $0x92
 
-.after:
+    # Load the GDT
+    xorl  %eax, %eax
+    movw  %ds, %ax
+    shll  $4, %eax
+    addl  $boot_gdt, %eax
+    movl  %eax, boot_gdtr + 2
+    movl  $boot_gdt_end, %eax
+    subl  $boot_gdt, %eax
+    movw  %ax, boot_gdtr
     lgdt boot_gdtr
 
     # Enter Protected Mode
     mov %cr0, %ecx
-    or $0x00000001, %cx
+    or $1, %ecx
     mov %ecx, %cr0
 
     # Flush code segment selector
-    jmp $0x08, $.flush
-.flush:
+    jmp $0x8, $entry_ap_flush
+unmapped_entry_ap_flush:
 .code32
     # Flush data segment selectors
     mov $0x10, %eax
@@ -110,7 +112,7 @@ entry_ap:
     mov %ax, %ss
 
     # Install temporary higher-half page directory
-    mov $(boot_page_directory - KERNEL_VIRTUAL_BASE), %ecx
+    mov $(boot_page_directory - 0xC0000000), %ecx
     mov %ecx, %cr3
 
     # Enable paging
@@ -123,8 +125,20 @@ entry_ap:
     jmp *%ecx             # NOTE: Must be absolute jump!
 .size entry_ap, .-entry_ap
 
+.align 16
+unmapped_boot_gdt:
+    .word 0x0000,0x0000,0x0000,0x0000        # Null desciptor
+    .word 0xFFFF,0x0000,0x9A00,0x00CF        # 32-bit code descriptor
+    .word 0xFFFF,0x0000,0x9200,0x00CF        # 32-bit data descriptor
+unmapped_boot_gdt_end:
+
+    .align 16
+unmapped_boot_gdtr:
+    .word 0
+    .long 0
+
 .text
-.type boot, @function
+.type boot_bsp, @function
 boot_bsp:
     # Set up the BSP stack
     mov $boot_stack, %esp
@@ -140,7 +154,7 @@ boot_bsp:
 .type boot_ap, @function
 boot_ap:
     # Set up the AP page directory
-    mov $(page_directory - KERNEL_VIRTUAL_BASE), %ecx
+    mov $(page_directory - 0xC0000000), %ecx
     mov %ecx, %cr3
 
     # Set up the AP stack

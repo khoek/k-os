@@ -7,25 +7,26 @@ ENTRY(entry)
 SECTIONS {
     . = PHYSICAL_BASE;
 
-    .image_start : AT(ADDR(.image_start) - VIRTUAL_BASE) {
-        image_start = .;
-    }
-
-    boot_mem_start = . + VIRTUAL_BASE;
+    image_start = .;
 
     .header : {
        *(.header)
-    }
-
-    .entry.ap ALIGN (0x1000) : {
-        *(.entry.ap)
     }
 
     .entry : {
        *(.entry)
     }
 
-    boot_mem_end = . + VIRTUAL_BASE;
+    .entry.ap ALIGN (0x1000) : {
+        entry_ap_start = .;
+        *(.entry.ap)
+        entry_ap_end = .;
+    }
+
+    entry_ap_flush = unmapped_entry_ap_flush - entry_ap_start + ENTRY_AP_BASE;
+    boot_gdt = unmapped_boot_gdt - entry_ap_start + ENTRY_AP_BASE;
+    boot_gdt_end = unmapped_boot_gdt_end - entry_ap_start + ENTRY_AP_BASE;
+    boot_gdtr = unmapped_boot_gdtr - entry_ap_start + ENTRY_AP_BASE;
 
     . += VIRTUAL_BASE;
 
@@ -53,13 +54,9 @@ SECTIONS {
         _ebss = .;
     }
 
-    . -= VIRTUAL_BASE;
-
-    init_mem_start = .;
-
-    . += VIRTUAL_BASE;
-
     .init.text ALIGN (0x1000) : AT(ADDR(.init.text) - VIRTUAL_BASE) {
+        init_mem_start = . - VIRTUAL_BASE;
+
         *(.init.text)
     }
 
@@ -92,15 +89,12 @@ SECTIONS {
         param_end = .;
     }
 
-    . -= VIRTUAL_BASE;
+    init_mem_end = . - VIRTUAL_BASE;
 
-    init_mem_end = .;
-
-    .image_end : AT(ADDR(.image_end) - VIRTUAL_BASE) {
-        image_end = .;
-    }
+    image_end = . - VIRTUAL_BASE;
 
     /DISCARD/ : {
         *(.comment)
+        *(.note.gnu.build-id)
     }
 }

@@ -1,6 +1,5 @@
 .global flush_segment_registers
 .global flush_data_segments
-.global flush_tss
 .global get_eflags
 .global set_eflags
 

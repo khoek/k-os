@@ -112,16 +112,16 @@ void task_add(task_t *task) {
 }
 
 void task_sleep(task_t *task) {
+    uint32_t flags;
+    spin_lock_irqsave(&sched_lock, &flags);
+    spin_lock(&task->lock);
+
     // If task_sleep(task=current) succeeds, excecution will stop at the next
     // interrupt (after an arbitrary length of time). This results in a race
     // condition, with unpredictable behaviour.
     //
     // task_sleep_current() is guaranteed to switch safely.
     if(task == current && (get_eflags() & EFLAGS_IF)) panic("task_sleep(task=current) in interruptible context!");
-
-    uint32_t flags;
-    spin_lock_irqsave(&sched_lock, &flags);
-    spin_lock(&task->lock);
 
     task->state = TASK_SLEEPING;
     list_rm(&task->queue_list);
@@ -135,6 +135,8 @@ void task_sleep_current() {
 
     task_sleep(current);
     sched_switch();
+
+    sti();
 }
 
 void task_wake(task_t *task) {
@@ -191,7 +193,7 @@ void sched_try_resched() {
 }
 
 void __noreturn sched_loop() {
-    kprintf("sched - cpu #%u is READY", get_percpu_unsafe(this_proc)->num);
+    kprintf("sched - proc #%u is READY", get_percpu_unsafe(this_proc)->num);
 
     current = NULL;
     get_percpu_unsafe(switch_time) = 0;
@@ -211,6 +213,7 @@ void __noreturn sched_loop() {
 }
 
 static void switch_interrupt(interrupt_t *interrupt, void *data) {
+    eoi_handler(interrupt->vector);
     do_sched_switch();
 }
 

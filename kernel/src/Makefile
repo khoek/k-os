@@ -3,7 +3,7 @@
 ASFLAGS=--32
 
 CCFLAGS=-Wall -Wextra -Werror -Wno-unused-parameter -m32 -I../inc -std=gnu99 -include "common/config.h" \
-        -nostdlib -ffreestanding -c -O3 -fno-strict-aliasing
+        -nostdlib -ffreestanding -c -g -fno-strict-aliasing
 
 LDFLAGS=-m32 -T linker.ld -o kernel.elf -nostdlib -ffreestanding -O3 -Wl,--build-id=none
 
@@ -13,8 +13,8 @@ OBJS=	loader.o \
         bug/debug.o bug/panic.o \
         sync/semaphore.o \
         video/log.o \
-        arch/gdt.o arch/idt.o arch/isr.o arch/registers.o arch/pit.o arch/tsc.o arch/cpl.o \
-        arch/proc.o arch/acpi.o arch/pic.o arch/apic.o arch/mp.o arch/hpet.o \
+        arch/bios.o arch/gdt.o arch/idt.o arch/isr.o arch/registers.o arch/pit.o arch/tsc.o arch/cpl.o \
+        arch/proc.o arch/acpi.o arch/pic.o arch/apic.o arch/ioapic.o arch/madt.o arch/mp.o arch/hpet.o \
         arch/atomic.o arch/spinlock.o \
         mm/mm.o mm/cache.o \
         time/clock.o time/timer.o\

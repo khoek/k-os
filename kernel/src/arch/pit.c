@@ -60,7 +60,6 @@ static void handle_pit(interrupt_t *interrupt, void *data) {
     pit_clock_event_source.event(&pit_clock_event_source);
 }
 
-extern void panic(char *s);
 void __init pit_init() {
     kprintf("pit - fallback timer registered");
 

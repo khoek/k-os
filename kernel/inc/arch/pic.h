@@ -10,6 +10,7 @@
 #define INT_SPURIOUS_MASTER (PIC_MASTER_OFFSET + IRQ_SPURIOUS)
 #define INT_SPURIOUS_SLAVE  (PIC_SLAVE_OFFSET + IRQ_SPURIOUS)
 
-void pic_init();
+void __init pic_configure(uint8_t master_mask, uint8_t slave_mask);
+void __init pic_init();
 
 #endif

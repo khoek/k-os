@@ -2,6 +2,8 @@
 #include "common/compiler.h"
 #include "init/initcall.h"
 #include "common/asm.h"
+#include "arch/idt.h"
+#include "arch/ioapic.h"
 #include "bug/debug.h"
 #include "bug/panic.h"
 #include "mm/cache.h"
@@ -9,7 +11,7 @@
 #include "driver/bus/pci.h"
 #include "video/log.h"
 
-#define makeLoc(b, d, f) ((pci_loc_t){.bus=(b), .device=(d), .function=(f)})
+#define make_loc(b, d, f) ((pci_loc_t){.bus=(b), .device=(d), .function=(f)})
 
 #define CONFIG_ADDRESS  0xCF8
 #define CONFIG_DATA     0xCFC
@@ -86,14 +88,14 @@ static void probe_bus(uint8_t bus) {
 }
 
 static void probe_device(uint8_t bus, uint8_t device) {
-    uint16_t vendor = pci_readw(makeLoc(bus, device, 0), PCI_WORD_VENDOR);
+    uint16_t vendor = pci_readw(make_loc(bus, device, 0), PCI_WORD_VENDOR);
 
     if(vendor == 0x0000 || vendor == 0xFFFF) return;
 
     probe_function(bus, device, 0);
-    if((pci_readb(makeLoc(bus, device, 0), PCI_BYTE_HEADER) & 0x80) != 0) {
+    if((pci_readb(make_loc(bus, device, 0), PCI_BYTE_HEADER) & 0x80) != 0) {
         for(int function = 1; function < 8; function++) {
-             if((pci_readw(makeLoc(bus, device, function), PCI_WORD_VENDOR)) != 0xFFFF) {
+             if((pci_readw(make_loc(bus, device, function), PCI_WORD_VENDOR)) != 0xFFFF) {
                  probe_function(bus, device, function);
              }
         }
@@ -119,7 +121,11 @@ static void probe_function(uint8_t bus, uint8_t device, uint8_t function) {
     dev->bar[3] = pci_readl(dev->loc, PCI_FULL_BAR3);
     dev->bar[4] = pci_readl(dev->loc, PCI_FULL_BAR4);
     dev->bar[5] = pci_readl(dev->loc, PCI_FULL_BAR5);
-    dev->interrupt = pci_readb(dev->loc, PCI_BYTE_INTRPT);
+
+    dev->interrupt = find_pci_ioint(device);
+    if(!dev->interrupt) {
+        dev->interrupt = pci_readb(dev->loc, PCI_BYTE_INTRPT) + IRQ_OFFSET;
+    }
 
     kprintf("pci - %02X:%02X:%02X %08X %04X:%04X (%X) - %s",
         bus, device, function, dev->ident.class, dev->ident.vendor, dev->ident.device, dev->interrupt,
@@ -190,13 +196,13 @@ static INITCALL pci_init() {
 static INITCALL pci_probe() {
     outl(CONFIG_ADDRESS, 0x80000000);
     if(inl(CONFIG_ADDRESS) == 0x80000000) { //does PCI exist?
-        if((pci_readb(makeLoc(0, 0, 0), PCI_BYTE_HEADER) & 0x80) == 0) {
+        if((pci_readb(make_loc(0, 0, 0), PCI_BYTE_HEADER) & 0x80) == 0) {
             //Single PCI host controller
             probe_bus(0);
         } else {
             //Multiple PCI host controllers
             for(unsigned int function = 0; function < 8; function++) {
-                 if(pci_readw(makeLoc(0, 0, function), PCI_WORD_VENDOR) != 0xFFFF) break;
+                 if(pci_readw(make_loc(0, 0, function), PCI_WORD_VENDOR) != 0xFFFF) break;
                  probe_bus(function);
             }
         }

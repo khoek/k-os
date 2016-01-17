@@ -114,9 +114,9 @@ void vram_putsf(console_t *con, const char* fmt, ...) {
 }
 
 void vram_init(console_t *console) {
+    console->row = 0;
+    console->col = 0;
+    console->color = 0x07;
     console->vram = map_page((void *) BIOS_VRAM);
-
-    uint16_t *bios_port_data = map_page((void *) VRAM_PORT_BASE);
-    console->port = *bios_port_data;
-    //TODO unmap bios_port_data page
+    console->port = bda_getw(BDA_VRAM_PORT);
 }

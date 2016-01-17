@@ -56,38 +56,42 @@ static clock_event_source_t apic_clock_event_source = {
     .freq = 0, //FIXME
 };
 
+static bool apic_is_spurious(uint32_t vector) {
+    return vector == 0xFF;
+}
+
 static void apic_eoi() {
     writel(apic_base, REG_EOI, 0);
 }
 
 static void handle_timer() {
     apic_clock_event_source.event(&apic_clock_event_source);
-    apic_eoi();
-
-    sched_try_resched();
 }
 
 void __init apic_enable() {
     writel(apic_base, REG_DFR, 0xFFFFFFFF);
     writel(apic_base, REG_LDR, (readl(apic_base, REG_LDR) & 0x00FFFFFF) | 1);
-    writel(apic_base, REG_LVT_TIMER, APIC_DISABLE);
+    writel(apic_base, REG_LVT_TIMER, TIMER_MODE_PERIODIC | TIMER_VECTOR);
     writel(apic_base, REG_LVT_LINT0, APIC_DISABLE);
     writel(apic_base, REG_LVT_LINT1, APIC_DISABLE);
     writel(apic_base, REG_TASK_PRIO, 0);
 
     writel(apic_base, REG_TIMER_DIVIDE, 1);
     writel(apic_base, REG_TIMER_INITIAL, 16000000);
-    writel(apic_base, REG_SPURIOUS, APIC_MASTER_ENABLE | INT_SPURIOUS_MASTER);
-
-    writel(apic_base, REG_LVT_TIMER, TIMER_MODE_PERIODIC | TIMER_VECTOR);
+    writel(apic_base, REG_SPURIOUS, APIC_MASTER_ENABLE | 0xFF);
 }
 
 void __init apic_init(void *base) {
     apic_base = map_page(base);
-//    eoi_handler = apic_eoi;
+    eoi_handler = apic_eoi;
+    is_spurious = apic_is_spurious;
+
+    pic_configure(0xFF, 0xFF);
 
     apic_enable();
 
     register_isr(TIMER_VECTOR, CPL_KRNL, handle_timer, NULL);
     register_clock_event_source(&apic_clock_event_source);
+
+    sti();
 }

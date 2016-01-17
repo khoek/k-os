@@ -22,11 +22,10 @@ void semaphore_down(semaphore_t *lock) {
         sched_try_resched();
     }
 }
-
+void kprintf(char *c,...);
 void semaphore_up(semaphore_t *lock) {
     uint32_t flags;
     spin_lock_irqsave(&lock->lock, &flags);
-
     if(list_empty(&lock->waiters)) {
         lock->count++;
     } else {

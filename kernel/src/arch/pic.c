@@ -29,8 +29,18 @@
 #define PIC_REG_IRR 0x0A
 #define PIC_REG_ISR 0x0B
 
+static bool pic_is_spurious(uint32_t vector) {
+    if(vector - IRQ_OFFSET != IRQ_SPURIOUS) return false;
+
+    outb(MASTER_COMMAND, PIC_REG_ISR);
+
+    return vector - IRQ_OFFSET == IRQ_SPURIOUS
+        && !(inb(MASTER_COMMAND) & (1 << IRQ_SPURIOUS));
+}
+
 static void pic_eoi(uint32_t vector) {
     if(vector > PIC_SLAVE_OFFSET + PIC_NUM_PINS) return;
+    if(pic_is_spurious(vector)) return;
 
     //don't ignore INT_SPURIOUS_MASTER interrupts because that is the IDE
     //secondary IRQ vector
@@ -43,9 +53,7 @@ static void pic_eoi(uint32_t vector) {
     }
 }
 
-void __init pic_init() {
-    eoi_handler = pic_eoi;
-
+void __init pic_configure(uint8_t master_mask, uint8_t slave_mask) {
     //send INIT command
     outb(MASTER_COMMAND, INIT);
     outb(SLAVE_COMMAND , INIT);
@@ -55,16 +63,23 @@ void __init pic_init() {
     outb(SLAVE_DATA , PIC_SLAVE_OFFSET);
 
     //set master/slave status
-    outb(MASTER_DATA, 2);
-    outb(SLAVE_DATA , 4);
+    outb(MASTER_DATA, 4);
+    outb(SLAVE_DATA , 2);
 
     //set mode
-    outb(MASTER_DATA, 0x05);
+    outb(MASTER_DATA, 0x01);
     outb(SLAVE_DATA , 0x01);
 
-    //clear IRQ masks
-    outb(MASTER_DATA, 0x0);
-    outb(SLAVE_DATA , 0x0);
+    //set IRQ masks
+    outb(MASTER_DATA, master_mask);
+    outb(SLAVE_DATA , slave_mask);
+}
+
+void __init pic_init() {
+    eoi_handler = pic_eoi;
+    is_spurious = pic_is_spurious;
+
+    pic_configure(0, 0);
 
     sti();
 }

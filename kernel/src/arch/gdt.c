@@ -58,8 +58,10 @@ void tss_set_stack(uint32_t sp) {
 }
 
 void gdt_set_tls(uint32_t tls_start) {
-    gdt_entry_t *gdt = get_percpu(gdt);
+    uint32_t flags;
+    gdt_entry_t *gdt = get_percpu(gdt, &flags);
     set_selector(gdt, SEL_USER_TLS ,  tls_start, 0xFFFFF, TYPE_SEG | CPL_USER | PERM_W , BITS_32 | FLAG_GRANULARITY_PAGE | FLAG_AVAILABLE);
+    put_percpu(gdt, flags);
 }
 
 extern uint32_t percpu_data_start;

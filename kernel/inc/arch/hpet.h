@@ -1,11 +1,6 @@
 #ifndef KERNEL_ARCH_HPET_H
 #define KERNEL_ARCH_HPET_H
 
-#define MADT_ENTRY_TYPE_LAPIC  0
-#define MADT_ENTRY_TYPE_IOAPIC 1
-
-#define MADT_ENTRY_LAPIC_FLAG_ENABLED (1 << 0)
-
 #include "lib/int.h"
 #include "init/initcall.h"
 #include "common/compiler.h"

@@ -30,11 +30,6 @@ static char * console_name(device_t UNUSED(*device)) {
 }
 
 static bool console_probe(device_t *device) {
-    console_t *con = containerof(device, console_t, device);
-    con->row = 0;
-    con->col = 0;
-    con->color = 0x07;
-
     return true;
 }
 
@@ -62,9 +57,20 @@ static INITCALL console_init() {
     register_bus(&console_bus, "console");
     register_driver(&console_driver);
 
+    con_global = kmalloc(sizeof(console_t));
+    spinlock_init(&con_global->lock);
+
+    vram_init(con_global);
+    keyboard_init(con_global);
+
+    con_global->device.bus = &console_bus;
+
+    vram_clear(con_global);
+
     return 0;
 }
 
+void kprintf(char *c, ...);
 static ssize_t console_char_read(char_device_t UNUSED(*cdev), char *buff, size_t len) {
     return keybuff_read(buff, len);
 }
@@ -81,16 +87,6 @@ static char_device_ops_t console_ops = {
 };
 
 static INITCALL console_register() {
-    con_global = kmalloc(sizeof(console_t));
-    spinlock_init(&con_global->lock);
-
-    vram_init(con_global);
-    keyboard_init(con_global);
-
-    con_global->device.bus = &console_bus;
-
-    vram_clear(con_global);
-
     register_device(&con_global->device, &console_bus.node);
 
     char_device_t *cdev = char_device_alloc();

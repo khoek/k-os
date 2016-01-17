@@ -51,16 +51,16 @@ static INITCALL acpi_init() {
 
     kprintf("acpi - parsing tables");
 
-    uint8_t *search = map_page((void *) BIOS_DATA_START);
+    uint8_t *search = map_page((void *) VRAM_START);
 
-    uint8_t *page = (uint8_t *) (BIOS_DATA_START + PAGE_SIZE);
-    for(uint32_t i = 1; i < BIOS_DATA_PAGES; i++) {
+    uint8_t *page = (uint8_t *) (VRAM_START + PAGE_SIZE);
+    for(uint32_t i = 1; i < VRAM_PAGES; i++) {
         map_page(page);
         page += PAGE_SIZE;
     }
 
     uint32_t inc = 0;
-    while(inc < (BIOS_DATA_END - BIOS_DATA_START)) {
+    while(inc < (VRAM_END - VRAM_START)) {
         rsdp = (acpi_rsdp_t *) (search + inc);
         if(acpi_valid_rsdp(rsdp)) {
             break;
@@ -70,7 +70,9 @@ static INITCALL acpi_init() {
         inc += 16;
     }
 
-    bool hpet_present = false;
+    acpi_sdt_t *madt = NULL;
+    acpi_sdt_t *hpet = NULL;
+
     if(rsdp) {
         rsdt = map_page(rsdp->rsdt);
 
@@ -96,12 +98,18 @@ static INITCALL acpi_init() {
 
                 if(acpi_valid_sdt(real)) {
                     if(acpi_sig_match(ACPI_SIG_MADT, real)) {
-                        mp_init(real);
+                        madt = real;
                     } else if(acpi_sig_match(ACPI_SIG_HPET, real)) {
-                        hpet_present = true;
-                        hpet_init(real);
+                        hpet = real;
                     }
                 }
+            }
+
+            if(madt) {
+                kprintf("acpi - MADT detected at 0x%X", virt_to_phys(madt));
+
+                madt_parse(madt);
+                if(hpet) hpet_init(hpet);
             }
         } else {
             rsdt = NULL;
@@ -112,7 +120,9 @@ static INITCALL acpi_init() {
         kprintf("acpi - no rsdp detected");
     }
 
-    if(!hpet_present) {
+    if(!madt) pic_init();
+
+    if(!hpet) {
         pit_init();
     }
 
