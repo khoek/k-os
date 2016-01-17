@@ -126,4 +126,4 @@ static INITCALL isr_init() {
     return 0;
 }
 
-core_initcall(isr_init);
+pure_initcall(isr_init);
