@@ -40,6 +40,7 @@ void madt_parse(acpi_sdt_t *madt) {
     memcpy(entry_ap_dst_virt, entry_ap_src_virt, entry_ap_len);
     //TODO unmap the pages
 
+    //apic_init invokes sti()
     cli();
     outb(0x70, 0xF);
     outb(0x71, 0xA);
