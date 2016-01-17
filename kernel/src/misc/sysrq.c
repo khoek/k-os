@@ -1,7 +1,7 @@
 #include "lib/int.h"
 #include "common/asm.h"
 #include "common/compiler.h"
-#include "video/log.h"
+#include "log/log.h"
 #include "misc/stats.h"
 #include "misc/sysrq.h"
 #include "driver/console/console.h"

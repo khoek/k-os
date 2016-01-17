@@ -4,7 +4,7 @@
 #include "init/initcall.h"
 #include "lib/string.h"
 #include "mm/cache.h"
-#include "video/log.h"
+#include "log/log.h"
 
 #define MAX_CMDLINE_LEN 512
 

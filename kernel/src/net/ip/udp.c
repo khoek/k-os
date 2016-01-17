@@ -9,7 +9,7 @@
 #include "net/ip/udp.h"
 #include "net/ip/dhcp.h"
 #include "net/ip/nbns.h"
-#include "video/log.h"
+#include "log/log.h"
 
 #include "checksum.h"
 

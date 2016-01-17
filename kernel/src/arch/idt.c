@@ -11,7 +11,7 @@
 #include "arch/cpl.h"
 #include "mm/cache.h"
 #include "sched/sched.h"
-#include "video/log.h"
+#include "log/log.h"
 
 #define NUM_VECTORS 256
 

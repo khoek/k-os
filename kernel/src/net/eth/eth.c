@@ -10,7 +10,7 @@
 #include "net/eth/eth.h"
 #include "net/ip/ip.h"
 #include "net/ip/arp.h"
-#include "video/log.h"
+#include "log/log.h"
 
 static void eth_resolve(packet_t *packet) {
     switch(packet->route.dst.family) {

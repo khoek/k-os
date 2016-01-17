@@ -7,7 +7,7 @@
 #include "common/compiler.h"
 #include "bug/debug.h"
 #include "mm/mm.h"
-#include "video/log.h"
+#include "log/log.h"
 
 typedef struct {
     uint32_t name;

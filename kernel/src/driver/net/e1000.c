@@ -17,7 +17,7 @@
 #include "net/packet.h"
 #include "net/interface.h"
 #include "net/eth/eth.h"
-#include "video/log.h"
+#include "log/log.h"
 
 //FIXME change these back to -> (PAGE_SIZE / sizeof(rx_desc_t)) after a better kmalloc is implemented
 #define NUM_RX_DESCS    128

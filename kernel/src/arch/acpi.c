@@ -8,7 +8,7 @@
 #include "arch/hpet.h"
 #include "bug/panic.h"
 #include "mm/mm.h"
-#include "video/log.h"
+#include "log/log.h"
 
 #define ACPI_SIG_RSDP "RSD PTR "
 #define ACPI_SIG_RSDT "RSDT"

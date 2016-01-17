@@ -15,7 +15,7 @@
 #include "time/clock.h"
 #include "sched/sched.h"
 #include "sched/proc.h"
-#include "video/log.h"
+#include "log/log.h"
 
 #define BIOS_SEARCH_START 0xF0000
 #define BIOS_SEARCH_END   (0xFFFFF + 1)

@@ -5,7 +5,7 @@
 #include "arch/apic.h"
 #include "arch/mp.h"
 #include "mm/mm.h"
-#include "video/log.h"
+#include "log/log.h"
 
 #define ENTRY_TYPE_PROC 0
 

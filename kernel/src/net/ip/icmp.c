@@ -6,7 +6,7 @@
 #include "net/interface.h"
 #include "net/ip/ip.h"
 #include "net/ip/icmp.h"
-#include "video/log.h"
+#include "log/log.h"
 
 #include "checksum.h"
 

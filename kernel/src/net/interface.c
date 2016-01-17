@@ -4,7 +4,7 @@
 #include "sync/spinlock.h"
 #include "net/packet.h"
 #include "net/interface.h"
-#include "video/log.h"
+#include "log/log.h"
 
 static char *hostname = "K-OS"; //TODO touppercase this when it gets dynamically loaded
 static uint32_t hostname_handles;

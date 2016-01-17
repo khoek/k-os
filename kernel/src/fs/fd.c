@@ -3,7 +3,7 @@
 #include "bug/debug.h"
 #include "mm/mm.h"
 #include "fs/fd.h"
-#include "video/log.h"
+#include "log/log.h"
 #include "misc/stats.h"
 
 #define FREELIST_END (-1)

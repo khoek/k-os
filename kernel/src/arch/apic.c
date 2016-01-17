@@ -7,7 +7,7 @@
 #include "mm/mm.h"
 #include "sched/sched.h"
 #include "time/clock.h"
-#include "video/log.h"
+#include "log/log.h"
 
 #define TIMER_VECTOR    0x7E
 

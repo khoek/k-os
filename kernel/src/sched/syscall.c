@@ -13,7 +13,7 @@
 #include "sched/sched.h"
 #include "net/socket.h"
 #include "fs/vfs.h"
-#include "video/log.h"
+#include "log/log.h"
 
 #define MAX_SYSCALL 256
 

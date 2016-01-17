@@ -10,7 +10,7 @@
 #include "net/ip/ip.h"
 #include "net/ip/udp.h"
 #include "net/ip/dhcp.h"
-#include "video/log.h"
+#include "log/log.h"
 
 #define END_PADDING 28
 

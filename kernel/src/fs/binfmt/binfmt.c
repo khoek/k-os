@@ -3,7 +3,7 @@
 #include "common/list.h"
 #include "common/compiler.h"
 #include "fs/binfmt.h"
-#include "video/log.h"
+#include "log/log.h"
 
 static DEFINE_LIST(binfmts);
 

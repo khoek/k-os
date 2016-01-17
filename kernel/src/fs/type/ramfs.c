@@ -3,7 +3,7 @@
 #include "init/initcall.h"
 #include "mm/cache.h"
 #include "fs/vfs.h"
-#include "video/log.h"
+#include "log/log.h"
 
 static void ramfs_file_open(file_t *file, inode_t *inode) {
 }

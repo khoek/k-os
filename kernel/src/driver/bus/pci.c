@@ -9,7 +9,7 @@
 #include "mm/cache.h"
 #include "device/device.h"
 #include "driver/bus/pci.h"
-#include "video/log.h"
+#include "log/log.h"
 
 #define make_loc(b, d, f) ((pci_loc_t){.bus=(b), .device=(d), .function=(f)})
 

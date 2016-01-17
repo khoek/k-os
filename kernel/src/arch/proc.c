@@ -4,7 +4,7 @@
 #include "sched/proc.h"
 #include "arch/apic.h"
 #include "arch/proc.h"
-#include "video/log.h"
+#include "log/log.h"
 
 DEFINE_PER_CPU(task_t *, current_task);
 

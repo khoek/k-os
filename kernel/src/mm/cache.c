@@ -8,7 +8,7 @@
 #include "sync/spinlock.h"
 #include "mm/mm.h"
 #include "mm/cache.h"
-#include "video/log.h"
+#include "log/log.h"
 
 #define FREELIST_END ((uint32_t) (1 << 31))
 

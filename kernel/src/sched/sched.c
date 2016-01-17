@@ -18,7 +18,7 @@
 #include "sched/proc.h"
 #include "sched/task.h"
 #include "fs/file/char.h"
-#include "video/log.h"
+#include "log/log.h"
 #include "misc/stats.h"
 
 #define QUANTUM 1000

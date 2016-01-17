@@ -12,7 +12,7 @@
 #include "mm/cache.h"
 #include "sched/task.h"
 #include "fs/module.h"
-#include "video/log.h"
+#include "log/log.h"
 #include "misc/stats.h"
 
 #define MMAP_BUFF_SIZE 256

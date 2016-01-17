@@ -8,7 +8,7 @@
 #include "arch/registers.h"
 #include "mm/mm.h"
 #include "sched/proc.h"
-#include "video/log.h"
+#include "log/log.h"
 
 typedef struct gdtd {
     uint16_t size;

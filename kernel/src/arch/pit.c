@@ -3,7 +3,7 @@
 #include "arch/gdt.h"
 #include "arch/idt.h"
 #include "time/clock.h"
-#include "video/log.h"
+#include "log/log.h"
 
 #define TIMER_FREQ 1000
 

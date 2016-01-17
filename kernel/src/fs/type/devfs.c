@@ -7,7 +7,7 @@
 #include "sched/task.h"
 #include "fs/vfs.h"
 #include "fs/type/devfs.h"
-#include "video/log.h"
+#include "log/log.h"
 
 typedef enum device_type {
     CHAR_DEV,

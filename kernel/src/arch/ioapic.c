@@ -4,7 +4,7 @@
 #include "mm/mm.h"
 #include "mm/cache.h"
 #include "arch/ioapic.h"
-#include "video/log.h"
+#include "log/log.h"
 
 #define REGSEL_OFF 0x00
 #define REGWIN_OFF 0x10

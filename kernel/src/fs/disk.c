@@ -7,7 +7,7 @@
 #include "fs/subblock.h"
 #include "fs/disk.h"
 #include "fs/type/devfs.h"
-#include "video/log.h"
+#include "log/log.h"
 
 static DEFINE_LIST(disk_labels);
 static DEFINE_SPINLOCK(disk_label_lock);

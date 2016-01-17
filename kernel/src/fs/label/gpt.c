@@ -5,7 +5,7 @@
 #include "mm/mm.h"
 #include "mm/cache.h"
 #include "fs/disk.h"
-#include "video/log.h"
+#include "log/log.h"
 
 #define GPT_HEADER_SECTOR 1
 

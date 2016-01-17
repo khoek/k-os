@@ -6,7 +6,7 @@
 #include "mm/mm.h"
 #include "mm/cache.h"
 #include "sched/proc.h"
-#include "video/log.h"
+#include "log/log.h"
 
 processor_t *bsp;
 static DEFINE_LIST(procs);

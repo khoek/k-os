@@ -11,7 +11,7 @@
 #include "sched/sched.h"
 #include "mm/mm.h"
 #include "mm/cache.h"
-#include "video/log.h"
+#include "log/log.h"
 #include "driver/console/console.h"
 
 multiboot_info_t *multiboot_info;

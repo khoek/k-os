@@ -8,7 +8,7 @@
 #include "bug/debug.h"
 #include "device/device.h"
 #include "mm/cache.h"
-#include "video/log.h"
+#include "log/log.h"
 
 static node_t root = {
     .name = "/",

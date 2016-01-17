@@ -14,7 +14,7 @@
 #include "net/ip/tcp.h"
 #include "net/ip/udp.h"
 #include "net/ip/dhcp.h"
-#include "video/log.h"
+#include "log/log.h"
 
 #include "checksum.h"
 

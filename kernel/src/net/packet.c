@@ -4,7 +4,7 @@
 #include "mm/cache.h"
 #include "net/packet.h"
 #include "net/interface.h"
-#include "video/log.h"
+#include "log/log.h"
 
 packet_t * packet_create(net_interface_t *interface, packet_callback_t callback, void *data, void *payload, uint16_t len) {
     packet_t *packet = kmalloc(sizeof(packet_t));

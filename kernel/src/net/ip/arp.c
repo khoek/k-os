@@ -9,7 +9,7 @@
 #include "net/interface.h"
 #include "net/eth/eth.h"
 #include "net/ip/arp.h"
-#include "video/log.h"
+#include "log/log.h"
 
 #define ARP_RETRYS  5
 #define ARP_TIMEOUT 500

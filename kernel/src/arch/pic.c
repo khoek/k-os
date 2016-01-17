@@ -12,7 +12,7 @@
 #include "arch/pit.h"
 #include "mm/cache.h"
 #include "sched/sched.h"
-#include "video/log.h"
+#include "log/log.h"
 
 //command io port of PICs
 #define MASTER_COMMAND 0x20

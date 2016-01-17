@@ -12,7 +12,7 @@ OBJS=	loader.o \
         lib/string.o lib/printf.o lib/math.o lib/rand.o \
         bug/debug.o bug/panic.o \
         sync/semaphore.o \
-        video/log.o \
+        log/log.o \
         arch/bios.o arch/gdt.o arch/idt.o arch/isr.o arch/registers.o arch/pit.o arch/tsc.o arch/cpl.o \
         arch/proc.o arch/acpi.o arch/pic.o arch/apic.o arch/ioapic.o arch/madt.o arch/mp.o arch/hpet.o \
         arch/atomic.o arch/spinlock.o \

@@ -9,7 +9,7 @@
 #include "arch/gdt.h"
 #include "arch/idt.h"
 #include "driver/console/console.h"
-#include "video/log.h"
+#include "log/log.h"
 #include "misc/sysrq.h"
 
 #define KEYBUFFLEN 512

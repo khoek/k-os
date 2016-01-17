@@ -7,7 +7,7 @@
 #include "arch/idt.h"
 #include "sync/spinlock.h"
 #include "sched/proc.h"
-#include "video/log.h"
+#include "log/log.h"
 #include "driver/console/console.h"
 
 #define MAX_FRAMES      32

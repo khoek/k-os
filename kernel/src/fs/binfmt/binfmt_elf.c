@@ -10,7 +10,7 @@
 #include "sched/task.h"
 #include "fs/binfmt.h"
 #include "fs/elf.h"
-#include "video/log.h"
+#include "log/log.h"
 
 static bool elf_header_valid(Elf32_Ehdr *ehdr) {
     return ehdr->e_ident[EI_MAG0] == ELFMAG0

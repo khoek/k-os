@@ -4,7 +4,7 @@
 #include "arch/hpet.h"
 #include "mm/mm.h"
 #include "time/clock.h"
-#include "video/log.h"
+#include "log/log.h"
 
 #define REG_CAPS 0x00
 #define REG_CONF 0x10

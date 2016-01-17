@@ -16,7 +16,7 @@
 #include "device/device.h"
 #include "driver/bus/pci.h"
 #include "driver/disk/ata.h"
-#include "video/log.h"
+#include "log/log.h"
 
 #define IDE_DEVICE_PREFIX       "hd"
 

@@ -14,7 +14,7 @@
 #include "sched/sched.h"
 #include "fs/fd.h"
 #include "fs/vfs.h"
-#include "video/log.h"
+#include "log/log.h"
 
 mount_t *root_mount;
 

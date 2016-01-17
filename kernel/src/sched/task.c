@@ -16,7 +16,7 @@
 #include "time/clock.h"
 #include "sched/task.h"
 #include "fs/file/char.h"
-#include "video/log.h"
+#include "log/log.h"
 #include "misc/stats.h"
 
 #define UFD_FLAG_PRESENT (1 << 0)

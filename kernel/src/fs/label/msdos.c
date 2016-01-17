@@ -5,7 +5,7 @@
 #include "common/compiler.h"
 #include "mm/cache.h"
 #include "fs/disk.h"
-#include "video/log.h"
+#include "log/log.h"
 
 #define MSDOS_HEADER_SECTOR 0
 

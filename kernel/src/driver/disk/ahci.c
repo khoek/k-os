@@ -11,7 +11,7 @@
 #include "fs/disk.h"
 #include "driver/bus/pci.h"
 #include "driver/disk/ata.h"
-#include "video/log.h"
+#include "log/log.h"
 
 #define AHCI_DEVICE_PREFIX "sd"
 
