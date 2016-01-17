@@ -12,6 +12,8 @@
 #define INODE_FLAG_DIRECTORY  (1 << 0)
 #define INODE_FLAG_MOUNTPOINT (1 << 1)
 
+#define ROOT_PATH(mnt) ((path_t) {.mount = mnt, .dentry = mnt->fs->root})
+
 typedef struct fs_type fs_type_t;
 typedef struct fs fs_t;
 
