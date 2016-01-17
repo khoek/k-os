@@ -33,8 +33,10 @@ void kmain(uint32_t magic, multiboot_info_t *mbd) {
     multiboot_info = mbd;
 
     kprintf("starting K-OS (v" XSTR(MAJOR) "." XSTR(MINOR) "." XSTR(PATCH) ")");
-    if (magic != MULTIBOOT_BOOTLOADER_MAGIC)    panic("init - multiboot loader did not pass correct magic number");
-    if (!(mbd->flags & MULTIBOOT_INFO_MEM_MAP)) panic("init - multiboot loader did not pass memory map");
+    if(magic != MULTIBOOT_BOOTLOADER_MAGIC)
+        panic("init - multiboot loader did not pass correct magic number");
+    if(!(mbd->flags & MULTIBOOT_INFO_MEM_MAP))
+        panic("init - multiboot loader did not pass memory map");
 
 #ifndef CONFIG_OPTIMIZE
     debug_init();
