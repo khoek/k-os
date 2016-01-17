@@ -42,10 +42,12 @@ void kmain(uint32_t magic, multiboot_info_t *mbd) {
     debug_init();
 #endif
 
-    parse_cmdline();
+    load_cmdline();
 
     mm_init();
     cache_init();
+
+    parse_cmdline();
 
     kprintf("init - starting initcalls");
     for(initcall_t *initcall = &initcall_start; initcall < &initcall_end; initcall++) {

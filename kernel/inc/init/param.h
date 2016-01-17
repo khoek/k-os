@@ -12,6 +12,7 @@ struct cmdline_param {
     param_handler_t handle;
 };
 
+void load_cmdline();
 void parse_cmdline();
 
 #define cmdline_param(key, func)                      \
