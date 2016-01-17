@@ -1,5 +1,5 @@
-#ifndef KERNEL_VIDEO_LOG_H
-#define KERNEL_VIDEO_LOG_H
+#ifndef KERNEL_LOG_LOG_H
+#define KERNEL_LOG_LOG_H
 
 #include "sync/spinlock.h"
 
