@@ -34,8 +34,9 @@ extern initcall_t initcall_start, initcall_end;
 #define postarch_initcall(fn) DEFINE_INITCALL(5, fn)
 #define subsys_initcall(fn)   DEFINE_INITCALL(6, fn)
 #define fs_initcall(fn)       DEFINE_INITCALL(7, fn)
-#define device_initcall(fn)   DEFINE_INITCALL(8, fn)
-#define module_initcall(fn)   DEFINE_INITCALL(9, fn)
+#define postfs_initcall(fn)   DEFINE_INITCALL(8, fn)
+#define device_initcall(fn)   DEFINE_INITCALL(9, fn)
+#define module_initcall(fn)   DEFINE_INITCALL(10, fn)
 
 #endif
 
