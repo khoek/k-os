@@ -20,7 +20,6 @@ mount_t *root_mount;
 
 static cache_t *dentry_cache;
 static cache_t *inode_cache;
-static cache_t *file_cache;
 static cache_t *fs_cache;
 static cache_t *mount_cache;
 
@@ -59,8 +58,10 @@ inode_t * inode_alloc(fs_t *fs, inode_ops_t *ops) {
 }
 
 file_t * file_alloc(file_ops_t *ops) {
-    file_t *new = cache_alloc(file_cache);
-    new->ops = ops;
+    file_t *new = gfdt_obtain();
+    if(new) {
+        new->ops = ops;
+    }
 
     return new;
 }
@@ -404,15 +405,13 @@ lookup_fail:
     return false;
 }
 
-gfd_idx_t vfs_open_file(inode_t *inode) {
+file_t * vfs_open_file(inode_t *inode) {
     file_t *file = file_alloc(inode->ops->file_ops);
-    gfd_idx_t gfd = gfdt_add(file);
-
-    if(gfd != FD_INVALID) {
+    if(file) {
         file->ops->open(file, inode);
     }
 
-    return gfd;
+    return file;
 }
 
 ssize_t vfs_read(file_t *file, char *buff, size_t bytes) {
@@ -475,7 +474,6 @@ void generic_getattr(inode_t *inode, stat_t *stat) {
 static INITCALL vfs_init() {
     dentry_cache = cache_create(sizeof(dentry_t));
     inode_cache = cache_create(sizeof(inode_t));
-    file_cache = cache_create(sizeof(file_t));
     fs_cache = cache_create(sizeof(fs_t));
     mount_cache = cache_create(sizeof(mount_t));
 

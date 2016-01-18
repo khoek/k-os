@@ -205,9 +205,11 @@ static file_ops_t sock_ops = {
     .close = sock_close_fd,
 };
 
-gfd_idx_t sock_create_fd(sock_t *sock) {
+file_t * sock_create_fd(sock_t *sock) {
     file_t *file = file_alloc(&sock_ops);
-    file->private = sock;
+    if(file) {
+        file->private = sock;
+    }
 
-    return gfdt_add(file);
+    return file;
 }

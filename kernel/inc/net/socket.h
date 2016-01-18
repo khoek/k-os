@@ -136,10 +136,10 @@ uint32_t sock_send(sock_t *sock, void *buff, uint32_t len, uint32_t flags);
 uint32_t sock_recv(sock_t *sock, void *buff, uint32_t len, uint32_t flags);
 void sock_close(sock_t *sock);
 
-gfd_idx_t sock_create_fd(sock_t *sock);
+file_t * sock_create_fd(sock_t *sock);
 
-static inline sock_t * gfd_to_sock(gfd_idx_t gfd_idx) {
-    return (sock_t *) gfdt_get(gfd_idx)->private;
+static inline sock_t * gfd_to_sock(file_t *f) {
+    return (sock_t *) f->private;
 }
 
 #endif

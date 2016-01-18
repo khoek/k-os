@@ -98,7 +98,7 @@ run_task:
     }
 
     tss_set_stack(current->kernel_stack);
-    cpl_switch(current->cr3, (uint32_t) current->ret, (uint32_t) (current->ret >> 32), current->cpu);
+    cpl_switch(current->cr3, current->cpu);
 }
 
 void task_add(task_t *task) {
@@ -181,8 +181,7 @@ void task_exit(task_t *task, int32_t code) {
 
 void task_save(cpu_state_t *cpu) {
     if(current && tasking_up) {
-        current->cpu = (uint32_t) cpu;
-        current->ret = (((uint64_t) cpu->reg.edx) << 32) | ((uint64_t) cpu->reg.eax);
+        current->cpu = cpu;
     }
 }
 

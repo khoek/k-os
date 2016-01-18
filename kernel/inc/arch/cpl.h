@@ -4,6 +4,6 @@
 #include "lib/int.h"
 #include "arch/registers.h"
 
-void cpl_switch(uint32_t cr3, uint32_t eax, uint32_t edx, uint32_t cpu);
+void cpl_switch(uint32_t cr3, cpu_state_t *cpu);
 
 #endif

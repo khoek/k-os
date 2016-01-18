@@ -80,6 +80,7 @@ struct file {
     void *private;
 
     uint32_t offset;
+    uint32_t refs;
 
     file_ops_t *ops;
 };
@@ -187,7 +188,7 @@ void vfs_getattr(dentry_t *dentry, stat_t *stat);
 void generic_getattr(inode_t *inode, stat_t *stat);
 
 bool vfs_lookup(path_t *start, const char *path, path_t *out);
-gfd_idx_t vfs_open_file(inode_t *inode);
+file_t * vfs_open_file(inode_t *inode);
 ssize_t vfs_read(file_t *file, char *buff, size_t bytes);
 ssize_t vfs_write(file_t *file, char *buff, size_t bytes);
 

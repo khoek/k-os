@@ -161,7 +161,7 @@ void tty_create(char *name) {
     kfree(str, strlen(str) + 1);
 
     char_device_t *cdev = char_device_alloc();
-    cdev->private = gfdt_get(vfs_open_file(out.dentry->inode));
+    cdev->private = vfs_open_file(out.dentry->inode);
     cdev->ops = &tty_ops;
 
     register_char_device(cdev, "tty");

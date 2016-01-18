@@ -7,6 +7,7 @@
 #include "arch/gdt.h"
 #include "arch/idt.h"
 #include "bug/panic.h"
+#include "bug/debug.h"
 #include "mm/cache.h"
 #include "time/timer.h"
 #include "time/clock.h"
@@ -33,137 +34,150 @@ static inline uint8_t param_8(interrupt_t *interrupt, uint32_t num) {
     return (uint8_t) *((uint32_t *) (interrupt->cpu.exec.esp + (num * sizeof(uint32_t))));
 }
 
-typedef void (*syscall_t)(interrupt_t *);
+typedef uint64_t (*syscall_t)(registers_t *);
 
-static void sys_exit(interrupt_t *interrupt) {
-    kprintf("sys_exit: %d", interrupt->cpu.reg.ecx);
+static uint64_t sys_exit(registers_t *reg) {
+    task_exit(current, reg->ecx);
 
-    task_exit(current, interrupt->cpu.reg.ecx);
+    BUG();
+    return 0;
 }
 
-static void sys_fork(interrupt_t *interrupt) {
-    current->ret = ~interrupt->cpu.reg.ecx;
+static uint64_t sys_fork(registers_t *reg) {
+    return ~reg->ecx;
 }
 
 static void wake_task(task_t *task) {
     task_wake(task);
 }
 
-static void sys_sleep(interrupt_t *interrupt) {
+static uint64_t sys_sleep(registers_t *reg) {
     task_sleep(current);
-    timer_create(interrupt->cpu.reg.ecx, (void (*)(void *)) wake_task, current);
+    timer_create(reg->ecx, (void (*)(void *)) wake_task, current);
     sched_switch();
+
+    return 0;
 }
 
-static void sys_log(interrupt_t *interrupt) {
-    if(interrupt->cpu.reg.edx > 1023) {
+static uint64_t sys_log(registers_t *reg) {
+    if(reg->edx > 1023) {
         kprintf("syscall - task log string too long!");
     } else {
-        char *buff = kmalloc(interrupt->cpu.reg.edx + 1);
-        memcpy(buff, (void *) interrupt->cpu.reg.ecx, interrupt->cpu.reg.edx);
-        buff[interrupt->cpu.reg.edx] = '\0';
+        char *buff = kmalloc(reg->edx + 1);
+        memcpy(buff, (void *) reg->ecx, reg->edx);
+        buff[reg->edx] = '\0';
 
         kprintf("user[%u] - %s", current->pid, buff);
 
-        kfree(buff, interrupt->cpu.reg.edx + 1);
+        kfree(buff, reg->edx + 1);
     }
+
+    return 0;
 }
 
-static void sys_uptime(interrupt_t *interrupt) {
-    current->ret = uptime();
+static uint64_t sys_uptime(registers_t *reg) {
+    return uptime();
 }
 
-static void sys_open(interrupt_t *interrupt) {
-    //TODO verify that interrupt->cpu.reg.ecx is a pointer to a valid path string, and that interrupt->cpu.reg.edx are valid flags
+static uint64_t sys_open(registers_t *reg) {
+    //TODO verify that reg->ecx is a pointer to a valid path string, and that reg->edx are valid flags
 
     path_t path;
-    if(!vfs_lookup(&current->pwd, (const char *) interrupt->cpu.reg.ecx, &path)) current->ret = -1;
-    else {
-        current->ret = ufdt_add(current, interrupt->cpu.reg.edx, vfs_open_file(path.dentry->inode));
+    if(vfs_lookup(&current->pwd, (const char *) reg->ecx, &path)) {
+        return ufdt_add(current, reg->edx, vfs_open_file(path.dentry->inode));
+    } else {
+        return -1;
     }
 }
 
-static void sys_close(interrupt_t *interrupt) {
-    gfd_idx_t fd = ufdt_get(current, interrupt->cpu.reg.ecx);
+static uint64_t sys_close(registers_t *reg) {
+    ufd_idx_t ufd = reg->ecx;
+    //TODO sanitize arguments
 
-    if(fd == FD_INVALID) current->ret = -1;
-    else {
-        //TODO sanitize buffer/size arguments
+    file_t *gfd = ufdt_get(current, ufd);
+    if(gfd) {
+        ufdt_close(current, ufd);
+        ufdt_put(current, ufd);
 
-        gfdt_put(fd);
+        return 0;
+    } else {
+        return -1;
+    }
+}
 
-        current->ret = 0;
+static uint64_t sys_socket(registers_t *reg) {
+    int32_t ret = -1;
+
+    sock_t *sock = sock_create(reg->ecx, reg->edx, reg->ebx);
+    if(sock) {
+        file_t *fd = sock_create_fd(sock);
+        if(fd) {
+            ret = ufdt_add(current, 0, fd);
+            if(ret == -1) {
+                //TODO free sock and fd
+            }
+        }
     }
 
-    ufdt_put(current, interrupt->cpu.reg.ecx);
+    return ret;
 }
 
-static void sys_socket(interrupt_t *interrupt) {
-    gfd_idx_t fd = sock_create_fd(sock_create(interrupt->cpu.reg.ecx, interrupt->cpu.reg.edx, interrupt->cpu.reg.ebx));
+static uint64_t sys_listen(registers_t *reg) {
+    int32_t ret = -1;
 
-    current->ret = fd == FD_INVALID ? -1 : ufdt_add(current, 0, fd);
-}
-
-static void sys_listen(interrupt_t *interrupt) {
-    gfd_idx_t fd = ufdt_get(current, interrupt->cpu.reg.ecx);
-
-    if(fd == FD_INVALID) current->ret = -1;
-    else {
-        current->ret = sock_listen(gfd_to_sock(fd), interrupt->cpu.reg.edx > INT32_MAX ? 0 : interrupt->cpu.reg.edx) ? 0 : -1;
+    file_t *fd = ufdt_get(current, reg->ecx);
+    if(fd) {
+        ret = sock_listen(gfd_to_sock(fd), reg->edx) ? 0 : -1;
     }
 
-    ufdt_put(current, interrupt->cpu.reg.ecx);
+    ufdt_put(current, reg->ecx);
+
+    return ret;
 }
 
-static void sys_accept(interrupt_t *interrupt) {
-    gfd_idx_t fd = ufdt_get(current, interrupt->cpu.reg.ecx);
+static uint64_t sys_accept(registers_t *reg) {
+    int32_t ret = -1;
 
-    if(fd == FD_INVALID) current->ret = -1;
-    else {
+    file_t *fd = ufdt_get(current, reg->ecx);
+    if(fd) {
         //TODO sanitize address buff/size buff arguments
 
         sock_t *sock = gfd_to_sock(fd);
-
-        struct sockaddr *useraddr = (struct sockaddr *) interrupt->cpu.reg.edx;
-
+        struct sockaddr *useraddr = (struct sockaddr *) reg->edx;
         sock_t *child = sock_accept(sock);
 
         if(child) {
-            current->ret = ufdt_add(current, 0, sock_create_fd(child));
+            ret = ufdt_add(current, 0, sock_create_fd(child));
 
             if(useraddr) {
                 useraddr->sa_family = child->family->family;
                 memcpy(child->peer.addr, &useraddr->sa_data, child->family->addr_len);
-                *((socklen_t *) interrupt->cpu.reg.ebx) = child->family->addr_len;
+                *((socklen_t *) reg->ebx) = child->family->addr_len;
             }
-        } else {
-            current->ret = -1;
         }
+
+        ufdt_put(current, reg->ecx);
     }
 
-    ufdt_put(current, interrupt->cpu.reg.ecx);
+    return ret;
 }
 
-static void sys_bind(interrupt_t *interrupt) {
-    gfd_idx_t fd = ufdt_get(current, interrupt->cpu.reg.ecx);
+static uint64_t sys_bind(registers_t *reg) {
+    int32_t ret = -1;
 
-    if(fd == FD_INVALID) current->ret = -1;
-    else {
+    file_t *fd = ufdt_get(current, reg->ecx);
+    if(fd) {
         //TODO sanitize address/size arguments
 
         sock_t *sock = gfd_to_sock(fd);
 
-        struct sockaddr *useraddr = (struct sockaddr *) interrupt->cpu.reg.edx;
+        struct sockaddr *useraddr = (struct sockaddr *) reg->edx;
 
         sock_addr_t addr;
-        if(interrupt->cpu.reg.ebx < sock->family->addr_len + sizeof(struct sockaddr)) {
+        if(reg->ebx < sock->family->addr_len + sizeof(struct sockaddr)) {
             //FIXME errno = EINVAL
-
-            current->ret = -1;
         } else if(useraddr->sa_family != sock->family->family) {
             //FIXME errno = EAFNOSUPPORT
-
-            current->ret = -1;
         } else {
             void *rawaddr = kmalloc(sock->family->addr_len);
             memcpy(rawaddr, &useraddr->sa_data, sock->family->addr_len);
@@ -171,39 +185,37 @@ static void sys_bind(interrupt_t *interrupt) {
             addr.family = sock->family->family;
             addr.addr = rawaddr;
 
-            current->ret = sock_bind(sock, &addr) ? 0 : -1;
+            ret = sock_bind(sock, &addr) ? 0 : -1;
         }
+
+        ufdt_put(current, reg->ecx);
     }
 
-    ufdt_put(current, interrupt->cpu.reg.ecx);
+    return ret;
 }
 
-static void sys_connect(interrupt_t *interrupt) {
-    gfd_idx_t fd = ufdt_get(current, interrupt->cpu.reg.ecx);
+static uint64_t sys_connect(registers_t *reg) {
+    int32_t ret = -1;
 
-    if(fd == FD_INVALID) current->ret = -1;
-    else {
+    file_t *fd = ufdt_get(current, reg->ecx);
+    if(fd) {
         //TODO sanitize address/size arguments
 
         sock_t *sock = gfd_to_sock(fd);
 
-        struct sockaddr *useraddr = (struct sockaddr *) interrupt->cpu.reg.edx;
+        struct sockaddr *useraddr = (struct sockaddr *) reg->edx;
 
         sock_addr_t addr;
         if(useraddr->sa_family == AF_UNSPEC) {
             addr.family = AF_UNSPEC;
             addr.addr = NULL;
 
-            current->ret = sock_connect(sock, &addr) ? 0 : -1;
+            ret = sock_connect(sock, &addr) ? 0 : -1;
         } else {
-            if(interrupt->cpu.reg.ebx < sock->family->addr_len + sizeof(struct sockaddr)) {
+            if(reg->ebx < sock->family->addr_len + sizeof(struct sockaddr)) {
                 //FIXME errno = EINVAL
-
-                current->ret = -1;
             } else if(useraddr->sa_family != sock->family->family) {
                 //FIXME errno = EAFNOSUPPORT
-
-                current->ret = -1;
             } else {
                 void *rawaddr = kmalloc(sock->family->addr_len);
                 memcpy(rawaddr, &useraddr->sa_data, sock->family->addr_len);
@@ -211,132 +223,151 @@ static void sys_connect(interrupt_t *interrupt) {
                 addr.family = sock->family->family;
                 addr.addr = rawaddr;
 
-                current->ret = sock_connect(sock, &addr) ? 0 : -1;
+                ret = sock_connect(sock, &addr) ? 0 : -1;
             }
         }
+
+        ufdt_put(current, reg->ecx);
     }
 
-    ufdt_put(current, interrupt->cpu.reg.ecx);
+    return ret;
 }
 
-static void sys_shutdown(interrupt_t *interrupt) {
-    gfd_idx_t fd = ufdt_get(current, interrupt->cpu.reg.ecx);
+static uint64_t sys_shutdown(registers_t *reg) {
+    int32_t ret = -1;
 
-    if(fd == FD_INVALID) current->ret = -1;
-    else {
-        current->ret = sock_shutdown(gfd_to_sock(fd), interrupt->cpu.reg.edx);
+    file_t *fd = ufdt_get(current, reg->ecx);
+    if(fd) {
+        ret = sock_shutdown(gfd_to_sock(fd), reg->edx);
+
+        ufdt_put(current, reg->ecx);
     }
 
-    ufdt_put(current, interrupt->cpu.reg.ecx);
+    return ret;
 }
 
-static void sys_send(interrupt_t *interrupt) {
-    gfd_idx_t fd = ufdt_get(current, interrupt->cpu.reg.ecx);
+static uint64_t sys_send(registers_t *reg) {
+    int32_t ret = -1;
 
-    if(fd == FD_INVALID) current->ret = -1;
-    else {
+    file_t *fd = ufdt_get(current, reg->ecx);
+    if(fd) {
         //TODO sanitize buffer/size arguments
 
         //This buffer will be freed by the net subsystem
-        void *buff = kmalloc(interrupt->cpu.reg.ebx);
-        memcpy(buff, (void *) interrupt->cpu.reg.edx, interrupt->cpu.reg.ebx);
+        void *buff = kmalloc(reg->ebx);
+        memcpy(buff, (void *) reg->edx, reg->ebx);
 
-        current->ret = sock_send(gfd_to_sock(fd), buff, interrupt->cpu.reg.ebx, interrupt->cpu.reg.esi);
+        ret = sock_send(gfd_to_sock(fd), buff, reg->ebx, reg->esi);
+
+        ufdt_put(current, reg->ecx);
     }
 
-    ufdt_put(current, interrupt->cpu.reg.ecx);
+    return ret;
 }
 
-static void sys_recv(interrupt_t *interrupt) {
-    gfd_idx_t fd = ufdt_get(current, interrupt->cpu.reg.ecx);
+static uint64_t sys_recv(registers_t *reg) {
+    int32_t ret = -1;
 
-    if(fd == FD_INVALID) current->ret = -1;
-    else {
+    file_t *fd = ufdt_get(current, reg->ecx);
+    if(fd) {
         //TODO sanitize buffer/size arguments
 
-        current->ret = sock_recv(gfd_to_sock(fd), (void *) interrupt->cpu.reg.edx, interrupt->cpu.reg.ebx, interrupt->cpu.reg.esi);
+        ret = sock_recv(gfd_to_sock(fd), (void *) reg->edx, reg->ebx, reg->esi);
+
+        ufdt_put(current, reg->ecx);
     }
 
-    ufdt_put(current, interrupt->cpu.reg.ecx);
+    return ret;
 }
 
-static void sys_alloc_page(interrupt_t *interrupt) {
+static uint64_t sys_alloc_page(registers_t *reg) {
     panic("Unimplemented");
 }
 
-static void sys_free_page(interrupt_t *interrupt) {
+static uint64_t sys_free_page(registers_t *reg) {
     panic("Unimplemented");
 }
 
-static void sys_stat(interrupt_t *interrupt) {
-    //TODO verify that interrupt->cpu.reg.ecx is a pointer to a valid path string, and that interrupt->cpu.reg.edx are valid flags
+static uint64_t sys_stat(registers_t *reg) {
+    int32_t ret = -1;
+
+    //TODO verify that reg->ecx is a pointer to a valid path string, and that reg->edx are valid flags
 
     path_t path;
-    if(!vfs_lookup(&current->pwd, (const char *) interrupt->cpu.reg.ecx, &path)) current->ret = -1;
-    else {
-        vfs_getattr(path.dentry, (void *) interrupt->cpu.reg.edx);
+    if(vfs_lookup(&current->pwd, (const char *) reg->ecx, &path)) {
+        vfs_getattr(path.dentry, (void *) reg->edx);
 
-        current->ret = 0;
+        ret = 0;
     }
+
+    return ret;
 }
 
-static void sys_fstat(interrupt_t *interrupt) {
-    gfd_idx_t fd = ufdt_get(current, interrupt->cpu.reg.ecx);
+static uint64_t sys_fstat(registers_t *reg) {
+    int32_t ret = -1;
 
-    if(fd == FD_INVALID) current->ret = -1;
-    else {
+    file_t *fd = ufdt_get(current, reg->ecx);
+    if(fd) {
         //TODO sanitize stat ptr
 
-        vfs_getattr(gfdt_get(fd)->dentry, (void *) interrupt->cpu.reg.edx);
+        vfs_getattr(fd->dentry, (void *) reg->edx);
 
-        current->ret = 0;
+        ret = 0;
+
+        ufdt_put(current, reg->ecx);
     }
 
-    ufdt_put(current, interrupt->cpu.reg.ecx);
+    return ret;
 }
 
 extern void play(uint32_t freq);
 extern void stop();
 
-static void sys_play(interrupt_t *interrupt) {
-    play(interrupt->cpu.reg.ecx);
+static uint64_t sys_play(registers_t *reg) {
+    play(reg->ecx);
+
+    return 0;
 }
 
-static void sys_stop(interrupt_t *interrupt) {
+static uint64_t sys_stop(registers_t *reg) {
     stop();
+
+    return 0;
 }
 
-static void sys_read(interrupt_t *interrupt) {
-    gfd_idx_t fd = ufdt_get(current, interrupt->cpu.reg.ecx);
+static uint64_t sys_read(registers_t *reg) {
+    int32_t ret = -1;
 
-    if(fd == FD_INVALID) current->ret = -1;
-    else {
+    file_t *fd = ufdt_get(current, reg->ecx);
+    if(fd) {
         //TODO sanitize buffer/size arguments
 
-        void *buff = kmalloc(interrupt->cpu.reg.ebx);
-        memcpy(buff, (void *) interrupt->cpu.reg.edx, interrupt->cpu.reg.ebx);
+        void *buff = kmalloc(reg->ebx);
+        memcpy(buff, (void *) reg->edx, reg->ebx);
 
-        current->ret = vfs_read(gfdt_get(fd), buff, interrupt->cpu.reg.ebx);
-        gfdt_put(fd);
+        ret = vfs_read(fd, buff, reg->ebx);
 
-        kfree(buff, interrupt->cpu.reg.ebx);
+        kfree(buff, reg->ebx);
+
+        ufdt_put(current, reg->ecx);
     }
 
-    ufdt_put(current, interrupt->cpu.reg.ecx);
+    return ret;
 }
 
-static void sys_write(interrupt_t *interrupt) {
-    gfd_idx_t fd = ufdt_get(current, interrupt->cpu.reg.ecx);
+static uint64_t sys_write(registers_t *reg) {
+    int32_t ret = -1;
 
-    if(fd == FD_INVALID) current->ret = -1;
-    else {
+    file_t *fd = ufdt_get(current, reg->ecx);
+    if(fd) {
         //TODO sanitize buffer/size arguments
 
-        current->ret = vfs_write(gfdt_get(fd), (void *) interrupt->cpu.reg.edx, interrupt->cpu.reg.ebx);
-        gfdt_put(fd);
+        ret = vfs_write(fd, (void *) reg->edx, reg->ebx);
+
+        ufdt_put(current, reg->ecx);
     }
 
-    ufdt_put(current, interrupt->cpu.reg.ecx);
+    return ret;
 }
 
 static syscall_t syscalls[MAX_SYSCALL] = {
@@ -366,13 +397,13 @@ static syscall_t syscalls[MAX_SYSCALL] = {
 };
 
 static void syscall_handler(interrupt_t *interrupt, void *data) {
-    if(interrupt->cpu.reg.eax >= MAX_SYSCALL || syscalls[interrupt->cpu.reg.eax] == NULL) {
-        panicf("Unregistered Syscall #%u: 0x%X", interrupt->cpu.reg.eax, interrupt->cpu.reg.ecx);
+    registers_t *reg = &interrupt->cpu.reg;
+    if(reg->eax >= MAX_SYSCALL || !syscalls[reg->eax]) {
+        panicf("Unregistered Syscall #%u: 0x%X", reg->eax, reg->ecx);
     } else {
-        syscalls[interrupt->cpu.reg.eax](interrupt);
-
-        interrupt->cpu.reg.edx = current->ret >> 32;
-        interrupt->cpu.reg.eax = current->ret;
+        uint64_t ret = syscalls[reg->eax](reg);
+        reg->edx = ret >> 32;
+        reg->eax = ret;
     }
 }
 

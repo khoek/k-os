@@ -6,81 +6,82 @@
 #include "log/log.h"
 #include "misc/stats.h"
 
-#define FREELIST_END (-1)
+#define NUM_ENTRIES 256
 
-gfd_t *gfdt;
-gfd_idx_t *gfd_list;
-gfd_idx_t gfd_next;
-gfd_idx_t gfd_max;
-DEFINE_SPINLOCK(gfd_lock);
+#define FREELIST_END ((uint32_t) 77)
 
-gfd_idx_t gfdt_add(file_t *file) {
+static file_t *gfdt;
+static uint32_t gfd_list[NUM_ENTRIES];
+static uint32_t gfd_next;
+static DEFINE_SPINLOCK(gfdt_lock);
+
+static uint32_t file_to_idx(file_t *f) {
+    return (((uint32_t) f) - ((uint32_t) gfdt)) / sizeof(file_t);
+}
+
+file_t * gfdt_obtain() {
     uint32_t flags;
-    spin_lock_irqsave(&gfd_lock, &flags);
+    spin_lock_irqsave(&gfdt_lock, &flags);
 
-    gfds_in_use++;
+    if(gfd_next == FREELIST_END) return NULL;
 
-    BUG_ON(gfd_next == FREELIST_END);
+    gfdt_entries_in_use++;
 
-    gfd_idx_t added = gfd_next;
-
-    gfdt[added].refs = 1;
-    gfdt[added].file = file;
-
+    uint32_t added = gfd_next;
     gfd_next = gfd_list[gfd_next];
 
-    spin_unlock_irqstore(&gfd_lock, flags);
+    spin_unlock_irqstore(&gfdt_lock, flags);
 
-    return added;
+    gfdt[added].refs = 0;
+
+    return &gfdt[added];
 }
 
-file_t * gfdt_get(gfd_idx_t gfd) {
+void gfdt_get(file_t *f) {
     uint32_t flags;
-    spin_lock_irqsave(&gfd_lock, &flags);
+    spin_lock_irqsave(&gfdt_lock, &flags);
 
-    BUG_ON(gfd > gfd_max);
-    if(!gfdt[gfd].file) goto gfdt_get_out;
+    f->refs++;
 
-    gfdt[gfd].refs++;
-
-    spin_unlock_irqstore(&gfd_lock, flags);
-
-gfdt_get_out:
-    return gfdt[gfd].file ? gfdt[gfd].file : NULL;
+    spin_unlock_irqstore(&gfdt_lock, flags);
 }
 
-void gfdt_put(gfd_idx_t gfd) {
+static void gfdt_free(file_t *f) {
     uint32_t flags;
-    spin_lock_irqsave(&gfd_lock, &flags);
+    spin_lock_irqsave(&gfdt_lock, &flags);
 
-    BUG_ON(gfd > gfd_max);
-    BUG_ON(!gfdt[gfd].file);
+    f->ops->close(f);
 
-    gfdt[gfd].refs--;
+    uint32_t gfd = file_to_idx(f);
+    gfd_list[gfd] = gfd_next;
+    gfd_next = gfd;
 
-    if(!gfdt[gfd].refs) {
-        gfdt[gfd].file->ops->close(gfdt[gfd].file);
-        gfdt[gfd].file = NULL; //FIXME do we need to free gfdt[gfd].file?
+    gfdt_entries_in_use--;
 
-        gfd_list[gfd] = gfd_next;
-        gfd_next = gfd;
+    spin_unlock_irqstore(&gfdt_lock, flags);
+}
 
-        gfds_in_use--;
+void gfdt_put(file_t *f) {
+    uint32_t flags;
+    spin_lock_irqsave(&gfdt_lock, &flags);
+
+    f->refs--;
+
+    if(!f->refs) {
+        gfdt_free(f);
     }
 
-    spin_unlock_irqstore(&gfd_lock, flags);
+    spin_unlock_irqstore(&gfdt_lock, flags);
 }
 
 static INITCALL gfdt_init() {
-    gfdt = map_page(page_to_phys(alloc_page(0)));
-    gfd_list = map_page(page_to_phys(alloc_page(0)));
+    gfdt = map_page(page_to_phys(alloc_pages(NUM_ENTRIES, 0)));
     gfd_next = 0;
-    gfd_max = (PAGE_SIZE / sizeof(gfd_t)) - 1;
 
-    for(gfd_idx_t i = 0; i < gfd_max; i++) {
+    for(uint32_t i = 0; i < NUM_ENTRIES - 1; i++) {
         gfd_list[i] = i + 1;
     }
-    gfd_list[gfd_max] = FREELIST_END;
+    gfd_list[NUM_ENTRIES - 1] = FREELIST_END;
 
     return 0;
 }

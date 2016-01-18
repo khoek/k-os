@@ -59,7 +59,7 @@ static file_ops_t char_file_ops = {
     .close = char_close,
 };
 
-gfd_idx_t char_file_open(uint32_t size) {
+file_t * char_file_open(uint32_t size) {
     char_buff_t *c = kmalloc(sizeof(char_buff_t));
     c->size = size;
     c->buff = kmalloc(size);
@@ -68,5 +68,5 @@ gfd_idx_t char_file_open(uint32_t size) {
     file_t *new = file_alloc(&char_file_ops);
     new->private = c;
 
-    return gfdt_add(new);
+    return new;
 }

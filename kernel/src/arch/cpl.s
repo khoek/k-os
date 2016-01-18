@@ -7,8 +7,6 @@ cpl_switch:
 
     # Load parameters
     pop %ecx # new cr3
-    pop %eax # new eax (for returning values from syscalls)
-    pop %edx # new edx (for returning 64-bit values from syscalls)
     pop %esp # new stack
 
     # Switch page tables
@@ -30,10 +28,6 @@ cpl_switch:
     mov %ecx, %gs
 
 .finish:
-    # Preserve eax and edx after popa
-    mov %eax, 28(%esp)
-    mov %edx, 20(%esp)
-
     # The next two instructions should load all registers off the new stack
     # and then perform a task switch, regardless of whether we are going to
     # kernel or user mode.

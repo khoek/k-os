@@ -3,6 +3,6 @@
 
 #include "fs/fd.h"
 
-gfd_idx_t char_file_open(uint32_t size);
+file_t * char_file_open(uint32_t size);
 
 #endif
