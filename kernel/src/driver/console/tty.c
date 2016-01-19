@@ -153,9 +153,9 @@ static char_device_ops_t tty_ops = {
 void tty_create(char *name) {
     devfs_publish_pending();
 
-    path_t out, start = ROOT_PATH(root_mount);
+    path_t out;
     char *str = devfs_get_strpath(name);
-    if(!vfs_lookup(&start, str, &out)) {
+    if(!vfs_lookup(NULL, str, &out)) {
         panicf("tty - lookup of console (%s) failure", str);
     }
     kfree(str, strlen(str) + 1);

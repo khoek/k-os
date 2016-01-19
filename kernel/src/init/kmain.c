@@ -19,8 +19,8 @@
 multiboot_info_t *multiboot_info;
 
 static bool try_load_init(char *path) {
-    path_t out, start = ROOT_PATH(root_mount);
-    if(!vfs_lookup(&start, path, &out)) return false;
+    path_t out;
+    if(!vfs_lookup(NULL, path, &out)) return false;
 
     //FIXME attempt to load the executable at the path given by "out"
     while(1);
@@ -42,9 +42,9 @@ static void umain() {
 }
 
 static void user_init() {
-    path_t out, start = ROOT_PATH(root_mount);
+    path_t out;
     char *str = devfs_get_strpath("tty");
-    if(!vfs_lookup(&start, str, &out)) {
+    if(!vfs_lookup(NULL, str, &out)) {
         panicf("init - cannot open tty (%s)", str);
     }
     kfree(str, strlen(str) + 1);

@@ -295,78 +295,86 @@ bool vfs_mkdir(path_t *start, const char *pathname, uint32_t mode) {
 bool vfs_lookup(path_t *start, const char *orig_path, path_t *out) {
     char *path = strdup(orig_path);
     char *new_path = path;
+    uint32_t new_path_len = strlen(new_path);
 
     mount_t *mount;
-    if(start == NULL) {
-        mount = root_mount;
-    } else {
-        mount = start->mount;
-    }
-
     dentry_t *wd;
-    if(*path == PATH_SEPARATOR || start == NULL) {
-        wd = root_mount->fs->root;
-        path++;
-    } else {
+
+    if(*path != PATH_SEPARATOR && start) {
+        mount = start->mount;
         wd = start->dentry;
+    } else {
+        if(*path == PATH_SEPARATOR) {
+            path++;
+        }
+
+        mount = root_mount;
+        wd = root_mount->fs->root;
     }
 
     bool finished = false;
-    while(!finished && *path) {
-        while(true) {
-            if(!wd) return false;
+    while(!finished && *path && wd) {
+        char *next = path;
 
-            BUG_ON(!wd->inode);
+        BUG_ON(!wd->inode);
 
-            if(!(wd->inode->flags & INODE_FLAG_MOUNTPOINT)) {
-                break;
-            }
+        if(!(wd->inode->flags & INODE_FLAG_DIRECTORY)) {
+            wd = NULL;
+            break;
+        }
 
-            path_t path;
-            path.mount = mount;
-            path.dentry = wd;
+        //If wd points to a mountpoint then decend it
+        if(wd->inode->flags & INODE_FLAG_MOUNTPOINT) {
+            path_t mnt;
+            mnt.mount = mount;
+            mnt.dentry = wd;
 
-            mount_t *submount = get_mount(&path);
+            mount_t *submount = get_mount(&mnt);
             BUG_ON(!submount);
 
             mount = submount;
             wd = submount->fs->root;
+
+            goto lookup_next;
         }
 
-        if(!(wd->inode->flags & INODE_FLAG_DIRECTORY)) goto lookup_fail;
-
+        //determine the name of the next working directory
         uint32_t len = 0;
-        char *next = path;
-        while(*next != PATH_SEPARATOR) {
+        while(*next != PATH_SEPARATOR && *next) {
             next++;
             len++;
+        }
 
-            if(!*next) {
-                finished = true;
-                break;
-            }
+        //have we reached the last path segment?
+        if(!*next) {
+            finished = true;
         }
 
         *next++ = '\0';
 
-        dentry_t *next_dentry = wd;
+        //was there a pointless "//" in the path? skip it
+        if(!len) {
+            goto lookup_next;
+        }
 
-        if(!len) goto lookup_next;
-
-        if(next[0] == '.') switch(len) {
+        //if the current path segment == "." skip it
+        //if the current path semgent == ".." go up the tree
+        if(path[0] == '.') switch(len) {
             case 1: {
                 goto lookup_next;
             }
             case 2: {
-                if(next[1] == '.') {
-                    if(wd->parent == NULL) {
-                        if(wd->inode->flags & INODE_FLAG_MOUNTPOINT) {
-                            BUG_ON(!mount->parent);
-                            wd = mount->mountpoint;
-                            mount = mount->parent;
-                        } else goto lookup_fail;
+                if(path[1] == '.') {
+                    if(wd->parent) {
+                        wd = wd->parent;
+                    } else if(wd->inode->flags & INODE_FLAG_MOUNTPOINT) {
+                        BUG_ON(!mount->parent);
+                        wd = mount->mountpoint;
+                        mount = mount->parent;
+                    } else if(mount == root_mount) {
+                        //do nothing
                     } else {
-                        next_dentry = wd->parent;
+                        BUG();
                     }
 
                     goto lookup_next;
@@ -374,35 +382,40 @@ bool vfs_lookup(path_t *start, const char *orig_path, path_t *out) {
             }
         }
 
-        HASHTABLE_FOR_EACH_COLLISION(str_to_key(path, len), next_dentry, wd->children, node) {
-            if(!memcmp(next_dentry->name, path, len)) {
+        //have we cached this child?
+        dentry_t *child;
+        HASHTABLE_FOR_EACH_COLLISION(str_to_key(path, len), child, wd->children, node) {
+            if(!memcmp(child->name, path, len)) {
+                wd = child;
                 goto lookup_next;
             }
         }
 
-        next_dentry = dentry_alloc(strdup(path));
-        wd->inode->ops->lookup(wd->inode, next_dentry);
-        if(next_dentry->inode) goto lookup_next;
+        //request the fs driver resolves the path segment into a new dentry
+        child = dentry_alloc(strdup(path));
+        wd->inode->ops->lookup(wd->inode, child);
 
-        dentry_free(next_dentry);
-        goto lookup_fail;
+        //does the requested path segment resolve?
+        if(!child->inode) {
+            dentry_free(child);
+            wd = NULL;
+            break;
+        }
+
+        wd = child;
 
 lookup_next:
-        wd = next_dentry;
         path = next;
     }
 
-    out->mount = mount;
-    out->dentry = wd;
+    if(wd) {
+        out->dentry = wd;
+        out->mount = mount;
+    }
 
-    kfree(new_path, strlen(new_path) + 1);
+    kfree(new_path, new_path_len + 1);
 
-    return true;
-
-lookup_fail:
-    kfree(new_path, strlen(new_path) + 1);
-
-    return false;
+    return !!wd;
 }
 
 file_t * vfs_open_file(inode_t *inode) {
