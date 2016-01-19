@@ -121,6 +121,8 @@ struct inode {
 struct inode_ops {
     file_ops_t *file_ops;
 
+    //Target is supposedly a child of inode. Populate target->inode with the
+    //correct inode if it exists, or set target->inode = NULL if it does not.
     void (*lookup)(inode_t *inode, dentry_t *target);
     dentry_t * (*mkdir)(inode_t *inode, char *name, uint32_t mode);
     void (*getattr)(dentry_t *dentry, stat_t *stat);
