@@ -1,8 +1,10 @@
 #include "lib/int.h"
 #include "lib/printf.h"
+#include "init/multiboot.h"
 #include "init/initcall.h"
-#include "fs/module.h"
 #include "fs/binfmt.h"
+#include "fs/rootramfs.h"
+#include "mm/mm.h"
 #include "log/log.h"
 
 extern uint32_t mods_count;
@@ -15,7 +17,8 @@ static INITCALL module_init() {
     char buff[64];
     for(uint32_t i = 0; i < mods_count; i++) {
         sprintf(buff, "module%d", i + 1);
-        kprintf("module - #%u load %s", i + 1, binfmt_load_exe(buff, (void *) mods[i].start, mods[i].end - mods[i].start) ? "FAIL" : "OK");
+        rootramfs_load((void *) mods[i].start, mods[i].end - mods[i].start);
+        kprintf("module - #%u loaded", i + 1);
     }
 
     return 0;

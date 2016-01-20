@@ -11,3 +11,5 @@ doc
 nbproject
 Makefile.local
 .gdbinit
+util/mkrootramfs
+util/rootramfs

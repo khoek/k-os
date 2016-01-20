@@ -235,12 +235,12 @@ static bool devfs_update() {
     spin_unlock_irqstore(&devfs_lock, flags);
 
     d->dentry->inode = devfs_inode_alloc(d);
-    dentry_add_child(d->dentry, devfs->root);
+    dentry_activate(d->dentry, devfs->root);
 
     spin_lock_irqsave(&devfs_lock, &flags);
 
     list_add(&d->list, &devfs_devices);
-    kprintf("devfs - added /dev/%s", d->dentry->name);
+    kprintf("devfs - added \"%s/%s\"", mntpoint, d->dentry->name);
 
     spin_unlock_irqstore(&devfs_lock, flags);
 

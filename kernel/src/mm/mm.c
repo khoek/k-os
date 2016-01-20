@@ -11,7 +11,6 @@
 #include "mm/mm.h"
 #include "mm/cache.h"
 #include "sched/task.h"
-#include "fs/module.h"
 #include "log/log.h"
 #include "misc/stats.h"
 

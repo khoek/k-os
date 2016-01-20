@@ -124,7 +124,8 @@ struct inode_ops {
     //Target is supposedly a child of inode. Populate target->inode with the
     //correct inode if it exists, or set target->inode = NULL if it does not.
     void (*lookup)(inode_t *inode, dentry_t *target);
-    dentry_t * (*mkdir)(inode_t *inode, char *name, uint32_t mode);
+    bool (*create)(inode_t *inode, dentry_t *d, uint32_t mode);
+    bool (*mkdir)(inode_t *inode, dentry_t *d, uint32_t mode);
     void (*getattr)(dentry_t *dentry, stat_t *stat);
 };
 
@@ -167,7 +168,7 @@ dentry_t * dentry_alloc(const char *name);
 inode_t * inode_alloc(fs_t *fs, inode_ops_t *ops);
 file_t * file_alloc(file_ops_t *ops);
 
-void dentry_add_child(dentry_t *child, dentry_t *parent);
+void dentry_activate(dentry_t *child, dentry_t *parent);
 
 void register_fs_type(fs_type_t *fs_type);
 
@@ -181,7 +182,8 @@ void vfs_mount_destroy(mount_t *mount);
 
 bool vfs_umount(path_t *mountpoint);
 
-bool vfs_mkdir(path_t *start, const char *pathname, uint32_t mode);
+bool vfs_create(const path_t *start, const char *pathname, uint32_t mode, bool excl);
+bool vfs_mkdir(const path_t *start, const char *pathname, uint32_t mode);
 
 dentry_t * fs_create_nodev(fs_type_t *type, void (*fill)(fs_t *fs));
 dentry_t * fs_create_single(fs_type_t *type, void (*fill)(fs_t *fs));
@@ -189,9 +191,9 @@ dentry_t * fs_create_single(fs_type_t *type, void (*fill)(fs_t *fs));
 void vfs_getattr(dentry_t *dentry, stat_t *stat);
 void generic_getattr(inode_t *inode, stat_t *stat);
 
-bool vfs_lookup(path_t *start, const char *path, path_t *out);
+bool vfs_lookup(const path_t *start, const char *path, path_t *out);
 file_t * vfs_open_file(inode_t *inode);
-ssize_t vfs_read(file_t *file, char *buff, size_t bytes);
-ssize_t vfs_write(file_t *file, char *buff, size_t bytes);
+ssize_t vfs_read(file_t *file, void *buff, size_t bytes);
+ssize_t vfs_write(file_t *file, void *buff, size_t bytes);
 
 #endif
