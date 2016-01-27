@@ -4,7 +4,7 @@
 #include "sync/spinlock.h"
 #include "arch/bios.h"
 #include "device/device.h"
-#include "mm/cache.h"
+#include "mm/mm.h"
 #include "fs/char.h"
 #include "driver/console/console.h"
 #include "driver/console/tty.h"

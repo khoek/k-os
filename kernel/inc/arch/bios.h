@@ -13,9 +13,11 @@
 
 #define VRAM_START 0xE0000
 #define VRAM_END   (0xFFFFF + 1)
-#define VRAM_PAGES (DIV_UP(VRAM_END - VRAM_START, PAGE_SIZE))
 
 #include "lib/int.h"
+#include "common/math.h"
+
+#define VRAM_PAGES (DIV_UP(VRAM_END - VRAM_START, PAGE_SIZE))
 
 extern uint8_t *bios_bda_ptr;
 

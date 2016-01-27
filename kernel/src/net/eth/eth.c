@@ -4,7 +4,7 @@
 #include "common/swap.h"
 #include "common/compiler.h"
 #include "bug/debug.h"
-#include "mm/cache.h"
+#include "mm/mm.h"
 #include "net/packet.h"
 #include "net/socket.h"
 #include "net/eth/eth.h"

@@ -1,7 +1,9 @@
-.global cpl_switch
+.global do_context_switch
 
-.type cpl_switch, @function
-cpl_switch:
+.type do_context_switch, @function
+do_context_switch:
+    cli
+
     # Discard return address
     add $4, %esp
 
@@ -33,4 +35,4 @@ cpl_switch:
     # kernel or user mode.
     popa
 	iret
-.size cpl_switch, .-cpl_switch
+.size do_context_switch, .-do_context_switch

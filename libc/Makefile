@@ -1,13 +1,18 @@
 -include ../Makefile.local
 
-ASFLAGS=--32
+ASFLAGS:=--32
 
-CCFLAGS=-Wall -Wextra -Werror -Wno-unused-parameter -m32 -Iinc -std=gnu99 \
-        -nostdlib -nostartfiles -nodefaultlibs -ffreestanding --sysroot=inc -c -O3 -fno-strict-aliasing
+CCFLAGS:=-Wall -Wextra -Werror -Wno-unused-parameter -m32 -Iinc -std=gnu99 \
+        -nostdlib -ffreestanding --sysroot=inc -c -g -O3 -fno-strict-aliasing
 
-OBJS=	src/crt.o src/syscall.o src/errno.o src/string.o src/printf.o src/sprintf.o src/log.o src/mm.o
+LDFLAGS:=-nostdlib -g -O3 -melf_i386
 
-all: libc.a
+SRCS:= $(shell find src -type f -name "*.s")
+SRCS+= $(shell find src -type f -name "*.c")
+
+OBJS:= $(patsubst %.c,%.o,$(patsubst %.s,%.o,$(SRCS)))
+
+all: libc.a init
 
 .s.o:
 	@echo "      as  $<"
@@ -18,21 +23,17 @@ all: libc.a
 	@$(CC) $(CCFLAGS) -o $@ $<
 
 libc.a: $(OBJS)
-	@echo "      ar  libc.a"
+	@echo "      ar  $@"
 	@rm -f libc.a
 	@$(AR) rcs libc.a $(OBJS)
+
+init: libc.a init.o
+	@echo "      ld  init.o"
+	@$(LD) $(LDFLAGS) -o init init.o libc.a
 
 clean:
 	find . -name \*.o -type f -delete
 	rm -f libc.a
-
-test: all main.c
-	make -C ../kernel
-	rm -f ../kernel/build/kernel.elf
-	rm -f ../kernel/build/main.mod
-	/usr/local/cross/bin/i586-elf-gcc --sysroot=inc -std=gnu99 -c -Iinc -nostdlib -nostartfiles -nodefaultlibs -ffreestanding -o main.o main.c
-	/usr/local/cross/bin/i586-elf-ld -nostdlib -nostartfiles -nodefaultlibs -T linker.ld -o main.mod main.o libc.a
-	cp main.mod ../kernel/build/
-	make -C ../kernel run
+	rm -f init
 
 .PHONY: all clean

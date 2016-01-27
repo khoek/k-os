@@ -10,202 +10,239 @@
 #include "sync/spinlock.h"
 #include "arch/gdt.h"
 #include "arch/idt.h"
-#include "arch/cpl.h"
+#include "arch/pl.h"
 #include "mm/mm.h"
 #include "mm/cache.h"
 #include "time/clock.h"
+#include "sched/sched.h"
 #include "sched/task.h"
 #include "fs/file/char.h"
 #include "log/log.h"
 #include "misc/stats.h"
 
+#define MAX_NUM_FDS ((ufd_idx_t) (PAGE_SIZE / sizeof(ufd_t)))
+
 #define FREELIST_END (1 << 31)
 
 #define UFD_FLAG_CLOSING (1 << 0)
 
-#define TASK_FLAG_KERNEL (1 << 0)
+#define TASK_FLAG_USER (1 << 0)
 
-static uint32_t pid = 1;
+static uint32_t pid = 2;
 
 static cache_t *task_cache;
 
-task_t * task_create(const char *name, bool kernel, void *ip, void *sp, file_t *stdin, file_t *stdout, file_t *stderr) {
-    task_count++;
-
-    task_t *task = (task_t *) cache_alloc(task_cache);
-
-    task->name = name;
-    task->pid = pid++;
-    task->state = TASK_AWAKE;
-
+static inline task_t * task_build() {
+    task_t *task = cache_alloc(task_cache);
+    task->flags = 0;
+    task->state = TASK_BUILDING;
     spinlock_init(&task->lock);
-
-    task->root.mount = root_mount;
-    task->root.dentry = root_mount ? root_mount->fs->root : NULL;
-
-    task->pwd.mount = root_mount;
-    task->pwd.dentry = root_mount ? root_mount->fs->root : NULL;
-
     spinlock_init(&task->fd_lock);
 
     page_t *page = alloc_page(0);
-    task->directory = page_to_virt(page);
-    task->cr3 = (uint32_t) page_to_phys(page);
-    page_build_directory(task->directory);
+    task->arch.dir = page_to_virt(page);
+    task->arch.cr3 = (uint32_t) page_to_phys(page);
+    build_page_dir(task->arch.dir);
 
-    task->fd_count = PAGE_SIZE / sizeof(ufd_t);
-    task->fd_next = 3;
-
-    uint32_t *tmp_fds_list = (uint32_t *) alloc_page_user(0, task, 0x20000);
-    for(ufd_idx_t i = 3; i < task->fd_count - 1; i++) {
-        tmp_fds_list[i] = i + 1;
-    }
-    tmp_fds_list[task->fd_count - 1] = FREELIST_END;
-
-    ufd_t *tmp_fds = (ufd_t *) alloc_page_user(0, task, 0x21000);
-    tmp_fds[0].flags = 0;
-    tmp_fds[0].gfd = stdin;
-    tmp_fds[0].refs = 1;
-    tmp_fds[1].flags = 0;
-    tmp_fds[1].gfd = stdout;
-    tmp_fds[1].refs = 1;
-    tmp_fds[2].flags = 0;
-    tmp_fds[2].gfd = stderr;
-    tmp_fds[2].refs = 1;
-
-    for(ufd_idx_t i = 3; i < task->fd_count - 1; i++) {
-        tmp_fds[i].gfd = NULL;
-        tmp_fds[i].flags = 0;
-        tmp_fds[i].refs = 0;
-    }
-
-    task->fd_list = (void *) 0x20000;
-    task->fd = (void *) 0x21000;
-
-    //FIXME the address 0x11000 is hardcoded
-    cpu_state_t *cpu = (void *) (((uint32_t) alloc_page_user(0, task, 0x11000)) + PAGE_SIZE - (sizeof(cpu_state_t)));
-    task->kernel_stack = 0x11000 + PAGE_SIZE;
-    task->cpu = (void *) (task->kernel_stack - sizeof(cpu_state_t));
-
-    memset(&cpu->reg, 0, sizeof(registers_t));
-
-    cpu->exec.eip = (uint32_t) ip;
-    cpu->exec.esp = (uint32_t) sp;
-
-    cpu->exec.eflags = get_eflags() | EFLAGS_IF;
-
-    if(kernel) {
-        task->flags = TASK_FLAG_KERNEL;
-
-        cpu->exec.cs = SEL_KRNL_CODE | SPL_KRNL;
-        cpu->exec.ss = SEL_KRNL_DATA | SPL_KRNL;
-    } else {
-        task->flags = 0;
-
-        cpu->exec.cs = SEL_USER_CODE | SPL_USER;
-        cpu->exec.ss = SEL_USER_DATA | SPL_USER;
-    }
+    task->ufdt = kmalloc(UFDT_PAGES * PAGE_SIZE);
+    task->ufd_list = kmalloc(UFD_LIST_PAGES * PAGE_SIZE);
+    task->kernel_stack_top = kmalloc(KERNEL_STACK_LEN);
+    task->kernel_stack_bottom = task->kernel_stack_top + KERNEL_STACK_LEN;
 
     return task;
 }
 
-void task_add_page(task_t UNUSED(*task), page_t UNUSED(*page)) {
-    //TODO add this to the list of pages for the task
+void copy_fds(task_t *to, task_t *from) {
+    to->fd_next = from->fd_next;
+
+    for(ufd_idx_t i = 0; i < MAX_NUM_FDS - 1; i++) {
+        to->ufd_list[i] = from->ufd_list[i];
+
+        to->ufdt[i].gfd = from->ufdt[i].gfd;
+        to->ufdt[i].flags = from->ufdt[i].flags;
+        to->ufdt[i].refs = from->ufdt[i].refs;
+    }
 }
 
-void task_destroy(task_t *task) {
-    cache_free(task_cache, task);
+void spawn_kernel_task(void (*main)(void *arg), void *arg) {
+    task_fork(0, main, arg);
 }
 
-ufd_idx_t ufdt_add(task_t *task, uint32_t flags, file_t *gfd) {
+void task_fork(uint32_t flags, void (*setup)(void *arg), void *arg) {
+    task_count++;
+
+    task_t *child = task_build();
+    child->pid = pid++;
+    child->argv = current->argv;
+    child->envp = current->envp;
+
+    child->root = current->root;
+    child->pwd = current->pwd;
+
+    pl_setup_task(child, setup, arg);
+
+    copy_fds(child, current);
+    copy_mem(child, current);
+
+    task_add(child);
+}
+
+void __init root_task_init(void *umain, char **argv, char **envp) {
+    task_count++;
+
+    task_t *init = task_build();
+    init->pid = 1;
+    init->argv = argv;
+    init->envp = envp;
+
+    init->root = ROOT_PATH(root_mount);
+    init->pwd = ROOT_PATH(root_mount);
+
+    init->fd_next = 0;
+
+    for(ufd_idx_t i = 0; i < MAX_NUM_FDS - 1; i++) {
+        init->ufd_list[i] = i + 1;
+
+        init->ufdt[i].gfd = NULL;
+        init->ufdt[i].flags = 0;
+        init->ufdt[i].refs = 0;
+    }
+    init->ufd_list[MAX_NUM_FDS - 1] = FREELIST_END;
+
+    pl_setup_task(init, umain, NULL);
+
+    task_add(init);
+
+    kprintf("task - root task created");
+}
+
+static void idle_loop(void *UNUSED(arg)) {
+    while(true) hlt();
+}
+
+task_t * create_idle_task() {
+    task_t *idler = task_build();
+    pl_setup_task(idler, idle_loop, NULL);
+    idler->state = TASK_IDLE;
+    return idler;
+}
+
+//FIXME this function is totally broken and basically exits to give a rough
+//idea of what the real one should do. never call it.
+//TODO implement killing a task by taking control of its EIP and pointing it to
+//kernel land
+void task_exit(int32_t code) {
+    spin_lock(&current->lock);
+    current->state = TASK_EXITED;
+    spin_unlock(&current->lock);
+
+    list_rm(&current->list);
+    list_rm(&current->queue_list);
+
+    task_count--;
+
+    //TODO propagate the exit code somehow
+
+    for(ufd_idx_t i = 0; i < MAX_NUM_FDS; i++) {
+        if(ufdt_valid(i)) {
+            ufdt_put(i);
+        }
+    }
+
+    //TODO free task page directory, iterate through it and free all of the non-kernel page tables
+
+    sched_switch();
+}
+
+ufd_idx_t ufdt_add(uint32_t flags, file_t *gfd) {
     uint32_t f;
-    spin_lock_irqsave(&task->fd_lock, &f);
+    spin_lock_irqsave(&current->fd_lock, &f);
 
-    ufd_idx_t added = task->fd_next;
+    ufd_idx_t added = current->fd_next;
     if(added != FREELIST_END) {
-        task->fd_next = task->fd_list[added];
+        current->fd_next = current->ufd_list[added];
 
         gfdt_get(gfd);
 
-        task->fd[added].refs = 1;
-        task->fd[added].flags = flags;
-        task->fd[added].gfd = gfd;
+        current->ufdt[added].refs = 1;
+        current->ufdt[added].flags = flags;
+        current->ufdt[added].gfd = gfd;
     }
 
-    spin_unlock_irqstore(&task->fd_lock, f);
+    spin_unlock_irqstore(&current->fd_lock, f);
 
     return added == FREELIST_END ? -1 : added;
 }
 
-bool ufdt_valid(task_t *task, ufd_idx_t ufd) {
+bool ufdt_valid(ufd_idx_t ufd) {
     bool response;
 
     uint32_t flags;
-    spin_lock_irqsave(&task->fd_lock, &flags);
+    spin_lock_irqsave(&current->fd_lock, &flags);
 
-    response = !!task->fd[ufd].gfd;
+    response = !!current->ufdt[ufd].gfd;
 
-    spin_unlock_irqstore(&task->fd_lock, flags);
+    spin_unlock_irqstore(&current->fd_lock, flags);
 
     return response;
 }
 
 //task->fd_lock is required to call this function
-static void ufdt_try_free(task_t *task, ufd_idx_t ufd) {
-    if(!task->fd[ufd].refs) {
-        gfdt_put(task->fd[ufd].gfd);
+static void ufdt_try_free(ufd_idx_t ufd) {
+    if(!current->ufdt[ufd].refs) {
+        gfdt_put(current->ufdt[ufd].gfd);
 
-        task->fd[ufd].gfd = NULL;
-        task->fd[ufd].flags = 0;
-        task->fd_list[ufd] = task->fd_next;
-        task->fd_next = ufd;
+        current->ufdt[ufd].gfd = NULL;
+        current->ufdt[ufd].flags = 0;
+        current->ufd_list[ufd] = current->fd_next;
+        current->fd_next = ufd;
     }
 }
 
-file_t * ufdt_get(task_t *task, ufd_idx_t ufd) {
+file_t * ufdt_get(ufd_idx_t ufd) {
     file_t *gfd;
 
     uint32_t flags;
-    spin_lock_irqsave(&task->fd_lock, &flags);
+    spin_lock_irqsave(&current->fd_lock, &flags);
 
-    if(ufd > task->fd_count) {
+    if(ufd > MAX_NUM_FDS) {
         gfd = NULL;
     } else {
-        gfd = task->fd[ufd].gfd;
+        gfd = current->ufdt[ufd].gfd;
 
         if(gfd) {
-            task->fd[ufd].refs++;
+            current->ufdt[ufd].refs++;
         }
     }
 
-    spin_unlock_irqstore(&task->fd_lock, flags);
+    spin_unlock_irqstore(&current->fd_lock, flags);
 
     return gfd;
 }
 
-void ufdt_put(task_t *task, ufd_idx_t ufd) {
+void ufdt_put(ufd_idx_t ufd) {
     uint32_t flags;
-    spin_lock_irqsave(&task->fd_lock, &flags);
+    spin_lock_irqsave(&current->fd_lock, &flags);
 
-    task->fd[ufd].refs--;
+    current->ufdt[ufd].refs--;
 
-    ufdt_try_free(task, ufd);
+    ufdt_try_free(ufd);
 
-    spin_unlock_irqstore(&task->fd_lock, flags);
+    spin_unlock_irqstore(&current->fd_lock, flags);
 }
 
-void ufdt_close(task_t *task, ufd_idx_t ufd) {
+void ufdt_close(ufd_idx_t ufd) {
     uint32_t flags;
-    spin_lock_irqsave(&task->fd_lock, &flags);
+    spin_lock_irqsave(&current->fd_lock, &flags);
 
-    if(!(task->fd[ufd].flags & UFD_FLAG_CLOSING)) {
-        task->fd[ufd].flags |= UFD_FLAG_CLOSING;
-        task->fd[ufd].refs--;
+    if(!(current->ufdt[ufd].flags & UFD_FLAG_CLOSING)) {
+        current->ufdt[ufd].flags |= UFD_FLAG_CLOSING;
+        current->ufdt[ufd].refs--;
 
-        ufdt_try_free(task, ufd);
+        ufdt_try_free(ufd);
     }
 
-    spin_unlock_irqstore(&task->fd_lock, flags);
+    spin_unlock_irqstore(&current->fd_lock, flags);
 }
 
 static INITCALL task_init() {

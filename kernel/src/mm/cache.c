@@ -14,25 +14,23 @@
 
 #define CACHE_FLAG_PERM (1 << 0)
 
-#define KALLOC_SHIFT_MIN 3
-#define KALLOC_SHIFT_MAX 12
-#define KALLOC_CACHES (KALLOC_SHIFT_MAX + 1)
-
-typedef struct cache_page cache_page_t;
-
-struct cache_page {
+typedef struct cache_page {
+    cache_t *cache;
     list_head_t list;
     uint32_t left;
     uint32_t free;
     uint32_t *freelist;
     void *mem;
     page_t *page;
-};
+} cache_page_t;
 
 struct cache {
     list_head_t list;
     uint32_t size;
-    uint32_t max; //while not neccessary it might be good for stats/debugging or something
+
+    //while not neccessary it might be good for stats/debugging or something
+    uint32_t max;
+
     uint32_t flags;
     spinlock_t lock;
     list_head_t full;
@@ -53,8 +51,9 @@ static cache_t meta_cache = {
 static DEFINE_LIST(caches);
 
 static void cache_alloc_page(cache_t *cache) {
-    page_t *page = alloc_page(0);
-    cache_page_t *cache_page = (cache_page_t *) page_to_virt(page);
+    page_t *page = alloc_page(ALLOC_CACHE);
+    cache_page_t *cache_page = page_to_virt(page);
+    cache_page->cache = cache;
     cache_page->page = page;
     cache_page->left = cache->max;
 
@@ -122,6 +121,10 @@ void * cache_alloc(cache_t *cache) {
     return alloced;
 }
 
+static inline cache_page_t * mem_to_cache_page(void *mem) {
+    return (void *) ((((uint32_t) mem) / PAGE_SIZE) * PAGE_SIZE);
+}
+
 void cache_free(cache_t *cache, void *mem) {
     uint32_t flags;
     spin_lock_irqsave(&cache->lock, &flags);
@@ -150,7 +153,7 @@ void cache_free(cache_t *cache, void *mem) {
         panic("Illegal mem ptr passed to cache_free");
     }
 #else
-    cache_page_t *target = (void *) ((((uint32_t) mem) / PAGE_SIZE) * PAGE_SIZE);
+    cache_page_t *target = mem_to_cache_page(mem);
 #endif
 
     if(target->left + 1 == cache->max) {
@@ -183,37 +186,35 @@ cache_t * cache_create(uint32_t size) {
     return new;
 }
 
-static cache_t *kalloc_cache[KALLOC_CACHES];
+static cache_t *kalloc_cache[KALLOC_NUM_CACHES];
 
-static uint32_t kalloc_cache_index(uint32_t size) {
-    for (uint32_t i = KALLOC_SHIFT_MIN; i < KALLOC_SHIFT_MAX; i++) {
-        if (size <= (1ULL << i)) {
-            return i;
+static inline uint32_t kalloc_cache_index(uint32_t size) {
+    for(uint32_t i = KALLOC_CACHE_SHIFT_MIN; i <= KALLOC_CACHE_SHIFT_MAX; i++) {
+        if(size <= (1ULL << i)) {
+            return i - KALLOC_CACHE_SHIFT_MIN;
         }
     }
 
-    return 0;
+    BUG();
 }
 
-void * kmalloc(uint32_t size) {
-    uint32_t index = kalloc_cache_index(size);
-    if(!index) panicf("cache_alloc() request too large: %u", size);
+void * kalloc_cache_alloc(uint32_t size) {
+    if(size > KALLOC_CACHE_MAX) {
+        panicf("cache_alloc() request too large: %u", size);
+    }
 
-    return cache_alloc(kalloc_cache[index]);
+    return cache_alloc(kalloc_cache[kalloc_cache_index(size)]);
 }
 
-void kfree(void *mem, uint32_t size) {
-    uint32_t index = kalloc_cache_index(size);
-    if(!index) panicf("cache_free() request too large: %u", size);
-
-    cache_free(kalloc_cache[index], mem);
+void kalloc_cache_free(void *mem) {
+    cache_free(mem_to_cache_page(mem)->cache, mem);
 }
 
 void __init cache_init() {
     list_add(&meta_cache.list, &caches);
 
-    for(uint32_t i = KALLOC_SHIFT_MIN; i < KALLOC_SHIFT_MAX; i++) {
-        kalloc_cache[i] = cache_create(1 << i);
+    for(uint32_t i = 0; i < KALLOC_NUM_CACHES; i++) {
+        kalloc_cache[i] = cache_create(1 << (i + KALLOC_CACHE_SHIFT_MIN));
     }
 
     kprintf("cache - metacache and kmalloc caches initialized");

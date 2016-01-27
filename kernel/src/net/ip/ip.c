@@ -3,7 +3,7 @@
 #include "common/swap.h"
 #include "common/list.h"
 #include "init/initcall.h"
-#include "mm/cache.h"
+#include "mm/mm.h"
 #include "net/packet.h"
 #include "net/interface.h"
 #include "net/socket.h"
@@ -93,7 +93,7 @@ void ip_handle(packet_t *packet, void *raw, uint16_t len) {
 static void inet_callback(listener_t *listener, net_state_t state, net_interface_t *interface) {
     switch(state) {
         case IF_DOWN: {
-            if(interface->ip_data) kfree(interface->ip_data, sizeof(net_interface_t));
+            if(interface->ip_data) kfree(interface->ip_data);
             interface->ip_data = kmalloc(sizeof(net_interface_t));
             memset(interface->ip_data, 0, sizeof(net_interface_t));
             break;

@@ -10,7 +10,7 @@
 #include "sync/spinlock.h"
 #include "arch/gdt.h"
 #include "arch/idt.h"
-#include "arch/cpl.h"
+#include "arch/pl.h"
 #include "mm/mm.h"
 #include "mm/cache.h"
 #include "time/clock.h"
@@ -35,80 +35,92 @@ static DEFINE_SPINLOCK(sched_lock);
 static DEFINE_PER_CPU(task_t *, idle_task);
 static DEFINE_PER_CPU(uint64_t, switch_time);
 
-static void idle_loop() {
-    while(true) hlt();
-}
-
 void sched_switch() {
     asm volatile ("int $" XSTR(SWITCH_INT));
+}
+
+static void deactivate_current() {
+    if(!current) return;
+
+    task_t *task = current;
+
+    spin_lock(&task->lock);
+
+    switch(task->state) {
+        case TASK_IDLE:
+        case TASK_SLEEPING: {
+            spin_unlock(&task->lock);
+
+            break;
+        }
+        case TASK_RUNNING: {
+            task->state = TASK_AWAKE;
+            list_add_before(&task->queue_list, &queued_tasks);
+            spin_unlock(&task->lock);
+
+            break;
+        }
+        case TASK_EXITED: {
+            spin_unlock(&task->lock);
+
+            //TODO handle this
+
+            break;
+        }
+        case TASK_AWAKE:
+        default: {
+            BUG();
+        }
+    }
+
+    current = NULL;
+}
+
+static task_t * find_next_current() {
+    while(!list_empty(&queued_tasks)) {
+        task_t *task = list_first(&queued_tasks, task_t, queue_list);
+        spin_lock(&task->lock);
+        list_rm(&task->queue_list);
+
+        switch(task->state) {
+            case TASK_AWAKE: {
+                get_percpu_unsafe(switch_time) = uptime() + QUANTUM;
+                task->state = TASK_RUNNING;
+                current = task;
+                spin_unlock(&task->lock);
+
+                return task;
+            }
+            case TASK_EXITED: {
+                spin_unlock(&task->lock);
+
+                //TODO handle this
+
+                task = NULL;
+                break;
+            }
+            default: {
+                BUG();
+            }
+        }
+    }
+
+    //We ran out of queued tasks.
+    get_percpu_unsafe(switch_time) = 0;
+    return get_percpu_unsafe(idle_task);
 }
 
 static void do_sched_switch() {
     spin_lock_irq(&sched_lock);
 
-    if(current) {
-        spin_lock(&current->lock);
+    deactivate_current();
+    task_t *newcurrent = find_next_current();
+    current = newcurrent;
 
-        if(current->state == TASK_EXITED) {
-            spin_unlock(&current->lock);
-
-            kfree(current, sizeof(task_t));
-        } else {
-            if(current->state == TASK_RUNNING) {
-                current->state = TASK_AWAKE;
-                list_add_before(&current->queue_list, &queued_tasks);
-            }
-
-            spin_unlock(&current->lock);
-        }
-    }
-
-    while(true) {
-        if(list_empty(&queued_tasks)) {
-            current = NULL;
-            goto run_task;
-        }
-
-        task_t *task = list_first(&queued_tasks, task_t, queue_list);
-        spin_lock(&task->lock);
-        list_rm(&task->queue_list);
-
-        if(task->state != TASK_AWAKE) {
-            if(task->state == TASK_EXITED) {
-                task_destroy(task);
-            }
-        } else {
-            current = task;
-            get_percpu_unsafe(switch_time) = uptime() + QUANTUM;
-            current->state = TASK_RUNNING;
-
-            spin_unlock(&task->lock);
-            break;
-        }
-
-        spin_unlock(&task->lock);
-    }
-
-run_task:
+    //IRQs will remain disabled
     spin_unlock(&sched_lock);
 
-    if(!current) {
-        get_percpu_unsafe(switch_time) = 0;
-        current = get_percpu_unsafe(idle_task);
-    }
-
-    tss_set_stack(current->kernel_stack);
-    cpl_switch(current->cr3, current->cpu);
-}
-
-void task_add(task_t *task) {
-    uint32_t flags;
-    spin_lock_irqsave(&sched_lock, &flags);
-
-    list_add_before(&task->list, &tasks);
-    list_add_before(&task->queue_list, &queued_tasks);
-
-    spin_unlock_irqstore(&sched_lock, flags);
+    context_switch(newcurrent);
 }
 
 void task_sleep(task_t *task) {
@@ -121,10 +133,12 @@ void task_sleep(task_t *task) {
     // condition, with unpredictable behaviour.
     //
     // task_sleep_current() is guaranteed to switch safely.
-    if(task == current && (get_eflags() & EFLAGS_IF)) panic("task_sleep(task=current) in interruptible context!");
+    BUG_ON(task == current && (get_eflags() & EFLAGS_IF));
 
     task->state = TASK_SLEEPING;
-    list_rm(&task->queue_list);
+    if(task->state == TASK_AWAKE) {
+        list_rm(&task->queue_list);
+    }
 
     spin_unlock(&task->lock);
     spin_unlock_irqstore(&sched_lock, flags);
@@ -139,49 +153,38 @@ void task_sleep_current() {
     sti();
 }
 
-void task_wake(task_t *task) {
-    uint32_t flags;
-    spin_lock_irqsave(&sched_lock, &flags);
+static void do_wake(task_t *task) {
     spin_lock(&task->lock);
 
     task->state = TASK_AWAKE;
-    list_move_before(&task->queue_list, &queued_tasks);
+    list_add_before(&task->queue_list, &queued_tasks);
 
     spin_unlock(&task->lock);
-    spin_unlock_irqstore(&sched_lock, flags);
 }
 
-void task_exit(task_t *task, int32_t code) {
+void task_wake(task_t *task) {
     uint32_t flags;
     spin_lock_irqsave(&sched_lock, &flags);
 
-    spin_lock(&task->lock);
-    task->state = TASK_EXITED;
-    spin_unlock(&task->lock);
-
-    list_rm(&task->list);
-    list_rm(&task->queue_list);
-
-    task_count--;
-
-    //TODO propagate the exit code somehow
-
-    for(ufd_idx_t i = 0; i < task->fd_count - 1; i++) {
-        if(ufdt_valid(task, i)) {
-            ufdt_put(task, i);
-        }
-    }
-
-    //TODO free task page directory, iterate through it and free all of the non-kernel page tables
+    do_wake(task);
 
     spin_unlock_irqstore(&sched_lock, flags);
-
-    sched_switch();
 }
 
-void task_save(cpu_state_t *cpu) {
-    if(current && tasking_up) {
-        current->cpu = cpu;
+void task_add(task_t *task) {
+    uint32_t flags;
+    spin_lock_irqsave(&sched_lock, &flags);
+
+    list_add_before(&task->list, &tasks);
+    do_wake(task);
+
+    spin_unlock_irqstore(&sched_lock, flags);
+}
+
+void task_save(void *sp) {
+    if(tasking_up) {
+        BUG_ON(!current);
+        save_cpu_state(current, sp);
     }
 }
 
@@ -196,23 +199,24 @@ void __noreturn sched_loop() {
 
     current = NULL;
     get_percpu_unsafe(switch_time) = 0;
-    get_percpu_unsafe(idle_task) = task_create("idle", true, idle_loop, NULL, NULL, NULL, NULL);
+    get_percpu_unsafe(idle_task) = create_idle_task();
 
     if(get_percpu_unsafe(this_proc)->num == BSP_ID) {
-        tasking_up = true;
-
         kprintf("sched - activating scheduler");
+
+        tasking_up = true;
     } else {
         while(!tasking_up);
     }
 
     do_sched_switch();
 
-    panic("sched_switch returned");
+    BUG();
 }
 
 static void switch_interrupt(interrupt_t *interrupt, void *data) {
     eoi_handler(interrupt->vector);
+    cli();
     do_sched_switch();
 }
 

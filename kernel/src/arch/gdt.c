@@ -5,7 +5,7 @@
 #include "bug/panic.h"
 #include "arch/gdt.h"
 #include "arch/idt.h"
-#include "arch/registers.h"
+#include "arch/cpu.h"
 #include "mm/mm.h"
 #include "sched/proc.h"
 #include "log/log.h"
@@ -53,8 +53,8 @@ static inline void set_selector(gdt_entry_t *gdt, uint16_t index, uint32_t base,
     gdt[index].access = access;
 }
 
-void tss_set_stack(uint32_t sp) {
-    get_percpu_unsafe(tss).esp0 = sp;
+void tss_set_stack(void *sp) {
+    get_percpu_unsafe(tss).esp0 = (uint32_t) sp;
 }
 
 void gdt_set_tls(uint32_t tls_start) {

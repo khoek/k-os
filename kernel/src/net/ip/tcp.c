@@ -6,7 +6,6 @@
 #include "sync/spinlock.h"
 #include "sync/semaphore.h"
 #include "mm/mm.h"
-#include "mm/cache.h"
 #include "time/timer.h"
 #include "net/socket.h"
 #include "net/packet.h"
@@ -547,11 +546,11 @@ static void tcp_close(sock_t *sock) {
         spin_unlock_irqstore(&data->lock, flags);
 
         if(!(sock->flags & SOCK_FLAG_CHILD) && sock->local.addr) {
-            kfree(sock->local.addr, sizeof(ip_and_port_t));
+            kfree(sock->local.addr);
         }
     }
 
-    kfree(sock->private, sock->flags & SOCK_FLAG_LISTENING ? sizeof(tcp_data_listen_t) : sizeof(tcp_data_conn_t));
+    kfree(sock->private);
 }
 
 static bool tcp_listen(sock_t *sock, uint32_t backlog) {

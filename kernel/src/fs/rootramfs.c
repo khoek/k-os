@@ -1,7 +1,7 @@
 #include "lib/int.h"
 #include "common/compiler.h"
 #include "bug/debug.h"
-#include "mm/cache.h"
+#include "mm/mm.h"
 #include "fs/vfs.h"
 #include "log/log.h"
 

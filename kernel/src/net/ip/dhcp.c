@@ -3,7 +3,7 @@
 #include "common/swap.h"
 #include "init/initcall.h"
 #include "common/listener.h"
-#include "mm/cache.h"
+#include "mm/mm.h"
 #include "net/packet.h"
 #include "net/interface.h"
 #include "net/eth/eth.h"

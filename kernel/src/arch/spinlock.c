@@ -3,7 +3,7 @@
 #include "common/asm.h"
 #include "sync/spinlock.h"
 #include "bug/panic.h"
-#include "arch/registers.h"
+#include "arch/cpu.h"
 #include "time/clock.h"
 
 #include "atomic_ops.h"

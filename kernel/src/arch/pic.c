@@ -8,7 +8,7 @@
 #include "bug/panic.h"
 #include "arch/idt.h"
 #include "arch/gdt.h"
-#include "arch/cpl.h"
+#include "arch/pl.h"
 #include "arch/pit.h"
 #include "mm/cache.h"
 #include "sched/sched.h"

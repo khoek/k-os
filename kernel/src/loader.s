@@ -9,7 +9,7 @@
 .extern kmain                           # UP/BSP startup
 .extern mp_ap_start                     # AP entry startup
 
-.extern page_directory                  # AP startup page directory
+.extern init_page_directory                  # AP startup page directory
 .extern next_ap_stack                   # AP startup stack
 
 .extern entry_ap
@@ -154,7 +154,7 @@ boot_bsp:
 .type boot_ap, @function
 boot_ap:
     # Set up the AP page directory
-    mov $(page_directory - 0xC0000000), %ecx
+    mov $(init_page_directory - 0xC0000000), %ecx
     mov %ecx, %cr3
 
     # Set up the AP stack

@@ -34,6 +34,8 @@ void panic(char *message) {
     vram_color(con_global, 0x07);
     vram_putsf(con_global, "%s\n\n", message);
 
+    con_global = NULL;
+
     vram_puts(con_global, "Stack trace:\n");
     uint32_t *ebp, eip = -1;
     asm("mov %%ebp, %0" : "=r" (ebp));
@@ -41,10 +43,10 @@ void panic(char *message) {
 
     for(uint32_t frame = 0; eip && ebp && frame < MAX_FRAMES; frame++) {
         const elf_symbol_t *symbol = debug_lookup_symbol(eip);
-        if(symbol == NULL) {
-            vram_putsf(con_global, "    0x%X\n", eip);
-        } else {
+        if(symbol) {
             vram_putsf(con_global, "    %s+0x%X/0x%X\n", debug_symbol_name(symbol), eip - symbol->value, eip);
+        } else {
+            vram_putsf(con_global, "    0x%X\n", eip);
         }
 
         ebp = (uint32_t *) ebp[0];

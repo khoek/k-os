@@ -1,5 +1,6 @@
 #include "lib/int.h"
 #include "init/initcall.h"
+#include "init/multiboot.h"
 #include "common/list.h"
 #include "common/compiler.h"
 #include "arch/pic.h"
@@ -135,7 +136,7 @@ void __noreturn mp_ap_start() {
 
 //start is a physical addr
 static mp_floating_header_t * fhdr_search(uint32_t start, uint32_t end) {
-    char *data = map_pages((void *) start, DIV_UP(end - start, PAGE_SIZE));
+    char *data = map_pages(start, DIV_UP(end - start, PAGE_SIZE));
     uint32_t match_len = 0;
     for(uint32_t off = 0; off < end - start; off++) {
         if(match_len == SIG_LEN) {
@@ -180,8 +181,8 @@ void __init mp_init() {
         panic("mp - default configurations not supported!");
     }
 
-    mp_config_header_t *chdr = map_page((void *) fhdr->mp_config_addr);
-    map_pages((void *) (fhdr->mp_config_addr + PAGE_SIZE), DIV_UP(chdr->base_len, PAGE_SIZE));
+    mp_config_header_t *chdr = map_page(fhdr->mp_config_addr);
+    map_pages(fhdr->mp_config_addr + PAGE_SIZE, DIV_UP(chdr->base_len, PAGE_SIZE));
 
     kprintf("mp - configuration header is at 0x%X", fhdr->mp_config_addr);
 

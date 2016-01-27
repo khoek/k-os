@@ -4,6 +4,7 @@
 #include "init/multiboot.h"
 #include "lib/string.h"
 #include "init/initcall.h"
+#include "common/math.h"
 #include "common/compiler.h"
 #include "bug/debug.h"
 #include "mm/mm.h"
@@ -46,8 +47,8 @@ const elf_symbol_t * debug_lookup_symbol(uint32_t address) {
 
 void __init debug_map_virtual() {
     if(strtabsz && symtabsz) {
-        strtab = map_pages(strtab, DIV_UP(strtabsz, PAGE_SIZE));
-        symtab = map_pages(symtab, DIV_UP(symtabsz, PAGE_SIZE));
+        strtab = map_pages((phys_addr_t) strtab, DIV_UP(strtabsz, PAGE_SIZE));
+        symtab = map_pages((phys_addr_t) symtab, DIV_UP(symtabsz, PAGE_SIZE));
     }
 }
 

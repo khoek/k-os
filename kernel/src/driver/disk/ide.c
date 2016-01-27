@@ -368,7 +368,7 @@ static int32_t pata_access(bool write, bool same, ide_device_t *device, uint64_t
     if (lba_mode > 0 /* There is no CHS (lba_mode == 0) for DMA */ && device->features & ATA_FEATURE_DMA) {
         dma = true;
 
-        edi = virt_to_phys(edi); //Translate to physical address
+        phys_addr_t phys = virt_to_phys(edi); //Translate to physical address
 
         ide_mmio_write(channel, ATA_REG_CONTROL, channels[channel].nIEN = ATA_IRQ_ON);
         ide_mmio_write_long(channel, ATA_REG_PRDTABLE, (uint32_t) page_to_phys(channels[channel].prdt)); //store the address of the PRDT
@@ -377,7 +377,7 @@ static int32_t pata_access(bool write, bool same, ide_device_t *device, uint64_t
         uint64_t bytes = sector_size * (numsects == 0 ? 512 : numsects);
         uint64_t i;
         for (i = 0; i < MAX_PRD_ENTRIES && bytes > (64 * 1024); i++) {
-            *prdt++ = PRD(edi + (same ? 0 : ((64 * 1024) * i)), 0 /* 64kb */);
+            *prdt++ = PRD(phys + (same ? 0 : ((64 * 1024) * i)), 0 /* 64kb */);
             transfered += 64 * 1024;//FIXME increment and return this after the operation completes WITHOUT AN ERROR
             bytes -= (64 * 1024);
         }
@@ -386,7 +386,7 @@ static int32_t pata_access(bool write, bool same, ide_device_t *device, uint64_t
             bytes = MIN(bytes, 64 * 1024);
             transfered += bytes;
 
-            *prdt++ = PRD(edi + (same ? 0 : ((64 * 1024) * i)), bytes == (64 * 1024) ? 0 : bytes);
+            *prdt++ = PRD(phys + (same ? 0 : ((64 * 1024) * i)), bytes == (64 * 1024) ? 0 : bytes);
         }
 
         *(prdt - 1) |= 0x8000000000000000; // mark last PRD entry as EOT

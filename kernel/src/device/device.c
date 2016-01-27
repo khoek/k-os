@@ -7,7 +7,7 @@
 #include "init/initcall.h"
 #include "bug/debug.h"
 #include "device/device.h"
-#include "mm/cache.h"
+#include "mm/mm.h"
 #include "log/log.h"
 
 static node_t root = {

@@ -5,8 +5,9 @@
 #include "common/math.h"
 #include "init/initcall.h"
 #include "bug/debug.h"
+#include "arch/pl.h"
 #include "mm/mm.h"
-#include "sched/sched.h"
+#include "arch/proc.h"
 #include "sched/task.h"
 #include "fs/binfmt.h"
 #include "fs/elf.h"
@@ -27,35 +28,59 @@ static bool elf_header_valid(Elf32_Ehdr *ehdr) {
         && ehdr->e_machine == EM_386;
 }
 
-static int load_elf_exe(const char *name, void *start, uint32_t length) {
-    uint8_t *file = start;
-    Elf32_Ehdr *ehdr = (Elf32_Ehdr *) start;
+static bool load_elf(file_t *f) {
+    Elf32_Ehdr *ehdr = kmalloc(sizeof(Elf32_Ehdr));
+    if(vfs_read(f, ehdr, sizeof(Elf32_Ehdr)) != sizeof(Elf32_Ehdr)) {
+        return false;
+    }
 
-    if(!elf_header_valid(ehdr)) return -1;
-    if(ehdr->e_phoff == 0) return -1;
+    if(!elf_header_valid(ehdr)) return false;
+    if(!ehdr->e_phoff) return false;
 
-    task_t *task = task_create(name, false, (void *) ehdr->e_entry, (void *) (0x10000 + PAGE_SIZE), NULL, NULL, NULL);
-    alloc_page_user(0, task, 0x10000); //alloc stack, FIXME hardcoded, might overlap with an elf segment
-    Elf32_Phdr *phdr = (Elf32_Phdr *) (file + ehdr->e_phoff);
+    //alloc stack, FIXME hardcoded, might overlap with an elf segment
+    user_map_page(current, (void *) 0x10000, page_to_phys(alloc_page(0)));
+
+    kprintf("binfmt_elf - phdr @ %X", ehdr->e_phoff);
+
+    Elf32_Phdr *phdr = kmalloc(sizeof(Elf32_Phdr) * ehdr->e_phnum);
+    if(vfs_seek(f, ehdr->e_phoff) != ehdr->e_phoff) {
+        return false;
+    }
+    if(vfs_read(f, phdr, sizeof(Elf32_Phdr) * ehdr->e_phnum)
+        != ((ssize_t) (sizeof(Elf32_Phdr) * ehdr->e_phnum))) {
+        return false;
+    }
+
     for(uint32_t i = 0; i < ehdr->e_phnum; i++) {
-        switch(phdr[i].p_type) { //TODO validate the segments as we are going
+        //TODO validate the segments as we are going
+        switch(phdr[i].p_type) {
             case PT_NULL:
                 break;
             case PT_LOAD: {
+                kprintf("binfmt_elf - LOAD (%X, %X) @ %X -> %X", phdr[i].p_filesz, phdr[i].p_memsz, phdr[i].p_offset, phdr[i].p_vaddr);
+
                 volatile uint32_t data_len = MIN(phdr[i].p_filesz, phdr[i].p_memsz);
                 uint32_t zero_len = phdr[i].p_memsz - data_len;
 
                 uint32_t data_coppied = 0;
                 uint32_t zeroes_written = 0;
 
-                uint32_t addr = phdr[i].p_vaddr;
+                void *addr = (void *) phdr[i].p_vaddr;
+                if(vfs_seek(f, phdr[i].p_offset) != phdr[i].p_offset) {
+                    return false;
+                }
+
                 while(data_coppied < data_len) {
-                    uint8_t *new_page = alloc_page_user(0, task, addr);
+                    page_t *page = alloc_page(0);
+                    void *pagevirt = page_to_virt(page);
+                    user_map_page(current, addr, page_to_phys(page));
 
                     uint32_t data_left = data_len - data_coppied;
-                    uint32_t chunk_len = MIN(data_left, PAGE_SIZE);
+                    ssize_t chunk_len = MIN(data_left, PAGE_SIZE);
 
-                    memcpy(new_page, start + phdr[i].p_offset + data_coppied, chunk_len);
+                    if(vfs_read(f, pagevirt, chunk_len) != chunk_len) {
+                        return false;
+                    }
 
                     data_coppied += chunk_len;
                     data_left -= chunk_len;
@@ -64,7 +89,7 @@ static int load_elf_exe(const char *name, void *start, uint32_t length) {
                     if(!data_left) {
                         uint32_t zero_chunk_len = PAGE_SIZE - chunk_len;
 
-                        memset(new_page + chunk_len, 0, zero_chunk_len);
+                        memset(pagevirt + chunk_len, 0, zero_chunk_len);
                         zeroes_written += zero_chunk_len;
                     }
 
@@ -74,10 +99,9 @@ static int load_elf_exe(const char *name, void *start, uint32_t length) {
                 }
 
                 while(zeroes_written < zero_len) {
-                    void *new_page = alloc_page_user(0, task, addr);
-
                     //zero the whole page for security
-                    memset(new_page, 0, PAGE_SIZE);
+                    page_t *page = alloc_page(ALLOC_ZERO);
+                    user_map_page(current, addr, page_to_phys(page));
 
                     zeroes_written += PAGE_SIZE;
 
@@ -96,13 +120,15 @@ static int load_elf_exe(const char *name, void *start, uint32_t length) {
         }
     }
 
-    task_add(task);
+    kprintf("binfmt_elf - entry: %X", ehdr->e_entry);
 
-    return 0;
+    pl_enter_userland((void *) ehdr->e_entry, (void *) (0x10000 + PAGE_SIZE));
+
+    return true;
 }
 
 static binfmt_t elf = {
-    .load_exe = load_elf_exe,
+    .load = load_elf,
 };
 
 static INITCALL elf_register_binfmt() {

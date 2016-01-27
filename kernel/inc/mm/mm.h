@@ -2,31 +2,47 @@
 #define KERNEL_MM_MM_H
 
 #define PAGE_SIZE 0x1000
-#define ALLOC_NONE 0
 #define STACK_NUM_PAGES 4
 
-#include "lib/int.h"
+#define MALLOC_NUM_PAGES DIV_UP(sizeof(page_t) * NUM_ENTRIES * NUM_ENTRIES, PAGE_SIZE)
 
 typedef struct page page_t;
+
+extern page_t *pages;
+
+#include "lib/int.h"
+#include "common/list.h"
+
+static inline uint32_t get_index(page_t *page);
+static inline void * page_to_virt(page_t *page);
+
+#include "arch/mmu.h"
+
+#define ALLOC_CACHE (1 << 0)
+#define ALLOC_COMPOUND (1 << 1)
+#define ALLOC_ZERO (1 << 2)
 
 struct page {
     uint32_t addr;
     uint8_t flags;
     uint8_t order;
-    page_t *prev;
-    page_t *next;
+    uint32_t compound_num;
+    list_head_t list;
 };
 
-extern uint32_t page_directory[1024];
+static inline void * page_to_virt(page_t *page) {
+    return (void *) (page->addr);
+}
 
-#include <stdbool.h>
-#include "init/multiboot.h"
-#include "sched/task.h"
+extern page_t *pages;
 
-void * map_page(const void *phys);
-void * map_pages(const void *phys, uint32_t pages);
+static inline uint32_t get_index(page_t *page) {
+    return (((uint32_t) page) - ((uint32_t) pages)) / (sizeof(page_t));
+}
 
-void page_build_directory(uint32_t directory[]);
+static inline page_t * phys_to_page(phys_addr_t addr) {
+    return &pages[phys_to_pageidx(addr)];
+}
 
 page_t * alloc_page(uint32_t flags);
 page_t * alloc_pages(uint32_t pages, uint32_t flags);
@@ -34,14 +50,10 @@ page_t * alloc_pages(uint32_t pages, uint32_t flags);
 void free_page(page_t *page);
 void free_pages(page_t *first, uint32_t count);
 
-void * page_to_phys(page_t *page);
-void * page_to_virt(page_t *page);
-page_t * phys_to_page(void *addr);
-void * virt_to_phys(void *addr);
-
-void * alloc_page_user(uint32_t flags, task_t *task, uint32_t vaddr);
-
 void mm_init();
 void mm_postinit_reclaim();
+
+void * kmalloc(uint32_t size);
+void kfree(void *mem);
 
 #endif

@@ -53,7 +53,7 @@ typedef struct tss {
    uint16_t iomap_base;
 } PACKED tss_t;
 
-void tss_set_stack(uint32_t sp);
+void tss_set_stack(void *sp);
 void gdt_set_tls(uint32_t tls_start);
 
 void gdt_init(processor_t *proc);

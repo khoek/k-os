@@ -4,6 +4,7 @@
 #define ALIGN(a)    __attribute__((aligned((a))))
 #define UNUSED(v) v __attribute__((unused))
 #define PACKED      __attribute__((packed))
+#define PURE        __attribute__((pure))
 
 #define __used __attribute__((used))
 #define __forceinline __attribute__((always_inline))

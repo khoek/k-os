@@ -3,7 +3,7 @@
 #include "init/param.h"
 #include "init/initcall.h"
 #include "lib/string.h"
-#include "mm/cache.h"
+#include "mm/mm.h"
 #include "log/log.h"
 
 #define MAX_CMDLINE_LEN 512
@@ -17,7 +17,7 @@ static void handle_param(char *key, char *value, uint32_t value_len) {
                 kprintf("param - param \"%s\": duplicate ignored", key);
             } else if(!param_start[i].handle(value)) {
                 kprintf("param - param \"%s\": invalid value \"%s\"", key, value);
-                kfree(value, value_len);
+                kfree(value);
             }
 
             param_start[i].handle = NULL;

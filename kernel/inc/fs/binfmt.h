@@ -3,15 +3,15 @@
 
 #include "lib/int.h"
 #include "common/list.h"
+#include "fs/vfs.h"
 
 typedef struct binfmt {
     list_head_t list;
 
-    int (*load_exe)(const char *name, void *start, uint32_t length);
+    bool (*load)(file_t *f);
 } binfmt_t;
 
 void binfmt_register(binfmt_t *binfmt);
-
-int binfmt_load_exe(const char *name, void *start, uint32_t length);
+bool binfmt_load(file_t *f);
 
 #endif

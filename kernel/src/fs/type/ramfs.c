@@ -50,14 +50,14 @@ static chunk_t * chunk_find(record_t *r, ssize_t off, bool create) {
 
 static ssize_t chunk_write(chunk_t *c, char *buff, ssize_t len, ssize_t off) {
     len = MIN(CHUNK_SIZE - off, len);
-    memcpy(c->buff, buff, len);
+    memcpy(c->buff + off, buff, len);
     c->used = c->used + MAX(0, off - c->used + len);
     return len;
 }
 
 static ssize_t chunk_read(chunk_t *c, char *buff, ssize_t len, ssize_t off) {
     len = MIN(MAX(0, c->used - off), len);
-    memcpy(buff, c->buff, len);
+    memcpy(buff, c->buff + off, len);
     return len;
 }
 
@@ -91,18 +91,23 @@ static void ramfs_file_open(file_t *file, inode_t *inode) {
     file->private = inode->private;
 }
 
-static ssize_t ramfs_file_seek(file_t *file, size_t bytes) {
-    return -1;
+static off_t ramfs_file_seek(file_t *file, off_t offset) {
+    file->offset = offset;
+    return file->offset;
 }
 
 static ssize_t ramfs_file_read(file_t *file, char *buff, size_t bytes) {
     record_t *r = file->private;
-    return record_read(r, buff, bytes, file->offset);
+    ssize_t ret = record_read(r, buff, bytes, file->offset);
+    file->offset += ret;
+    return ret;
 }
 
 static ssize_t ramfs_file_write(file_t *file, char *buff, size_t bytes) {
     record_t *r = file->private;
-    return record_write(r, buff, bytes, file->offset);
+    ssize_t ret = record_write(r, buff, bytes, file->offset);
+    file->offset += ret;
+    return ret;
 }
 
 static void ramfs_file_close(file_t *file) {

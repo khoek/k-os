@@ -1,6 +1,8 @@
 #ifndef KERNEL_ARCH_PIC_H
 #define KERNEL_ARCH_PIC_H
 
+#include "init/initcall.h"
+
 #define PIC_NUM_PINS 8
 
 #define PIC_MASTER_OFFSET IRQ_OFFSET

@@ -1,4 +1,4 @@
--include Makefile.local
+-include ../Makefile.local
 
 .PHONY: all kernel image run debug doc clean
 
@@ -7,7 +7,7 @@ all: kernel cdrom.iso
 kernel:
 	make -C src all
 
-cdrom.iso: build/boot/grub/grub.cfg build/kernel.elf
+cdrom.iso: build/boot/grub/grub.cfg build/kernel.elf build/rootramfs
 	@echo "creating image"
 	@grub-mkrescue -o cdrom.iso build > /dev/null 2>&1
 
@@ -17,6 +17,10 @@ build/kernel.elf: src/kernel.elf
 build/boot/grub/grub.cfg: boot/grub/grub.cfg
 	@mkdir -p build/boot/grub/
 	@cp -R boot/grub/grub.cfg build/boot/grub/grub.cfg
+
+build/rootramfs:
+	make -C ../util rootramfs
+	@cp ../util/rootramfs build/rootramfs
 
 hdd.img:
 	@dd if=/dev/zero of=hdd.img count=64000 bs=1k

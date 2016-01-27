@@ -1,7 +1,7 @@
 #include <stdbool.h>
 #include "lib/int.h"
 #include "bug/panic.h"
-#include "mm/cache.h"
+#include "mm/mm.h"
 #include "log/log.h"
 #include "fs/type/devfs.h"
 #include "driver/console/console.h"
@@ -121,12 +121,14 @@ static char handle_keystate(uint8_t code) {
     return press ? translate_keycode(code) : 0;
 }
 
-static ssize_t tty_char_read(char_device_t UNUSED(*cdev), char *buff, size_t len) {
+static ssize_t tty_char_read(char_device_t *cdev, char *buff, size_t len) {
+    char *tmp = kmalloc(len);
+
     size_t total = 0;
     while(total < len) {
-        size_t amt = vfs_read(cdev->private, buff + total, len - total);
+        size_t amt = vfs_read(cdev->private, tmp, len - total);
         for(size_t i = 0; i < amt; i++) {
-            buff[total] = handle_keystate(buff[total]);
+            buff[total] = handle_keystate(tmp[i]);
             if(buff[total]) {
                 total++;
             }
@@ -158,7 +160,7 @@ void tty_create(char *name) {
     if(!vfs_lookup(NULL, str, &out)) {
         panicf("tty - lookup of console (%s) failure", str);
     }
-    kfree(str, strlen(str) + 1);
+    kfree(str);
 
     char_device_t *cdev = char_device_alloc();
     cdev->private = vfs_open_file(out.dentry->inode);

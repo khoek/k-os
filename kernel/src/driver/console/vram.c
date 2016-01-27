@@ -117,6 +117,6 @@ void vram_init(console_t *console) {
     console->row = 0;
     console->col = 0;
     console->color = 0x07;
-    console->vram = map_page((void *) BIOS_VRAM);
+    console->vram = map_page(BIOS_VRAM);
     console->port = bda_getw(BDA_VRAM_PORT);
 }

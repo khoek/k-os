@@ -1,5 +1,6 @@
 #include "common/list.h"
 #include "lib/string.h"
+#include "arch/idt.h"
 #include "bug/panic.h"
 #include "mm/mm.h"
 #include "mm/cache.h"
@@ -48,7 +49,7 @@ typedef struct mp_bus {
 
 typedef struct ioapic {
     uint8_t id;
-    uint32_t base_addr;
+    void *base_addr;
     uint8_t intinvecs[24];
     list_head_t list;
 } ioapic_t;
@@ -102,7 +103,7 @@ static ioapic_t * find_ioapic(uint8_t id) {
 void register_ioapic(uint8_t id, uint32_t base_addr) {
     ioapic_t *ioapic = kmalloc(sizeof(ioapic_t));
     ioapic->id = id;
-    ioapic->base_addr = (uint32_t) map_page((void *) base_addr);
+    ioapic->base_addr = map_page(base_addr);
     for(uint32_t i = 0; i < INTIN_NUM; i++) {
         ioapic->intinvecs[i] = 0;
     }

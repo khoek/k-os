@@ -24,6 +24,7 @@ typedef struct hpet_caps {
 } PACKED hpet_caps_t;
 
 static void *base;
+
 static union {
     hpet_caps_t reg;
     uint64_t raw;
@@ -47,7 +48,7 @@ void __init hpet_init(acpi_sdt_t *hpet) {
 
     hpet_data_t *data = (void *) hpet->data;
 
-    base = map_page((void *) ((uint32_t) data->base.addr));
+    base = map_page((uint32_t) data->base.addr);
     caps.raw = readq(base, REG_CAPS);
 
     kprintf("hpet - there are %u timers", caps.reg.num_timers + 1);

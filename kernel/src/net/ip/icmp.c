@@ -1,7 +1,7 @@
 #include "lib/int.h"
 #include "lib/rand.h"
 #include "lib/string.h"
-#include "mm/cache.h"
+#include "mm/mm.h"
 #include "net/packet.h"
 #include "net/interface.h"
 #include "net/ip/ip.h"

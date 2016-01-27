@@ -3,7 +3,7 @@
 #include "common/swap.h"
 #include "common/hashtable.h"
 #include "sync/spinlock.h"
-#include "mm/cache.h"
+#include "mm/mm.h"
 #include "time/timer.h"
 #include "net/packet.h"
 #include "net/interface.h"

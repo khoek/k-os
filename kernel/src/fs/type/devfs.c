@@ -4,7 +4,7 @@
 #include "sync/spinlock.h"
 #include "mm/cache.h"
 #include "sched/sched.h"
-#include "sched/task.h"
+#include "sched/ktaskd.h"
 #include "fs/vfs.h"
 #include "fs/type/devfs.h"
 #include "log/log.h"
@@ -41,8 +41,8 @@ static void char_file_open(file_t *file, inode_t *inode) {
     file->private = device;
 }
 
-static ssize_t char_file_seek(file_t *file, size_t bytes) {
-    return -1;
+static off_t char_file_seek(file_t *file, off_t off) {
+    return 0;
 }
 
 static ssize_t char_file_read(file_t *file, char *buff, size_t bytes) {
@@ -79,8 +79,8 @@ static void block_file_open(file_t *file, inode_t *inode) {
     file->private = device;
 }
 
-static ssize_t block_file_seek(file_t *file, size_t bytes) {
-    return -1;
+static off_t block_file_seek(file_t *file, off_t off) {
+    return 0;
 }
 
 static ssize_t block_file_read(file_t *file, char *buff, size_t bytes) {
@@ -214,7 +214,7 @@ static bool create_path(path_t *start, const char *orig_path) {
         }
     }
 
-    kfree(path, strlen(orig_path) + 1);
+    kfree(path);
 
     return true;
 }
@@ -251,7 +251,7 @@ void devfs_publish_pending() {
     while(devfs_update());
 }
 
-static void devfs_run() {
+static void devfs_run(void *UNUSED(arg)) {
     while(true) {
         devfs_publish_pending();
         task_sleep_current();
@@ -266,7 +266,6 @@ static INITCALL devfs_init() {
 
 static INITCALL devfs_mount() {
     devfs = vfs_fs_create("devfs", NULL);
-    devfs_task = task_create("devfsd", true, devfs_run, NULL, NULL, NULL, NULL);
 
     devfs_publish_pending();
 
@@ -286,7 +285,7 @@ static INITCALL devfs_mount() {
         }
     }
 
-    task_add(devfs_task);
+    ktaskd_request(devfs_run, NULL);
 
     return 0;
 }

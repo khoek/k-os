@@ -47,8 +47,8 @@ Currently K-OS accepts the following optional configuration options:
 
 <table>
     <tr>
-        <td>CONFIG_OPTIMIZE</td>
-        <td>Disable system-wide bugchecks which are normally compiled into the kernel</td>
+        <td>CONFIG_DEBUG_BUGCHECKS</td>
+        <td>Enable system-wide bugchecks which are normally compiled into the kernel, and other debugging information.</td>
     </tr>
     <tr>
         <td>CONFIG_DEBUG_MM</td>
@@ -66,7 +66,7 @@ To enable/disable these options edit the "kernel/config.h" file.
 
 Where not explicitly indicated otherwise, all files are licensed under the following terms:
 
-    Copyright (c) 2015, Keeley Hoek
+    Copyright (c) 2016, Keeley Hoek
     All rights reserved.
 
     Redistribution and use in source and binary forms, with or without modification,

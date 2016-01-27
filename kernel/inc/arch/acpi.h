@@ -18,7 +18,7 @@ typedef struct acpi_sdt {
 } PACKED acpi_sdt_t;
 
 typedef struct acpi_madt {
-    void *lapic_base;
+    uint32_t lapic_base;
     uint32_t flags;
 } PACKED acpi_madt_t;
 

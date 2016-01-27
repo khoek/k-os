@@ -1,6 +1,6 @@
 #include "common/list.h"
 #include "sync/spinlock.h"
-#include "arch/registers.h"
+#include "arch/cpu.h"
 #include "time/timer.h"
 #include "time/clock.h"
 #include "mm/cache.h"

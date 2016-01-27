@@ -1,5 +1,5 @@
 #include "common/compiler.h"
-#include "mm/cache.h"
+#include "mm/mm.h"
 #include "fs/fd.h"
 #include "fs/vfs.h"
 #include "fs/file/char.h"
@@ -48,7 +48,7 @@ static ssize_t char_write(file_t *file, char *buff, size_t bytes) {
 }
 
 static void char_close(file_t *file) {
-    kfree(file->private, sizeof(char_buff_t));
+    kfree(file->private);
 }
 
 static file_ops_t char_file_ops = {

@@ -2,7 +2,7 @@
 #include "lib/string.h"
 #include "bug/panic.h"
 #include "sync/spinlock.h"
-#include "mm/cache.h"
+#include "mm/mm.h"
 #include "net/socket.h"
 #include "fs/fd.h"
 #include "fs/vfs.h"
@@ -30,7 +30,7 @@ static sock_t * sock_alloc() {
 }
 
 static void sock_free(sock_t *sock) {
-    kfree(sock, sizeof(sock_t));
+    kfree(sock);
 }
 
 sock_t * sock_create(uint32_t family, uint32_t type, uint32_t protocol) {

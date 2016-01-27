@@ -14,9 +14,7 @@ static INITCALL module_init() {
 
     kprintf("module - detected %u module(s)", mods_count);
 
-    char buff[64];
     for(uint32_t i = 0; i < mods_count; i++) {
-        sprintf(buff, "module%d", i + 1);
         rootramfs_load((void *) mods[i].start, mods[i].end - mods[i].start);
         kprintf("module - #%u loaded", i + 1);
     }

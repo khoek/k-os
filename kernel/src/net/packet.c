@@ -24,12 +24,12 @@ packet_t * packet_create(net_interface_t *interface, packet_callback_t callback,
 void packet_destroy(packet_t *packet) {
     if(packet->callback) packet->callback(packet, packet->data);
 
-    if(packet->link.buff) kfree(packet->link.buff, packet->link.size);
-    if(packet->net.buff) kfree(packet->net.buff, packet->net.size);
-    if(packet->tran.buff) kfree(packet->tran.buff, packet->tran.size);
-    if(packet->payload.buff) kfree(packet->payload.buff, packet->payload.size);
+    kfree(packet->link.buff);
+    kfree(packet->net.buff);
+    kfree(packet->tran.buff);
+    kfree(packet->payload.buff);
 
-    kfree(packet, sizeof(packet_t));
+    kfree(packet);
 }
 
 void packet_send(packet_t *packet) {

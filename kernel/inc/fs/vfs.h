@@ -87,7 +87,7 @@ struct file {
 
 struct file_ops {
     void (*open)(file_t *file, inode_t *inode);
-    ssize_t (*seek)(file_t *file, size_t bytes);
+    off_t (*seek)(file_t *file, off_t offset);
     ssize_t (*read)(file_t *file, char *buff, size_t bytes);
     ssize_t (*write) (file_t *file, char *buff, size_t bytes);
     void (*close)(file_t *file);
@@ -193,6 +193,7 @@ void generic_getattr(inode_t *inode, stat_t *stat);
 
 bool vfs_lookup(const path_t *start, const char *path, path_t *out);
 file_t * vfs_open_file(inode_t *inode);
+off_t vfs_seek(file_t *file, uint32_t off);
 ssize_t vfs_read(file_t *file, void *buff, size_t bytes);
 ssize_t vfs_write(file_t *file, void *buff, size_t bytes);
 

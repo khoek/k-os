@@ -18,26 +18,10 @@
 
 #define MAX_SYSCALL 256
 
-static inline void * param_ptr(interrupt_t *interrupt, uint32_t num) {
-    return (void *) *((uint32_t *) (interrupt->cpu.exec.esp + (num * sizeof(uint32_t))));
-}
-
-static inline uint32_t param_32(interrupt_t *interrupt, uint32_t num) {
-    return *((uint32_t *) (interrupt->cpu.exec.esp + (num * sizeof(uint32_t))));
-}
-
-static inline uint16_t param_16(interrupt_t *interrupt, uint32_t num) {
-    return (uint16_t) *((uint32_t *) (interrupt->cpu.exec.esp + (num * sizeof(uint32_t))));
-}
-
-static inline uint8_t param_8(interrupt_t *interrupt, uint32_t num) {
-    return (uint8_t) *((uint32_t *) (interrupt->cpu.exec.esp + (num * sizeof(uint32_t))));
-}
-
 typedef uint64_t (*syscall_t)(registers_t *);
 
 static uint64_t sys_exit(registers_t *reg) {
-    task_exit(current, reg->ecx);
+    task_exit(reg->ecx);
 
     BUG();
     return 0;
@@ -69,7 +53,7 @@ static uint64_t sys_log(registers_t *reg) {
 
         kprintf("user[%u] - %s", current->pid, buff);
 
-        kfree(buff, reg->edx + 1);
+        kfree(buff);
     }
 
     return 0;
@@ -84,7 +68,7 @@ static uint64_t sys_open(registers_t *reg) {
 
     path_t path;
     if(vfs_lookup(&current->pwd, (const char *) reg->ecx, &path)) {
-        return ufdt_add(current, reg->edx, vfs_open_file(path.dentry->inode));
+        return ufdt_add(reg->edx, vfs_open_file(path.dentry->inode));
     } else {
         return -1;
     }
@@ -94,10 +78,10 @@ static uint64_t sys_close(registers_t *reg) {
     ufd_idx_t ufd = reg->ecx;
     //TODO sanitize arguments
 
-    file_t *gfd = ufdt_get(current, ufd);
+    file_t *gfd = ufdt_get(ufd);
     if(gfd) {
-        ufdt_close(current, ufd);
-        ufdt_put(current, ufd);
+        ufdt_close(ufd);
+        ufdt_put(ufd);
 
         return 0;
     } else {
@@ -112,7 +96,7 @@ static uint64_t sys_socket(registers_t *reg) {
     if(sock) {
         file_t *fd = sock_create_fd(sock);
         if(fd) {
-            ret = ufdt_add(current, 0, fd);
+            ret = ufdt_add(0, fd);
             if(ret == -1) {
                 //TODO free sock and fd
             }
@@ -125,12 +109,12 @@ static uint64_t sys_socket(registers_t *reg) {
 static uint64_t sys_listen(registers_t *reg) {
     int32_t ret = -1;
 
-    file_t *fd = ufdt_get(current, reg->ecx);
+    file_t *fd = ufdt_get(reg->ecx);
     if(fd) {
         ret = sock_listen(gfd_to_sock(fd), reg->edx) ? 0 : -1;
     }
 
-    ufdt_put(current, reg->ecx);
+    ufdt_put(reg->ecx);
 
     return ret;
 }
@@ -138,7 +122,7 @@ static uint64_t sys_listen(registers_t *reg) {
 static uint64_t sys_accept(registers_t *reg) {
     int32_t ret = -1;
 
-    file_t *fd = ufdt_get(current, reg->ecx);
+    file_t *fd = ufdt_get(reg->ecx);
     if(fd) {
         //TODO sanitize address buff/size buff arguments
 
@@ -147,7 +131,7 @@ static uint64_t sys_accept(registers_t *reg) {
         sock_t *child = sock_accept(sock);
 
         if(child) {
-            ret = ufdt_add(current, 0, sock_create_fd(child));
+            ret = ufdt_add(0, sock_create_fd(child));
 
             if(useraddr) {
                 useraddr->sa_family = child->family->family;
@@ -156,7 +140,7 @@ static uint64_t sys_accept(registers_t *reg) {
             }
         }
 
-        ufdt_put(current, reg->ecx);
+        ufdt_put(reg->ecx);
     }
 
     return ret;
@@ -165,7 +149,7 @@ static uint64_t sys_accept(registers_t *reg) {
 static uint64_t sys_bind(registers_t *reg) {
     int32_t ret = -1;
 
-    file_t *fd = ufdt_get(current, reg->ecx);
+    file_t *fd = ufdt_get(reg->ecx);
     if(fd) {
         //TODO sanitize address/size arguments
 
@@ -188,7 +172,7 @@ static uint64_t sys_bind(registers_t *reg) {
             ret = sock_bind(sock, &addr) ? 0 : -1;
         }
 
-        ufdt_put(current, reg->ecx);
+        ufdt_put(reg->ecx);
     }
 
     return ret;
@@ -197,7 +181,7 @@ static uint64_t sys_bind(registers_t *reg) {
 static uint64_t sys_connect(registers_t *reg) {
     int32_t ret = -1;
 
-    file_t *fd = ufdt_get(current, reg->ecx);
+    file_t *fd = ufdt_get(reg->ecx);
     if(fd) {
         //TODO sanitize address/size arguments
 
@@ -227,7 +211,7 @@ static uint64_t sys_connect(registers_t *reg) {
             }
         }
 
-        ufdt_put(current, reg->ecx);
+        ufdt_put(reg->ecx);
     }
 
     return ret;
@@ -236,11 +220,11 @@ static uint64_t sys_connect(registers_t *reg) {
 static uint64_t sys_shutdown(registers_t *reg) {
     int32_t ret = -1;
 
-    file_t *fd = ufdt_get(current, reg->ecx);
+    file_t *fd = ufdt_get(reg->ecx);
     if(fd) {
         ret = sock_shutdown(gfd_to_sock(fd), reg->edx);
 
-        ufdt_put(current, reg->ecx);
+        ufdt_put(reg->ecx);
     }
 
     return ret;
@@ -249,7 +233,7 @@ static uint64_t sys_shutdown(registers_t *reg) {
 static uint64_t sys_send(registers_t *reg) {
     int32_t ret = -1;
 
-    file_t *fd = ufdt_get(current, reg->ecx);
+    file_t *fd = ufdt_get(reg->ecx);
     if(fd) {
         //TODO sanitize buffer/size arguments
 
@@ -259,7 +243,7 @@ static uint64_t sys_send(registers_t *reg) {
 
         ret = sock_send(gfd_to_sock(fd), buff, reg->ebx, reg->esi);
 
-        ufdt_put(current, reg->ecx);
+        ufdt_put(reg->ecx);
     }
 
     return ret;
@@ -268,13 +252,13 @@ static uint64_t sys_send(registers_t *reg) {
 static uint64_t sys_recv(registers_t *reg) {
     int32_t ret = -1;
 
-    file_t *fd = ufdt_get(current, reg->ecx);
+    file_t *fd = ufdt_get(reg->ecx);
     if(fd) {
         //TODO sanitize buffer/size arguments
 
         ret = sock_recv(gfd_to_sock(fd), (void *) reg->edx, reg->ebx, reg->esi);
 
-        ufdt_put(current, reg->ecx);
+        ufdt_put(reg->ecx);
     }
 
     return ret;
@@ -306,7 +290,7 @@ static uint64_t sys_stat(registers_t *reg) {
 static uint64_t sys_fstat(registers_t *reg) {
     int32_t ret = -1;
 
-    file_t *fd = ufdt_get(current, reg->ecx);
+    file_t *fd = ufdt_get(reg->ecx);
     if(fd) {
         //TODO sanitize stat ptr
 
@@ -314,7 +298,7 @@ static uint64_t sys_fstat(registers_t *reg) {
 
         ret = 0;
 
-        ufdt_put(current, reg->ecx);
+        ufdt_put(reg->ecx);
     }
 
     return ret;
@@ -338,19 +322,21 @@ static uint64_t sys_stop(registers_t *reg) {
 static uint64_t sys_read(registers_t *reg) {
     int32_t ret = -1;
 
-    file_t *fd = ufdt_get(current, reg->ecx);
+//    kprintf("BREAD");
+
+    file_t *fd = ufdt_get(reg->ecx);
     if(fd) {
         //TODO sanitize buffer/size arguments
 
         void *buff = kmalloc(reg->ebx);
-        memcpy(buff, (void *) reg->edx, reg->ebx);
-
         ret = vfs_read(fd, buff, reg->ebx);
+        memcpy((void *) reg->edx, buff, reg->ebx);
+        kfree(buff);
 
-        kfree(buff, reg->ebx);
-
-        ufdt_put(current, reg->ecx);
+        ufdt_put(reg->ecx);
     }
+
+//    kprintf("EREAD");
 
     return ret;
 }
@@ -358,13 +344,13 @@ static uint64_t sys_read(registers_t *reg) {
 static uint64_t sys_write(registers_t *reg) {
     int32_t ret = -1;
 
-    file_t *fd = ufdt_get(current, reg->ecx);
+    file_t *fd = ufdt_get(reg->ecx);
     if(fd) {
         //TODO sanitize buffer/size arguments
 
         ret = vfs_write(fd, (void *) reg->edx, reg->ebx);
 
-        ufdt_put(current, reg->ecx);
+        ufdt_put(reg->ecx);
     }
 
     return ret;
@@ -397,6 +383,8 @@ static syscall_t syscalls[MAX_SYSCALL] = {
 };
 
 static void syscall_handler(interrupt_t *interrupt, void *data) {
+    sti();
+
     registers_t *reg = &interrupt->cpu.reg;
     if(reg->eax >= MAX_SYSCALL || !syscalls[reg->eax]) {
         panicf("Unregistered Syscall #%u: 0x%X", reg->eax, reg->ecx);

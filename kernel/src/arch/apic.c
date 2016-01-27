@@ -81,7 +81,7 @@ void __init apic_enable() {
     writel(apic_base, REG_SPURIOUS, APIC_MASTER_ENABLE | 0xFF);
 }
 
-void __init apic_init(void *base) {
+void __init apic_init(phys_addr_t base) {
     apic_base = map_page(base);
     eoi_handler = apic_eoi;
     is_spurious = apic_is_spurious;

@@ -3,7 +3,7 @@
 #include "init/initcall.h"
 #include "common/swap.h"
 #include "common/compiler.h"
-#include "mm/cache.h"
+#include "mm/mm.h"
 #include "fs/disk.h"
 #include "log/log.h"
 
@@ -114,11 +114,11 @@ static bool msdos_probe(block_device_t *device, char *name) {
         }
     }
 
-    kfree(mbr, device->block_size);
+    kfree(mbr);
     return true;
 
 probe_fail:
-    kfree(mbr, device->block_size);
+    kfree(mbr);
     return false;
 }
 

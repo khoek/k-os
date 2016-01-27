@@ -2,7 +2,7 @@
 #include "lib/printf.h"
 #include "common/list.h"
 #include "sync/spinlock.h"
-#include "mm/cache.h"
+#include "mm/mm.h"
 #include "fs/block.h"
 #include "fs/subblock.h"
 #include "fs/disk.h"

@@ -119,13 +119,13 @@ static bool gpt_probe(block_device_t *device, char *name) {
     }
 
     free_pages(start, pages);
-    kfree(gpt, device->block_size);
+    kfree(gpt);
     return true;
 
 probe_table_fail:
     free_pages(start, pages);
 probe_header_fail:
-    kfree(gpt, device->block_size);
+    kfree(gpt);
     return false;
 }
 

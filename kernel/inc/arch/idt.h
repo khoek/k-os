@@ -9,7 +9,7 @@
 #include "common/compiler.h"
 #include "init/initcall.h"
 #include "arch/pic.h"
-#include "arch/registers.h"
+#include "arch/cpu.h"
 
 typedef struct interrupt {
     uint32_t vector, error;

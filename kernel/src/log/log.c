@@ -3,7 +3,7 @@
 #include "common/compiler.h"
 #include "bug/panic.h"
 #include "sync/spinlock.h"
-#include "arch/registers.h"
+#include "arch/cpu.h"
 #include "time/clock.h"
 #include "driver/console/console.h"
 

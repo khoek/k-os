@@ -1,6 +1,6 @@
 #include "lib/int.h"
 #include "bug/debug.h"
-#include "mm/cache.h"
+#include "mm/mm.h"
 #include "fs/vfs.h"
 #include "fs/block.h"
 #include "fs/subblock.h"

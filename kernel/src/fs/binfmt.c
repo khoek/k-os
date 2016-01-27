@@ -2,6 +2,7 @@
 
 #include "common/list.h"
 #include "common/compiler.h"
+#include "bug/debug.h"
 #include "fs/binfmt.h"
 #include "log/log.h"
 
@@ -11,11 +12,14 @@ void binfmt_register(binfmt_t *binfmt) {
     list_add(&binfmt->list, &binfmts);
 }
 
-int binfmt_load_exe(const char *name, void *start, uint32_t length) {
+bool binfmt_load(file_t *file) {
     binfmt_t *binfmt;
     LIST_FOR_EACH_ENTRY(binfmt, &binfmts, list) {
-        if(!(*binfmt->load_exe)(name, start, length)) return 0;
+        if(binfmt->load(file)) {
+            //If successful, this should never return
+            BUG();
+        }
     }
 
-    return -1;
+    return false;
 }

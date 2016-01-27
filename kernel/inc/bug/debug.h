@@ -1,16 +1,17 @@
 #ifndef KERNEL_BUG_DEBUG_H
 #define KERNEL_BUG_DEBUG_H
 
-#define NOP do {} while(0)
+#define NOP() do {} while(0)
 
-#ifndef CONFIG_OPTIMIZE
-    #include "bug/panic.h"
-    #define BUG() panicf("Bugcheck failed in %s:%u", __FILE__, __LINE__)
+#include "bug/panic.h"
+
+#define BUG() panicf("Bugcheck failed in %s:%u", __FILE__, __LINE__)
+
+#ifdef CONFIG_DEBUG_BUGCHECKS
+    #define BUG_ON(c) if((c)) BUG()
 #else
-    #define BUG() NOP
+    #define BUG_ON(c) NOP()
 #endif
-
-#define BUG_ON(c) if((c)) BUG()
 
 #include "fs/elf.h"
 

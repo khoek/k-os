@@ -119,7 +119,7 @@ static void udp_open(sock_t *sock) {
 
 static void udp_close(sock_t *sock) {
     udp_unbind_port(((udp_data_t *) sock->private)->local_port);
-    kfree(sock->private, sizeof(udp_data_t));
+    kfree(sock->private);
 }
 
 static bool udp_connect(sock_t *sock, sock_addr_t *addr) {

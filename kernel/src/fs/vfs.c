@@ -42,7 +42,7 @@ dentry_t * dentry_alloc(const char *name) {
 }
 
 void dentry_free(dentry_t *dentry) {
-    kfree((char *) dentry->name, strlen(dentry->name) + 1);
+    kfree((char *) dentry->name);
 
     cache_free(dentry_cache, dentry);
 }
@@ -60,6 +60,7 @@ inode_t * inode_alloc(fs_t *fs, inode_ops_t *ops) {
 file_t * file_alloc(file_ops_t *ops) {
     file_t *new = gfdt_obtain();
     if(new) {
+        new->offset = 0;
         new->ops = ops;
     }
 
@@ -259,7 +260,7 @@ static bool get_path_wd(const path_t *start, const char *orig_pathname, path_t *
 
         path_t path;
         if(!vfs_lookup(start, pathname, &path)) {
-            kfree(pathname, strlen(orig_pathname) + 1);
+            kfree(pathname);
             return false;
         }
 
@@ -270,7 +271,7 @@ static bool get_path_wd(const path_t *start, const char *orig_pathname, path_t *
 
     *out_last = strdup(last);
 
-    kfree(pathname, strlen(orig_pathname) + 1);
+    kfree(pathname);
 
     return true;
 }
@@ -286,7 +287,7 @@ bool vfs_create(const path_t *start, const char *pathname, uint32_t mode, bool e
     path_t f;
     if(vfs_lookup(&wd, last, &f)) {
         if(excl) {
-            kfree(last, strlen(last) + 1);
+            kfree(last);
             return false;
         }
 
@@ -296,7 +297,7 @@ bool vfs_create(const path_t *start, const char *pathname, uint32_t mode, bool e
         dentry_t *new = dentry_alloc(copy);
         wd.dentry->inode->ops->create(wd.dentry->inode, new, mode);
         if(!new->inode)  {
-            kfree(copy, strlen(copy) + 1);
+            kfree(copy);
             return false;
         }
 
@@ -309,9 +310,9 @@ bool vfs_create(const path_t *start, const char *pathname, uint32_t mode, bool e
 
 bool vfs_mkdir(const path_t *start, const char *pathname, uint32_t mode) {
     path_t wd;
-    char *last;
+    char *last = NULL;
     if(!get_path_wd(start, pathname, &wd, &last)) {
-        kfree(last, strlen(last) + 1);
+        kfree(last);
         return false;
     }
 
@@ -319,7 +320,7 @@ bool vfs_mkdir(const path_t *start, const char *pathname, uint32_t mode) {
     dentry_t *newdir = dentry_alloc(copy);
     wd.dentry->inode->ops->mkdir(wd.dentry->inode, newdir, mode);
     if(!newdir->inode)  {
-        kfree(copy, strlen(copy) + 1);
+        kfree(copy);
         return false;
     }
 
@@ -331,7 +332,6 @@ bool vfs_mkdir(const path_t *start, const char *pathname, uint32_t mode) {
 bool vfs_lookup(const path_t *start, const char *orig_path, path_t *out) {
     char *path = strdup(orig_path);
     char *new_path = path;
-    uint32_t new_path_len = strlen(new_path);
 
     mount_t *mount;
     dentry_t *wd;
@@ -449,7 +449,7 @@ lookup_next:
         out->mount = mount;
     }
 
-    kfree(new_path, new_path_len + 1);
+    kfree(new_path);
 
     return !!wd;
 }
@@ -461,6 +461,10 @@ file_t * vfs_open_file(inode_t *inode) {
     }
 
     return file;
+}
+
+off_t vfs_seek(file_t *file, uint32_t off) {
+    return file->ops->seek(file, off);
 }
 
 ssize_t vfs_read(file_t *file, void *buff, size_t bytes) {

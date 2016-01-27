@@ -1,8 +1,10 @@
 #include "lib/int.h"
 #include "common/list.h"
+#include "arch/proc.h"
 #include "sync/spinlock.h"
 #include "sync/semaphore.h"
 #include "sched/sched.h"
+#include "log/log.h"
 
 void semaphore_down(semaphore_t *lock) {
     uint32_t flags;
@@ -22,7 +24,7 @@ void semaphore_down(semaphore_t *lock) {
         sched_try_resched();
     }
 }
-void kprintf(char *c,...);
+
 void semaphore_up(semaphore_t *lock) {
     uint32_t flags;
     spin_lock_irqsave(&lock->lock, &flags);

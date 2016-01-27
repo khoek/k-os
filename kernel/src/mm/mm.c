@@ -4,6 +4,7 @@
 #include "lib/int.h"
 #include "lib/string.h"
 #include "init/initcall.h"
+#include "init/multiboot.h"
 #include "common/math.h"
 #include "common/compiler.h"
 #include "bug/panic.h"
@@ -19,15 +20,16 @@
 #define MAX_ORDER 10
 #define ADDRESS_SPACE_SIZE 4294967295ULL
 
-#define NUM_ENTRIES 1024
+#define PAGE_TABLE_EXTENT (PAGE_SIZE * NUM_ENTRIES)
 
-#define KERNEL_TABLES (NUM_ENTRIES / 4)
+#define PAGE_FLAG_USED  (1 << 0)
+#define PAGE_FLAG_PERM  (1 << 1)
+#define PAGE_FLAG_USER  (1 << 2)
+#define PAGE_FLAG_CACHE (1 << 3)
 
-#define PAGE_FLAG_USED (1 << 0)
-#define PAGE_FLAG_PERM (1 << 1)
-#define PAGE_FLAG_USER (1 << 2)
+#define IS_CACHE_PAGE(page) (page->flags & PAGE_FLAG)
 
-//TODO asynchronously free the boot mem data (as a task after all CPUs have come up)
+//TODO asynchronously free the boot stack, etc. (as a task after all CPUs have come up)
 
 extern uint32_t image_start;
 extern uint32_t image_end;
@@ -35,188 +37,171 @@ extern uint32_t image_end;
 extern uint32_t init_mem_start;
 extern uint32_t init_mem_end;
 
-static uint32_t kernel_start;
-static uint32_t kernel_end;
-static uint32_t malloc_start;
+static phys_addr_t kernel_start;
+static phys_addr_t kernel_end;
+static phys_addr_t malloc_start;
 
 __initdata uint32_t mods_count;
 
-uint32_t page_directory[1024] ALIGN(PAGE_SIZE);
-static uint32_t kernel_page_tables[255][1024] ALIGN(PAGE_SIZE);
-static uint32_t kernel_next_page; //page which will next be mapped to kernel addr space on alloc
-static page_t *pages;
-static page_t *free_page_list[MAX_ORDER + 1];
+page_t *pages;
+static list_head_t free_page_list[MAX_ORDER + 1];
 static __initdata uint8_t mmap_buff[MMAP_BUFF_SIZE];
+static uint32_t mmap_length;
 
 static DEFINE_SPINLOCK(alloc_lock);
-static DEFINE_SPINLOCK(map_lock);
 
-static inline void invlpg(uint32_t addr) {
-    asm volatile("invlpg (%0)" ::"r" (addr) : "memory");
+static PURE inline uint32_t get_order_idx(uint32_t idx, uint32_t order) {
+    return DIV_DOWN(idx, 1ULL << order);
 }
 
-static uint32_t get_index(page_t *page) {
-    return (((uint32_t) page) - ((uint32_t) pages)) / (sizeof (page_t));
+static PURE inline bool is_free(page_t *page) {
+    return !(page->flags & PAGE_FLAG_USED) && !(page->flags & PAGE_FLAG_PERM);
 }
 
-static page_t * get_buddy(page_t *page) {
-    return page + ((1 << page->order) * ((DIV_DOWN(get_index(page), (1 << page->order)) % 2) ? -1 : 1));
+static PURE inline bool is_master(page_t *page) {
+    return !(get_order_idx(get_index(page), page->order) % 2);
 }
 
-static inline void flag_set(page_t *page, int8_t flag) {
-    page->flags |= flag;
+static PURE inline bool is_subblock_master(page_t *page) {
+    if(!page->order) return true;
+    return !(get_order_idx(get_index(page), page->order - 1) % 2);
 }
 
-static inline void flag_unset(page_t *page, int8_t flag) {
-    page->flags &= ~flag;
+static PURE inline page_t * get_buddy(page_t *page) {
+    if(is_master(page)) {
+        return page + (1ULL << page->order);
+    } else {
+        return page - (1ULL << page->order);
+    }
 }
 
-void * page_to_phys(page_t *page) {
-    return (void *) (get_index(page) * PAGE_SIZE);
+static PURE inline page_t * get_master(page_t *page) {
+    if(is_master(page)) {
+        return page;
+    } else {
+        return get_buddy(page);
+    }
 }
 
-void * page_to_virt(page_t *page) {
-    return (void *) (page->addr);
+static void add_to_freelists(page_t *page) {
+    BUG_ON(page->flags & PAGE_FLAG_PERM);
+    BUG_ON(page->flags & PAGE_FLAG_USED);
+    BUG_ON(!is_subblock_master(page));
+    list_add(&page->list, &free_page_list[page->order]);
 }
 
-page_t * phys_to_page(void *addr) {
-    return &pages[((uint32_t) addr) / PAGE_SIZE];
-}
-
-void * virt_to_phys(void *addr) {
-    uint32_t num = ((((uint32_t) addr) & 0xFFFFF000) - VIRTUAL_BASE) / PAGE_SIZE;
-
-    return (void *) ((kernel_page_tables[num / NUM_ENTRIES][num % NUM_ENTRIES] & 0xFFFFF000) | (((uint32_t) addr) & 0xFFF));
-}
-
-static inline void add_to_freelist(page_t *page) {
-    page->next = free_page_list[page->order];
-    if(free_page_list[page->order]) free_page_list[page->order]->prev = page;
-    free_page_list[page->order] = page;
-}
-
+//Cuts "master" in half. Returns the orphaned half of "master".
 static inline page_t * split_block(page_t *master) {
-    uint32_t order = master->order;
-    BUG_ON(!order);
+    BUG_ON(!is_subblock_master(master));
+    BUG_ON(!master->order);
 
     master->order--;
 
-    page_t *buddy = get_buddy(master);
-    BUG_ON(!buddy);
+    page_t *slave = get_buddy(master);
 
-    buddy->order = master->order;
+    BUG_ON(master->order != slave->order);
+    BUG_ON(!is_free(master));
+    BUG_ON(!is_free(slave));
 
-    return buddy;
+    return slave;
 }
 
-static inline page_t * alloc_block_exact(uint32_t order, uint32_t actual) {
-    page_t *block = free_page_list[order];
-    if(block->next) block->next->prev = NULL;
-    free_page_list[order] = block->next;
+//Joins page with its buddy, irrespective of which is the master/slave. Returns
+//the master.
+static inline page_t * join_block(page_t *page) {
+    page_t *master = get_master(page);
+
+    BUG_ON(master->order != get_buddy(master)->order);
+    BUG_ON(master->order == MAX_ORDER);
+
+    BUG_ON(!is_free(master));
+    BUG_ON(!is_free(get_buddy(master)));
+
+    master->order++;
+
+    return master;
+}
+
+//Chop off unused pages at the end of a block.
+static inline void trim_block(page_t *block, uint32_t actual) {
+    BUG_ON(!actual);
 
     page_t *current = block;
     page_t *buddy;
-
     while(actual) {
+        //SPECIAL CASE: if we have a perfect size block, do not subdivide
+        //unecessarily.
+        if(actual == (1ULL << current->order)) {
+            return;
+        }
+
+        //We can't subdivide a single page.
+        BUG_ON(!current->order);
+
+        //We are going to have to split the block.
         buddy = split_block(current);
-        order--;
 
-        BUG_ON(order != buddy->order);
-
-        if(actual <= (uint32_t) (1 << order)) {
-            add_to_freelist(buddy);
-        } else {
-            current = buddy;
+        //If our requested block size fits inside half of the original block,
+        //free the buddy and repeat with the half.
+        if(actual <= (1ULL << current->order)) {
+            if(buddy->flags & PAGE_FLAG_USED)
+            panicf("%X %X %X", &buddy->flags, page_to_phys(buddy), page_to_virt(buddy));
+            add_to_freelists(buddy);
+            continue;
         }
 
-        if(actual >= (uint32_t) (1 << order)) {
-            actual -= 1 << order;
-        }
+        //We have allocated a piece of the requested block and now we need to
+        //subdivide the buddy to obtain the rest of the requested space.
+        actual ^= (1ULL << current->order);
+        current = buddy;
     }
 
-    return block;
+    add_to_freelists(buddy);
 }
 
-static page_t * do_alloc_pages(uint32_t number, uint32_t UNUSED(flags)) {
-    uint32_t target_order = fls32(number);
+//Start with the given block. Continue amalgamating the largest free block which
+//contains the original block with its buddy (if free) until this is no longer
+//possible. Then mark the big block as free.
+static inline void ripple_join(page_t *page) {
+    page_t *block = page;
+    page_t *buddy = get_buddy(block);
+    while(!(buddy->flags & PAGE_FLAG_USED)
+        && buddy->order == block->order
+        && block->order < MAX_ORDER) {
+        list_rm(&buddy->list);
+
+        block = join_block(block);
+        buddy = get_buddy(block);
+    }
+
+    add_to_freelists(block);
+}
+
+static page_t * do_alloc_pages(uint32_t number) {
+    uint32_t target_order = log2(number);
     if(number ^ (1 << target_order)) {
         target_order++;
     }
 
-    for (uint32_t order = target_order; order < MAX_ORDER + 1; order++) {
-        if (free_page_list[order] != NULL) {
-            page_t *alloced = alloc_block_exact(order, number);
+    for(uint32_t order = target_order; order <= MAX_ORDER; order++) {
+        if(!list_empty(&free_page_list[order])) {
+            page_t *block = list_first(&free_page_list[order], page_t, list);
+            BUG_ON(block->flags & PAGE_FLAG_USED);
+            list_rm(&block->list);
+            trim_block(block, number);
 
             for(uint32_t i = 0; i < number; i++) {
-                flag_set(&alloced[i], PAGE_FLAG_USED);
+                BUG_ON(block[i].flags);
+                block[i].flags |= PAGE_FLAG_USED;
             }
 
             pages_in_use += number;
 
-            return alloced;
+            return block;
         }
     }
 
-    panic("OOM!");
-}
-
-#define PRESENT     (1 << 0)
-#define WRITABLE    (1 << 1)
-#define USER        (1 << 2)
-
-static void * do_map_page(const void *phys) {
-    kernel_page_tables[kernel_next_page / 1024][kernel_next_page % 1024] = (((uint32_t) phys) & 0xFFFFF000) | WRITABLE | PRESENT;
-    return (void *) ((kernel_next_page++ * PAGE_SIZE) + (((uint32_t) phys) & 0xFFF) + VIRTUAL_BASE);
-}
-
-void * map_page(const void *phys) {
-    return map_pages(phys, 1);
-}
-
-void * map_pages(const void *phys, uint32_t pages) {
-    uint32_t flags;
-    spin_lock_irqsave(&map_lock, &flags);
-
-    void *virt = do_map_page(phys);
-    for(uint32_t i = 1; i < pages; i++) {
-        do_map_page((void *) (((uint32_t) phys) + (PAGE_SIZE * i)));
-    }
-
-    spin_unlock_irqstore(&map_lock, flags);
-
-    return virt;
-}
-
-void page_build_directory(uint32_t directory[]) {
-    for (uint32_t i = 0; i < NUM_ENTRIES - KERNEL_TABLES; i++) {
-        directory[i] = 0;
-    }
-
-    for (uint32_t i = 0; i < KERNEL_TABLES; i++) {
-        directory[i + (VIRTUAL_BASE / PAGE_SIZE / NUM_ENTRIES)] = (((uint32_t) &kernel_page_tables[i]) - VIRTUAL_BASE) | PRESENT | WRITABLE;
-    }
-}
-
-void * alloc_page_user(uint32_t flags, task_t *task, uint32_t addr) {
-    page_t *page = alloc_page(flags);
-
-    flag_set(page, PAGE_FLAG_USER);
-
-    if(task->directory[addr / (PAGE_SIZE * 1024)] == 0) {
-        page_t *table = alloc_page(0);
-        task_add_page(task, table);
-
-        memset(page_to_virt(table), 0, PAGE_SIZE);
-
-        task->directory[addr / (PAGE_SIZE * 1024)] = ((uint32_t) page_to_phys(table)) | PRESENT | WRITABLE | USER;
-    }
-
-    ((uint32_t *) page_to_virt(phys_to_page((void *) (task->directory[addr / (PAGE_SIZE * 1024)] & ~0xFFF))))[(addr % (PAGE_SIZE * 1024)) / PAGE_SIZE] = ((uint32_t) page_to_phys(page)) | WRITABLE | PRESENT | USER;
-
-    invlpg(addr);
-
-    task_add_page(task, page);
-    return page_to_virt(page);
+    panicf("OOM! (%X/%X)", pages_in_use, pages_avaliable);
 }
 
 page_t * alloc_page(uint32_t flags) {
@@ -227,10 +212,22 @@ page_t * alloc_pages(uint32_t num, uint32_t flags) {
     uint32_t f;
     spin_lock_irqsave(&alloc_lock, &f);
 
-    page_t *pages = do_alloc_pages(num, flags);
+    page_t *pages = do_alloc_pages(num);
     void *first = map_pages(page_to_phys(pages), num);
     for(uint32_t i = 0; i < num; i++) {
         pages[i].addr = ((uint32_t) first) + (PAGE_SIZE * i);
+
+        if(flags & ALLOC_CACHE) {
+            pages[i].flags |= PAGE_FLAG_CACHE;
+        }
+    }
+
+    if(flags & ALLOC_COMPOUND) {
+        pages->compound_num = num;
+    }
+
+    if(flags & ALLOC_ZERO) {
+        memset(first, 0, num * PAGE_SIZE);
     }
 
     spin_unlock_irqstore(&alloc_lock, f);
@@ -242,53 +239,32 @@ void free_page(page_t *page) {
     uint32_t f;
     spin_lock_irqsave(&alloc_lock, &f);
 
-    BUG_ON(BIT_SET(page->flags, PAGE_FLAG_PERM));
-    BUG_ON(!BIT_SET(page->flags, PAGE_FLAG_USED));
+    pages_in_use -= page->order;
 
-    flag_unset(page, PAGE_FLAG_USED);
-    flag_unset(page, PAGE_FLAG_USER);
+    BUG_ON(page->flags & PAGE_FLAG_PERM);
+    BUG_ON(!(page->flags & PAGE_FLAG_USED));
 
-    page_t *buddy = get_buddy(page);
-    while (buddy != NULL && !BIT_SET(buddy->flags, PAGE_FLAG_USED) && buddy->order == page->order && page->order < MAX_ORDER) {
-        if (buddy->prev) {
-            buddy->prev->next = buddy->next;
-        } else {
-            free_page_list[buddy->order] = buddy->next;
-        }
+    page->flags = 0;
 
-        if (buddy->next) {
-            buddy->next->prev = buddy->prev;
-        }
-
-        uint32_t page_index = get_index(page);
-        pages[page_index - (page_index % 2)].order = page->order + 1;
-        page = &pages[page_index - (page_index % 2)];
-
-        buddy = get_buddy(page);
-    }
-
-    if (free_page_list[page->order]) {
-        free_page_list[page->order]->prev = page;
-    }
-
-    page->prev = NULL;
-    page->next = free_page_list[page->order];
-
-    free_page_list[page->order] = page;
-
-    pages_in_use--;
+    ripple_join(page);
 
     spin_unlock_irqstore(&alloc_lock, f);
 }
 
-void free_pages(page_t *pages, uint32_t count) {
-    for(uint32_t i = 0; i < count; i++) {
-        free_page(&pages[i]);
+void free_pages(page_t *pages, uint32_t num) {
+    pages->compound_num = 0;
+
+    page_t *current = pages;
+    while(num) {
+        uint32_t block_size = 1ULL << log2(num);
+        num ^= block_size;
+        free_page(current);
+        current += block_size;
     }
 }
 
 static void claim_page(uint32_t idx) {
-    flag_unset(&pages[idx], PAGE_FLAG_PERM);
+    pages[idx].flags &= ~PAGE_FLAG_PERM;
     free_page(&pages[idx]);
     pages_avaliable++;
 }
@@ -313,8 +289,12 @@ void __init mm_init() {
         }
     }
 
+    for(uint32_t i = 0; i <= MAX_ORDER; i++) {
+        list_init(&free_page_list[i]);
+    }
+
     //preserve the mmap_length struct
-    uint32_t mmap_length = multiboot_info->mmap_length;
+    mmap_length = multiboot_info->mmap_length;
     memcpy(mmap_buff, multiboot_info->mmap, mmap_length);
     multiboot_memory_map_t *mmap = (multiboot_memory_map_t *) mmap_buff;
 
@@ -368,29 +348,13 @@ void __init mm_init() {
 
     pages = (page_t *) (malloc_start + VIRTUAL_BASE);
 
-    //map kernel sections
-    uint32_t kernel_num_pages = DIV_UP(kernel_end, PAGE_SIZE);
-    for (uint32_t page = 0; page < kernel_num_pages; page++) {
-        kernel_page_tables[page / 1024][page % 1024] = (page * PAGE_SIZE) | WRITABLE | PRESENT;
+    //Replace the boot page table with the init one, and map in the page array
+    mmu_init(kernel_end, malloc_start);
+
+    multiboot_info = (void *) map_page((phys_addr_t) multiboot_info);
+    if(mods) {
+        mods = multiboot_info->mods = (void *) map_page((phys_addr_t) mods);
     }
-
-    //map the massive page_t struct array
-    uint32_t malloc_num_pages = DIV_UP(sizeof (page_t) * NUM_ENTRIES * NUM_ENTRIES, PAGE_SIZE);
-    for (uint32_t page = kernel_num_pages; page <= kernel_num_pages + malloc_num_pages; page++) {
-        kernel_page_tables[page / 1024][page % 1024] = (malloc_start + ((page - kernel_num_pages) * PAGE_SIZE)) | WRITABLE | PRESENT;
-    }
-
-    kernel_next_page = kernel_num_pages + malloc_num_pages + 1;
-
-    page_build_directory(page_directory);
-
-    __asm__ volatile("mov %0, %%cr3" :: "a" (((uint32_t) page_directory) - VIRTUAL_BASE));
-
-    debug_map_virtual();
-
-    multiboot_info = (multiboot_info_t *) map_page(multiboot_info);
-    if(mods)
-        mods = multiboot_info->mods = (multiboot_module_t *) map_page(mods);
 
     for (uint32_t i = 0; i < mods_count; i++) {
         uint32_t start = mods[i].start;
@@ -398,23 +362,21 @@ void __init mm_init() {
         uint32_t len = end - start;
         uint32_t num_pages = DIV_UP(end - start, PAGE_SIZE);
 
-        mods[i].start = (uint32_t) map_pages((void*) start, num_pages);
+        mods[i].start = (uint32_t) map_pages(start, num_pages);
         mods[i].end = mods[i].start + len;
     }
 
-    //this may arbitrarily corrupt multiboot data structures, including the mmap structure, which caused a bug
+    //this may arbitrarily corrupt multiboot data structures, including the mmap
+    //structure, which caused a bug
     for (uint32_t page = 0; page < NUM_ENTRIES * NUM_ENTRIES; page++) {
         pages[page].flags = PAGE_FLAG_PERM | PAGE_FLAG_USED;
         pages[page].order = 0;
-        pages[page].next = NULL;
-        pages[page].prev = NULL;
     }
 
-    uint32_t malloc_page_end = DIV_DOWN(malloc_start, PAGE_SIZE) + malloc_num_pages;
+    uint32_t malloc_page_end = DIV_DOWN(malloc_start, PAGE_SIZE) + MALLOC_NUM_PAGES;
 
     for (uint32_t i = 0; i < mmap_length / sizeof(multiboot_memory_map_t); i++) {
         if (mmap[i].type == MULTIBOOT_MEMORY_AVAILABLE) {
-
             if (mmap[i].addr >= ADDRESS_SPACE_SIZE) {
                 continue;
             }
@@ -429,15 +391,15 @@ void __init mm_init() {
             start = start == 0 ? 0 : DIV_UP(start, PAGE_SIZE);
             end = end == 0 ? 0 : DIV_DOWN(end, PAGE_SIZE);
 
-            for (uint32_t j = end; j > start; j--) {
+            for (uint32_t j = start; j < end; j++) {
                 if (j >= malloc_page_end) {
                     claim_page(j);
                 }
             }
-
-            pages_in_use = 0;
         }
     }
+
+    pages_in_use = 0;
 
     kprintf("mm - paging: %u MB, malloc: %u MB, avaliable: %u MB",
             DIV_DOWN(DIV_UP(sizeof (uint32_t) * NUM_ENTRIES * NUM_ENTRIES, PAGE_SIZE) * PAGE_SIZE, 1024 * 1024),
@@ -451,6 +413,31 @@ void mm_postinit_reclaim() {
     kprintf("mm - reclaiming %u init pages (0x%X-0x%X)", pages, &init_mem_start, &init_mem_end);
 
     for(uint32_t i = 0; i < pages; i++) {
-        claim_page(DIV_DOWN(((uint32_t) &init_mem_start), PAGE_SIZE) + i);
+        //claim_page(DIV_DOWN(((uint32_t) &init_mem_start), PAGE_SIZE) + i);
+    }
+}
+
+void * kmalloc(uint32_t size) {
+    if(size <= KALLOC_CACHE_MAX) {
+        void *mem = kalloc_cache_alloc(size);
+        BUG_ON(!(virt_to_page(mem)->flags & PAGE_FLAG_CACHE));
+        return mem;
+    } else {
+        uint32_t num_pages = DIV_UP(size, PAGE_SIZE);
+        page_t *pages = alloc_pages(num_pages, ALLOC_COMPOUND);
+        return page_to_virt(pages);
+    }
+}
+
+void kfree(void *mem) {
+    if(unlikely(!mem)) return;
+
+    page_t *first = virt_to_page(mem);
+    if(first->flags & PAGE_FLAG_CACHE) {
+        kalloc_cache_free(mem);
+    } else {
+        BUG_ON(!first->compound_num);
+        //TODO unmap the pages
+        free_pages(first, first->compound_num);
     }
 }

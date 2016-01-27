@@ -1,9 +1,11 @@
 #include "init/initcall.h"
 #include "lib/string.h"
 #include "common/compiler.h"
+#include "bug/panic.h"
 #include "arch/bios.h"
 #include "arch/acpi.h"
 #include "arch/mp.h"
+#include "arch/pic.h"
 #include "arch/pit.h"
 #include "arch/hpet.h"
 #include "bug/panic.h"
@@ -20,7 +22,7 @@ typedef struct acpi_rsdp {
     uint8_t checksum;
     uint8_t oem_id[6];
     uint8_t rev;
-    uint8_t *rsdt;
+    phys_addr_t rsdt;
 } PACKED acpi_rsdp_t;
 
 static inline bool acpi_checksum(void *ptr, uint32_t bytes) {
@@ -51,13 +53,7 @@ static INITCALL acpi_init() {
 
     kprintf("acpi - parsing tables");
 
-    uint8_t *search = map_page((void *) VRAM_START);
-
-    uint8_t *page = (uint8_t *) (VRAM_START + PAGE_SIZE);
-    for(uint32_t i = 1; i < VRAM_PAGES; i++) {
-        map_page(page);
-        page += PAGE_SIZE;
-    }
+    uint8_t *search = map_pages(VRAM_START, VRAM_PAGES);
 
     uint32_t inc = 0;
     while(inc < (VRAM_END - VRAM_START)) {
@@ -77,14 +73,14 @@ static INITCALL acpi_init() {
         rsdt = map_page(rsdp->rsdt);
 
         if(acpi_sig_match(ACPI_SIG_RSDT, rsdt) && acpi_valid_sdt(rsdt)) {
-            void **sdts = (void *) rsdt->data;
+            phys_addr_t *sdts = (void *) rsdt->data;
             for(uint32_t i = 0; i < (rsdt->len - sizeof(acpi_sdt_t)) / sizeof(void *); i++) {
                 //FIXME unmap these pages
                 acpi_sdt_t *real = map_page(sdts[i]);
 
                 /* Does the SDT header overflow onto the next page? */
                 if((((uint32_t) real) / PAGE_SIZE) < ((((uint32_t) real) + sizeof(acpi_sdt_t)) / PAGE_SIZE)) {
-                    map_page((void *) (((uint32_t) sdts[i]) + PAGE_SIZE));
+                    map_page(sdts[i] + PAGE_SIZE);
                 }
 
                 if(real->len < sizeof(acpi_sdt_t)) {
@@ -93,7 +89,7 @@ static INITCALL acpi_init() {
 
                 /* Does the SDT body overflow onto more pages? */
                 for(uint32_t i = 0; i < ((((uint32_t) real) + real->len) / PAGE_SIZE) - ((((uint32_t) real) + sizeof(acpi_sdt_t)) / PAGE_SIZE); i++) {
-                    map_page((void *) (((uint32_t) sdts[i]) + (PAGE_SIZE * (i + 1))));
+                    map_page(sdts[i] + (PAGE_SIZE * (i + 1)));
                 }
 
                 if(acpi_valid_sdt(real)) {

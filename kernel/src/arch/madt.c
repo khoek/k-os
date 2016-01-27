@@ -1,4 +1,6 @@
 #include "common/compiler.h"
+#include "common/math.h"
+#include "lib/string.h"
 #include "init/initcall.h"
 #include "arch/bios.h"
 #include "arch/acpi.h"
@@ -33,9 +35,9 @@ void madt_parse(acpi_sdt_t *madt) {
 
     uint32_t entry_ap_len = ((uint32_t) &entry_ap_end) - ((uint32_t) &entry_ap_start);
     uint32_t entry_ap_num_pages = DIV_UP(entry_ap_len, PAGE_SIZE);
-    void *entry_ap_dst_phys = (void *) ENTRY_AP_BASE;
+    phys_addr_t entry_ap_dst_phys = ENTRY_AP_BASE;
     void *entry_ap_dst_virt = map_pages(entry_ap_dst_phys, entry_ap_num_pages);
-    void *entry_ap_src_virt = map_pages(&entry_ap_start, entry_ap_num_pages);
+    void *entry_ap_src_virt = map_pages((uint32_t) &entry_ap_start, entry_ap_num_pages);
 
     memcpy(entry_ap_dst_virt, entry_ap_src_virt, entry_ap_len);
     //TODO unmap the pages

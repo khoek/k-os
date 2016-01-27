@@ -11,5 +11,7 @@ doc
 nbproject
 Makefile.local
 .gdbinit
+libc/init
 util/mkrootramfs
 util/rootramfs
+util/fs
