@@ -10,7 +10,7 @@ typedef struct page page_t;
 
 extern page_t *pages;
 
-#include "lib/int.h"
+#include "common/types.h"
 #include "common/list.h"
 
 static inline uint32_t get_index(page_t *page);

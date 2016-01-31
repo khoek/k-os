@@ -1,4 +1,4 @@
-#include "lib/int.h"
+#include "common/types.h"
 #include "init/initcall.h"
 #include "sync/spinlock.h"
 #include "net/socket.h"

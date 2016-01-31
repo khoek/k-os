@@ -4,7 +4,7 @@
 typedef struct char_device char_device_t;
 typedef struct char_device_ops char_device_ops_t;
 
-#include "lib/int.h"
+#include "common/types.h"
 #include "sync/spinlock.h"
 #include "fs/vfs.h"
 

@@ -10,9 +10,10 @@ typedef struct cpu_launchpad cpu_launchpad_t;
 
 typedef struct arch_task_data arch_task_data_t;
 
-#include "lib/int.h"
+typedef uint32_t phys_addr_t;
+
+#include "common/types.h"
 #include "common/compiler.h"
-#include "arch/mmu.h"
 
 struct registers {
     //pusha/popa order
@@ -49,7 +50,7 @@ struct arch_task_data {
     cpu_state_t *live_state;
 
     phys_addr_t cr3;
-    pdir_t *dir;
+    void *dir;
 
     //A copy of the cpu state pointed to by live_state. *live_state is
     //overwritten by cpu_state at context_switch() time. Thus, live_state should

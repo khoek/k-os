@@ -1,7 +1,7 @@
 #ifndef KERNEL_COMMON_HASH_H
 #define KERNEL_COMMON_HASH_H
 
-#include "lib/int.h"
+#include "common/types.h"
 #include "lib/string.h"
 #include "common/compiler.h"
 

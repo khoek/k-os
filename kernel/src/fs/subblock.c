@@ -1,4 +1,4 @@
-#include "lib/int.h"
+#include "common/types.h"
 #include "bug/debug.h"
 #include "mm/mm.h"
 #include "fs/vfs.h"

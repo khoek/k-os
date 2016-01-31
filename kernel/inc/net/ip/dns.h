@@ -1,7 +1,7 @@
 #ifndef KERNEL_NET_IP_DNS_H
 #define KERNEL_NET_IP_DNS_H
 
-#include "lib/int.h"
+#include "common/types.h"
 #include "common/compiler.h"
 
 typedef struct dns_header {

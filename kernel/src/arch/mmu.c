@@ -1,4 +1,4 @@
-#include "lib/int.h"
+#include "common/types.h"
 #include "common/compiler.h"
 #include "sync/spinlock.h"
 #include "bug/debug.h"
@@ -37,6 +37,13 @@ void user_map_page(task_t *task, void *virt, phys_addr_t phys) {
 
     if(task == current) {
         invlpg(virt);
+    }
+}
+
+void user_map_pages(task_t *task, void *virt, phys_addr_t phys, uint32_t num) {
+    for(uint32_t i = 0; i < num; i++) {
+        uint32_t off = i * PAGE_SIZE;
+        user_map_page(task, virt + off, phys + off);
     }
 }
 

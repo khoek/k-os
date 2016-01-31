@@ -1,5 +1,5 @@
 #include "init/initcall.h"
-#include "lib/int.h"
+#include "common/types.h"
 #include "lib/string.h"
 #include "lib/printf.h"
 #include "common/mmio.h"

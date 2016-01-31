@@ -1,4 +1,4 @@
-#include "lib/int.h"
+#include "common/types.h"
 #include "lib/string.h"
 #include "sync/semaphore.h"
 #include "mm/cache.h"

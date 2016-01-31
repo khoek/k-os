@@ -1,4 +1,4 @@
-#include "lib/int.h"
+#include "common/types.h"
 
 #define __divide_by_zero() \
     do {                        \

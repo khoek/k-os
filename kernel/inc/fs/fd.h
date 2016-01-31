@@ -1,7 +1,7 @@
 #ifndef KERNEL_FS_FD_H
 #define KERNEL_FS_FD_H
 
-#include "lib/int.h"
+#include "common/types.h"
 #include "fs/vfs.h"
 
 #define FD_INVALID (-1)

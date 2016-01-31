@@ -18,7 +18,7 @@ typedef enum task_state {
 
 typedef struct task task_t;
 
-#include "lib/int.h"
+#include "common/types.h"
 #include "common/list.h"
 #include "sync/spinlock.h"
 #include "arch/cpu.h"

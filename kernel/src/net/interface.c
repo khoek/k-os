@@ -1,4 +1,4 @@
-#include "lib/int.h"
+#include "common/types.h"
 #include "common/list.h"
 #include "common/listener.h"
 #include "sync/spinlock.h"

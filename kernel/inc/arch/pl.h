@@ -1,7 +1,7 @@
 #ifndef KERNEL_ARCH_PL_H
 #define KERNEL_ARCH_PL_H
 
-#include "lib/int.h"
+#include "common/types.h"
 #include "arch/cpu.h"
 
 void context_switch(task_t *t);

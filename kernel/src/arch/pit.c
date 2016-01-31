@@ -1,4 +1,4 @@
-#include "lib/int.h"
+#include "common/types.h"
 #include "common/asm.h"
 #include "arch/gdt.h"
 #include "arch/idt.h"

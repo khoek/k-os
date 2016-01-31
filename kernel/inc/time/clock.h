@@ -1,7 +1,7 @@
 #ifndef KERNEL_TIME_TIME_H
 #define KERNEL_TIME_TIME_H
 
-#include "lib/int.h"
+#include "common/types.h"
 #include "common/list.h"
 
 #define MILLIS_PER_SEC 1000

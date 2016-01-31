@@ -33,7 +33,7 @@ typedef struct processor_arch processor_arch_t;
 
 #define current get_percpu_unsafe(current_task)
 
-#include "lib/int.h"
+#include "common/types.h"
 #include "common/compiler.h"
 #include "common/asm.h"
 #include "sched/task.h"

@@ -1,4 +1,4 @@
-#include "lib/int.h"
+#include "common/types.h"
 #include "misc/stats.h"
 
 uint32_t task_count;

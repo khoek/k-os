@@ -1,6 +1,6 @@
 #include <stdbool.h>
 
-#include "lib/int.h"
+#include "common/types.h"
 #include "lib/string.h"
 #include "common/math.h"
 #include "init/initcall.h"
@@ -12,6 +12,10 @@
 #include "fs/binfmt.h"
 #include "fs/elf.h"
 #include "log/log.h"
+
+#define USTACK_ADDR_START 0xB0000000
+#define USTACK_NUM_PAGES 8
+#define USTACK_SIZE (USTACK_NUM_PAGES * PAGE_SIZE)
 
 static bool elf_header_valid(Elf32_Ehdr *ehdr) {
     return ehdr->e_ident[EI_MAG0] == ELFMAG0
@@ -28,7 +32,19 @@ static bool elf_header_valid(Elf32_Ehdr *ehdr) {
         && ehdr->e_machine == EM_386;
 }
 
-static bool load_elf(file_t *f) {
+static void * designate_stack(task_t *t) {
+    void *ustack = (void *) USTACK_ADDR_START;
+    while(resolve_virt(t, ustack)) {
+        ustack += USTACK_SIZE;
+    }
+
+    page_t *ustack_page = alloc_pages(ALLOC_ZERO, USTACK_NUM_PAGES);
+    user_map_pages(current, ustack, page_to_phys(ustack_page), USTACK_NUM_PAGES);
+
+    return ustack;
+}
+
+static bool load_elf(file_t *f, char **argv, char **envp) {
     Elf32_Ehdr *ehdr = kmalloc(sizeof(Elf32_Ehdr));
     if(vfs_read(f, ehdr, sizeof(Elf32_Ehdr)) != sizeof(Elf32_Ehdr)) {
         return false;
@@ -36,9 +52,6 @@ static bool load_elf(file_t *f) {
 
     if(!elf_header_valid(ehdr)) return false;
     if(!ehdr->e_phoff) return false;
-
-    //alloc stack, FIXME hardcoded, might overlap with an elf segment
-    user_map_page(current, (void *) 0x10000, page_to_phys(alloc_page(0)));
 
     kprintf("binfmt_elf - phdr @ %X", ehdr->e_phoff);
 
@@ -122,9 +135,15 @@ static bool load_elf(file_t *f) {
 
     kprintf("binfmt_elf - entry: %X", ehdr->e_entry);
 
-    pl_enter_userland((void *) ehdr->e_entry, (void *) (0x10000 + PAGE_SIZE));
+    cli();
 
-    return true;
+    current->argv = argv;
+    current->envp = envp;
+
+    void *ustack = designate_stack(current) + USTACK_SIZE;
+    pl_enter_userland((void *) ehdr->e_entry, ustack);
+
+    BUG();
 }
 
 static binfmt_t elf = {

@@ -1,9 +1,9 @@
 #ifndef KERNEL_COMMON_LIST_H
 #define KERNEL_COMMON_LIST_H
 
-#include <stddef.h>
 #include <stdbool.h>
 
+#include "common/types.h"
 #include "common/compiler.h"
 
 typedef struct list_head list_head_t;

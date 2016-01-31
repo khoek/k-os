@@ -1,7 +1,7 @@
 #ifndef KERNEL_TIMER_H
 #define KERNEL_TIMER_H
 
-#include "lib/int.h"
+#include "common/types.h"
 
 typedef void (*timer_callback_t)(void *);
 

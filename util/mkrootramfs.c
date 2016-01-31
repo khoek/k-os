@@ -11,7 +11,7 @@
 #include <string.h>
 #include <errno.h>
 
-#define BUFF_SIZE 4096
+#define BUFF_SIZE (1ULL << 20)
 
 #define NUM_FDS 256
 

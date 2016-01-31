@@ -1,7 +1,7 @@
 #ifndef KERNEL_ARCH_SPINLOCK_H
 #define KERNEL_ARCH_SPINLOCK_H
 
-#include "lib/int.h"
+#include "common/types.h"
 #include "common/compiler.h"
 #include "common/asm.h"
 #include "sync/spinlock.h"

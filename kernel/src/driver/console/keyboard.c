@@ -1,7 +1,6 @@
 #include <stdbool.h>
-#include <stddef.h>
 
-#include "lib/int.h"
+#include "common/types.h"
 #include "init/initcall.h"
 #include "common/asm.h"
 #include "sync/spinlock.h"
@@ -66,7 +65,8 @@ read_retry:
         }
 
         uint32_t chunk_len = keybuff_front < keybuff_back ? KEYBUFFLEN - keybuff_back : keybuff_front - keybuff_back;
-        chunk_len = MIN(chunk_len, len - coppied);
+        uint32_t left = len - coppied;
+        chunk_len = MIN(chunk_len, left);
 
         memcpy(buff, &keybuff[keybuff_back], chunk_len);
 

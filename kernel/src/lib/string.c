@@ -1,5 +1,3 @@
-#include <stddef.h>
-
 #include "lib/string.h"
 #include "mm/mm.h"
 

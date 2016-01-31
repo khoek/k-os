@@ -1,4 +1,4 @@
-#include "lib/int.h"
+#include "common/types.h"
 #include "lib/string.h"
 #include "lib/rand.h"
 #include "common/list.h"

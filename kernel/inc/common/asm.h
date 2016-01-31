@@ -1,7 +1,7 @@
 #ifndef KERNEL_COMMON_ASM_H
 #define KERNEL_COMMON_ASM_H
 
-#include "lib/int.h"
+#include "common/types.h"
 
 #define barrier() \
     do {                                \

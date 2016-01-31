@@ -1,6 +1,6 @@
 #include <stdbool.h>
 
-#include "lib/int.h"
+#include "common/types.h"
 #include "lib/string.h"
 #include "common/list.h"
 #include "init/initcall.h"

@@ -1,7 +1,7 @@
 #ifndef KERNEL_COMMON_SWAP_H
 #define KERNEL_COMMON_SWAP_H
 
-#include "lib/int.h"
+#include "common/types.h"
 
 static inline int16_t swap_int16(int16_t val) {
     return (val << 8) | ((val >> 8) & 0xFF);

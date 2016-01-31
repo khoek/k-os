@@ -1,4 +1,4 @@
-#include "lib/int.h"
+#include "common/types.h"
 #include "init/initcall.h"
 #include "mm/cache.h"
 #include "fs/char.h"

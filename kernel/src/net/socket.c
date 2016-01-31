@@ -1,4 +1,4 @@
-#include "lib/int.h"
+#include "common/types.h"
 #include "lib/string.h"
 #include "bug/panic.h"
 #include "sync/spinlock.h"

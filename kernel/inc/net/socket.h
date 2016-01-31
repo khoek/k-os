@@ -3,7 +3,7 @@
 
 #include <stdbool.h>
 
-#include "lib/int.h"
+#include "common/types.h"
 #include "common/list.h"
 #include "common/hashtable.h"
 
@@ -89,7 +89,7 @@ struct sock {
     hashtable_node_t node;
 };
 
-#include "lib/int.h"
+#include "common/types.h"
 #include "net/packet.h"
 #include "fs/fd.h"
 

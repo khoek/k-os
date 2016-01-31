@@ -1,5 +1,5 @@
 #include <stdbool.h>
-#include "lib/int.h"
+#include "common/types.h"
 #include "bug/panic.h"
 #include "mm/mm.h"
 #include "log/log.h"

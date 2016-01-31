@@ -1,5 +1,3 @@
-#include <stddef.h>
-
 #include "lib/string.h"
 #include "init/initcall.h"
 #include "bug/panic.h"

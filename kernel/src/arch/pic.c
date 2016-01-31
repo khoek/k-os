@@ -1,5 +1,3 @@
-#include <stddef.h>
-
 #include "init/initcall.h"
 #include "common/compiler.h"
 #include "common/asm.h"

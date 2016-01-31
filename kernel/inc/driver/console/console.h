@@ -1,7 +1,7 @@
 #ifndef KERNEL_DRIVER_CONSOLE_CONSOLE_H
 #define KERNEL_DRIVER_CONSOLE_CONSOLE_H
 
-#include "lib/int.h"
+#include "common/types.h"
 #include "device/device.h"
 #include "fs/char.h"
 

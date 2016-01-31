@@ -1,7 +1,7 @@
 #ifndef KERNEL_NET_INTERFACE_H
 #define KERNEL_NET_INTERFACE_H
 
-#include "lib/int.h"
+#include "common/types.h"
 #include "common/list.h"
 #include "common/listener.h"
 #include "net/packet.h"

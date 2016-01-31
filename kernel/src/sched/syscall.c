@@ -1,6 +1,4 @@
-#include <stddef.h>
-
-#include "lib/int.h"
+#include "common/types.h"
 #include "lib/string.h"
 #include "init/initcall.h"
 #include "common/asm.h"

@@ -3,7 +3,7 @@
 
 typedef struct disk_label disk_label_t;
 
-#include "lib/int.h"
+#include "common/types.h"
 #include "common/list.h"
 #include "fs/block.h"
 

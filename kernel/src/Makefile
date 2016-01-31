@@ -4,9 +4,9 @@ ASFLAGS:=--32
 
 CCFLAGS:=-Wall -Wextra -Werror -Wno-unused-parameter -m32 -I../inc -std=gnu99 \
 	-include "common/config.h" \
-	-nostdlib -ffreestanding -c -g -O3 -fno-strict-aliasing
+	-nostdlib -ffreestanding -c -g -fno-strict-aliasing
 
-LDFLAGS:=-m32 -T linker.ld -o kernel.elf -nostdlib -ffreestanding -g -O3 \
+LDFLAGS:=-m32 -T linker.ld -o kernel.elf -nostdlib -ffreestanding -g \
 	-Wl,--build-id=none
 
 SRCS:= $(shell find . -type f -name "*.s")

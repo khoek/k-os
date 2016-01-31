@@ -1,7 +1,7 @@
 #ifndef KERNEL_ARCH_MATH_H
 #define KERNEL_ARCH_MATH_H
 
-#include "lib/int.h"
+#include "common/types.h"
 #include "common/math.h"
 
 static inline uint32_t fls32(uint32_t x) {

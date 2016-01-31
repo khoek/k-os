@@ -1,7 +1,6 @@
-#include <stddef.h>
 #include <stdbool.h>
 
-#include "lib/int.h"
+#include "common/types.h"
 #include "lib/string.h"
 #include "init/initcall.h"
 #include "init/multiboot.h"

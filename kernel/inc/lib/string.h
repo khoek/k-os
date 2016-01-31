@@ -1,10 +1,9 @@
 #ifndef KERNEL_LIB_STRING_H
 #define KERNEL_LIB_STRING_H
 
-#include <stddef.h>
 #include <stdarg.h>
 
-#include "int.h"
+#include "common/types.h"
 
 int isdigit(int c);
 

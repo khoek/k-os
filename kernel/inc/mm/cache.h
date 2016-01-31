@@ -7,7 +7,7 @@
 #define KALLOC_CACHE_MAX (1ULL << KALLOC_CACHE_SHIFT_MAX)
 #define KALLOC_NUM_CACHES (KALLOC_CACHE_SHIFT_MAX - KALLOC_CACHE_SHIFT_MIN + 1)
 
-#include "lib/int.h"
+#include "common/types.h"
 #include "init/initcall.h"
 
 typedef struct cache cache_t;

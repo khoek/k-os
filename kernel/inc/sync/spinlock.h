@@ -3,9 +3,7 @@
 
 typedef struct spinlock spinlock_t;
 
-#include <stddef.h>
-
-#include "lib/int.h"
+#include "common/types.h"
 #include "arch/spinlock.h"
 
 struct spinlock {

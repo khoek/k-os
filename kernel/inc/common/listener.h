@@ -1,7 +1,7 @@
 #ifndef KERNEL_COMMON_LISTENER_H
 #define KERNEL_COMMON_LISTENER_H
 
-#include "lib/int.h"
+#include "common/types.h"
 #include "common/list.h"
 
 typedef chain_head_t listener_chain_head_t;

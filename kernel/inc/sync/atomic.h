@@ -1,7 +1,7 @@
 #ifndef KERNEL_SYNC_ATOMIC_H
 #define KERNEL_SYNC_ATOMIC_H
 
-#include "lib/int.h"
+#include "common/types.h"
 
 typedef struct atomic {
     int32_t value;

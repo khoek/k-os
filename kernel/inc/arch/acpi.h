@@ -1,7 +1,7 @@
 #ifndef KERNEL_ARCH_ACPI_H
 #define KERNEL_ARCH_ACPI_H
 
-#include "lib/int.h"
+#include "common/types.h"
 #include "common/compiler.h"
 
 typedef struct acpi_sdt {

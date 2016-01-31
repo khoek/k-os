@@ -1,7 +1,7 @@
 #ifndef KERNEL_FS_ELF_H
 #define KERNEL_FS_ELF_H
 
-#include "lib/int.h"
+#include "common/types.h"
 #include "common/compiler.h"
 
 typedef uint32_t Elf32_Addr;

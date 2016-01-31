@@ -1,4 +1,4 @@
-#include "lib/int.h"
+#include "common/types.h"
 
 static inline uint16_t sum_to_checksum(uint32_t sum) {
     while (sum >> 16) {

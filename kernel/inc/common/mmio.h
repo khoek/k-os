@@ -1,7 +1,7 @@
 #ifndef KERNEL_COMMON_MMIO_H
 #define KERNEL_COMMON_MMIO_H
 
-#include "lib/int.h"
+#include "common/types.h"
 
 static inline uint8_t readb(volatile void *addr, uint32_t offset) {
     return *((volatile uint8_t *) (((uint32_t) addr) + offset));

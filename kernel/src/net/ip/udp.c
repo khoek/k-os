@@ -1,4 +1,4 @@
-#include "lib/int.h"
+#include "common/types.h"
 #include "common/swap.h"
 #include "sync/spinlock.h"
 #include "sync/semaphore.h"

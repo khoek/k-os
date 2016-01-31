@@ -1,7 +1,7 @@
 #ifndef KERNEL_SYNC_SEMAPHORE_H
 #define KERNEL_SYNC_SEMAPHORE_H
 
-#include "lib/int.h"
+#include "common/types.h"
 #include "common/list.h"
 #include "common/compiler.h"
 #include "sync/spinlock.h"

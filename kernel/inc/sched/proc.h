@@ -3,7 +3,7 @@
 
 typedef struct processor processor_t;
 
-#include "lib/int.h"
+#include "common/types.h"
 #include "common/list.h"
 #include "arch/proc.h"
 

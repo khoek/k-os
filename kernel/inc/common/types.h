@@ -1,5 +1,7 @@
-#ifndef KERNEL_LIB_INT_H
-#define KERNEL_LIB_INT_H
+#ifndef KERNEL_COMMON_TYPES_H
+#define KERNEL_COMMON_TYPES_H
+
+#define NULL ((void *) 0)
 
 #define INT16_MIN  (-32768)
 #define INT16_MAX  32767
@@ -29,6 +31,7 @@ typedef unsigned short      uint16_t;
 typedef unsigned int        uint32_t;
 typedef unsigned long long  uint64_t;
 
+typedef uint32_t size_t;
 typedef int32_t ssize_t;
 typedef uint32_t off_t;
 

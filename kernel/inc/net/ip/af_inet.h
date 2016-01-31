@@ -1,7 +1,7 @@
 #ifndef KERNEL_NET_IP_PF_INET_H
 #define KERNEL_NET_IP_PF_INET_H
 
-#include "lib/int.h"
+#include "common/types.h"
 #include "common/list.h"
 #include "common/compiler.h"
 #include "net/socket.h"

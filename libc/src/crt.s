@@ -6,6 +6,8 @@
 .extern _data_start
 .extern _data_end
 
+.section .text.entry, "ax"
+
 _start:
 #    pop %eax
 #    mov %eax, _data_start

@@ -1,5 +1,3 @@
-#include <stddef.h>
-
 #include "common/math.h"
 #include "common/list.h"
 #include "init/initcall.h"

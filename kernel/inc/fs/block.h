@@ -4,7 +4,7 @@
 typedef struct block_device block_device_t;
 typedef struct block_device_ops block_device_ops_t;
 
-#include "lib/int.h"
+#include "common/types.h"
 #include "sync/spinlock.h"
 #include "fs/vfs.h"
 

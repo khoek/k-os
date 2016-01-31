@@ -3,7 +3,7 @@
 
 typedef struct packet packet_t;
 
-#include "lib/int.h"
+#include "common/types.h"
 #include "common/list.h"
 #include "net/socket.h"
 #include "net/interface.h"

@@ -5,7 +5,7 @@
 
 #define IRQ_OFFSET 0x20
 
-#include "lib/int.h"
+#include "common/types.h"
 #include "common/compiler.h"
 #include "init/initcall.h"
 #include "arch/pic.h"

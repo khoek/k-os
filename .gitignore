@@ -4,7 +4,7 @@
 *.iso
 *.img
 *.elf
-*.ld
+kernel/linker.ld
 *.mod
 build
 doc

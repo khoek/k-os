@@ -1,7 +1,7 @@
 #ifndef KERNEL_COMMON_MATH_H
 #define KERNEL_COMMON_MATH_H
 
-#include "lib/int.h"
+#include "common/types.h"
 #include "arch/math.h"
 
 #define MIN(a, b) ((a < b) ? a : b)

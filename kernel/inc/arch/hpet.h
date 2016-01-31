@@ -1,7 +1,7 @@
 #ifndef KERNEL_ARCH_HPET_H
 #define KERNEL_ARCH_HPET_H
 
-#include "lib/int.h"
+#include "common/types.h"
 #include "init/initcall.h"
 #include "common/compiler.h"
 #include "arch/acpi.h"

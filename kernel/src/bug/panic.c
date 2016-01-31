@@ -1,4 +1,3 @@
-#include <stddef.h>
 #include <stdbool.h>
 #include "lib/string.h"
 #include "lib/printf.h"

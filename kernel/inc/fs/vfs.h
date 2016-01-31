@@ -33,7 +33,7 @@ typedef struct stat stat_t;
 
 extern mount_t *root_mount;
 
-#include "lib/int.h"
+#include "common/types.h"
 #include "common/list.h"
 #include "common/hashtable.h"
 #include "fs/fd.h"

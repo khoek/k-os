@@ -1,6 +1,4 @@
-#include <stddef.h>
-
-#include "lib/int.h"
+#include "common/types.h"
 #include "common/swap.h"
 #include "common/compiler.h"
 #include "bug/debug.h"

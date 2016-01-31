@@ -1,7 +1,7 @@
 #ifndef KERNEL_ARCH_GDT_H
 #define KERNEL_ARCH_GDT_H
 
-#include "lib/int.h"
+#include "common/types.h"
 #include "common/compiler.h"
 #include "sched/proc.h"
 

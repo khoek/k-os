@@ -2,12 +2,12 @@
 
 .PHONY: all kernel image run debug doc clean
 
-all: kernel cdrom.iso
+all: image
 
 kernel:
 	make -C src all
 
-cdrom.iso: build/boot/grub/grub.cfg build/kernel.elf build/rootramfs
+cdrom.iso: build/boot/grub/grub.cfg build/kernel.elf rootramfs
 	@echo "creating image"
 	@grub-mkrescue -o cdrom.iso build > /dev/null 2>&1
 
@@ -18,7 +18,8 @@ build/boot/grub/grub.cfg: boot/grub/grub.cfg
 	@mkdir -p build/boot/grub/
 	@cp -R boot/grub/grub.cfg build/boot/grub/grub.cfg
 
-build/rootramfs:
+rootramfs:
+	@rm -f build/rootramfs
 	make -C ../util rootramfs
 	@cp ../util/rootramfs build/rootramfs
 
