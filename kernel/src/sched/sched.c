@@ -181,13 +181,6 @@ void task_add(task_t *task) {
     spin_unlock_irqstore(&sched_lock, flags);
 }
 
-void task_save(void *sp) {
-    if(tasking_up) {
-        BUG_ON(!current);
-        save_cpu_state(current, sp);
-    }
-}
-
 void sched_try_resched() {
     if(tasking_up && (!current || get_percpu_unsafe(switch_time) <= uptime() || current->state != TASK_RUNNING)) {
         sched_switch();
@@ -216,7 +209,11 @@ void __noreturn sched_loop() {
 
 static void switch_interrupt(interrupt_t *interrupt, void *data) {
     eoi_handler(interrupt->vector);
-    cli();
+
+    //We save the stack here and not in do_sched_switch() because sched_loop()
+    //invokes do_sched_switch() and we don't care about saving its stack.
+    save_stack(&interrupt->cpu);
+
     do_sched_switch();
 }
 

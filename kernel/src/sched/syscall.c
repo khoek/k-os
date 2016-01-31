@@ -381,7 +381,7 @@ static syscall_t syscalls[MAX_SYSCALL] = {
 };
 
 static void syscall_handler(interrupt_t *interrupt, void *data) {
-    sti();
+    enter_syscall();
 
     registers_t *reg = &interrupt->cpu.reg;
     if(reg->eax >= MAX_SYSCALL || !syscalls[reg->eax]) {
@@ -391,6 +391,8 @@ static void syscall_handler(interrupt_t *interrupt, void *data) {
         reg->edx = ret >> 32;
         reg->eax = ret;
     }
+
+    leave_syscall();
 }
 
 static INITCALL syscall_init() {

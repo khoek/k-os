@@ -69,8 +69,6 @@ struct task {
 task_t * create_idle_task();
 void spawn_kernel_task(void (*main)(void *arg), void *arg);
 
-void task_save(void *sp);
-
 void task_fork(uint32_t flags, void (*setup)(void *arg), void *arg);
 void task_exit(int32_t code);
 

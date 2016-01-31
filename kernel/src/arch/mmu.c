@@ -20,7 +20,7 @@ static DEFINE_SPINLOCK(map_lock);
 static inline void do_user_map_page(task_t *task, uint32_t diridx, uint32_t tabidx, phys_addr_t phys) {
     pdir_t *dir = task->arch.dir;
 
-    ptab_t *tab = dir_get_tab(dir, tabidx);
+    ptab_t *tab = dir_get_tab(dir, diridx);
     if(!tab) {
         page_t *table_page = alloc_page(ALLOC_ZERO);
         phys_addr_t tab_phys = page_to_phys(table_page);

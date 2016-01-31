@@ -46,17 +46,11 @@ struct cpu_launchpad {
 } PACKED;
 
 struct arch_task_data {
-    //On top of the kernel_stack, updated every interrupt
+    //Top of kernel stack (where we popa/iret during a task switch).
     cpu_state_t *live_state;
 
     phys_addr_t cr3;
     void *dir;
-
-    //A copy of the cpu state pointed to by live_state. *live_state is
-    //overwritten by cpu_state at context_switch() time. Thus, live_state should
-    //never be read from but especially never written to, except by the state
-    //save/restore mechanism.
-    cpu_state_t cpu_state;
 };
 
 #include "sched/task.h"
@@ -68,6 +62,9 @@ void flush_segment_registers();
 uint32_t get_eflags();
 void set_eflags(uint32_t flags);
 
-void save_cpu_state(task_t *t, void *sp);
+void enter_syscall();
+void leave_syscall();
+
+void save_stack(void *sp);
 
 #endif

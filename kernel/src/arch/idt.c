@@ -89,8 +89,6 @@ void interrupt_dispatch(interrupt_t *interrupt) {
                 interrupt->error, interrupt->cpu.exec.eip);
     }
 
-    task_save(&interrupt->cpu);
-
 	if(!is_spurious(interrupt->vector)
 		&& !list_empty(&isrs[interrupt->vector - IRQ_OFFSET])) {
         irq_handler_t *handler;
