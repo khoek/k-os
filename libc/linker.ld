@@ -23,5 +23,6 @@ SECTIONS {
     _data_end = .;
     /DISCARD/ : {
         *(.comment)
+        *(.eh_frame)
     }
 }
