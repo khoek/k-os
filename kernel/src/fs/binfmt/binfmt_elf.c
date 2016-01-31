@@ -85,13 +85,15 @@ static bool load_elf(file_t *f, char **argv, char **envp) {
 
                 while(data_coppied < data_len) {
                     page_t *page = alloc_page(0);
-                    void *pagevirt = page_to_virt(page);
-                    user_map_page(current, addr, page_to_phys(page));
+                    void *virt = page_to_virt(page);
+                    phys_addr_t phys = page_to_phys(page);
+
+                    user_map_page(current, addr, phys);
 
                     uint32_t data_left = data_len - data_coppied;
                     ssize_t chunk_len = MIN(data_left, PAGE_SIZE);
 
-                    if(vfs_read(f, pagevirt, chunk_len) != chunk_len) {
+                    if(vfs_read(f, virt, chunk_len) != chunk_len) {
                         return false;
                     }
 
@@ -102,7 +104,7 @@ static bool load_elf(file_t *f, char **argv, char **envp) {
                     if(!data_left) {
                         uint32_t zero_chunk_len = PAGE_SIZE - chunk_len;
 
-                        memset(pagevirt + chunk_len, 0, zero_chunk_len);
+                        memset(virt + chunk_len, 0, zero_chunk_len);
                         zeroes_written += zero_chunk_len;
                     }
 
