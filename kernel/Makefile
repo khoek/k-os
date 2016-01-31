@@ -1,13 +1,16 @@
 -include ../Makefile.local
 
-.PHONY: all kernel image run debug doc clean
+.PHONY: all kernel image deps run debug doc clean
 
 all: image
 
 kernel:
 	make -C src all
 
-cdrom.iso: build/boot/grub/grub.cfg build/kernel.elf rootramfs
+deps:
+	make -C ../util
+
+cdrom.iso: build/boot/grub/grub.cfg build/kernel.elf build/rootramfs
 	@echo "creating image"
 	@grub-mkrescue -o cdrom.iso build > /dev/null 2>&1
 
@@ -18,9 +21,8 @@ build/boot/grub/grub.cfg: boot/grub/grub.cfg
 	@mkdir -p build/boot/grub/
 	@cp -R boot/grub/grub.cfg build/boot/grub/grub.cfg
 
-rootramfs:
+build/rootramfs: ../util/rootramfs
 	@rm -f build/rootramfs
-	make -C ../util rootramfs
 	@cp ../util/rootramfs build/rootramfs
 
 hdd.img:
@@ -28,7 +30,7 @@ hdd.img:
 	@parted hdd.img -s -- mklabel msdos > /dev/null 2>&1
 	@parted hdd.img -s -- mkpartfs primary fat32 1 -0 > /dev/null 2>&1
 
-image: kernel cdrom.iso
+image: deps kernel cdrom.iso
 
 run: image hdd.img
 	@echo "running qemu"

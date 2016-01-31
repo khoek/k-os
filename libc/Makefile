@@ -5,7 +5,7 @@ ASFLAGS:=--32
 CCFLAGS:=-Wall -Wextra -Werror -Wno-unused-parameter -m32 -Iinc -std=gnu99 \
         -nostdlib -ffreestanding --sysroot=inc -c -g -O3 -fno-strict-aliasing
 
-LDFLAGS:=-nostdlib -g -O3 -melf_i386 -T linker.ld
+LDFLAGS:=-nostdlib -g -O3 -T linker.ld
 
 SRCS:= $(shell find src -type f -name "*.s")
 SRCS+= $(shell find src -type f -name "*.c")
