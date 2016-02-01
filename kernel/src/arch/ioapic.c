@@ -200,10 +200,13 @@ void register_ioint(uint16_t flags, uint8_t bus_id, uint8_t bus_irq, uint8_t ioa
         panicf("mp - invalid mp bus id %X", bus_id);
     }
 
+    ioapic_t *ioapic = find_ioapic(ioapic_id);
+    if(!ioapic) return;
+
     if(!memcmp(BUS_NAME_PCI, mp_bus->name, 6)) {
-        register_pci_ioint(find_ioapic(ioapic_id), bus_irq, intin, flags);
+        register_pci_ioint(ioapic, bus_irq, intin, flags);
     } else if(!memcmp(BUS_NAME_ISA, mp_bus->name, 6)) {
-        register_isa_ioint(find_ioapic(ioapic_id), bus_irq, intin, flags);
+        register_isa_ioint(ioapic, bus_irq, intin, flags);
     }
 }
 
