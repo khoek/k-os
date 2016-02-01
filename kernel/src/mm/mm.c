@@ -83,8 +83,7 @@ static PURE inline page_t * get_master(page_t *page) {
 }
 
 static void add_to_freelists(page_t *page) {
-    BUG_ON(page->flags & PAGE_FLAG_PERM);
-    BUG_ON(page->flags & PAGE_FLAG_USED);
+    BUG_ON(!is_free(page));
     BUG_ON(!is_subblock_master(page));
     list_add(&page->list, &free_page_list[page->order]);
 }
@@ -136,6 +135,8 @@ static inline void trim_block(page_t *block, uint32_t actual) {
 
         //We can't subdivide a single page.
         BUG_ON(!current->order);
+        //Current should not be in use already.
+        BUG_ON(!is_free(current));
 
         //We are going to have to split the block.
         buddy = split_block(current);
@@ -143,8 +144,7 @@ static inline void trim_block(page_t *block, uint32_t actual) {
         //If our requested block size fits inside half of the original block,
         //free the buddy and repeat with the half.
         if(actual <= (1ULL << current->order)) {
-            if(buddy->flags & PAGE_FLAG_USED)
-            panicf("%X %X %X", &buddy->flags, page_to_phys(buddy), page_to_virt(buddy));
+            BUG_ON(!is_free(buddy));
             add_to_freelists(buddy);
             continue;
         }
