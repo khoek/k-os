@@ -10,7 +10,7 @@
 #include "driver/console/console.h"
 
 #define MAX_FRAMES      32
-#define BUFFSIZE        512
+#define PANICF_BUFF_SIZE        512
 
 void panic(char *message) {
     cli();
@@ -56,10 +56,10 @@ void panic(char *message) {
 }
 
 void panicf(char *fmt, ...) {
-    char buff[BUFFSIZE];
+    char buff[PANICF_BUFF_SIZE];
     va_list va;
     va_start(va, fmt);
-    if(vsprintf(buff, fmt, va) > BUFFSIZE) {
+    if(vsprintf(buff, fmt, va) > PANICF_BUFF_SIZE) {
         panic("panicf overflow");
     }
     va_end(va);
