@@ -28,6 +28,8 @@
 .global read
 .global write
 
+.global execve
+
 _exit:
     mov $0, %eax
     mov 4(%esp), %ecx
@@ -244,3 +246,16 @@ write:
 
     pop %ebx
     ret
+
+
+execve:
+    push %ebx
+
+    mov $24, %eax
+    mov 16(%esp), %ebx
+    mov 12(%esp), %edx
+    mov 8(%esp), %ecx
+    int $0x80
+
+    pop %ebx
+ret

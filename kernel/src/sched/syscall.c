@@ -12,6 +12,7 @@
 #include "sched/sched.h"
 #include "net/socket.h"
 #include "fs/vfs.h"
+#include "fs/exec.h"
 #include "log/log.h"
 
 #define MAX_SYSCALL 256
@@ -354,6 +355,22 @@ static uint64_t sys_write(registers_t *reg) {
     return ret;
 }
 
+static uint64_t sys_execve(registers_t *reg) {
+    char *pathname = (void *) reg->ecx;
+    char **argv = (void *) reg->edx;
+    char **envp = (void *) reg->ebx;
+
+    path_t p;
+    if(!vfs_lookup(&current->pwd, pathname, &p)) {
+        return -1;
+    }
+
+    bool ret = execute_path(&p, argv, envp);
+    BUG_ON(ret);
+
+    return -1;
+}
+
 static syscall_t syscalls[MAX_SYSCALL] = {
     [ 0] = sys_exit,
     [ 1] = sys_fork,
@@ -378,6 +395,7 @@ static syscall_t syscalls[MAX_SYSCALL] = {
     [21] = sys_stop,
     [22] = sys_read,
     [23] = sys_write,
+    [24] = sys_execve,
 };
 
 static void syscall_handler(interrupt_t *interrupt, void *data) {
