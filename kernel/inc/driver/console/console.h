@@ -10,6 +10,10 @@
 #define CONSOLE_WIDTH  80
 #define CONSOLE_HEIGHT 25
 
+#define CSI_SINGLE ((char) 0x9B)
+#define CSI_DOUBLE_PARTA ((char) 0x1B)
+#define CSI_DOUBLE_PARTB ((char) '[')
+
 #define B_KEY      0x30
 #define C_KEY      0x2e
 #define S_KEY      0x1f
@@ -21,6 +25,12 @@
 #define ALT_KEY    0x38
 #define SYSRQ_KEY  0x54
 
+typedef enum {
+    TERM_NORMAL,
+    TERM_ESCSEQ,
+    TERM_EXPECT_CSI_PARTB,
+} term_state_t;
+
 typedef struct console {
     device_t device;
     char_device_t *chardev;
@@ -30,6 +40,11 @@ typedef struct console {
 
     uint32_t row, col;
     char color;
+
+    term_state_t state;
+
+    char *escseq_buff;
+    size_t escseq_buff_front;
 
     spinlock_t lock;
 } console_t;
