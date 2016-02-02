@@ -18,6 +18,15 @@ static DEFINE_SPINLOCK(log_lock);
 static char timestamp_buff[TIME_BUFF_SIZE];
 static char line_buff[LINE_BUFF_SIZE];
 static DEFINE_SPINLOCK(line_buff_lock);
+static bool enabled = true;
+
+void vlog_disable() {
+    enabled = false;
+}
+
+void vlog_enable() {
+    enabled = true;
+}
 
 static void logbuff_append(const char *str, uint32_t len) {
     uint32_t coppied = 0;
@@ -26,7 +35,7 @@ static void logbuff_append(const char *str, uint32_t len) {
 
         memcpy(log_buff + front, str, chunk_len);
 
-        if(con_global) {
+        if(con_global && enabled) {
             vram_write(con_global, str, len);
         }
 

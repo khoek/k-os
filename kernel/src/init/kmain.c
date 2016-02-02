@@ -45,6 +45,8 @@ static void umain() {
     }
     kfree(str);
 
+    vlog_disable();
+
     ufdt_add(0, vfs_open_file(out.dentry->inode));
     ufdt_add(0, vfs_open_file(out.dentry->inode));
     ufdt_add(0, vfs_open_file(out.dentry->inode));

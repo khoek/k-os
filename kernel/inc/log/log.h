@@ -8,4 +8,7 @@ DECLARE_SPINLOCK(log_lock);
 void kprint(const char *str);
 void kprintf(const char *fmt, ...);
 
+void vlog_disable();
+void vlog_enable();
+
 #endif
