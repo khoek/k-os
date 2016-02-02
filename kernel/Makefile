@@ -1,48 +1,55 @@
--include ../Makefile.local
+include ../Makefile.config
 
-.PHONY: all kernel image deps run debug doc clean
+.PHONY: all clean doc
 
-all: image
+SRCDIR := src
+INCDIR := inc
+OBJDIR := build
 
-kernel:
-	make -C src all
+ASFLAGS := --32
 
-deps:
-	make -C ../util
+CCFLAGS := -Wall -Wextra -Werror -Wno-unused-parameter -m32 -I$(INCDIR) \
+	-std=gnu99 -fno-strict-aliasing -nostdlib -ffreestanding -c -g \
+	-include "common/config.h"
 
-cdrom.iso: build/boot/grub/grub.cfg build/kernel.elf build/rootramfs
-	@echo "creating image"
-	@grub-mkrescue -o cdrom.iso build > /dev/null 2>&1
+LDFLAGS := -m32 -nostdlib -ffreestanding -g -Wl,--build-id=none
 
-build/kernel.elf: src/kernel.elf
-	@cp src/kernel.elf build/kernel.elf
+ASSRCS := $(shell find $(SRCDIR) -type f -name "*.s")
+ASOBJS := $(patsubst $(SRCDIR)/%.s,$(OBJDIR)/%.o,$(ASSRCS))
 
-build/boot/grub/grub.cfg: boot/grub/grub.cfg
-	@mkdir -p build/boot/grub/
-	@cp -R boot/grub/grub.cfg build/boot/grub/grub.cfg
+CCSRCS := $(shell find $(SRCDIR) -type f -name "*.c")
+CCOBJS := $(patsubst $(SRCDIR)/%.c,$(OBJDIR)/%.o,$(CCSRCS))
 
-build/rootramfs: ../util/rootramfs
-	@rm -f build/rootramfs
-	@cp ../util/rootramfs build/rootramfs
+OBJS := $(ASOBJS) $(CCOBJS)
 
-hdd.img:
-	@dd if=/dev/zero of=hdd.img count=64000 bs=1k
-	@parted hdd.img -s -- mklabel msdos > /dev/null 2>&1
-	@parted hdd.img -s -- mkpartfs primary fat32 1 -0 > /dev/null 2>&1
+LDSCRIPTSRC := $(SRCDIR)/linker.ld.S
+LDSCRIPT := $(OBJDIR)/linker.ld
 
-image: deps kernel cdrom.iso
+all: $(KBINARY)
 
-run: image hdd.img
-	@echo "running qemu"
-	@$(QEMU) -smp cores=8 -boot d -cdrom cdrom.iso -drive id=disk,file=hdd.img,if=none -device ahci,id=ahci -device ide-drive,drive=disk,bus=ahci.0
+$(ASOBJS): $(OBJDIR)/%.o : $(SRCDIR)/%.s
+	@echo "      as  $(patsubst $(SRCDIR)/%,%,$<)"
+	@mkdir -p $(shell dirname $@)
+	@$(AS) $(ASFLAGS) -o $@ $<
+
+$(CCOBJS): $(OBJDIR)/%.o : $(SRCDIR)/%.c
+	@echo "      cc  $(patsubst $(SRCDIR)/%,%,$<)"
+	@mkdir -p $(shell dirname $@)
+	@$(CC) $(CCFLAGS) -o $@ $<
+
+$(LDSCRIPT): $(LDSCRIPTSRC)
+	@echo "      cc  $(patsubst $(SRCDIR)/%,%,$<)"
+	@mkdir -p $(shell dirname $@)
+	@$(CPP) -I$(INCDIR) -D__LINKER__ -P -o $@ $<
+
+$(KBINARY): $(OBJS) $(LDSCRIPT)
+	@echo "      ld  $@"
+	@$(CC) $(LDFLAGS) -T $(LDSCRIPT) -o $@ $(OBJS)
+
+clean:
+	rm -rf $(OBJDIR)
+	rm -rf $(KBINARY)
 
 doc:
 	@echo "running doxygen"
 	@doxygen
-
-clean:
-	make -C src clean
-	rm -rf build
-	rm -rf doc
-	rm -f cdrom.iso
-	rm -f hdd.img

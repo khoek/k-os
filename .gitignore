@@ -4,14 +4,9 @@
 *.iso
 *.img
 *.elf
-kernel/linker.ld
-*.mod
 build
 doc
-nbproject
+bin
+rootramfs
 Makefile.local
 .gdbinit
-libc/init
-util/mkrootramfs
-util/rootramfs
-util/fs

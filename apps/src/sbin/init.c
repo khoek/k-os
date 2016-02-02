@@ -58,7 +58,12 @@ void print_linestart() {
 }
 
 void execute_command(char *cmd) {
-    kprintf("executing: %s", cmd);
+    pid_t cpid = fork();
+
+    if(!cpid) {
+        execve(cmd, NULL, NULL);
+        while(1);
+    }
 }
 
 int main(int argc, char **argv) {

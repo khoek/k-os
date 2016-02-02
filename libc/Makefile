@@ -1,39 +1,41 @@
--include ../Makefile.local
-
-ASFLAGS:=--32
-
-CCFLAGS:=-Wall -Wextra -Werror -Wno-unused-parameter -m32 -Iinc -std=gnu99 \
-        -nostdlib -ffreestanding --sysroot=inc -c -g -O3 -fno-strict-aliasing
-
-LDFLAGS:=-nostdlib -g -O3 -T linker.ld
-
-SRCS:= $(shell find src -type f -name "*.s")
-SRCS+= $(shell find src -type f -name "*.c")
-
-OBJS:= $(patsubst %.c,%.o,$(patsubst %.s,%.o,$(SRCS)))
-
-all: libc.a init
-
-.s.o:
-	@echo "      as  $<"
-	@$(AS) $(ASFLAGS) -o $@ $<
-
-%.o: %.c
-	@echo "      cc  $<"
-	@$(CC) $(CCFLAGS) -o $@ $<
-
-libc.a: $(OBJS)
-	@echo "      ar  $@"
-	@rm -f libc.a
-	@$(AR) rcs libc.a $(OBJS)
-
-init: libc.a init.o linker.ld
-	@echo "      ld  init.o"
-	@$(LD) $(LDFLAGS) -o init init.o libc.a
-
-clean:
-	find . -name \*.o -type f -delete
-	rm -f libc.a
-	rm -f init
+include ../Makefile.config
 
 .PHONY: all clean
+
+SRCDIR := src
+INCDIR := inc
+OBJDIR := build
+
+ASFLAGS := --32
+
+CCFLAGS := -Wall -Wextra -Werror -Wno-unused-parameter -m32 -I$(INCDIR) \
+		-std=gnu99 -nostdlib -ffreestanding --sysroot=$(INCDIR) -c -g -O3 -fno-strict-aliasing
+
+ASSRCS := $(shell find $(SRCDIR) -type f -name "*.s")
+ASOBJS := $(patsubst $(SRCDIR)/%.s,$(OBJDIR)/%.o,$(ASSRCS))
+
+CCSRCS := $(shell find $(SRCDIR) -type f -name "*.c")
+CCOBJS := $(patsubst $(SRCDIR)/%.c,$(OBJDIR)/%.o,$(CCSRCS))
+
+OBJS := $(ASOBJS) $(CCOBJS)
+
+all: $(LIBCAR)
+
+$(ASOBJS): $(OBJDIR)/%.o : $(SRCDIR)/%.s
+	@echo "      as  $(patsubst $(SRCDIR)/%,%,$<)"
+	@mkdir -p $(shell dirname $@)
+	@$(AS) $(ASFLAGS) -o $@ $<
+
+$(CCOBJS): $(OBJDIR)/%.o : $(SRCDIR)/%.c
+	@echo "      cc  $(patsubst $(SRCDIR)/%,%,$<)"
+	@mkdir -p $(shell dirname $@)
+	@$(CC) $(CCFLAGS) -o $@ $<
+
+$(LIBCAR): $(OBJS)
+	@echo "      ar  $@"
+	@rm -f $@
+	@$(AR) rcs $@ $(OBJS)
+
+clean:
+	rm -rf $(OBJDIR)
+	rm -rf $(LIBCAR)

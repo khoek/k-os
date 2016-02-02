@@ -1,26 +1,21 @@
-CCFLAGS:=-Wall -Wextra -Werror -Wno-unused-parameter -std=gnu99 -O3
+include ../Makefile.config
 
-SRCS+= $(shell find . -type f -name "*.c")
-OBJS:= $(patsubst %.c,%,$(SRCS))
+.PHONY: all clean
 
-.PHONY: all deps clean
+SRCDIR := src
+OBJDIR := $(UTILBINDIR)
 
-all: deps $(OBJS) rootramfs
+CCFLAGS := -Wall -Wextra -Werror -Wno-unused-parameter -std=gnu99 -g -O3
 
-deps:
-	make -C ../libc
+SRCS := $(shell find $(SRCDIR) -type f -name "*.c")
+OBJS := $(patsubst $(SRCDIR)/%.c,$(OBJDIR)/%,$(SRCS))
 
-%: %.c
-	@echo "      cc  $<"
+all: $(OBJS)
+
+$(OBJS): $(OBJDIR)/% : $(SRCDIR)/%.c
+	@echo "      cc  $(patsubst $(SRCDIR)/%,%,$<)"
+	@mkdir -p $(shell dirname $@)
 	@$(CC) $(CCFLAGS) -o $@ $<
 
-rootramfs: mkrootramfs ../libc/init
-	@mkdir -p fs/sbin
-	@cp ../libc/init fs/sbin/init
-	@./mkrootramfs -o rootramfs fs
-	@echo "      mkrootramfs"
-
 clean:
-	rm -f $(OBJS)
-	rm -rf fs
-	rm -f rootramfs
+	rm -rf $(OBJDIR)
