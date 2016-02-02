@@ -124,26 +124,26 @@ static inline page_t * join_block(page_t *page) {
 static inline void trim_block(page_t *block, uint32_t actual) {
     BUG_ON(!actual);
 
-    page_t *current = block;
+    page_t *master = block;
     page_t *buddy;
     while(actual) {
         //SPECIAL CASE: if we have a perfect size block, do not subdivide
         //unecessarily.
-        if(actual == (1ULL << current->order)) {
+        if(actual == (1ULL << master->order)) {
             return;
         }
 
         //We can't subdivide a single page.
-        BUG_ON(!current->order);
+        BUG_ON(!master->order);
         //Current should not be in use already.
-        BUG_ON(!is_free(current));
+        BUG_ON(!is_free(master));
 
         //We are going to have to split the block.
-        buddy = split_block(current);
+        buddy = split_block(master);
 
         //If our requested block size fits inside half of the original block,
         //free the buddy and repeat with the half.
-        if(actual <= (1ULL << current->order)) {
+        if(actual <= (1ULL << master->order)) {
             BUG_ON(!is_free(buddy));
             add_to_freelists(buddy);
             continue;
@@ -151,8 +151,8 @@ static inline void trim_block(page_t *block, uint32_t actual) {
 
         //We have allocated a piece of the requested block and now we need to
         //subdivide the buddy to obtain the rest of the requested space.
-        actual ^= (1ULL << current->order);
-        current = buddy;
+        actual ^= (1ULL << master->order);
+        master = buddy;
     }
 
     add_to_freelists(buddy);
@@ -216,6 +216,9 @@ page_t * alloc_pages(uint32_t num, uint32_t flags) {
     for(uint32_t i = 0; i < num; i++) {
         pages[i].addr = ((uint32_t) first) + (PAGE_SIZE * i);
 
+        BUG_ON(!(pages[i].flags & PAGE_FLAG_USED));
+        BUG_ON(pages[i].flags & PAGE_FLAG_PERM);
+
         if(flags & ALLOC_CACHE) {
             pages[i].flags |= PAGE_FLAG_CACHE;
         }
@@ -253,12 +256,12 @@ void free_page(page_t *page) {
 void free_pages(page_t *pages, uint32_t num) {
     pages->compound_num = 0;
 
-    page_t *current = pages;
+    page_t *master = pages;
     while(num) {
         uint32_t block_size = 1ULL << log2(num);
         num ^= block_size;
-        free_page(current);
-        current += block_size;
+        free_page(master);
+        master += block_size;
     }
 }
 

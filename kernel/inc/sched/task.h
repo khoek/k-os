@@ -23,8 +23,11 @@ typedef struct task task_t;
 #include "sync/spinlock.h"
 #include "arch/cpu.h"
 #include "arch/idt.h"
+#include "sched/proc.h"
 #include "fs/fd.h"
 #include "fs/vfs.h"
+
+typedef int32_t pid_t;
 
 typedef int32_t ufd_idx_t;
 
@@ -45,7 +48,7 @@ struct task {
     void *kernel_stack_top;
     void *kernel_stack_bottom;
 
-    uint32_t pid;
+    pid_t pid;
     uint32_t flags;
 
     spinlock_t lock;
@@ -57,6 +60,8 @@ struct task {
     ufd_idx_t *ufd_list;
 
     task_state_t state;
+    //processor this task is currently executing on, NULL otherwise
+    processor_t *live_proc;
 
     path_t root;
     path_t pwd;
@@ -69,7 +74,7 @@ struct task {
 task_t * create_idle_task();
 void spawn_kernel_task(void (*main)(void *arg), void *arg);
 
-void task_fork(uint32_t flags, void (*setup)(void *arg), void *arg);
+pid_t task_fork(task_t *t, uint32_t flags, void (*setup)(void *arg), void *arg);
 void task_exit(int32_t code);
 
 void copy_fds(task_t *to, task_t *from);

@@ -28,7 +28,7 @@
 
 #define TASK_FLAG_USER (1 << 0)
 
-static uint32_t pid = 2;
+static pid_t pid = 2;
 
 static cache_t *task_cache;
 
@@ -65,26 +65,28 @@ void copy_fds(task_t *to, task_t *from) {
 }
 
 void spawn_kernel_task(void (*main)(void *arg), void *arg) {
-    task_fork(0, main, arg);
+    task_fork(current, 0, main, arg);
 }
 
-void task_fork(uint32_t flags, void (*setup)(void *arg), void *arg) {
+pid_t task_fork(task_t *t, uint32_t flags, void (*setup)(void *arg), void *arg) {
     task_count++;
 
     task_t *child = task_build();
     child->pid = pid++;
-    child->argv = current->argv;
-    child->envp = current->envp;
+    child->argv = t->argv;
+    child->envp = t->envp;
 
-    child->root = current->root;
-    child->pwd = current->pwd;
+    child->root = t->root;
+    child->pwd = t->pwd;
 
     pl_setup_task(child, setup, arg);
 
-    copy_fds(child, current);
-    copy_mem(child, current);
+    copy_fds(child, t);
+    copy_mem(child, t);
 
     task_add(child);
+
+    return child->pid;
 }
 
 void __init root_task_init(void *umain, char **argv, char **envp) {

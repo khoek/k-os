@@ -38,7 +38,7 @@ static void * designate_stack(task_t *t) {
         ustack += USTACK_SIZE;
     }
 
-    page_t *ustack_page = alloc_pages(ALLOC_ZERO, USTACK_NUM_PAGES);
+    page_t *ustack_page = alloc_pages(USTACK_NUM_PAGES, ALLOC_ZERO);
     user_map_pages(current, ustack, page_to_phys(ustack_page), USTACK_NUM_PAGES);
 
     return ustack;
@@ -143,7 +143,7 @@ static bool load_elf(file_t *f, char **argv, char **envp) {
     current->envp = envp;
 
     void *ustack = designate_stack(current) + USTACK_SIZE;
-    pl_enter_userland((void *) ehdr->e_entry, ustack);
+    pl_enter_userland((void *) ehdr->e_entry, ustack, NULL);
 
     BUG();
 }

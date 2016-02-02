@@ -4,6 +4,7 @@
 #include "common/asm.h"
 #include "arch/gdt.h"
 #include "arch/idt.h"
+#include "arch/pl.h"
 #include "bug/panic.h"
 #include "bug/debug.h"
 #include "mm/cache.h"
@@ -17,38 +18,61 @@
 
 #define MAX_SYSCALL 256
 
-typedef uint64_t (*syscall_t)(registers_t *);
+typedef uint64_t (*syscall_t)(cpu_state_t *);
 
-static uint64_t sys_exit(registers_t *reg) {
-    task_exit(reg->ecx);
+#define SYSCALL_NAME(name) sys_##name
+#define DEFINE_SYSCALL(name) uint64_t SYSCALL_NAME(name) (cpu_state_t *state)
+#define reg(r) (state->reg.r)
+
+static DEFINE_SYSCALL(exit) {
+    task_exit(reg(ecx));
 
     BUG();
     return 0;
 }
 
-static uint64_t sys_fork(registers_t *reg) {
-    return ~reg->ecx;
+typedef struct fork_data {
+    cpu_state_t resume_state;
+} fork_data_t;
+
+void ret_from_fork(void *arg) {
+    fork_data_t forkd;
+    memcpy(&forkd, arg, sizeof(fork_data_t));
+    kfree(arg);
+
+    forkd.resume_state.reg.edx = 0;
+    forkd.resume_state.reg.eax = 0;
+
+    pl_enter_userland((void *) forkd.resume_state.exec.eip, (void *) forkd.resume_state.stack.esp, &forkd.resume_state.reg);
+}
+
+static DEFINE_SYSCALL(fork) {
+    fork_data_t *forkd = kmalloc(sizeof(fork_data_t));
+    memcpy(&forkd->resume_state, state, sizeof(cpu_state_t));
+    pid_t cpid = task_fork(current, 0, ret_from_fork, forkd);
+
+    return cpid;
 }
 
 static void wake_task(task_t *task) {
     task_wake(task);
 }
 
-static uint64_t sys_sleep(registers_t *reg) {
+static DEFINE_SYSCALL(sleep) {
     task_sleep(current);
-    timer_create(reg->ecx, (void (*)(void *)) wake_task, current);
+    timer_create(reg(ecx), (void (*)(void *)) wake_task, current);
     sched_switch();
 
     return 0;
 }
 
-static uint64_t sys_log(registers_t *reg) {
-    if(reg->edx > 1023) {
+static DEFINE_SYSCALL(log) {
+    if(reg(edx) > 1023) {
         kprintf("syscall - task log string too long!");
     } else {
-        char *buff = kmalloc(reg->edx + 1);
-        memcpy(buff, (void *) reg->ecx, reg->edx);
-        buff[reg->edx] = '\0';
+        char *buff = kmalloc(reg(edx) + 1);
+        memcpy(buff, (void *) reg(ecx), reg(edx));
+        buff[reg(edx)] = '\0';
 
         kprintf("user[%u] - %s", current->pid, buff);
 
@@ -58,23 +82,23 @@ static uint64_t sys_log(registers_t *reg) {
     return 0;
 }
 
-static uint64_t sys_uptime(registers_t *reg) {
+static DEFINE_SYSCALL(uptime) {
     return uptime();
 }
 
-static uint64_t sys_open(registers_t *reg) {
-    //TODO verify that reg->ecx is a pointer to a valid path string, and that reg->edx are valid flags
+static DEFINE_SYSCALL(open) {
+    //TODO verify that reg(ecx) is a pointer to a valid path string, and that reg(edx) are valid flags
 
     path_t path;
-    if(vfs_lookup(&current->pwd, (const char *) reg->ecx, &path)) {
-        return ufdt_add(reg->edx, vfs_open_file(path.dentry->inode));
+    if(vfs_lookup(&current->pwd, (const char *) reg(ecx), &path)) {
+        return ufdt_add(reg(edx), vfs_open_file(path.dentry->inode));
     } else {
         return -1;
     }
 }
 
-static uint64_t sys_close(registers_t *reg) {
-    ufd_idx_t ufd = reg->ecx;
+static DEFINE_SYSCALL(close) {
+    ufd_idx_t ufd = reg(ecx);
     //TODO sanitize arguments
 
     file_t *gfd = ufdt_get(ufd);
@@ -88,10 +112,10 @@ static uint64_t sys_close(registers_t *reg) {
     }
 }
 
-static uint64_t sys_socket(registers_t *reg) {
+static DEFINE_SYSCALL(socket) {
     int32_t ret = -1;
 
-    sock_t *sock = sock_create(reg->ecx, reg->edx, reg->ebx);
+    sock_t *sock = sock_create(reg(ecx), reg(edx), reg(ebx));
     if(sock) {
         file_t *fd = sock_create_fd(sock);
         if(fd) {
@@ -105,28 +129,28 @@ static uint64_t sys_socket(registers_t *reg) {
     return ret;
 }
 
-static uint64_t sys_listen(registers_t *reg) {
+static DEFINE_SYSCALL(listen) {
     int32_t ret = -1;
 
-    file_t *fd = ufdt_get(reg->ecx);
+    file_t *fd = ufdt_get(reg(ecx));
     if(fd) {
-        ret = sock_listen(gfd_to_sock(fd), reg->edx) ? 0 : -1;
+        ret = sock_listen(gfd_to_sock(fd), reg(edx)) ? 0 : -1;
     }
 
-    ufdt_put(reg->ecx);
+    ufdt_put(reg(ecx));
 
     return ret;
 }
 
-static uint64_t sys_accept(registers_t *reg) {
+static DEFINE_SYSCALL(accept) {
     int32_t ret = -1;
 
-    file_t *fd = ufdt_get(reg->ecx);
+    file_t *fd = ufdt_get(reg(ecx));
     if(fd) {
         //TODO sanitize address buff/size buff arguments
 
         sock_t *sock = gfd_to_sock(fd);
-        struct sockaddr *useraddr = (struct sockaddr *) reg->edx;
+        struct sockaddr *useraddr = (struct sockaddr *) reg(edx);
         sock_t *child = sock_accept(sock);
 
         if(child) {
@@ -135,29 +159,29 @@ static uint64_t sys_accept(registers_t *reg) {
             if(useraddr) {
                 useraddr->sa_family = child->family->family;
                 memcpy(child->peer.addr, &useraddr->sa_data, child->family->addr_len);
-                *((socklen_t *) reg->ebx) = child->family->addr_len;
+                *((socklen_t *) reg(ebx)) = child->family->addr_len;
             }
         }
 
-        ufdt_put(reg->ecx);
+        ufdt_put(reg(ecx));
     }
 
     return ret;
 }
 
-static uint64_t sys_bind(registers_t *reg) {
+static DEFINE_SYSCALL(bind) {
     int32_t ret = -1;
 
-    file_t *fd = ufdt_get(reg->ecx);
+    file_t *fd = ufdt_get(reg(ecx));
     if(fd) {
         //TODO sanitize address/size arguments
 
         sock_t *sock = gfd_to_sock(fd);
 
-        struct sockaddr *useraddr = (struct sockaddr *) reg->edx;
+        struct sockaddr *useraddr = (struct sockaddr *) reg(edx);
 
         sock_addr_t addr;
-        if(reg->ebx < sock->family->addr_len + sizeof(struct sockaddr)) {
+        if(reg(ebx) < sock->family->addr_len + sizeof(struct sockaddr)) {
             //FIXME errno = EINVAL
         } else if(useraddr->sa_family != sock->family->family) {
             //FIXME errno = EAFNOSUPPORT
@@ -171,22 +195,22 @@ static uint64_t sys_bind(registers_t *reg) {
             ret = sock_bind(sock, &addr) ? 0 : -1;
         }
 
-        ufdt_put(reg->ecx);
+        ufdt_put(reg(ecx));
     }
 
     return ret;
 }
 
-static uint64_t sys_connect(registers_t *reg) {
+static DEFINE_SYSCALL(connect) {
     int32_t ret = -1;
 
-    file_t *fd = ufdt_get(reg->ecx);
+    file_t *fd = ufdt_get(reg(ecx));
     if(fd) {
         //TODO sanitize address/size arguments
 
         sock_t *sock = gfd_to_sock(fd);
 
-        struct sockaddr *useraddr = (struct sockaddr *) reg->edx;
+        struct sockaddr *useraddr = (struct sockaddr *) reg(edx);
 
         sock_addr_t addr;
         if(useraddr->sa_family == AF_UNSPEC) {
@@ -195,7 +219,7 @@ static uint64_t sys_connect(registers_t *reg) {
 
             ret = sock_connect(sock, &addr) ? 0 : -1;
         } else {
-            if(reg->ebx < sock->family->addr_len + sizeof(struct sockaddr)) {
+            if(reg(ebx) < sock->family->addr_len + sizeof(struct sockaddr)) {
                 //FIXME errno = EINVAL
             } else if(useraddr->sa_family != sock->family->family) {
                 //FIXME errno = EAFNOSUPPORT
@@ -210,75 +234,75 @@ static uint64_t sys_connect(registers_t *reg) {
             }
         }
 
-        ufdt_put(reg->ecx);
+        ufdt_put(reg(ecx));
     }
 
     return ret;
 }
 
-static uint64_t sys_shutdown(registers_t *reg) {
+static DEFINE_SYSCALL(shutdown) {
     int32_t ret = -1;
 
-    file_t *fd = ufdt_get(reg->ecx);
+    file_t *fd = ufdt_get(reg(ecx));
     if(fd) {
-        ret = sock_shutdown(gfd_to_sock(fd), reg->edx);
+        ret = sock_shutdown(gfd_to_sock(fd), reg(edx));
 
-        ufdt_put(reg->ecx);
+        ufdt_put(reg(ecx));
     }
 
     return ret;
 }
 
-static uint64_t sys_send(registers_t *reg) {
+static DEFINE_SYSCALL(send) {
     int32_t ret = -1;
 
-    file_t *fd = ufdt_get(reg->ecx);
+    file_t *fd = ufdt_get(reg(ecx));
     if(fd) {
         //TODO sanitize buffer/size arguments
 
         //This buffer will be freed by the net subsystem
-        void *buff = kmalloc(reg->ebx);
-        memcpy(buff, (void *) reg->edx, reg->ebx);
+        void *buff = kmalloc(reg(ebx));
+        memcpy(buff, (void *) reg(edx), reg(ebx));
 
-        ret = sock_send(gfd_to_sock(fd), buff, reg->ebx, reg->esi);
+        ret = sock_send(gfd_to_sock(fd), buff, reg(ebx), reg(esi));
 
-        ufdt_put(reg->ecx);
+        ufdt_put(reg(ecx));
     }
 
     return ret;
 }
 
-static uint64_t sys_recv(registers_t *reg) {
+static DEFINE_SYSCALL(recv) {
     int32_t ret = -1;
 
-    file_t *fd = ufdt_get(reg->ecx);
+    file_t *fd = ufdt_get(reg(ecx));
     if(fd) {
         //TODO sanitize buffer/size arguments
 
-        ret = sock_recv(gfd_to_sock(fd), (void *) reg->edx, reg->ebx, reg->esi);
+        ret = sock_recv(gfd_to_sock(fd), (void *) reg(edx), reg(ebx), reg(esi));
 
-        ufdt_put(reg->ecx);
+        ufdt_put(reg(ecx));
     }
 
     return ret;
 }
 
-static uint64_t sys_alloc_page(registers_t *reg) {
+static DEFINE_SYSCALL(alloc_page) {
     panic("Unimplemented");
 }
 
-static uint64_t sys_free_page(registers_t *reg) {
+static DEFINE_SYSCALL(free_page) {
     panic("Unimplemented");
 }
 
-static uint64_t sys_stat(registers_t *reg) {
+static DEFINE_SYSCALL(stat) {
     int32_t ret = -1;
 
-    //TODO verify that reg->ecx is a pointer to a valid path string, and that reg->edx are valid flags
+    //TODO verify that reg(ecx) is a pointer to a valid path string, and that reg(edx) are valid flags
 
     path_t path;
-    if(vfs_lookup(&current->pwd, (const char *) reg->ecx, &path)) {
-        vfs_getattr(path.dentry, (void *) reg->edx);
+    if(vfs_lookup(&current->pwd, (const char *) reg(ecx), &path)) {
+        vfs_getattr(path.dentry, (void *) reg(edx));
 
         ret = 0;
     }
@@ -286,18 +310,18 @@ static uint64_t sys_stat(registers_t *reg) {
     return ret;
 }
 
-static uint64_t sys_fstat(registers_t *reg) {
+static DEFINE_SYSCALL(fstat) {
     int32_t ret = -1;
 
-    file_t *fd = ufdt_get(reg->ecx);
+    file_t *fd = ufdt_get(reg(ecx));
     if(fd) {
         //TODO sanitize stat ptr
 
-        vfs_getattr(fd->dentry, (void *) reg->edx);
+        vfs_getattr(fd->dentry, (void *) reg(edx));
 
         ret = 0;
 
-        ufdt_put(reg->ecx);
+        ufdt_put(reg(ecx));
     }
 
     return ret;
@@ -306,59 +330,55 @@ static uint64_t sys_fstat(registers_t *reg) {
 extern void play(uint32_t freq);
 extern void stop();
 
-static uint64_t sys_play(registers_t *reg) {
-    play(reg->ecx);
+static DEFINE_SYSCALL(play) {
+    play(reg(ecx));
 
     return 0;
 }
 
-static uint64_t sys_stop(registers_t *reg) {
+static DEFINE_SYSCALL(stop) {
     stop();
 
     return 0;
 }
 
-static uint64_t sys_read(registers_t *reg) {
+static DEFINE_SYSCALL(read) {
     int32_t ret = -1;
 
-//    kprintf("BREAD");
-
-    file_t *fd = ufdt_get(reg->ecx);
+    file_t *fd = ufdt_get(reg(ecx));
     if(fd) {
         //TODO sanitize buffer/size arguments
 
-        void *buff = kmalloc(reg->ebx);
-        ret = vfs_read(fd, buff, reg->ebx);
-        memcpy((void *) reg->edx, buff, reg->ebx);
+        void *buff = kmalloc(reg(ebx));
+        ret = vfs_read(fd, buff, reg(ebx));
+        memcpy((void *) reg(edx), buff, reg(ebx));
         kfree(buff);
 
-        ufdt_put(reg->ecx);
+        ufdt_put(reg(ecx));
     }
-
-//    kprintf("EREAD");
 
     return ret;
 }
 
-static uint64_t sys_write(registers_t *reg) {
+static DEFINE_SYSCALL(write) {
     int32_t ret = -1;
 
-    file_t *fd = ufdt_get(reg->ecx);
+    file_t *fd = ufdt_get(reg(ecx));
     if(fd) {
         //TODO sanitize buffer/size arguments
 
-        ret = vfs_write(fd, (void *) reg->edx, reg->ebx);
+        ret = vfs_write(fd, (void *) reg(edx), reg(ebx));
 
-        ufdt_put(reg->ecx);
+        ufdt_put(reg(ecx));
     }
 
     return ret;
 }
 
-static uint64_t sys_execve(registers_t *reg) {
-    char *pathname = (void *) reg->ecx;
-    char **argv = (void *) reg->edx;
-    char **envp = (void *) reg->ebx;
+static DEFINE_SYSCALL(execve) {
+    char *pathname = (void *) reg(ecx);
+    char **argv = (void *) reg(edx);
+    char **envp = (void *) reg(ebx);
 
     path_t p;
     if(!vfs_lookup(&current->pwd, pathname, &p)) {
@@ -372,42 +392,43 @@ static uint64_t sys_execve(registers_t *reg) {
 }
 
 static syscall_t syscalls[MAX_SYSCALL] = {
-    [ 0] = sys_exit,
-    [ 1] = sys_fork,
-    [ 2] = sys_sleep,
-    [ 3] = sys_log,
-    [ 4] = sys_uptime,
-    [ 5] = sys_open,
-    [ 6] = sys_close,
-    [ 7] = sys_socket,
-    [ 8] = sys_listen,
-    [ 9] = sys_accept,
-    [10] = sys_bind,
-    [11] = sys_connect,
-    [12] = sys_shutdown,
-    [13] = sys_send,
-    [14] = sys_recv,
-    [15] = sys_alloc_page,
-    [16] = sys_free_page,
-    [17] = sys_stat,
-    [19] = sys_fstat,
-    [20] = sys_play,
-    [21] = sys_stop,
-    [22] = sys_read,
-    [23] = sys_write,
-    [24] = sys_execve,
+    [ 0] = SYSCALL_NAME(exit),
+    [ 1] = SYSCALL_NAME(fork),
+    [ 2] = SYSCALL_NAME(sleep),
+    [ 3] = SYSCALL_NAME(log),
+    [ 4] = SYSCALL_NAME(uptime),
+    [ 5] = SYSCALL_NAME(open),
+    [ 6] = SYSCALL_NAME(close),
+    [ 7] = SYSCALL_NAME(socket),
+    [ 8] = SYSCALL_NAME(listen),
+    [ 9] = SYSCALL_NAME(accept),
+    [10] = SYSCALL_NAME(bind),
+    [11] = SYSCALL_NAME(connect),
+    [12] = SYSCALL_NAME(shutdown),
+    [13] = SYSCALL_NAME(send),
+    [14] = SYSCALL_NAME(recv),
+    [15] = SYSCALL_NAME(alloc_page),
+    [16] = SYSCALL_NAME(free_page),
+    [17] = SYSCALL_NAME(stat),
+    [19] = SYSCALL_NAME(fstat),
+    [20] = SYSCALL_NAME(play),
+    [21] = SYSCALL_NAME(stop),
+    [22] = SYSCALL_NAME(read),
+    [23] = SYSCALL_NAME(write),
+    [24] = SYSCALL_NAME(execve),
 };
 
 static void syscall_handler(interrupt_t *interrupt, void *data) {
     enter_syscall();
 
-    registers_t *reg = &interrupt->cpu.reg;
-    if(reg->eax >= MAX_SYSCALL || !syscalls[reg->eax]) {
-        panicf("Unregistered Syscall #%u: 0x%X", reg->eax, reg->ecx);
+    cpu_state_t *state = &interrupt->cpu;
+
+    if(state->reg.eax >= MAX_SYSCALL || !syscalls[state->reg.eax]) {
+        panicf("Unregistered Syscall #%u", state->reg.eax);
     } else {
-        uint64_t ret = syscalls[reg->eax](reg);
-        reg->edx = ret >> 32;
-        reg->eax = ret;
+        uint64_t ret = syscalls[state->reg.eax](state);
+        state->reg.edx = ret >> 32;
+        state->reg.eax = ret;
     }
 
     leave_syscall();

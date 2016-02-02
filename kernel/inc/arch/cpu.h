@@ -1,10 +1,6 @@
 #ifndef KERNEL_ARCH_CPU_H
 #define KERNEL_ARCH_CPU_H
 
-typedef struct registers registers_t;
-typedef struct exec_state exec_state_t;
-typedef struct stack_state stack_state_t;
-
 typedef struct cpu_state cpu_state_t;
 typedef struct cpu_launchpad cpu_launchpad_t;
 
@@ -15,20 +11,20 @@ typedef uint32_t phys_addr_t;
 #include "common/types.h"
 #include "common/compiler.h"
 
-struct registers {
+typedef struct registers {
     //pusha/popa order
     uint32_t edi, esi, ebp, esp, ebx, edx, ecx, eax;
-} PACKED;
+} PACKED registers_t;
 
-struct exec_state {
+typedef struct exec_state {
     uint32_t eip, cs, eflags;
-} PACKED;
+} PACKED exec_state_t;
 
-struct stack_state {
+typedef struct stack_state {
     uint32_t esp, ss;
-} PACKED;
+} PACKED stack_state_t;
 
-struct cpu_state {
+typedef struct cpu_state {
     //pusha saved register values
     registers_t reg;
 
@@ -38,20 +34,20 @@ struct cpu_state {
 
     //These aren't present if a kernel PL task was interrupted
     stack_state_t stack;
-} PACKED;
+} PACKED cpu_state_t;
 
-struct cpu_launchpad {
+typedef struct cpu_launchpad {
     registers_t reg;
     exec_state_t exec;
-} PACKED;
+} PACKED cpu_launchpad_t;
 
-struct arch_task_data {
+typedef struct arch_task_data {
     //Top of kernel stack (where we popa/iret during a task switch).
     cpu_state_t *live_state;
 
     phys_addr_t cr3;
     void *dir;
-};
+} arch_task_data_t;
 
 #include "sched/task.h"
 

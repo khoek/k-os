@@ -1,5 +1,5 @@
 .global _exit
-.global _fork
+.global fork
 .global _sleep
 .global _log
 .global _uptime
@@ -37,9 +37,8 @@ _exit:
 
     ret
 
-_fork:
+fork:
     mov $1, %eax
-    mov 4(%esp), %ecx
     int $0x80
 
     ret

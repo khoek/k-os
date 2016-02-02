@@ -21,7 +21,7 @@
 #include "log/log.h"
 #include "misc/stats.h"
 
-#define QUANTUM 1000
+#define QUANTUM 50
 
 #define SWITCH_INT 0x81
 
@@ -77,8 +77,9 @@ static void deactivate_current() {
 }
 
 static task_t * find_next_current() {
+    task_t *task;
     while(!list_empty(&queued_tasks)) {
-        task_t *task = list_first(&queued_tasks, task_t, queue_list);
+        task = list_first(&queued_tasks, task_t, queue_list);
         spin_lock(&task->lock);
         list_rm(&task->queue_list);
 
@@ -86,7 +87,6 @@ static task_t * find_next_current() {
             case TASK_AWAKE: {
                 get_percpu_unsafe(switch_time) = uptime() + QUANTUM;
                 task->state = TASK_RUNNING;
-                current = task;
                 spin_unlock(&task->lock);
 
                 return task;
@@ -96,7 +96,6 @@ static task_t * find_next_current() {
 
                 //TODO handle this
 
-                task = NULL;
                 break;
             }
             default: {
@@ -135,10 +134,11 @@ void task_sleep(task_t *task) {
     // task_sleep_current() is guaranteed to switch safely.
     BUG_ON(task == current && (get_eflags() & EFLAGS_IF));
 
-    task->state = TASK_SLEEPING;
     if(task->state == TASK_AWAKE) {
         list_rm(&task->queue_list);
     }
+
+    task->state = TASK_SLEEPING;
 
     spin_unlock(&task->lock);
     spin_unlock_irqstore(&sched_lock, flags);
