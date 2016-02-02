@@ -35,15 +35,10 @@ void gfdt_get(file_t *f) {
 }
 
 static void gfdt_free(file_t *f) {
-    uint32_t flags;
-    spin_lock_irqsave(&gfdt_lock, &flags);
-
     f->ops->close(f);
     cache_free(file_cache, f);
 
     gfdt_entries_in_use--;
-
-    spin_unlock_irqstore(&gfdt_lock, flags);
 }
 
 void gfdt_put(file_t *f) {
