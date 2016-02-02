@@ -54,15 +54,17 @@ void print_welcome() {
 }
 
 void print_linestart() {
-    puts("\nroot@k-os:/$ ");
+    puts("root@k-os:/$ ");
 }
 
 void execute_command(char *cmd) {
     pid_t cpid = fork();
 
-    if(!cpid) {
+    if(cpid) {
+
+    } else {
         execve(cmd, NULL, NULL);
-        while(1);
+        _exit(1);
     }
 }
 
@@ -85,6 +87,7 @@ int main(int argc, char **argv) {
                 break;
             }
             case '\n': {
+                putc('\n');
                 buff[off] = '\0';
                 if(off) execute_command(buff);
                 off = 0;
