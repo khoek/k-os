@@ -20,6 +20,18 @@
 
 multiboot_info_t *multiboot_info;
 
+static bool verbose = false;
+
+static bool verbose_enable(char *yes) {
+    if(yes[0] == 'y' || yes[0] == 'Y') {
+        verbose = true;
+    }
+
+    return true;
+}
+
+cmdline_param("verbose", verbose_enable);
+
 static char *ENVP[] = {NULL};
 
 static bool try_load_init(char *path) {
@@ -48,7 +60,9 @@ static void umain() {
     }
     kfree(str);
 
-    //vlog_disable();
+    if(!verbose) {
+        vlog_disable();
+    }
 
     ufdt_add(0, vfs_open_file(out.dentry->inode));
     ufdt_add(0, vfs_open_file(out.dentry->inode));

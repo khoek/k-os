@@ -52,6 +52,7 @@ static inline void set_selector(gdt_entry_t *gdt, uint16_t index, uint32_t base,
 }
 
 void tss_set_stack(void *sp) {
+    check_irqs_disabled();
     get_percpu(tss).esp0 = (uint32_t) sp;
 }
 

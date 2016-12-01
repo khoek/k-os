@@ -4,6 +4,8 @@
 #include "common/compiler.h"
 #include "sched/task.h"
 
+extern volatile bool tasking_up;
+
 void __noreturn sched_loop();
 
 void thread_schedule(thread_t *task);
@@ -18,8 +20,6 @@ void sched_try_resched();
 
 void sched_suspend_pending_interrupt();
 void sched_interrupt_notify();
-
-void finish_sched_switch(thread_t *old, thread_t *next);
 
 void deliver_signals();
 

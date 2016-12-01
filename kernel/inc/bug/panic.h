@@ -7,6 +7,8 @@
 
 #define die() do { while(true) hlt(); } while(0)
 
+extern volatile bool panic_in_progress;
+
 void __noreturn panic(char* message);
 void __noreturn panicf(char* fmt, ...);
 

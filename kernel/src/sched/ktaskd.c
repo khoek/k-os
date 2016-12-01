@@ -12,17 +12,19 @@ static DEFINE_SEMAPHORE(ktaskd_semaphore, 0);
 typedef struct ktaskd_req {
     //TODO allow reqs to set argv and envp
 
+    char *name;
     void (*main)(void *arg);
     void *arg;
 
     list_head_t list;
 } ktaskd_req_t;
 
-void ktaskd_request(void (*main)(void *arg), void *arg) {
+void ktaskd_request(char *name, void (*main)(void *arg), void *arg) {
     uint32_t flags;
     spin_lock_irqsave(&ktaskd_lock, &flags);
 
     ktaskd_req_t *req = kmalloc(sizeof(ktaskd_req_t));
+    req->name = name;
     req->main = main;
     req->arg = arg;
     list_add(&req->list, &ktaskd_reqlist);
@@ -33,7 +35,7 @@ void ktaskd_request(void (*main)(void *arg), void *arg) {
 }
 
 static void ktaskd_fulfil_req(ktaskd_req_t *req) {
-    spawn_kernel_task(req->main, req->arg);
+    spawn_kernel_task(req->name, req->main, req->arg);
 }
 
 static void ktaskd_spawn_pending() {
@@ -62,5 +64,5 @@ static void ktaskd_run(void *UNUSED(arg)) {
 }
 
 void ktaskd_init() {
-    spawn_kernel_task(ktaskd_run, NULL);
+    spawn_kernel_task("ktaskd", ktaskd_run, NULL);
 }

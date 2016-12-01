@@ -60,6 +60,12 @@ void copy_mem(thread_t *to, thread_t *from) {
     }
 }
 
+static inline void map_kernel_page(uint32_t page_idx, uint32_t phys) {
+    uint32_t diridx = page_idx / NUM_ENTRIES;
+    uint32_t tabidx = page_idx % NUM_ENTRIES;
+    tabentry_set(&kptab[diridx], tabidx, phys, MMUFLAG_WRITABLE | MMUFLAG_PRESENT);
+}
+
 static void * do_map_page(phys_addr_t phys) {
     void *virt = (void *) ((kernel_next_page++ * PAGE_SIZE) + VIRTUAL_BASE);
     uint32_t idx = addr_to_diridx(virt) - addr_to_diridx((void *) VIRTUAL_BASE);
@@ -104,31 +110,18 @@ void build_page_dir(pdir_t *dir) {
     }
 }
 
-void task_mmu_setup(thread_t *task) {
-    build_page_dir(task->arch.dir);
-}
-
 void __init mmu_init(phys_addr_t kernel_end, phys_addr_t malloc_start) {
     uint32_t kernel_num_pages = DIV_UP(kernel_end, PAGE_SIZE);
 
     //Map 0xC0000000->0x00000000, 0xC0001000->0x00001000, etc. over the whole
     //kernel image.
-    for(uint32_t page_idx = 0; page_idx < kernel_num_pages; page_idx++) {
-        uint32_t diridx = page_idx / NUM_ENTRIES;
-        uint32_t tabidx = page_idx % NUM_ENTRIES;
-        phys_addr_t phys = page_idx * PAGE_SIZE;
-
-        tabentry_set(&kptab[diridx], tabidx, phys, MMUFLAG_WRITABLE | MMUFLAG_PRESENT);
+    for(uint32_t i = 0; i < kernel_num_pages; i++) {
+        map_kernel_page(i, i * PAGE_SIZE);
     }
 
     //Map the page_t struct array just after the kernel image.
     for(uint32_t i = 0; i < MALLOC_NUM_PAGES; i++) {
-        uint32_t page_idx = kernel_num_pages + i;
-        uint32_t diridx = page_idx / NUM_ENTRIES;
-        uint32_t tabidx = page_idx % NUM_ENTRIES;
-        phys_addr_t phys = malloc_start + (i * PAGE_SIZE);
-
-        tabentry_set(&kptab[diridx], tabidx, phys, MMUFLAG_WRITABLE | MMUFLAG_PRESENT);
+        map_kernel_page(kernel_num_pages + i, malloc_start + (i * PAGE_SIZE));
     }
 
     kernel_next_page = kernel_num_pages + MALLOC_NUM_PAGES;

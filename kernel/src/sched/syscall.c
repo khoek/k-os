@@ -55,36 +55,20 @@ void ret_from_fork(void *arg) {
 static DEFINE_SYSCALL(fork) {
     fork_data_t *forkd = kmalloc(sizeof(fork_data_t));
     memcpy(&forkd->resume_state, state, sizeof(cpu_state_t));
-    pid_t cpid = thread_fork(current, 0, ret_from_fork, forkd);
+    thread_t *child = thread_fork(current, 0, ret_from_fork, forkd);
 
-    return cpid;
+    return child->node->pid;
 }
 
-typedef struct sleep_data {
-    thread_t *task;
-    spinlock_t lock;
-} sleep_data_t;
-
-static void sleep_callback(sleep_data_t *data) {
-    spin_lock(&data->lock);
-    spin_unlock(&data->lock);
-
-    thread_wake(data->task);
+static void sleep_callback(thread_t *task) {
+    thread_wake(task);
 }
 
 static DEFINE_SYSCALL(msleep) {
-    sleep_data_t data;
-    data.task = current;
-    spinlock_init(&data.lock);
+    irqdisable();
 
-    uint32_t flags;
-    spin_lock_irqsave(&data.lock, &flags);
-
-    timer_create(reg(ecx)/100, (void (*)(void *)) sleep_callback, &data);
     thread_sleep_prepare();
-
-    spin_unlock_irqstore(&data.lock, flags);
-
+    timer_create(reg(ecx), (void (*)(void *)) sleep_callback, current);
     sched_switch();
 
     return 0;

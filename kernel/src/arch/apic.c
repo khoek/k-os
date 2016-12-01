@@ -42,7 +42,13 @@ uint32_t apic_get_id() {
     return readl(apic_base, REG_ID) >> 24;
 }
 
+void send_management_interrupt(processor_t *dest) {
+    apic_issue_command(dest->arch.apic_id, APIC_CMD_TYPE_NORMAL, 0, MANAGEMENT_INT);
+}
+
 void apic_issue_command(uint8_t target_id, uint16_t type, uint32_t flags, uint8_t vector) {
+    while(readl(apic_base, REG_ICR_LOW) & CMD_FLAG_PENDING);
+
     writel(apic_base, REG_ICR_HIGH, target_id << 24);
     writel(apic_base, REG_ICR_LOW , (type << 8) | flags | vector);
 
@@ -79,7 +85,7 @@ void __init apic_enable() {
     writel(apic_base, REG_TASK_PRIO, 0);
 
     writel(apic_base, REG_TIMER_DIVIDE, 1);
-    writel(apic_base, REG_TIMER_INITIAL, 16000000);
+    writel(apic_base, REG_TIMER_INITIAL, 160000);
     writel(apic_base, REG_SPURIOUS, APIC_MASTER_ENABLE | 0xFF);
 }
 

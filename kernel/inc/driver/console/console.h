@@ -46,6 +46,7 @@ typedef struct console {
     char *escseq_buff;
     size_t escseq_buff_front;
 
+    bool lockup;
     spinlock_t lock;
 } console_t;
 
@@ -62,5 +63,7 @@ void vram_write(console_t *con, const char *str, size_t len);
 void vram_cursor(console_t *con, uint8_t r, uint8_t c);
 void vram_puts(console_t *con, const char* str);
 void vram_putsf(console_t *con, const char* str, ...);
+
+void console_lockup(console_t *con);
 
 #endif

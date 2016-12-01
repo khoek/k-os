@@ -24,6 +24,7 @@ struct clock_event_source {
 
     char *name;
     uint32_t rating;
+    //milliseconds_per_second
     uint32_t freq;
 
     void (*event)(clock_event_source_t *);

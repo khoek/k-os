@@ -6,7 +6,6 @@
 *.elf
 build
 doc
-bin
 rootramfs
 Makefile.local
 .gdbinit

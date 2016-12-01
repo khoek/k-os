@@ -285,7 +285,7 @@ static INITCALL devfs_mount() {
         }
     }
 
-    ktaskd_request(devfs_run, NULL);
+    ktaskd_request("kdevfsd", devfs_run, NULL);
 
     return 0;
 }

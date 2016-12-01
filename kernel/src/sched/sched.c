@@ -51,9 +51,10 @@ static DEFINE_PER_CPU(thread_t *, idle_task);
 static DEFINE_PER_CPU(uint64_t, switch_time);
 
 void sched_switch() {
-    check_no_locks_held();
-
+    uint32_t flags;
+    irqsave(&flags);
     asm volatile ("int $" XSTR(SWITCH_INT));
+    irqstore(flags);
 }
 
 //Returns true if task_node is not exiting, holding the task_node->lock. If
@@ -337,10 +338,6 @@ static inline thread_t * thread_build(task_node_t *node, ufd_context_t *ufd,
     thread->kernel_stack_bottom = thread->kernel_stack_top + KERNEL_STACK_LEN;
     spinlock_init(&thread->lock);
 
-#ifdef CONFIG_DEBUG_THREADS
-    thread->kernel_stack_proc_id = -1;
-#endif
-
     list_add(&thread->thread_list, &node->threads);
 
     arch_thread_build(thread);
@@ -348,11 +345,16 @@ static inline thread_t * thread_build(task_node_t *node, ufd_context_t *ufd,
     return thread;
 }
 
-void spawn_kernel_task(void (*main)(void *arg), void *arg) {
-    thread_fork(current, 0, main, arg);
+void spawn_kernel_task(char *name, void (*main)(void *arg), void *arg) {
+    thread_t *child = thread_fork(current, 0, main, arg);
+    char **argv = kmalloc(2 * sizeof(char *));
+    argv[0] = kmalloc(strlen(name) + 1);
+    strcpy(argv[0], name);
+    argv[1] = NULL;
+    obtain_task_node(child)->argv = argv;
 }
 
-pid_t thread_fork(thread_t *t, uint32_t flags, void (*setup)(void *arg),
+thread_t * thread_fork(thread_t *t, uint32_t flags, void (*setup)(void *arg),
         void *arg) {
     ufd_context_t *ufd = ufd_context_dup(obtain_ufds(t));
     fs_context_t *fs = fs_context_dup(obtain_fs_context(t));
@@ -365,7 +367,7 @@ pid_t thread_fork(thread_t *t, uint32_t flags, void (*setup)(void *arg),
 
     thread_schedule(child);
 
-    return node->pid;
+    return child;
 }
 
 void __init root_task_init(void *umain) {
@@ -504,15 +506,17 @@ void thread_sleep_prepare() {
     thread_t *me = current;
 
     spin_lock(&me->lock);
+
     BUG_ON(!me->active);
     BUG_ON(me->state != THREAD_AWAKE);
     me->state = THREAD_SLEEPING;
+
     spin_unlock(&me->lock);
 }
 
 static void do_wake(thread_t *t) {
     spin_lock(&t->lock);
-
+    
     BUG_ON(t->state != THREAD_SLEEPING);
 
     t->state = THREAD_AWAKE;
@@ -743,8 +747,37 @@ static inline thread_t * lock_next_current(thread_t *old) {
     return idle;
 }
 
+static void finish_sched_switch(thread_t *old, thread_t *next) {
+    check_irqs_disabled();
+
+    current = next;
+
+    BUG_ON(old != next && next->active);
+    check_on_correct_stack();
+
+    old->active = false;
+    next->active = true;
+
+    BUG_ON(next->state != THREAD_IDLE && next->state != THREAD_AWAKE);
+
+    spin_unlock(&old->lock);
+    if(old != next) {
+        spin_unlock(&next->lock);
+    }
+    spin_unlock(&sched_lock);
+
+    get_percpu(switch_time) = uptime() + QUANTUM;
+
+    check_no_locks_held();
+    check_irqs_disabled();
+
+    context_switch(next);
+
+    BUG();
+}
+
 //IRQs must be disabled
-static void do_sched_switch() {
+static void __noreturn do_sched_switch() {
     check_irqs_disabled();
     check_no_locks_held();
 
@@ -759,30 +792,6 @@ static void do_sched_switch() {
     switch_stack(old, lock_next_current(old), finish_sched_switch);
 
     BUG();
-}
-
-void finish_sched_switch(thread_t *old, thread_t *next) {
-    check_irqs_disabled();
-
-    BUG_ON(next->active);
-
-    old->active = false;
-    next->active = true;
-
-    BUG_ON(next->state != THREAD_IDLE && next->state != THREAD_AWAKE);
-
-    spin_unlock(&old->lock);
-    if(old != next) {
-        spin_unlock(&next->lock);
-    }
-    spin_unlock(&sched_lock);
-    current = next;
-
-    get_percpu(switch_time) = uptime() + QUANTUM;
-
-    check_no_locks_held();
-
-    context_switch(next);
 }
 
 void __noreturn sched_loop() {
@@ -827,10 +836,13 @@ static void switch_interrupt(interrupt_t *interrupt, void *data) {
     do_sched_switch();
 }
 
+static char *idle_argv[] = {"kidle", NULL};
+static char *init_argv[] = {"kinit", NULL};
+
 static INITCALL sched_init() {
     thread_cache = cache_create(sizeof(thread_t));
-    idle_node = task_node_build(NULL, NULL, NULL);
-    init_node = task_node_build(NULL, NULL, NULL);
+    idle_node = task_node_build(NULL, idle_argv, NULL);
+    init_node = task_node_build(NULL, init_argv, NULL);
 
     return 0;
 }

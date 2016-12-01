@@ -85,6 +85,10 @@ static char* exceptions[32] = {
 };
 
 static void handle_exception(interrupt_t *interrupt) {
+    if(panic_in_progress) {
+        die();
+    }
+
 	switch(interrupt->vector) {
 		case EX_PAGE_FAULT: {
 			uint32_t cr2;
@@ -105,7 +109,7 @@ static void handle_exception(interrupt_t *interrupt) {
 }
 
 void interrupt_dispatch(interrupt_t *interrupt) {
-	check_on_kernel_stack();
+    check_on_correct_stack();
 	check_irqs_disabled();
 
     if(interrupt->vector < IRQ_OFFSET) {

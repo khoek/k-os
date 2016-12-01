@@ -99,10 +99,6 @@ typedef struct thread {
     void *kernel_stack_top;
     void *kernel_stack_bottom;
 
-#ifdef CONFIG_DEBUG_THREADS
-    uint32_t kernel_stack_proc_id;
-#endif
-
     //Thread-local data (read/write):
     int32_t state;
     uint32_t sig_pending;
@@ -131,9 +127,9 @@ static inline task_node_t * obtain_task_node(thread_t *t) {
 #include "mm/mm.h"
 
 thread_t * create_idle_task();
-void spawn_kernel_task(void (*main)(void *arg), void *arg);
+void spawn_kernel_task(char *name, void (*main)(void *arg), void *arg);
 
-pid_t thread_fork(thread_t *t, uint32_t flags, void (*setup)(void *arg), void *arg);
+thread_t * thread_fork(thread_t *t, uint32_t flags, void (*setup)(void *arg), void *arg);
 void thread_exit();
 
 void task_node_exit(int32_t code);

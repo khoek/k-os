@@ -25,8 +25,24 @@ processor_t * register_proc(uint32_t num) {
     return proc;
 }
 
+static void management_interrupt(interrupt_t *interrupt, void *data) {
+    check_irqs_disabled();
+
+    if(panic_in_progress) {
+        die();
+    }
+}
+
+void dispatch_management_interrupts() {
+    processor_t *proc;
+    LIST_FOR_EACH_ENTRY(proc, &procs, list) {
+        send_management_interrupt(proc);
+    }
+}
+
 static INITCALL proc_init() {
     bsp = register_proc(BSP_ID);
+    register_isr(MANAGEMENT_INT, CPL_KRNL, management_interrupt, NULL);
 
     return 0;
 }

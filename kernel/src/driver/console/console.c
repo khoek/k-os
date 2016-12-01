@@ -11,6 +11,10 @@
 
 console_t *con_global = NULL;
 
+void console_lockup(console_t *con) {
+    con->lockup = true;
+}
+
 static bool console_match(device_t *device, driver_t *driver) {
     return true;
 }
@@ -59,6 +63,7 @@ static INITCALL console_init() {
     register_driver(&console_driver);
 
     con_global = kmalloc(sizeof(console_t));
+    con_global->lockup = false;
     spinlock_init(&con_global->lock);
 
     vram_init(con_global);
@@ -76,7 +81,10 @@ static ssize_t console_char_read(char_device_t UNUSED(*cdev), char *buff, size_t
 }
 
 static ssize_t console_char_write(char_device_t *cdev, char *buff, size_t len) {
-    vram_write(cdev->private, buff, len);
+    console_t *con = cdev->private;
+    if(!con->lockup) {
+        vram_write(cdev->private, buff, len);
+    }
 
     return len;
 }

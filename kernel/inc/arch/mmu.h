@@ -172,8 +172,6 @@ void * map_pages(phys_addr_t phys, uint32_t pages);
 void user_map_page(thread_t *task, void *virt, phys_addr_t page);
 void user_map_pages(thread_t *task, void *virt, phys_addr_t page, uint32_t num);
 
-void task_mmu_setup(thread_t *task);
-
 void __init mmu_init(phys_addr_t kernel_end, phys_addr_t malloc_start);
 
 #endif

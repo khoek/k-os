@@ -24,23 +24,26 @@ void save_stack(void *sp) {
 
     BUG_ON(!current);
     BUG_ON(current->arch.live_state);
+
     current->arch.live_state = sp;
 }
 
 #define ALIGN_BITS 16
 
 void switch_stack(thread_t *old, thread_t *next, void (*callback)(thread_t *old, thread_t *next)) {
-    uint32_t new_esp = (((uint32_t) old->arch.live_state) / ALIGN_BITS) * ALIGN_BITS;
+    check_irqs_disabled();
+
+    uint32_t new_esp = ((((uint32_t) next->arch.live_state) / ALIGN_BITS) - 1) * ALIGN_BITS;
 
     asm volatile("mov %[new_esp], %%esp\n"
                  "push %[next]\n"
                  "push %[old]\n"
                  "call *%[finish]"
         :
-        : [new_esp] "m" (new_esp),
-          [old] "m" (old),
-          [next] "m" (next),
-          [finish] "m" (callback)
+        : [new_esp] "r" (new_esp),
+          [old] "r" (old),
+          [next] "r" (next),
+          [finish] "r" (callback)
         : "memory");
 
     BUG();
@@ -50,18 +53,23 @@ extern void do_context_switch(uint32_t cr3, cpu_state_t *live_state);
 
 void context_switch(thread_t *t) {
     check_irqs_disabled();
+    check_on_correct_stack();
 
-    BUG_ON(t);
+    BUG_ON(!t);
+    BUG_ON(!t->arch.live_state);
 
     tss_set_stack(t->kernel_stack_bottom);
 
+    barrier();
+
     void *s = t->arch.live_state;
-    BUG_ON(!s);
     t->arch.live_state = NULL;
 
     barrier();
 
     do_context_switch(t->arch.cr3, s);
+
+    BUG();
 }
 
 #define kernel_stack_off(task, off) ((void *) (((uint32_t) (task)->kernel_stack_bottom) - (off)))
@@ -98,6 +106,7 @@ static inline void set_reg_state(registers_t *dst, registers_t *src) {
 }
 
 static inline void set_live_state(thread_t *t, void *live_state) {
+    BUG_ON(!live_state);
     t->arch.live_state = live_state;
 }
 

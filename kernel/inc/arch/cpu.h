@@ -9,6 +9,12 @@ typedef struct arch_thread_data arch_thread_data_t;
 #include "common/types.h"
 #include "common/compiler.h"
 
+static inline void * get_sp() {
+    void *esp;
+    asm("mov %%esp, %0" : "=r" (esp));
+    return esp;
+}
+
 typedef uint32_t phys_addr_t;
 
 typedef struct registers {

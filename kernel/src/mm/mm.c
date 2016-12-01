@@ -162,15 +162,19 @@ static inline void trim_block(page_t *block, uint32_t actual) {
 //contains the original block with its buddy (if free) until this is no longer
 //possible. Then mark the big block as free.
 static inline void ripple_join(page_t *page) {
+    BUG_ON(!is_free(page));
+
     page_t *block = page;
     page_t *buddy = get_buddy(block);
-    while(!(buddy->flags & PAGE_FLAG_USED)
+    while(is_free(buddy)
         && buddy->order == block->order
         && block->order < MAX_ORDER) {
         list_rm(&buddy->list);
 
         block = join_block(block);
         buddy = get_buddy(block);
+        
+        BUG_ON(!is_free(block));
     }
 
     add_to_freelists(block);
@@ -245,8 +249,6 @@ void free_page(page_t *page) {
 
     BUG_ON(page->flags & PAGE_FLAG_PERM);
     BUG_ON(!(page->flags & PAGE_FLAG_USED));
-
-    page->flags &= ~PAGE_FLAG_USED;
 
     page->flags = 0;
 

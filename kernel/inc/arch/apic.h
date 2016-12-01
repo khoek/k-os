@@ -4,6 +4,7 @@
 #include "init/initcall.h"
 #include "mm/mm.h"
 
+#define APIC_CMD_TYPE_NORMAL  (0x0)
 #define APIC_CMD_TYPE_INIT    (0x5)
 #define APIC_CMD_TYPE_STARTUP (0x6)
 

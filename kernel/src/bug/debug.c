@@ -48,6 +48,55 @@ const elf_symbol_t * debug_lookup_symbol(uint32_t address) {
     return NULL;
 }
 
+static inline uint32_t get_address(thread_t *me, uint32_t vaddr, uint32_t off) {
+    if(!virt_is_valid(me, (void *) vaddr)) {
+        return 0;
+    }
+    return ((uint32_t *) vaddr)[off];
+}
+
+void dump_stack_trace(console_t *t) {
+    bool invalid_stack = false;
+
+    thread_t *me = current;
+    uint32_t top, bot;
+    if(me) {
+        top = (uint32_t) me->kernel_stack_top;
+        bot = (uint32_t) me->kernel_stack_bottom;
+        vram_putsf(t, "Current task: %s (%u) 0x%X-0x%X\n", me->node->argv[0], me->node->pid, top, bot);
+    } else {
+        vram_puts(t, "Current task: NULL\n");
+        top = 0;
+        bot = (uint32_t) -1;
+        invalid_stack = true;
+    }
+
+    vram_puts(t, "Stack trace:\n");
+    uint32_t last_ebp = 0, ebp, eip;
+    asm("mov %%ebp, %0" : "=r" (ebp));
+    eip = get_address(me, ebp, 1);
+
+    if(ebp < top || ebp > bot) {
+        invalid_stack = true;
+        vram_putsf(t, "Not on correct stack! (ebp=%X eip=%X) salvaging...\n", ebp, eip);
+    }
+
+    for(uint32_t frame = 0; eip && ebp && ebp > last_ebp && (!me || invalid_stack || (ebp >= top && ebp <= bot)) && frame < MAX_STACK_FRAMES; frame++) {
+        const elf_symbol_t *symbol = debug_lookup_symbol(eip - 1);
+        if(symbol) {
+            vram_putsf(t, "    %s+0x%X/0x%X\n", debug_symbol_name(symbol), eip - 1 - symbol->value, eip - 1);
+        } else {
+            vram_putsf(t, "    0x%X\n", eip - 1);
+        }
+
+        last_ebp = ebp;
+        ebp = get_address(me, ebp, 0);
+        eip = get_address(me, ebp, 1);
+    }
+
+    vram_puts(t, "Stack trace end\n");
+}
+
 void __init debug_map_virtual() {
     if(strtabsz && symtabsz) {
         strtab = map_pages((phys_addr_t) strtab, DIV_UP(strtabsz, PAGE_SIZE));

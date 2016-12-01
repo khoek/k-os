@@ -16,9 +16,8 @@ typedef struct timer {
 static cache_t *timer_cache;
 
 static DEFINE_LIST(active_timers);
-static DEFINE_LIST(dispatch_timers);
 
-static DEFINE_SPINLOCK(dispatch_lock);
+static DEFINE_SPINLOCK(timer_lock);
 
 void timer_create(uint32_t millis, timer_callback_t callback, void *data) {
     timer_t *new = cache_alloc(timer_cache);
@@ -27,7 +26,7 @@ void timer_create(uint32_t millis, timer_callback_t callback, void *data) {
     new->data = data;
 
     uint32_t flags;
-    spin_lock_irqsave(&dispatch_lock, &flags);
+    spin_lock_irqsave(&timer_lock, &flags);
 
     if(list_empty(&active_timers)) {
         list_add(&new->list, &active_timers);
@@ -35,42 +34,55 @@ void timer_create(uint32_t millis, timer_callback_t callback, void *data) {
         timer_t *timer;
         LIST_FOR_EACH_ENTRY(timer, &active_timers, list) {
             if(!new->delta || new->delta < timer->delta) {
+                timer->delta -= new->delta;
+                list_add_before(&new->list, &timer->list);
+                timer = NULL;
                 break;
             }
 
             new->delta -= timer->delta;
         }
 
-        if(&timer->list != &active_timers) timer->delta -= new->delta;
-        list_add_before(&new->list, &timer->list);
+        if(timer != NULL) {
+            list_add_before(&new->list, active_timers.prev);
+        }
     }
 
-    spin_unlock_irqstore(&dispatch_lock, flags);
+    spin_unlock_irqstore(&timer_lock, flags);
+}
+
+static uint32_t decrement_timer(timer_t *timer, uint32_t ms) {
+    uint32_t diff = MIN(timer->delta, ms);
+    timer->delta -= diff;
+    return ms - diff;
 }
 
 static void time_tick(clock_event_source_t *source) {
     uint32_t flags;
-    spin_lock_irqsave(&dispatch_lock, &flags);
+    spin_lock_irqsave(&timer_lock, &flags);
 
-    if(list_empty(&active_timers)) {
-        timer_t *timer = list_first(&active_timers, timer_t, list);
-        timer->delta--; //FIXME calculate a value based on event freq
-        while(!timer->delta) {
-            list_move(&timer->list, &dispatch_timers);
-            timer = list_first(&active_timers, timer_t, list);
-            timer->delta--;
+    uint32_t left = 1; //FIXME calc from source->freq
+    timer_t *timer;
+    LIST_FOR_EACH_ENTRY(timer, &active_timers, list) {
+        left = decrement_timer(timer, left);
+        if(timer->delta) {
+            break;
         }
 
-        LIST_FOR_EACH_ENTRY(timer, &dispatch_timers, list) {
-            timer->callback(timer->data);
+        timer->callback(timer->data);
 
-            cache_free(timer_cache, timer);
+        cache_free(timer_cache, timer);
+    }
+
+    while(!list_empty(&active_timers)) {
+        timer = list_first(&active_timers, timer_t, list);
+        if(timer->delta) {
+            break;
         }
+        list_rm(&timer->list);
+    }
 
-        list_init(&dispatch_timers);
-}
-
-    spin_unlock_irqstore(&dispatch_lock, flags);
+    spin_unlock_irqstore(&timer_lock, flags);
 }
 
 static clock_event_listener_t clock_listener = {
