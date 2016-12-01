@@ -92,6 +92,7 @@ void execute_command(char *raw) {
         waitpid(cpid, NULL, 0);
     } else {
         execve(buff[0], buff, NULL);
+        printf("%s: command not found\n", buff[0]);
         _exit(1);
     }
 }
