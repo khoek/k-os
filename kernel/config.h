@@ -6,4 +6,4 @@
 #define CONFIG_DEBUG_BUGCHECKS
 
 // CONFIG_DEBUG_MM: Enable particularly expensive MM-related bugchecks.
-#define CONFIG_DEBUG_MM
+//#define CONFIG_DEBUG_MM
