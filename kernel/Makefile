@@ -5,6 +5,7 @@ include ../Makefile.config
 SRCDIR := src
 INCDIR := inc
 OBJDIR := build
+DOCDIR := doc
 
 ASFLAGS := --32
 
@@ -48,6 +49,7 @@ $(KBINARY): $(OBJS) $(LDSCRIPT)
 
 clean:
 	rm -rf $(OBJDIR)
+	rm -rf $(DOCDIR)
 	rm -rf $(KBINARY)
 
 doc:

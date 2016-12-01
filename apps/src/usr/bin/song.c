@@ -75,7 +75,7 @@
 
 static inline void playsound(int freq, int millis) {
     play(freq);
-    _sleep(millis);
+    _msleep(millis);
     stop();
 }
 

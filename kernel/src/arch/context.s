@@ -27,7 +27,7 @@ do_context_switch:
     mov %ecx, %ds
     mov %ecx, %es
     mov %ecx, %fs
-    mov %ecx, %gs
+#    mov %ecx, %gs
 
 .finish:
     # The next two instructions should load all registers off the new stack

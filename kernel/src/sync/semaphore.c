@@ -15,13 +15,13 @@ void semaphore_down(semaphore_t *lock) {
 
         spin_unlock_irqstore(&lock->lock, flags);
     } else {
-        list_add(&current->wait_list, &lock->waiters);
+        thread_sleep_prepare();
 
-        task_sleep(current);
+        list_add(&current->state_list, &lock->waiters);
 
         spin_unlock_irqstore(&lock->lock, flags);
 
-        sched_try_resched();
+        sched_switch();
     }
 }
 
@@ -31,11 +31,10 @@ void semaphore_up(semaphore_t *lock) {
     if(list_empty(&lock->waiters)) {
         lock->count++;
     } else {
-        task_t *waiting = list_first(&lock->waiters, task_t, wait_list);
+        thread_t *waiting = list_first(&lock->waiters, thread_t, state_list);
+        list_rm(&waiting->state_list);
 
-        task_wake(waiting);
-
-        list_rm(&waiting->wait_list);
+        thread_wake(waiting);
     }
 
     spin_unlock_irqstore(&lock->lock, flags);

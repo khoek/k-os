@@ -1,6 +1,6 @@
 .global _exit
 .global fork
-.global _sleep
+.global _msleep
 .global _log
 .global _uptime
 
@@ -29,6 +29,7 @@
 .global write
 
 .global execve
+.global waitpid
 
 _exit:
     mov $0, %eax
@@ -43,7 +44,7 @@ fork:
 
     ret
 
-_sleep:
+_msleep:
     mov $2, %eax
     mov 4(%esp), %ecx
     int $0x80
@@ -246,7 +247,6 @@ write:
     pop %ebx
     ret
 
-
 execve:
     push %ebx
 
@@ -257,4 +257,16 @@ execve:
     int $0x80
 
     pop %ebx
-ret
+    ret
+
+waitpid:
+    push %ebx
+
+    mov $25, %eax
+    mov 16(%esp), %ebx
+    mov 12(%esp), %edx
+    mov 8(%esp), %ecx
+    int $0x80
+
+    pop %ebx
+    ret

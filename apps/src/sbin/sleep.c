@@ -5,7 +5,12 @@
 #include <unistd.h>
 
 int main(int argc, char **argv) {
-    printf("Hello, world!\n");
+    if(argc < 2) {
+        printf("%s: missing operand\n", argv[0]);
+        return 1;
+    }
+
+    sleep(atoi(argv[1]));
 
     return 0;
 }

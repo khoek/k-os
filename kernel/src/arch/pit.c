@@ -55,7 +55,7 @@ void beep() {
 }
 
 static void handle_pit(interrupt_t *interrupt, void *data) {
-    ticks++;
+    ACCESS_ONCE(ticks)++;
 
     pit_clock_event_source.event(&pit_clock_event_source);
 }

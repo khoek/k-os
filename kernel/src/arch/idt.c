@@ -59,6 +59,8 @@ void idt_set_isr(uint32_t gate, uint32_t isr) {
     idt[gate].type |= 0x80 /* present */ | 0xe /* 32 bit interrupt gate */;
 }
 
+#define EX_PAGE_FAULT 14
+
 static char* exceptions[32] = {
      [ 0] = "Divide-by-zero",
      [ 1] = "Debug",
@@ -74,7 +76,7 @@ static char* exceptions[32] = {
      [11] = "Segment Not Present",
      [12] = "Stack-Segment Fault",
      [13] = "General Protection Fault",
-     [14] = "Page Fault",
+     [EX_PAGE_FAULT] = "Page Fault",
      [16] = "x87 Floating-Point Exception",
      [17] = "Alignment Check",
      [18] = "Machine Check",
@@ -82,11 +84,32 @@ static char* exceptions[32] = {
      [30] = "Security Exception"
 };
 
+static void handle_exception(interrupt_t *interrupt) {
+	switch(interrupt->vector) {
+		case EX_PAGE_FAULT: {
+			uint32_t cr2;
+			__asm__ __volatile__ ("mov %%cr2, %0" : "=r" (cr2));
+			panicf("Exception #%u: %s\nError Code: 0x%X\nCR2: 0x%X\nEIP: 0x%p",
+				EX_PAGE_FAULT, "Page Fault", cr2,
+				interrupt->error, interrupt->cpu.exec.eip);
+				break;
+		}
+		default: {
+			panicf("Exception #%u: %s\nError Code: 0x%X\nEIP: 0x%p",
+				interrupt->vector,
+				exceptions[interrupt->vector] ? exceptions[interrupt->vector] : "Unknown",
+				interrupt->error, interrupt->cpu.exec.eip);
+			break;
+		}
+	}
+}
+
 void interrupt_dispatch(interrupt_t *interrupt) {
+	check_on_kernel_stack();
+	check_irqs_disabled();
+
     if(interrupt->vector < IRQ_OFFSET) {
-        panicf("Exception #%u: %s\nError Code: 0x%X\nEIP: 0x%p", interrupt->vector,
-                exceptions[interrupt->vector] ? exceptions[interrupt->vector] : "Unknown",
-                interrupt->error, interrupt->cpu.exec.eip);
+        handle_exception(interrupt);
     }
 
 	if(!is_spurious(interrupt->vector)
@@ -94,8 +117,11 @@ void interrupt_dispatch(interrupt_t *interrupt) {
         irq_handler_t *handler;
         LIST_FOR_EACH_ENTRY(handler, &isrs[interrupt->vector - IRQ_OFFSET], list) {
             handler->isr(interrupt, handler->data);
+			check_irqs_disabled();
         }
     }
+
+	sched_interrupt_notify();
 
     eoi_handler(interrupt->vector);
 
@@ -108,6 +134,16 @@ void idt_init() {
     idtd.offset = (uint32_t) idt;
 
     lidt(&idtd);
+}
+
+void irqsave(uint32_t *flags) {
+    *flags = get_eflags() & EFLAGS_IF;
+    irqdisable();
+}
+
+void irqstore(uint32_t flags) {
+    if(flags & EFLAGS_IF) irqenable();
+    else irqdisable();
 }
 
 extern void register_isr_stubs();

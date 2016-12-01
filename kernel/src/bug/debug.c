@@ -9,6 +9,10 @@
 #include "mm/mm.h"
 #include "log/log.h"
 
+void breakpoint_triggered() {
+
+}
+
 typedef struct {
     uint32_t name;
     uint32_t type;

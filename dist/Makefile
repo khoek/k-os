@@ -30,7 +30,7 @@ $(OBJS): $(OBJDIR)/% : $(SRCDIR)/%
 
 cdrom.iso: $(OBJS) $(OBJDIR)/$(ROOTRAMFS) $(OBJDIR)/$(KBINARY)
 	@echo "      mkimage"
-	@grub-mkrescue -o $(IMAGE) $(OBJDIR) > /dev/null 2>&1
+	@grub-mkrescue -o $(IMAGE) $(OBJDIR) 
 
 clean:
 	rm -rf $(OBJDIR)

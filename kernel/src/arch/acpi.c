@@ -66,6 +66,8 @@ static INITCALL acpi_init() {
         inc += 16;
     }
 
+    kprintf("acpi - RSDP @ 0x%X", virt_to_phys(rsdp));
+
     acpi_sdt_t *madt = NULL;
     acpi_sdt_t *hpet = NULL;
 
@@ -92,6 +94,10 @@ static INITCALL acpi_init() {
                     map_page(sdts[i] + (PAGE_SIZE * (i + 1)));
                 }
 
+                kprintf("acpi - found table %c%c%c%c @ %X",
+                    real->sig[0], real->sig[1],
+                    real->sig[2], real->sig[3], virt_to_phys(real));
+
                 if(acpi_valid_sdt(real)) {
                     if(acpi_sig_match(ACPI_SIG_MADT, real)) {
                         madt = real;
@@ -101,24 +107,27 @@ static INITCALL acpi_init() {
                 }
             }
 
-            if(madt) {
-                kprintf("acpi - MADT detected at 0x%X", virt_to_phys(madt));
+            kprintf("acpi - MADT @ 0x%X", virt_to_phys(madt));
+            kprintf("acpi - HPET @ 0x%X", virt_to_phys(hpet));
 
+            if(madt) {
                 madt_parse(madt);
                 if(hpet) hpet_init(hpet);
             }
         } else {
             rsdt = NULL;
 
-            kprintf("acpi - invalid rsdt");
+            kprintf("acpi - RSDT invalid!");
         }
-    } else {
-        kprintf("acpi - no rsdp detected");
     }
 
-    if(!madt) pic_init();
+    if(!madt) {
+        kprintf("acpi - pic fallback");
+        pic_init();
+    }
 
-    if(!hpet) {
+    if(!madt || !hpet) {
+        kprintf("acpi - pit fallback");
         pit_init();
     }
 

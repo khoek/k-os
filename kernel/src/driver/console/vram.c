@@ -55,6 +55,8 @@ void vram_clear(console_t *con) {
 }
 
 static void vram_putc(console_t *con, char c) {
+    check_irqs_disabled();
+
     if(c == '\n') {
         con->col = 0;
         con->row++;

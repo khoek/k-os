@@ -6,7 +6,7 @@
 #include "arch/ioapic.h"
 #include "bug/debug.h"
 #include "bug/panic.h"
-#include "mm/cache.h"
+#include "mm/mm.h"
 #include "device/device.h"
 #include "driver/bus/pci.h"
 #include "log/log.h"

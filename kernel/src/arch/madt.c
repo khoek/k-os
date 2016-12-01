@@ -43,10 +43,10 @@ void madt_parse(acpi_sdt_t *madt) {
     //TODO unmap the pages
 
     //apic_init invokes sti()
-    cli();
+    irqdisable();
     outb(0x70, 0xF);
     outb(0x71, 0xA);
-    sti();
+    irqenable();
 
     bda_putl(BDA_RESET_VEC, (uint32_t) entry_ap_dst_phys);
 

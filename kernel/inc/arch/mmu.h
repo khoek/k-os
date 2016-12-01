@@ -4,6 +4,10 @@
 #define NUM_ENTRIES 1024
 #define KERNEL_NUM_TABLES 256
 
+#define MMUFLAG_PRESENT     (1 << 0)
+#define MMUFLAG_WRITABLE    (1 << 1)
+#define MMUFLAG_USER        (1 << 2)
+
 #include "common/types.h"
 
 typedef struct pdir_ent pdir_entry_t;
@@ -127,6 +131,7 @@ static inline phys_addr_t dir_lookup_addr(pdir_t *dir, void *addr) {
 }
 
 static inline phys_addr_t virt_to_phys(void *addr) {
+    if(!addr) return 0;
     return tab_lookup_addr(&kptab[addr_to_diridx(addr) - addr_to_diridx((void *) VIRTUAL_BASE)], addr);
 }
 
@@ -144,20 +149,30 @@ static inline void loadcr3(uint32_t phys) {
 
 #include "sched/task.h"
 
-static inline phys_addr_t resolve_virt(task_t *t, void *p) {
+static inline bool virt_is_valid(thread_t *task, void *addr) {
+    ptab_t *tab;
+    if(task && ((uint32_t) addr) < VIRTUAL_BASE) {
+        tab = dir_get_tab(task->arch.dir, addr_to_diridx(addr));
+    } else {
+        tab = &kptab[addr_to_diridx(addr) - addr_to_diridx((void *) VIRTUAL_BASE)];
+    }
+    return tab && (tabentry_get_flags(tab, addr_to_tabidx(addr)) & MMUFLAG_PRESENT);
+}
+
+static inline phys_addr_t resolve_virt(thread_t *t, void *p) {
     return dir_lookup_addr(t->arch.dir, p);
 }
 
 void build_page_dir(pdir_t *dir);
-void copy_mem(task_t *to, task_t *from);
+void copy_mem(thread_t *to, thread_t *from);
 
 void * map_page(phys_addr_t phys);
 void * map_pages(phys_addr_t phys, uint32_t pages);
 
-void user_map_page(task_t *task, void *virt, phys_addr_t page);
-void user_map_pages(task_t *task, void *virt, phys_addr_t page, uint32_t num);
+void user_map_page(thread_t *task, void *virt, phys_addr_t page);
+void user_map_pages(thread_t *task, void *virt, phys_addr_t page, uint32_t num);
 
-void task_mmu_setup(task_t *task);
+void task_mmu_setup(thread_t *task);
 
 void __init mmu_init(phys_addr_t kernel_end, phys_addr_t malloc_start);
 

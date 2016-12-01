@@ -2,7 +2,7 @@
 #include "common/swap.h"
 #include "sync/spinlock.h"
 #include "sync/semaphore.h"
-#include "mm/cache.h"
+#include "mm/mm.h"
 #include "net/packet.h"
 #include "net/interface.h"
 #include "net/ip/ip.h"

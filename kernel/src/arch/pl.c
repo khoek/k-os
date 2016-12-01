@@ -4,41 +4,76 @@
 #include "arch/cpu.h"
 #include "arch/proc.h"
 #include "bug/debug.h"
+#include "log/log.h"
 #include "sched/task.h"
 
 void enter_syscall() {
-    BUG_ON(get_eflags() & EFLAGS_IF);
+    check_irqs_disabled();
 
     barrier();
-    sti();
+    irqenable();
 }
 
 void leave_syscall() {
     barrier();
-    cli();
+    irqdisable();
 }
 
 void save_stack(void *sp) {
+    check_irqs_disabled();
+
     BUG_ON(!current);
+    BUG_ON(current->arch.live_state);
     current->arch.live_state = sp;
+}
+
+#define ALIGN_BITS 16
+
+void switch_stack(thread_t *old, thread_t *next, void (*callback)(thread_t *old, thread_t *next)) {
+    uint32_t new_esp = (((uint32_t) old->arch.live_state) / ALIGN_BITS) * ALIGN_BITS;
+
+    asm volatile("mov %[new_esp], %%esp\n"
+                 "push %[next]\n"
+                 "push %[old]\n"
+                 "call *%[finish]"
+        :
+        : [new_esp] "m" (new_esp),
+          [old] "m" (old),
+          [next] "m" (next),
+          [finish] "m" (callback)
+        : "memory");
+
+    BUG();
 }
 
 extern void do_context_switch(uint32_t cr3, cpu_state_t *live_state);
 
-void context_switch(task_t *t) {
+void context_switch(thread_t *t) {
+    check_irqs_disabled();
+
+    BUG_ON(t);
+
     tss_set_stack(t->kernel_stack_bottom);
-    do_context_switch(t->arch.cr3, t->arch.live_state);
+
+    void *s = t->arch.live_state;
+    BUG_ON(!s);
+    t->arch.live_state = NULL;
+
+    barrier();
+
+    do_context_switch(t->arch.cr3, s);
 }
 
 #define kernel_stack_off(task, off) ((void *) (((uint32_t) (task)->kernel_stack_bottom) - (off)))
 
 static inline void set_exec_state(exec_state_t *exec, void *ip, bool user) {
-    exec->eflags = EFLAGS_IF;
     exec->eip = (uint32_t) ip;
 
     if(user) {
+        exec->eflags = EFLAGS_IF;
         exec->cs = SEL_USER_CODE | SPL_USER;
     } else {
+        exec->eflags = 0;
         exec->cs = SEL_KRNL_CODE | SPL_KRNL;
     }
 }
@@ -62,13 +97,13 @@ static inline void set_reg_state(registers_t *dst, registers_t *src) {
     }
 }
 
-static inline void set_live_state(task_t *t, void *live_state) {
+static inline void set_live_state(thread_t *t, void *live_state) {
     t->arch.live_state = live_state;
 }
 
 //If reg==NULL we will just fill the registers with zeroes.
 void pl_enter_userland(void *user_ip, void *user_stack, registers_t *reg) {
-    task_t *me = current;
+    thread_t *me = current;
 
     //We are about to build a register launchpad on the stack to jumpstart
     //execution at the user address.
@@ -81,7 +116,7 @@ void pl_enter_userland(void *user_ip, void *user_stack, registers_t *reg) {
 
     //We can't be interrupted after clobbering live_state, else a task switch
     //interrupt will modify this value and we will end up who-knows-where?
-    cli();
+    irqdisable();
 
     //Inform context_switch() of the register launchpad's location.
     set_live_state(me, &user_state);
@@ -90,13 +125,23 @@ void pl_enter_userland(void *user_ip, void *user_stack, registers_t *reg) {
     context_switch(me);
 }
 
+void pl_bootstrap_userland(void *user_ip, void *user_stack, uint32_t argc,
+    void *argv, void *envp) {
+    registers_t reg;
+    memset(&reg, 0, sizeof(registers_t));
+    reg.eax = argc;
+    reg.ebx = (uint32_t) argv;
+    reg.ecx = (uint32_t) envp;
+
+    pl_enter_userland(user_ip, user_stack, &reg);
+}
+
 #define stack_alloc(stack, type) ({(stack) -= (sizeof(type)); ((type *) (stack));})
 
-void pl_setup_task(task_t *t, void *ip, void *arg) {
+void pl_setup_thread(thread_t *t, void *ip, void *arg) {
     //It is absolutely imperative that "t" is not running, else the live_state
-    //we install may be overwritten due to an interrupt (not to mention damage
-    //to arch.cpu_state).
-    BUG_ON(t->state != TASK_BUILDING);
+    //we install may be overwritten due to an interrupt.
+    BUG_ON(t->state != THREAD_BUILDING);
 
     void *stack = t->kernel_stack_bottom;
 
@@ -116,4 +161,11 @@ void pl_setup_task(task_t *t, void *ip, void *arg) {
 
     //Inform context_switch() of the register launchpad's location.
     set_live_state(t, state);
+}
+
+void arch_thread_build(thread_t *t) {
+    page_t *page = alloc_page(0);
+    t->arch.dir = page_to_virt(page);
+    t->arch.cr3 = (uint32_t) page_to_phys(page);
+    build_page_dir(t->arch.dir);
 }

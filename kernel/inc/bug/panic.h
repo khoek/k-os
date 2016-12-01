@@ -5,9 +5,7 @@
 #include "common/compiler.h"
 #include "common/asm.h"
 
-static inline void __noreturn die() {
-    while(true) hlt();
-}
+#define die() do { while(true) hlt(); } while(0)
 
 void __noreturn panic(char* message);
 void __noreturn panicf(char* fmt, ...);

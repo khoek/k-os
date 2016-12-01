@@ -20,7 +20,7 @@ processor_t * register_proc(uint32_t num) {
 
     arch_setup_proc(proc);
 
-    get_percpu_unsafe(this_proc) = proc;
+    get_percpu(this_proc) = proc;
 
     return proc;
 }

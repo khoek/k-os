@@ -1,8 +1,0 @@
-#ifndef KERNEL_FS_STREAM_CHAR_H
-#define KERNEL_FS_STREAM_CHAR_H
-
-#include "fs/fd.h"
-
-file_t * char_file_open(uint32_t size);
-
-#endif

@@ -18,7 +18,6 @@ static cache_t *timer_cache;
 static DEFINE_LIST(active_timers);
 static DEFINE_LIST(dispatch_timers);
 
-static DEFINE_SPINLOCK(active_lock);
 static DEFINE_SPINLOCK(dispatch_lock);
 
 void timer_create(uint32_t millis, timer_callback_t callback, void *data) {
@@ -28,7 +27,7 @@ void timer_create(uint32_t millis, timer_callback_t callback, void *data) {
     new->data = data;
 
     uint32_t flags;
-    spin_lock_irqsave(&active_lock, &flags);
+    spin_lock_irqsave(&dispatch_lock, &flags);
 
     if(list_empty(&active_timers)) {
         list_add(&new->list, &active_timers);
@@ -46,32 +45,30 @@ void timer_create(uint32_t millis, timer_callback_t callback, void *data) {
         list_add_before(&new->list, &timer->list);
     }
 
-    spin_unlock_irqstore(&active_lock, flags);
+    spin_unlock_irqstore(&dispatch_lock, flags);
 }
 
 static void time_tick(clock_event_source_t *source) {
-    if(list_empty(&active_timers)) return;
-
     uint32_t flags;
-    spin_lock_irqsave(&active_lock, &flags);
-    spin_lock_irq(&dispatch_lock);
+    spin_lock_irqsave(&dispatch_lock, &flags);
 
-    timer_t *timer = list_first(&active_timers, timer_t, list);
-    timer->delta--; //FIXME calculate a value based on event freq
-    while(!timer->delta) {
-        list_move(&timer->list, &dispatch_timers);
-        timer = list_first(&active_timers, timer_t, list);
-    }
+    if(list_empty(&active_timers)) {
+        timer_t *timer = list_first(&active_timers, timer_t, list);
+        timer->delta--; //FIXME calculate a value based on event freq
+        while(!timer->delta) {
+            list_move(&timer->list, &dispatch_timers);
+            timer = list_first(&active_timers, timer_t, list);
+            timer->delta--;
+        }
 
-    spin_unlock(&active_lock);
+        LIST_FOR_EACH_ENTRY(timer, &dispatch_timers, list) {
+            timer->callback(timer->data);
 
-    LIST_FOR_EACH_ENTRY(timer, &dispatch_timers, list) {
-        timer->callback(timer->data);
+            cache_free(timer_cache, timer);
+        }
 
-        cache_free(timer_cache, timer);
-    }
-
-    list_init(&dispatch_timers);
+        list_init(&dispatch_timers);
+}
 
     spin_unlock_irqstore(&dispatch_lock, flags);
 }

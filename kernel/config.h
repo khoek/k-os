@@ -3,11 +3,9 @@
 
 // CONFIG_DEBUG_BUGCHECKS: Enable system-wide bugchecks which are normally
 // compiled into the kernel, and other debugging information.
-#define CONFIG_DEBUG_BUGCHECKS
+//#define CONFIG_DEBUG_BUGCHECKS
 
 // CONFIG_DEBUG_MM: Enable particularly expensive MM-related bugchecks.
 //#define CONFIG_DEBUG_MM
 
-// CONFIG_DEBUG_SPINLOCKS: Enable particularly expensive spinlock-related
-// bugchecks.
-//#define CONFIG_DEBUG_SPINLOCKS
+#define CONFIG_DEBUG_THREADS

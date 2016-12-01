@@ -3,89 +3,96 @@
 #include "common/asm.h"
 #include "sync/spinlock.h"
 #include "bug/panic.h"
+#include "bug/debug.h"
+#include "arch/idt.h"
+#include "arch/proc.h"
 #include "arch/cpu.h"
 #include "time/clock.h"
 
 #include "atomic_ops.h"
 
-#define LOCK_ATTEMPTS (1 << 15)
-#define DEADLOCK_THRESHOLD 1000
+DEFINE_PER_CPU(uint32_t, locks_held);
+DEFINE_PER_CPU(list_head_t, lock_list);
 
-#ifdef CONFIG_DEBUG_SPINLOCKS
-static void check_safe() {
-    if(get_eflags() & EFLAGS_IF) panic("spinlock usage in interruptible context!");
-}
-#endif
+#define TICKET_SHIFT 16
 
-void _spin_lock(volatile spinlock_t *lock) {
-#ifdef CONFIG_DEBUG_SPINLOCKS
-    check_safe();
+bool _spin_trylock(volatile spinlock_t *lock) {
+    check_irqs_disabled();
+    BUG_ON(!lock);
 
-    uint64_t then = uptime();
-#endif
+    spinlock_arch_t old, new;
 
-    register ticket_pair_t local = {.tail = 1};
-    local = xchg_op(add, &lock->arch, local);
-    if(likely(local.head == local.tail))
-        goto lock_out;
+    old.tickets = ACCESS_ONCE(lock->arch.tickets);
+    if (old.tickets.head != old.tickets.tail) {
+        return 0;
+    }
+    new.raw = old.raw + (1 << TICKET_SHIFT);
 
-    while(true) {
-        uint32_t attempts = LOCK_ATTEMPTS;
-        do {
-            if(ACCESS_ONCE(lock->arch.head) == local.tail)
-                goto lock_out;
-            relax();
+    barrier();
+    /* cmpxchg is a full barrier, so nothing can move before it */
+    uint32_t res = cmpxchg(&lock->arch.raw, old.raw, new.raw);
+    barrier();
 
-#ifdef CONFIG_DEBUG_SPINLOCKS
-            if(uptime() - then > DEADLOCK_THRESHOLD) {
-                panicf("deadlock detected! state: (%X, %X), offender: 0x%X", ACCESS_ONCE(lock->arch.head), ACCESS_ONCE(lock->arch.tail), lock->holder);
-            }
-#endif
-        } while(--attempts);
+    bool ret = res == old.raw;
 
-        //TODO consider blocking
+    if(ret && percpu_up) {
+        if(lock->arch.holder != 0xFFFF){
+            panicf("spinlock lock violation %X vs %X", lock->arch.holder, get_percpu(this_proc)->num);
+        }
+        lock->arch.holder = get_percpu(this_proc)->num;
+        list_add(&((spinlock_t *) lock)->list, &get_percpu(lock_list));
+        get_percpu(locks_held)++;
     }
 
-#ifdef CONFIG_DEBUG_SPINLOCKS
-    lock->holder = __builtin_return_address(0);
-#endif
+    return ret;
+}
+
+void _spin_lock(volatile spinlock_t *lock) {
+    check_irqs_disabled();
+    BUG_ON(!lock);
+
+    register ticket_pair_t local = {.tail = 1};
+
+    local = xchg_op(add, &lock->arch.tickets, local);
+    if(likely(local.head == local.tail)) {
+        goto lock_out;
+    }
+
+    while(true) {
+        BUG_ON(!lock);
+        if(ACCESS_ONCE(lock->arch.tickets.head) == local.tail) {
+            goto lock_out;
+        }
+        relax();
+    }
 
 lock_out:
     barrier();
+
+    if(percpu_up) {
+        if(lock->arch.holder != 0xFFFF){
+            panicf("spinlock lock violation %X vs %X", lock->arch.holder, get_percpu(this_proc)->num);
+        }
+        lock->arch.holder = get_percpu(this_proc)->num;
+        list_add(&((spinlock_t *) lock)->list, &get_percpu(lock_list));
+        get_percpu(locks_held)++;
+    }
 }
 
 void _spin_unlock(volatile spinlock_t *lock) {
-#ifdef CONFIG_DEBUG_SPINLOCKS
-    check_safe();
+    check_irqs_disabled();
+    BUG_ON(!lock);
 
-    lock->holder = NULL;
-#endif
+    if(percpu_up) {
+        if(lock->arch.holder == 0xFFFF){
+            panicf("spinlock unlock violation %X vs %X", lock->arch.holder, get_percpu(this_proc)->num);
+        }
+        lock->arch.holder = 0xFFFF;
+        list_rm(&((spinlock_t *) lock)->list);
+        get_percpu(locks_held)--;
+    }
 
-    add(&lock->arch.head, 1);
-}
-
-void spin_lock_irq(volatile spinlock_t *lock) {
-    cli(); //TODO SMP fix (disable locally)
-    spin_lock(lock);
-}
-
-void spin_unlock_irq(volatile spinlock_t *lock) {
-    spin_unlock(lock);
-    sti(); //TODO SMP fix (disable locally)
-}
-
-void spin_lock_irqsave(volatile spinlock_t *lock, uint32_t *flags) {
-    *flags = get_eflags() & EFLAGS_IF;
-
-    cli(); //TODO SMP fix (disable locally)
-    spin_lock(lock);
-}
-
-void spin_unlock_irqstore(volatile spinlock_t *lock, uint32_t flags) {
-    spin_unlock(lock);
-
-    if(flags & EFLAGS_IF) sti(); //TODO SMP fix (disable locally)
-
-    //Alternatively:
-    //set_eflags((get_eflags() & ~EFLAGS_IF) | flags);
+    barrier();
+    add(&lock->arch.tickets.head, 1);
+    barrier();
 }

@@ -6,10 +6,6 @@
 #include "arch/mmu.h"
 #include "sched/task.h"
 
-#define PRESENT     (1 << 0)
-#define WRITABLE    (1 << 1)
-#define USER        (1 << 2)
-
 pdir_t init_page_directory ALIGN(PAGE_SIZE);
 ptab_t kptab[KERNEL_NUM_TABLES] ALIGN(PAGE_SIZE);
 
@@ -17,7 +13,7 @@ ptab_t kptab[KERNEL_NUM_TABLES] ALIGN(PAGE_SIZE);
 static uint32_t kernel_next_page;
 static DEFINE_SPINLOCK(map_lock);
 
-static inline void do_user_map_page(task_t *task, uint32_t diridx, uint32_t tabidx, phys_addr_t phys) {
+static inline void do_user_map_page(thread_t *task, uint32_t diridx, uint32_t tabidx, phys_addr_t phys) {
     pdir_t *dir = task->arch.dir;
 
     ptab_t *tab = dir_get_tab(dir, diridx);
@@ -25,14 +21,14 @@ static inline void do_user_map_page(task_t *task, uint32_t diridx, uint32_t tabi
         page_t *table_page = alloc_page(ALLOC_ZERO);
         phys_addr_t tab_phys = page_to_phys(table_page);
 
-        direntry_set(dir, diridx, tab_phys, PRESENT | WRITABLE | USER);
+        direntry_set(dir, diridx, tab_phys, MMUFLAG_PRESENT | MMUFLAG_WRITABLE | MMUFLAG_USER);
         tab = page_to_virt(table_page);
     }
 
-    tabentry_set(tab, tabidx, phys, PRESENT | WRITABLE | USER);
+    tabentry_set(tab, tabidx, phys, MMUFLAG_PRESENT | MMUFLAG_WRITABLE | MMUFLAG_USER);
 }
 
-void user_map_page(task_t *task, void *virt, phys_addr_t phys) {
+void user_map_page(thread_t *task, void *virt, phys_addr_t phys) {
     do_user_map_page(task, addr_to_diridx(virt), addr_to_tabidx(virt), phys);
 
     if(task == current) {
@@ -40,19 +36,19 @@ void user_map_page(task_t *task, void *virt, phys_addr_t phys) {
     }
 }
 
-void user_map_pages(task_t *task, void *virt, phys_addr_t phys, uint32_t num) {
+void user_map_pages(thread_t *task, void *virt, phys_addr_t phys, uint32_t num) {
     for(uint32_t i = 0; i < num; i++) {
         uint32_t off = i * PAGE_SIZE;
         user_map_page(task, virt + off, phys + off);
     }
 }
 
-void copy_mem(task_t *to, task_t *from) {
+void copy_mem(thread_t *to, thread_t *from) {
     for (uint32_t i = 0; i < NUM_ENTRIES - KERNEL_NUM_TABLES; i++) {
         ptab_t *tab = dir_get_tab(from->arch.dir, i);
         if(tab) {
             for (uint32_t j = 0; j < NUM_ENTRIES; j++) {
-                if(tabentry_get_flags(tab, j) & PRESENT) {
+                if(tabentry_get_flags(tab, j) & MMUFLAG_PRESENT) {
                     void *dst = kmalloc(PAGE_SIZE);
                     void *src = phys_to_virt(tabentry_get_phys(tab, j));
                     memcpy(dst, src, PAGE_SIZE);
@@ -67,7 +63,7 @@ void copy_mem(task_t *to, task_t *from) {
 static void * do_map_page(phys_addr_t phys) {
     void *virt = (void *) ((kernel_next_page++ * PAGE_SIZE) + VIRTUAL_BASE);
     uint32_t idx = addr_to_diridx(virt) - addr_to_diridx((void *) VIRTUAL_BASE);
-    tabentry_set(&kptab[idx], addr_to_tabidx(virt), phys, WRITABLE | PRESENT);
+    tabentry_set(&kptab[idx], addr_to_tabidx(virt), phys, MMUFLAG_WRITABLE | MMUFLAG_PRESENT);
     invlpg(virt);
 
     return virt + paddr_to_pageoff(phys);
@@ -104,11 +100,11 @@ void build_page_dir(pdir_t *dir) {
     uint32_t baseoff = VIRTUAL_BASE / PAGE_SIZE / NUM_ENTRIES;
     for (uint32_t i = 0; i < KERNEL_NUM_TABLES; i++) {
         phys_addr_t phys = kvirt_to_phys(&kptab[i]);
-        direntry_set(dir, i + baseoff, phys, PRESENT | WRITABLE);
+        direntry_set(dir, i + baseoff, phys, MMUFLAG_PRESENT | MMUFLAG_WRITABLE);
     }
 }
 
-void task_mmu_setup(task_t *task) {
+void task_mmu_setup(thread_t *task) {
     build_page_dir(task->arch.dir);
 }
 
@@ -122,7 +118,7 @@ void __init mmu_init(phys_addr_t kernel_end, phys_addr_t malloc_start) {
         uint32_t tabidx = page_idx % NUM_ENTRIES;
         phys_addr_t phys = page_idx * PAGE_SIZE;
 
-        tabentry_set(&kptab[diridx], tabidx, phys, WRITABLE | PRESENT);
+        tabentry_set(&kptab[diridx], tabidx, phys, MMUFLAG_WRITABLE | MMUFLAG_PRESENT);
     }
 
     //Map the page_t struct array just after the kernel image.
@@ -132,7 +128,7 @@ void __init mmu_init(phys_addr_t kernel_end, phys_addr_t malloc_start) {
         uint32_t tabidx = page_idx % NUM_ENTRIES;
         phys_addr_t phys = malloc_start + (i * PAGE_SIZE);
 
-        tabentry_set(&kptab[diridx], tabidx, phys, WRITABLE | PRESENT);
+        tabentry_set(&kptab[diridx], tabidx, phys, MMUFLAG_WRITABLE | MMUFLAG_PRESENT);
     }
 
     kernel_next_page = kernel_num_pages + MALLOC_NUM_PAGES;

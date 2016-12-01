@@ -30,7 +30,7 @@ typedef struct devfs_device {
 } devfs_device_t;
 
 static fs_t *devfs;
-static task_t *devfs_task;
+static thread_t *devfs_task;
 static DEFINE_LIST(devfs_devices);
 static DEFINE_LIST(devfs_pending);
 static DEFINE_SPINLOCK(devfs_lock);
@@ -165,9 +165,10 @@ static void devfs_add_dev(void *device, device_type_t type, char *name) {
     uint32_t flags;
     spin_lock_irqsave(&devfs_lock, &flags);
     list_add_before(&d->list, &devfs_pending);
-    spin_unlock_irqstore(&devfs_lock, flags);
 
-    if(devfs_task) task_wake(devfs_task);
+    if(devfs_task) thread_wake(devfs_task);
+
+    spin_unlock_irqstore(&devfs_lock, flags);
 }
 
 char * devfs_get_strpath(char *name) {
@@ -219,42 +220,41 @@ static bool create_path(path_t *start, const char *orig_path) {
     return true;
 }
 
+//called with devfs_lock held
 static bool devfs_update() {
-    uint32_t flags;
-    spin_lock_irqsave(&devfs_lock, &flags);
-
     if(list_empty(&devfs_pending)) {
-        spin_unlock_irqstore(&devfs_lock, flags);
-
         return false;
     }
 
     devfs_device_t *d = list_first(&devfs_pending, devfs_device_t, list);
     list_rm(&d->list);
 
-    spin_unlock_irqstore(&devfs_lock, flags);
-
     d->dentry->inode = devfs_inode_alloc(d);
     dentry_activate(d->dentry, devfs->root);
-
-    spin_lock_irqsave(&devfs_lock, &flags);
 
     list_add(&d->list, &devfs_devices);
     kprintf("devfs - added \"%s/%s\"", mntpoint, d->dentry->name);
 
-    spin_unlock_irqstore(&devfs_lock, flags);
-
     return true;
 }
 
+//called with devfs_lock held
 void devfs_publish_pending() {
     while(devfs_update());
 }
 
 static void devfs_run(void *UNUSED(arg)) {
+    irqenable();
+
     while(true) {
+        spin_lock_irq(&devfs_lock);
+
         devfs_publish_pending();
-        task_sleep_current();
+        thread_sleep_prepare();
+
+        spin_unlock_irq(&devfs_lock);
+
+        sched_switch();
     }
 }
 

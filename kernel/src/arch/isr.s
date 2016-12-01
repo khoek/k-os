@@ -8,18 +8,14 @@
 isr_common:
     pushl %esp
 
-    mov %gs, %ax
-    mov %ax, %fs
     mov $0x18, %ax
     mov %ax, %gs
 
     call interrupt_dispatch
     addl $12, %esp
 
-    mov %fs, %ax
+    mov $0x18, %ax
     mov %ax, %gs
-    mov $0x2b, %ax
-    mov %ax, %fs
 
     popa
     iret

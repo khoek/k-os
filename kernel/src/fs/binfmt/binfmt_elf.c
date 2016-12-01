@@ -14,8 +14,18 @@
 #include "log/log.h"
 
 #define USTACK_ADDR_START 0xB0000000
+#define UARGS_ADDR_START 0xB8000000
+
 #define USTACK_NUM_PAGES 8
+#define UARGS_NUM_PAGES 1
+
 #define USTACK_SIZE (USTACK_NUM_PAGES * PAGE_SIZE)
+
+#define designate_stack(t)                                  \
+    designate_space(t, (void *) USTACK_ADDR_START, USTACK_NUM_PAGES)
+
+#define designate_args(t)                                   \
+    designate_space(t, (void *) UARGS_ADDR_START, UARGS_NUM_PAGES)
 
 static bool elf_header_valid(Elf32_Ehdr *ehdr) {
     return ehdr->e_ident[EI_MAG0] == ELFMAG0
@@ -32,19 +42,56 @@ static bool elf_header_valid(Elf32_Ehdr *ehdr) {
         && ehdr->e_machine == EM_386;
 }
 
-static void * designate_stack(task_t *t) {
-    void *ustack = (void *) USTACK_ADDR_START;
-    while(resolve_virt(t, ustack)) {
-        ustack += USTACK_SIZE;
+static void * designate_space(thread_t *t, void *start, uint32_t num_pages) {
+    while(resolve_virt(t, start)) {
+        start += num_pages * PAGE_SIZE;
     }
 
-    page_t *ustack_page = alloc_pages(USTACK_NUM_PAGES, ALLOC_ZERO);
-    user_map_pages(current, ustack, page_to_phys(ustack_page), USTACK_NUM_PAGES);
+    page_t *page = alloc_pages(num_pages, ALLOC_ZERO);
+    user_map_pages(current, start, page_to_phys(page), num_pages);
 
-    return ustack;
+    return start;
+}
+
+static uint32_t calculate_argc(char **argv) {
+    if(!argv) return 0;
+
+    uint32_t argc = 0;
+    while(*(argv++)) {
+        argc++;
+    }
+    return argc;
+}
+
+uint32_t strcpylen(char *dest, const char *src) {
+    uint32_t len = 0;
+
+    while ((*dest++ = *src++) != '\0') {
+        len++;
+    }
+
+    return len;
+}
+
+static uint32_t build_argv(char **start, char **argv) {
+    uint32_t argc = calculate_argc(argv);
+
+    if(argv) {
+        char *end = (void *) (start + argc * sizeof(char *) + 1);
+        while(*argv) {
+            *(start++) = end;
+            end += strcpylen(end, *argv++) + 1;
+        }
+    }
+
+    *start = NULL;
+
+    return argc;
 }
 
 static bool load_elf(file_t *f, char **argv, char **envp) {
+    irqdisable();
+
     Elf32_Ehdr *ehdr = kmalloc(sizeof(Elf32_Ehdr));
     if(vfs_read(f, ehdr, sizeof(Elf32_Ehdr)) != sizeof(Elf32_Ehdr)) {
         return false;
@@ -137,13 +184,24 @@ static bool load_elf(file_t *f, char **argv, char **envp) {
 
     kprintf("binfmt_elf - entry: %X", ehdr->e_entry);
 
-    cli();
+    irqdisable();
 
-    current->argv = argv;
-    current->envp = envp;
+    thread_t *me = current;
 
-    void *ustack = designate_stack(current) + USTACK_SIZE;
-    pl_enter_userland((void *) ehdr->e_entry, ustack, NULL);
+    task_node_t *node = obtain_task_node(me);
+
+    uint32_t flags;
+    spin_lock_irqsave(&node->lock, &flags);
+    node->argv = argv;
+    node->envp = envp;
+    spin_unlock_irqstore(&node->lock, flags);
+
+    void *ustack = designate_stack(me) + USTACK_SIZE;
+
+    void *uargv = designate_args(me);
+    uint32_t argc = build_argv(uargv, argv);
+
+    pl_bootstrap_userland((void *) ehdr->e_entry, ustack, argc, uargv, NULL);
 
     BUG();
 }

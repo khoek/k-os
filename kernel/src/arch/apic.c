@@ -61,6 +61,8 @@ static bool apic_is_spurious(uint32_t vector) {
 }
 
 static void apic_eoi() {
+    check_no_locks_held();
+
     writel(apic_base, REG_EOI, 0);
 }
 

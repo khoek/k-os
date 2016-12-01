@@ -21,7 +21,7 @@ void sysrq_handle(uint16_t code) {
         }
         case S_KEY: {
             kprintf("stats:");
-            kprintf("%u tasks", task_count);
+            kprintf("%u tasks", thread_count);
             kprintf("%u file descriptors in use", gfdt_entries_in_use);
             kprintf("%u/%u pages allocated/avaliable", pages_in_use, pages_avaliable);
             break;

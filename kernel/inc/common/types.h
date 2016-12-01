@@ -1,6 +1,8 @@
 #ifndef KERNEL_COMMON_TYPES_H
 #define KERNEL_COMMON_TYPES_H
 
+#include <stdbool.h>
+
 #define NULL ((void *) 0)
 
 #define INT16_MIN  (-32768)

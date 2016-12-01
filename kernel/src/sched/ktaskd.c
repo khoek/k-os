@@ -1,6 +1,7 @@
 #include "common/compiler.h"
 #include "common/list.h"
 #include "bug/debug.h"
+#include "mm/mm.h"
 #include "sync/spinlock.h"
 #include "sync/semaphore.h"
 
@@ -31,15 +32,15 @@ void ktaskd_request(void (*main)(void *arg), void *arg) {
     spin_unlock_irqstore(&ktaskd_lock, flags);
 }
 
-static void ktask_fulfil_req(ktaskd_req_t *req) {
+static void ktaskd_fulfil_req(ktaskd_req_t *req) {
     spawn_kernel_task(req->main, req->arg);
 }
 
 static void ktaskd_spawn_pending() {
+    semaphore_down(&ktaskd_semaphore);
+
     uint32_t flags;
     spin_lock_irqsave(&ktaskd_lock, &flags);
-
-    semaphore_down(&ktaskd_semaphore);
 
     BUG_ON(list_empty(&ktaskd_reqlist));
 
@@ -48,11 +49,13 @@ static void ktaskd_spawn_pending() {
 
     spin_unlock_irqstore(&ktaskd_lock, flags);
 
-    ktask_fulfil_req(req);
+    ktaskd_fulfil_req(req);
     kfree(req);
 }
 
 static void ktaskd_run(void *UNUSED(arg)) {
+    irqenable();
+
     while(true) {
         ktaskd_spawn_pending();
     }

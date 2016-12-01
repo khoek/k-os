@@ -9,10 +9,11 @@
 .section .text.entry, "ax"
 
 _start:
-#    pop %eax
-#    mov %eax, _data_start
-#    mov %eax, _data_end
+    # Push argv, argc, in that order.
+    push %ebx
+    push %eax
 
     call main
+
     push %eax
     call _exit

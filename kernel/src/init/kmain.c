@@ -20,13 +20,16 @@
 
 multiboot_info_t *multiboot_info;
 
-static char *argv[] = {"init", NULL};
-static char *envp[] = {NULL};
+static char *ENVP[] = {NULL};
 
 static bool try_load_init(char *path) {
+    char *argv[2];
+    argv[0] = path;
+    argv[1] = NULL;
+
     path_t out;
     if(vfs_lookup(NULL, path, &out)) {
-        execute_path(&out, argv, envp);
+        execute_path(&out, argv, ENVP);
     }
 
     return false;
@@ -45,7 +48,7 @@ static void umain() {
     }
     kfree(str);
 
-    vlog_disable();
+    //vlog_disable();
 
     ufdt_add(0, vfs_open_file(out.dentry->inode));
     ufdt_add(0, vfs_open_file(out.dentry->inode));
@@ -85,7 +88,7 @@ void kmain(uint32_t magic, multiboot_info_t *mbd) {
     }
     kprintf("main - finished initcalls");
 
-    root_task_init(umain, argv, envp);
+    root_task_init(umain);
 
     mm_postinit_reclaim();
 

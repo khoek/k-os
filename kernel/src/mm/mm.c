@@ -49,24 +49,24 @@ static uint32_t mmap_length;
 
 static DEFINE_SPINLOCK(alloc_lock);
 
-static PURE inline uint32_t get_order_idx(uint32_t idx, uint32_t order) {
+static inline uint32_t get_order_idx(uint32_t idx, uint32_t order) {
     return DIV_DOWN(idx, 1ULL << order);
 }
 
-static PURE inline bool is_free(page_t *page) {
+static inline bool is_free(page_t *page) {
     return !(page->flags & PAGE_FLAG_USED) && !(page->flags & PAGE_FLAG_PERM);
 }
 
-static PURE inline bool is_master(page_t *page) {
+static inline bool is_master(page_t *page) {
     return !(get_order_idx(get_index(page), page->order) % 2);
 }
 
-static PURE inline bool is_subblock_master(page_t *page) {
+static inline bool is_subblock_master(page_t *page) {
     if(!page->order) return true;
     return !(get_order_idx(get_index(page), page->order - 1) % 2);
 }
 
-static PURE inline page_t * get_buddy(page_t *page) {
+static inline page_t * get_buddy(page_t *page) {
     if(is_master(page)) {
         return page + (1ULL << page->order);
     } else {
@@ -200,7 +200,7 @@ static page_t * do_alloc_pages(uint32_t number) {
         }
     }
 
-    panicf("OOM! (%X/%X)", pages_in_use, pages_avaliable);
+    panicf("OOM! wanted %X (%X/%X)", number, pages_in_use, pages_avaliable);
 }
 
 page_t * alloc_page(uint32_t flags) {
@@ -245,6 +245,8 @@ void free_page(page_t *page) {
 
     BUG_ON(page->flags & PAGE_FLAG_PERM);
     BUG_ON(!(page->flags & PAGE_FLAG_USED));
+
+    page->flags &= ~PAGE_FLAG_USED;
 
     page->flags = 0;
 

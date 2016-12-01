@@ -54,7 +54,6 @@ typedef struct tss {
 } PACKED tss_t;
 
 void tss_set_stack(void *sp);
-void gdt_set_tls(uint32_t tls_start);
 
 void gdt_init(processor_t *proc);
 

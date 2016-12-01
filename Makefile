@@ -1,4 +1,4 @@
-include Makefile.config
+CORES = 1
 
 UTILDIR = $(realpath util)
 UTILBINDIR = $(UTILDIR)/$(UTILBINPREFIX)
@@ -6,6 +6,10 @@ LIBDIR = $(realpath libc)
 KERNELDIR = $(realpath kernel)
 APPSDIR = $(realpath apps)
 DISTDIR = $(realpath dist)
+
+QEMUARGS = -smp cores=$(CORES) -boot d -cdrom $(DISTDIR)/$(IMAGE) -drive id=disk,format=raw,file=$(HDD),if=none -device ahci,id=ahci -device ide-drive,drive=disk,bus=ahci.0
+
+include Makefile.config
 
 export UTILDIR UTILBINDIR LIBDIR KERNELDIR APPSDIR DISTDIR
 
@@ -44,4 +48,8 @@ $(HDD):
 
 run: dist $(HDD)
 	@echo "      qemu"
-	@$(QEMU) -smp cores=8 -boot d -cdrom $(DISTDIR)/$(IMAGE) -drive id=disk,file=$(HDD),if=none -device ahci,id=ahci -device ide-drive,drive=disk,bus=ahci.0
+	@$(QEMU) $(QEMUARGS)
+
+debug: dist $(HDD)
+	@echo "      qemu"
+	@$(QEMU) -s -S $(QEMUARGS)

@@ -9,48 +9,69 @@
 #include "log/log.h"
 #include "driver/console/console.h"
 
-#define MAX_FRAMES      32
+#define MAX_FRAMES              32
 #define PANICF_BUFF_SIZE        512
 
+static inline uint32_t get_address(thread_t *me, uint32_t vaddr, uint32_t off) {
+    if(!virt_is_valid(me, (void *) vaddr)) {
+        return 0;
+    }
+    return ((uint32_t *) vaddr)[off];
+}
+
 void panic(char *message) {
-    cli();
+    irqdisable();
+    breakpoint();
 
     static volatile bool panic_in_progress = false;
-    if(panic_in_progress) {
+    if(panic_in_progress || !con_global) {
         die();
     }
-    panic_in_progress = true;
+    ACCESS_ONCE(panic_in_progress) = true;
+    barrier();
 
-    vram_color(con_global, 0x0C);
-    vram_puts(con_global, "\nKERNEL PANIC (");
-    if(get_percpu_ptr() && get_percpu_unsafe(this_proc)) {
-        vram_putsf(con_global, "core %u", get_percpu_unsafe(this_proc)->num);
+    console_t *t = con_global;
+
+    vram_color(t, 0x0C);
+    vram_puts(t, "\nKERNEL PANIC (");
+    if(get_percpu_ptr() && get_percpu(this_proc)) {
+        vram_putsf(t, "core %u", get_percpu(this_proc)->num);
     } else {
-        vram_puts(con_global, "invalid percpu ptr");
+        vram_puts(t, "invalid percpu ptr");
     }
-    vram_puts(con_global, "): ");
+    vram_puts(t, "): ");
 
-    vram_color(con_global, 0x07);
-    vram_putsf(con_global, "%s\n\n", message);
+    vram_color(t, 0x07);
+    vram_putsf(t, "%s\n", message);
 
-    con_global = NULL;
+    thread_t *me = current;
+    if(me) {
+        vram_putsf(t, "Current task: %s (%u)\n", me->node->argv[0], me->node->pid);
+    } else {
+        vram_puts(t, "Current task: NULL\n");
+    }
 
-    vram_puts(con_global, "Stack trace:\n");
-    uint32_t *ebp, eip = -1;
+    vram_puts(t, "Stack trace:\n");
+    uint32_t last_ebp = 0, ebp, eip;
     asm("mov %%ebp, %0" : "=r" (ebp));
-    eip = ebp[1] - 1;
+    eip = get_address(me, ebp, 1);
 
-    for(uint32_t frame = 0; eip && ebp && frame < MAX_FRAMES; frame++) {
-        const elf_symbol_t *symbol = debug_lookup_symbol(eip);
+    uint32_t top = (uint32_t) me->kernel_stack_top;
+    uint32_t bot = (uint32_t) me->kernel_stack_bottom;
+    for(uint32_t frame = 0; eip && ebp && ebp > last_ebp && (!me || (ebp >= top && ebp <= bot)) && frame < MAX_FRAMES; frame++) {
+        const elf_symbol_t *symbol = debug_lookup_symbol(eip - 1);
         if(symbol) {
-            vram_putsf(con_global, "    %s+0x%X/0x%X\n", debug_symbol_name(symbol), eip - symbol->value, eip);
+            vram_putsf(t, "    %s+0x%X/0x%X\n", debug_symbol_name(symbol), eip - 1 - symbol->value, eip - 1);
         } else {
-            vram_putsf(con_global, "    0x%X\n", eip);
+            vram_putsf(t, "    0x%X\n", eip - 1);
         }
 
-        ebp = (uint32_t *) ebp[0];
-        eip = ebp[1] - 1;
+        last_ebp = ebp;
+        ebp = get_address(me, ebp, 0);
+        eip = get_address(me, ebp, 1);
     }
+
+    vram_puts(t, "Stack trace end");
 
     die();
 }

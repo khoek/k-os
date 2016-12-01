@@ -21,9 +21,7 @@ static inline void sti() {
     __asm__ volatile("sti");
 }
 
-static inline void hlt() {
-    __asm__ volatile("hlt");
-}
+#define hlt() do { __asm__ volatile("hlt"); } while(0)
 
 static inline void ltr(uint32_t idx) {
     __asm__ volatile("ltr %%ax" :: "a" (idx));

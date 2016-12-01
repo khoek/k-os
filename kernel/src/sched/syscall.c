@@ -10,6 +10,8 @@
 #include "mm/cache.h"
 #include "time/timer.h"
 #include "time/clock.h"
+#include "sync/atomic.h"
+#include "sched/task.h"
 #include "sched/sched.h"
 #include "net/socket.h"
 #include "fs/vfs.h"
@@ -25,9 +27,11 @@ typedef uint64_t (*syscall_t)(cpu_state_t *);
 #define reg(r) (state->reg.r)
 
 static DEFINE_SYSCALL(exit) {
-    task_exit(reg(ecx));
+    task_node_exit(reg(ecx));
 
-    BUG();
+    //We should have S_DIE marked right now, which will kill us in
+    //deliver_signals().
+
     return 0;
 }
 
@@ -36,6 +40,8 @@ typedef struct fork_data {
 } fork_data_t;
 
 void ret_from_fork(void *arg) {
+    check_irqs_disabled();
+
     fork_data_t forkd;
     memcpy(&forkd, arg, sizeof(fork_data_t));
     kfree(arg);
@@ -49,18 +55,36 @@ void ret_from_fork(void *arg) {
 static DEFINE_SYSCALL(fork) {
     fork_data_t *forkd = kmalloc(sizeof(fork_data_t));
     memcpy(&forkd->resume_state, state, sizeof(cpu_state_t));
-    pid_t cpid = task_fork(current, 0, ret_from_fork, forkd);
+    pid_t cpid = thread_fork(current, 0, ret_from_fork, forkd);
 
     return cpid;
 }
 
-static void wake_task(task_t *task) {
-    task_wake(task);
+typedef struct sleep_data {
+    thread_t *task;
+    spinlock_t lock;
+} sleep_data_t;
+
+static void sleep_callback(sleep_data_t *data) {
+    spin_lock(&data->lock);
+    spin_unlock(&data->lock);
+
+    thread_wake(data->task);
 }
 
-static DEFINE_SYSCALL(sleep) {
-    task_sleep(current);
-    timer_create(reg(ecx), (void (*)(void *)) wake_task, current);
+static DEFINE_SYSCALL(msleep) {
+    sleep_data_t data;
+    data.task = current;
+    spinlock_init(&data.lock);
+
+    uint32_t flags;
+    spin_lock_irqsave(&data.lock, &flags);
+
+    timer_create(reg(ecx)/100, (void (*)(void *)) sleep_callback, &data);
+    thread_sleep_prepare();
+
+    spin_unlock_irqstore(&data.lock, flags);
+
     sched_switch();
 
     return 0;
@@ -74,7 +98,7 @@ static DEFINE_SYSCALL(log) {
         memcpy(buff, (void *) reg(ecx), reg(edx));
         buff[reg(edx)] = '\0';
 
-        kprintf("user[%u] - %s", current->pid, buff);
+        kprintf("user[%u] - %s", obtain_task_node(current)->pid, buff);
 
         kfree(buff);
     }
@@ -89,8 +113,10 @@ static DEFINE_SYSCALL(uptime) {
 static DEFINE_SYSCALL(open) {
     //TODO verify that reg(ecx) is a pointer to a valid path string, and that reg(edx) are valid flags
 
+    path_t pwd = get_pwd(current);
+
     path_t path;
-    if(vfs_lookup(&current->pwd, (const char *) reg(ecx), &path)) {
+    if(vfs_lookup(&pwd, (const char *) reg(ecx), &path)) {
         return ufdt_add(reg(edx), vfs_open_file(path.dentry->inode));
     } else {
         return -1;
@@ -300,8 +326,16 @@ static DEFINE_SYSCALL(stat) {
 
     //TODO verify that reg(ecx) is a pointer to a valid path string, and that reg(edx) are valid flags
 
+    thread_t *me = current;
+
+    path_t pwd;
+    uint32_t flags;
+    spin_lock_irqsave(&me->fs->lock, &flags);
+    pwd = me->fs->pwd;
+    spin_unlock_irqstore(&me->fs->lock, flags);
+
     path_t path;
-    if(vfs_lookup(&current->pwd, (const char *) reg(ecx), &path)) {
+    if(vfs_lookup(&pwd, (const char *) reg(ecx), &path)) {
         vfs_getattr(path.dentry, (void *) reg(edx));
 
         ret = 0;
@@ -377,11 +411,21 @@ static DEFINE_SYSCALL(write) {
 
 static DEFINE_SYSCALL(execve) {
     char *pathname = (void *) reg(ecx);
-    char **argv = (void *) reg(edx);
-    char **envp = (void *) reg(ebx);
+
+    //FIXME sanitize
+    char **argv = copy_strtab((void *) reg(edx));
+    char **envp = copy_strtab((void *) reg(ebx));
+
+    thread_t *me = current;
+
+    path_t pwd;
+    uint32_t flags;
+    spin_lock_irqsave(&me->fs->lock, &flags);
+    pwd = me->fs->pwd;
+    spin_unlock_irqstore(&me->fs->lock, flags);
 
     path_t p;
-    if(!vfs_lookup(&current->pwd, pathname, &p)) {
+    if(!vfs_lookup(&pwd, pathname, &p)) {
         return -1;
     }
 
@@ -391,10 +435,74 @@ static DEFINE_SYSCALL(execve) {
     return -1;
 }
 
+static task_node_t * reap_zombie(task_node_t *node) {
+    task_node_t *zombie = NULL;
+
+    uint32_t flags;
+    spin_lock_irqsave(&node->lock, &flags);
+
+    if(!list_empty(&node->zombies)) {
+        zombie = list_first(&node->zombies, task_node_t, zombie_list);
+        list_rm(&zombie->zombie_list);
+    }
+
+    spin_unlock_irqstore(&node->lock, flags);
+
+    return zombie;
+}
+
+#define WSTATE_EXITED (1 << 8)
+
+static task_node_t * find_child(task_node_t *me, pid_t pid) {
+    task_node_t *o;
+    LIST_FOR_EACH_ENTRY(o, &me->children, child_list) {
+        if(o->pid == pid) {
+            return o;
+        }
+    }
+
+    return NULL;
+}
+
+static DEFINE_SYSCALL(waitpid) {
+    thread_t *me = current;
+
+    pid_t pid = (pid_t) reg(ecx);
+    int *stat_loc = (void *) reg(edx);
+    int UNUSED(options) = (int) reg(ebx);
+
+    task_node_t *node = obtain_task_node(me);
+
+    pid_t cpid = -1;
+    if(pid == -1) {
+        task_node_t *zombie;
+        if(!wait_for_condition(zombie = reap_zombie(node))) {
+            return -1; //FIXME ERRINTR
+        }
+
+        if(stat_loc) *stat_loc = WSTATE_EXITED | zombie->exit_code;
+        cpid = zombie->pid;
+    } else if (pid > 0) {
+        task_node_t *child = find_child(node, pid);
+
+        BUG_ON(!child);
+
+        if(!wait_for_condition(atomic_read(&child->exit_state) == TASK_EXITED)) {
+            return -1; //FIXME ERRINTR
+        }
+
+        cpid = pid;
+    } else {
+        UNIMPLEMENTED();
+    }
+
+    return cpid;
+}
+
 static syscall_t syscalls[MAX_SYSCALL] = {
     [ 0] = SYSCALL_NAME(exit),
     [ 1] = SYSCALL_NAME(fork),
-    [ 2] = SYSCALL_NAME(sleep),
+    [ 2] = SYSCALL_NAME(msleep),
     [ 3] = SYSCALL_NAME(log),
     [ 4] = SYSCALL_NAME(uptime),
     [ 5] = SYSCALL_NAME(open),
@@ -416,6 +524,7 @@ static syscall_t syscalls[MAX_SYSCALL] = {
     [22] = SYSCALL_NAME(read),
     [23] = SYSCALL_NAME(write),
     [24] = SYSCALL_NAME(execve),
+    [25] = SYSCALL_NAME(waitpid),
 };
 
 static void syscall_handler(interrupt_t *interrupt, void *data) {
@@ -432,6 +541,9 @@ static void syscall_handler(interrupt_t *interrupt, void *data) {
     }
 
     leave_syscall();
+
+    //This might not return (as in S_DIE).
+    deliver_signals();
 }
 
 static INITCALL syscall_init() {

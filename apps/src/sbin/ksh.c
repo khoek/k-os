@@ -3,12 +3,9 @@
 #include <k/sys.h>
 #include <k/log.h>
 #include <stdio.h>
+#include <wait.h>
 #include <string.h>
 #include <unistd.h>
-
-void puts(char *str) {
-    write(1, str, strlen(str));
-}
 
 void putc(char c) {
     write(1, &c, 1);
@@ -48,22 +45,53 @@ void print_welcome() {
     putc('1');
     putc('H');
 
-    puts("Welcome to KSH!\n");
-    puts("Copyright (c) 2016, Keeley Hoek.\n");
-    puts("All rights reserved.\n\n");
+    printf("Welcome to KSH!\n");
+    printf("Copyright (c) 2016, Keeley Hoek.\n");
+    printf("All rights reserved.\n\n");
 }
 
 void print_linestart() {
-    puts("root@k-os:/$ ");
+    printf("root@k-os:/$ ");
 }
 
-void execute_command(char *cmd) {
+char buff2[100];
+char *buff[100];
+void execute_command(char *raw) {
+    char **argv_front = buff;
+
+    strcpy(buff2, raw);
+    raw = buff2;
+
+    char *front = raw;
+    while(*front && (*front == ' ')) front++;
+    char *back = front;
+
+    while(*front) {
+        while(*front && (*front != ' ')) front++;
+
+        *argv_front++ = back;
+
+        //we hit the '\0' null character
+        if(!*front) {
+            break;
+        }
+
+        *front++ = '\0';
+        while(*front && (*front == ' ')) front++;
+        back = front;
+    }
+    *argv_front = NULL;
+
+    if(!strcmp(buff[0], "exit")) {
+        printf("exit\n");
+        _exit(0);
+    }
+
     pid_t cpid = fork();
-
     if(cpid) {
-
+        waitpid(cpid, NULL, 0);
     } else {
-        execve(cmd, NULL, NULL);
+        execve(buff[0], buff, NULL);
         _exit(1);
     }
 }

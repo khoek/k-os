@@ -1,0 +1,15 @@
+display_library: sdl
+
+cpu: count=6
+
+romimage: file=../../bochs/bios/BIOS-bochs-latest
+vgaromimage: file=../../bochs/bios/VGABIOS-lgpl-latest
+
+magic_break: enabled=1
+port_e9_hack: enabled=1
+
+boot: cdrom
+ata0-master: type=cdrom, path="dist/cdrom.iso", status=inserted
+#ata1-master: type=disk, path="hdd.img"
+
+#e1000: enabled=1, mac=68:65:64:6c:65:79, ethmod=linux, ethdev=eth0

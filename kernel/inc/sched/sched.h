@@ -6,12 +6,21 @@
 
 void __noreturn sched_loop();
 
-void task_add(task_t *task);
-void task_sleep(task_t *task);
-void task_sleep_current();
-void task_wake(task_t *task);
+void thread_schedule(thread_t *task);
+void thread_sleep_prepare();
+void thread_wake(thread_t *task);
 
 void sched_switch();
 void sched_try_resched();
+
+#define wait_for_condition(C)                                            \
+    ({while(!(C)) {sched_suspend_pending_interrupt();};true;})
+
+void sched_suspend_pending_interrupt();
+void sched_interrupt_notify();
+
+void finish_sched_switch(thread_t *old, thread_t *next);
+
+void deliver_signals();
 
 #endif

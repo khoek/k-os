@@ -4,12 +4,12 @@
 typedef struct cpu_state cpu_state_t;
 typedef struct cpu_launchpad cpu_launchpad_t;
 
-typedef struct arch_task_data arch_task_data_t;
-
-typedef uint32_t phys_addr_t;
+typedef struct arch_thread_data arch_thread_data_t;
 
 #include "common/types.h"
 #include "common/compiler.h"
+
+typedef uint32_t phys_addr_t;
 
 typedef struct registers {
     //pusha/popa order
@@ -41,15 +41,13 @@ typedef struct cpu_launchpad {
     exec_state_t exec;
 } PACKED cpu_launchpad_t;
 
-typedef struct arch_task_data {
+typedef struct arch_thread_data {
     //Top of kernel stack (where we popa/iret during a task switch).
     cpu_state_t *live_state;
 
     phys_addr_t cr3;
     void *dir;
-} arch_task_data_t;
-
-#include "sched/task.h"
+} arch_thread_data_t;
 
 void flush_segment_registers();
 
@@ -62,5 +60,9 @@ void enter_syscall();
 void leave_syscall();
 
 void save_stack(void *sp);
+
+#include "sched/task.h"
+
+void switch_stack(thread_t *old, thread_t *next, void (*finish_sched_switch)(thread_t *old, thread_t *next));
 
 #endif

@@ -5,7 +5,7 @@ int isdigit(int c) {
     return c >= '0' && c <= '9';
 }
 
-char *itoa(int value, char *buff, int base) {
+char * itoa(int value, char *buff, int base) {
     char *charset = "0123456789abcdefghijklmnopqrstuvwxyz";
     char *ret = buff;
     char scratch[64];
@@ -53,7 +53,7 @@ size_t strlen(const char *str) {
     return len;
 }
 
-const char * strchr(const char *str, const char c) {
+char * strchr(char *str, char c) {
     while(*str++) {
         if(*str == c) {
              return str;
