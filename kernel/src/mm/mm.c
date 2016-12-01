@@ -82,9 +82,24 @@ static PURE inline page_t * get_master(page_t *page) {
     }
 }
 
+#ifdef CONFIG_DEBUG_MM
+static inline void check_not_in_freelists(page_t *page) {
+    page_t *ent;
+    LIST_FOR_EACH_ENTRY(ent, &free_page_list[page->order], list) {
+        if(ent == page) {
+            BUG();
+        }
+    }
+}
+#else
+static inline void check_not_in_freelists(page_t *page) {
+}
+#endif
+
 static void add_to_freelists(page_t *page) {
     BUG_ON(!is_free(page));
     BUG_ON(!is_subblock_master(page));
+    check_not_in_freelists(page);
     list_add(&page->list, &free_page_list[page->order]);
 }
 
@@ -108,12 +123,16 @@ static inline page_t * split_block(page_t *master) {
 //the master.
 static inline page_t * join_block(page_t *page) {
     page_t *master = get_master(page);
+    page_t *buddy = get_buddy(master);
 
     BUG_ON(master->order != get_buddy(master)->order);
     BUG_ON(master->order == MAX_ORDER);
 
     BUG_ON(!is_free(master));
-    BUG_ON(!is_free(get_buddy(master)));
+    BUG_ON(!is_free(buddy));
+
+    check_not_in_freelists(master);
+    check_not_in_freelists(buddy);
 
     master->order++;
 
@@ -123,27 +142,30 @@ static inline page_t * join_block(page_t *page) {
 //Chop off unused pages at the end of a block.
 static inline void trim_block(page_t *block, uint32_t actual) {
     BUG_ON(!actual);
+    BUG_ON(!is_free(block));
+    check_not_in_freelists(block);
 
-    page_t *master = block;
     page_t *buddy;
     while(actual) {
-        //SPECIAL CASE: if we have a perfect size block, do not subdivide
-        //unecessarily.
-        if(actual == (1ULL << master->order)) {
+        uint32_t block_size = 1ULL << block->order;
+
+        //Do we need to subdivide?
+        if(actual == block_size) {
             return;
         }
 
         //We can't subdivide a single page.
-        BUG_ON(!master->order);
-        //Current should not be in use already.
-        BUG_ON(!is_free(master));
+        BUG_ON(!block->order);
+        //The block should not be in use already.
+        BUG_ON(!is_free(block));
+        //The block must be at least as big as actual.
+        BUG_ON(block_size < actual);
 
         //We are going to have to split the block.
-        buddy = split_block(master);
+        buddy = split_block(block);
 
-        //If our requested block size fits inside half of the original block,
-        //free the buddy and repeat with the half.
-        if(actual <= (1ULL << master->order)) {
+        //If we don't need the buddy any more, release it to the freelists.
+        if(actual <= block_size >> 1) {
             BUG_ON(!is_free(buddy));
             add_to_freelists(buddy);
             continue;
@@ -151,11 +173,11 @@ static inline void trim_block(page_t *block, uint32_t actual) {
 
         //We have allocated a piece of the requested block and now we need to
         //subdivide the buddy to obtain the rest of the requested space.
-        actual ^= (1ULL << master->order);
-        master = buddy;
+        actual ^= (1ULL << block->order);
+        block = buddy;
     }
 
-    add_to_freelists(buddy);
+    BUG();
 }
 
 //Start with the given block. Continue amalgamating the largest free block which
@@ -171,9 +193,12 @@ static inline void ripple_join(page_t *page) {
         && block->order < MAX_ORDER) {
         list_rm(&buddy->list);
 
+        check_not_in_freelists(block);
+        check_not_in_freelists(buddy);
+
         block = join_block(block);
         buddy = get_buddy(block);
-        
+
         BUG_ON(!is_free(block));
     }
 
@@ -222,6 +247,7 @@ page_t * alloc_pages(uint32_t num, uint32_t flags) {
 
         BUG_ON(!(pages[i].flags & PAGE_FLAG_USED));
         BUG_ON(pages[i].flags & PAGE_FLAG_PERM);
+        check_not_in_freelists(&pages[i]);
 
         if(flags & ALLOC_CACHE) {
             pages[i].flags |= PAGE_FLAG_CACHE;
@@ -245,12 +271,16 @@ void free_page(page_t *page) {
     uint32_t f;
     spin_lock_irqsave(&alloc_lock, &f);
 
-    pages_in_use -= page->order;
+    uint32_t page_size =  1 << page->order;
 
-    BUG_ON(page->flags & PAGE_FLAG_PERM);
-    BUG_ON(!(page->flags & PAGE_FLAG_USED));
+    pages_in_use -= page_size;
 
-    page->flags = 0;
+    for(uint32_t i = 0; i < page_size; i++) {
+        BUG_ON(page[i].flags & PAGE_FLAG_PERM);
+        BUG_ON(!(page[i].flags & PAGE_FLAG_USED));
+
+        page[i].flags = 0;
+    }
 
     ripple_join(page);
 
@@ -263,6 +293,7 @@ void free_pages(page_t *pages, uint32_t num) {
     page_t *master = pages;
     while(num) {
         uint32_t block_size = 1ULL << log2(num);
+        BUG_ON(num == master->order);
         num ^= block_size;
         free_page(master);
         master += block_size;
