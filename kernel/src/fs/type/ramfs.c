@@ -98,6 +98,10 @@ static off_t ramfs_file_seek(file_t *file, off_t offset) {
 
 static ssize_t ramfs_file_read(file_t *file, char *buff, size_t bytes) {
     record_t *r = file->private;
+    if(!r) {
+        return -1;
+    }
+
     ssize_t ret = record_read(r, buff, bytes, file->offset);
     file->offset += ret;
     return ret;
@@ -105,6 +109,10 @@ static ssize_t ramfs_file_read(file_t *file, char *buff, size_t bytes) {
 
 static ssize_t ramfs_file_write(file_t *file, char *buff, size_t bytes) {
     record_t *r = file->private;
+    if(!r) {
+        return -1;
+    }
+
     ssize_t ret = record_write(r, buff, bytes, file->offset);
     file->offset += ret;
     return ret;
