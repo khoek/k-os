@@ -2,6 +2,7 @@
 #define KERNEL_DRIVER_CONSOLE_CONSOLE_H
 
 #include "common/types.h"
+#include "init/initcall.h"
 #include "device/device.h"
 #include "fs/char.h"
 
@@ -51,6 +52,9 @@ typedef struct console {
 } console_t;
 
 extern console_t *con_global;
+
+void __init console_early_init();
+void __init console_early_remap();
 
 void vram_init(console_t *console);
 void keyboard_init(console_t *console);

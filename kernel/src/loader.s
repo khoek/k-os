@@ -9,7 +9,7 @@
 .extern kmain                           # UP/BSP startup
 .extern mp_ap_start                     # AP entry startup
 
-.extern init_page_directory                  # AP startup page directory
+.extern init_page_directory             # AP startup page directory
 .extern next_ap_stack                   # AP startup stack
 
 .extern entry_ap

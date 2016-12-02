@@ -8,14 +8,13 @@
 
 typedef struct page page_t;
 
-extern page_t *pages;
-
 #include "common/types.h"
 #include "common/list.h"
 
 static inline uint32_t get_index(page_t *page);
 static inline void * page_to_virt(page_t *page);
 
+#include "init/initcall.h"
 #include "arch/mmu.h"
 
 #define ALLOC_CACHE (1 << 0)
@@ -29,6 +28,9 @@ struct page {
     uint32_t compound_num;
     list_head_t list;
 };
+
+extern page_t *pages;
+extern __initdata uint32_t lowmem;
 
 static inline void * page_to_virt(page_t *page) {
     return (void *) (page->addr);
@@ -52,6 +54,8 @@ void free_pages(page_t *first, uint32_t count);
 
 void mm_init();
 void mm_postinit_reclaim();
+
+void claim_pages(uint32_t idx, uint32_t num);
 
 void * kmalloc(uint32_t size);
 void kfree(void *mem);

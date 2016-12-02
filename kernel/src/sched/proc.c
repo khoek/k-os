@@ -34,6 +34,10 @@ static void management_interrupt(interrupt_t *interrupt, void *data) {
 }
 
 void dispatch_management_interrupts() {
+    if(!tasking_up) {
+        return;
+    }
+
     processor_t *proc;
     LIST_FOR_EACH_ENTRY(proc, &procs, list) {
         send_management_interrupt(proc);

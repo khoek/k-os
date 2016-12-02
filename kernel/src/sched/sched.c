@@ -516,7 +516,7 @@ void thread_sleep_prepare() {
 
 static void do_wake(thread_t *t) {
     spin_lock(&t->lock);
-    
+
     BUG_ON(t->state != THREAD_SLEEPING);
 
     t->state = THREAD_AWAKE;
@@ -798,7 +798,7 @@ void __noreturn sched_loop() {
     irqdisable();
 
     kprintf("sched - proc #%u is READY", get_percpu(this_proc)->num);
-
+    
     get_percpu(locks_held) = 0;
     list_init(&get_percpu(lock_list));
     get_percpu(switch_time) = 0;

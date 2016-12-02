@@ -223,6 +223,10 @@ static PURE inline bool is_terminating_char(char c) {
 }
 
 static void put_escseq_buff(console_t *con, char c) {
+    if(!con->escseq_buff) {
+        panic("escseq too early!");
+    }
+
     con->escseq_buff[con->escseq_buff_front++] = c;
 
     if(is_terminating_char(c)) {
@@ -322,13 +326,24 @@ void vram_putsf(console_t *con, const char* fmt, ...) {
     spin_unlock_irqstore(&buffer_lock, flags);
 }
 
-void vram_init(console_t *console) {
+void __init vram_early_init(console_t *console) {
     console->row = 0;
     console->col = 0;
     console->color = 0x07;
     console->state = TERM_NORMAL;
+    console->escseq_buff = NULL;
+    console->escseq_buff_front = 0;
+    console->vram = (void *) BIOS_VRAM;
+    console->port = bda_getw(BDA_VRAM_PORT);
+
+    vram_clear(con_global);
+}
+
+void __init vram_early_remap(console_t *console) {
+    console->vram = map_page(BIOS_VRAM);
+}
+
+void vram_init(console_t *console) {
     console->escseq_buff = kmalloc(ESCSEQ_BUFF_SIZE);
     console->escseq_buff_front = 0;
-    console->vram = map_page(BIOS_VRAM);
-    console->port = bda_getw(BDA_VRAM_PORT);
 }

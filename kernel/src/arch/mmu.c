@@ -66,13 +66,16 @@ static inline void map_kernel_page(uint32_t page_idx, uint32_t phys) {
     tabentry_set(&kptab[diridx], tabidx, phys, MMUFLAG_WRITABLE | MMUFLAG_PRESENT);
 }
 
-static void * do_map_page(phys_addr_t phys) {
-    void *virt = (void *) ((kernel_next_page++ * PAGE_SIZE) + VIRTUAL_BASE);
+static inline void * get_next_virt(uint32_t phys) {
+    return (void *) ((kernel_next_page * PAGE_SIZE) + VIRTUAL_BASE + paddr_to_pageoff(phys));
+}
+
+static inline void do_map_page(phys_addr_t phys) {
+    void *virt = get_next_virt(0);
+    kernel_next_page++;
     uint32_t idx = addr_to_diridx(virt) - addr_to_diridx((void *) VIRTUAL_BASE);
     tabentry_set(&kptab[idx], addr_to_tabidx(virt), phys, MMUFLAG_WRITABLE | MMUFLAG_PRESENT);
     invlpg(virt);
-
-    return virt + paddr_to_pageoff(phys);
 }
 
 void * map_page(phys_addr_t phys) {
@@ -83,8 +86,8 @@ void * map_pages(phys_addr_t phys, uint32_t pages) {
     uint32_t flags;
     spin_lock_irqsave(&map_lock, &flags);
 
-    void *virt = do_map_page(phys);
-    for(uint32_t i = 1; i < pages; i++) {
+    void *virt = get_next_virt(phys);
+    for(uint32_t i = 0; i < pages; i++) {
         do_map_page(phys + (PAGE_SIZE * i));
     }
 
@@ -110,25 +113,24 @@ void build_page_dir(pdir_t *dir) {
     }
 }
 
-void __init mmu_init(phys_addr_t kernel_end, phys_addr_t malloc_start) {
-    uint32_t kernel_num_pages = DIV_UP(kernel_end, PAGE_SIZE);
+void * __init mmu_init(phys_addr_t kernel_end, phys_addr_t malloc_start) {
+    kernel_next_page = 0;
 
     //Map 0xC0000000->0x00000000, 0xC0001000->0x00001000, etc. over the whole
-    //kernel image.
-    for(uint32_t i = 0; i < kernel_num_pages; i++) {
-        map_kernel_page(i, i * PAGE_SIZE);
-    }
+    //kernel image. Then map the page_t struct array just after the kernel
+    //image.
+    map_pages(0, DIV_UP(kernel_end, PAGE_SIZE));
+    void *pages = map_pages(malloc_start, MALLOC_NUM_PAGES);
 
-    //Map the page_t struct array just after the kernel image.
-    for(uint32_t i = 0; i < MALLOC_NUM_PAGES; i++) {
-        map_kernel_page(kernel_num_pages + i, malloc_start + (i * PAGE_SIZE));
-    }
-
-    kernel_next_page = kernel_num_pages + MALLOC_NUM_PAGES;
-
+    //Build the temporary page directory for all processors.
     build_page_dir(&init_page_directory);
 
+    //Here we go!
     loadcr3(kvirt_to_phys(&init_page_directory));
 
-    debug_map_virtual();
+    //Immediately fix the pointers to the console and symbol tables.
+    console_early_remap();
+    debug_remap();
+
+    return pages;
 }

@@ -165,7 +165,7 @@ void __init mp_init() {
     uint32_t ebda_addr = bda_getw(BDA_EBDA_ADDR) << 4;
     mp_floating_header_t *fhdr = fhdr_search(ebda_addr, ebda_addr + 0x400);
     if(fhdr == NULL) {
-        uint32_t base_end_addr = multiboot_info->mem_lower * 0x400;
+        uint32_t base_end_addr = lowmem * 0x400;
         fhdr = fhdr_search(base_end_addr - 0x400, base_end_addr);
     }
     if(fhdr == NULL) {

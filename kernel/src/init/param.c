@@ -33,13 +33,13 @@ static char *empty_string = "";
 static char __initdata buff[MAX_CMDLINE_LEN + 1];
 
 void load_cmdline() {
-    uint32_t cmdline_len = strlen((void *) multiboot_info->cmdline);
+    uint32_t cmdline_len = strlen((void *) mbi->cmdline);
     if(cmdline_len > MAX_CMDLINE_LEN) {
         cmdline_len = MAX_CMDLINE_LEN;
 
         kprintf("param - truncated cmdline to %u characters (too long)", MAX_CMDLINE_LEN);
     }
-    memcpy(buff, (void *) multiboot_info->cmdline, cmdline_len);
+    memcpy(buff, (void *) mbi->cmdline, cmdline_len);
     buff[cmdline_len + 1] = '\0';
 }
 

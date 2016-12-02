@@ -12,13 +12,14 @@
 #include "sched/ktaskd.h"
 #include "mm/mm.h"
 #include "mm/cache.h"
+#include "mm/module.h"
 #include "log/log.h"
 #include "fs/vfs.h"
 #include "fs/exec.h"
 #include "fs/type/devfs.h"
 #include "driver/console/console.h"
 
-multiboot_info_t *multiboot_info;
+multiboot_info_t *mbi;
 
 static bool verbose = false;
 
@@ -76,13 +77,15 @@ static void umain() {
     }
 }
 
-void kmain(uint32_t magic, multiboot_info_t *mbd) {
-    multiboot_info = mbd;
+void kmain(uint32_t magic, multiboot_info_t *m) {
+    mbi = m;
+
+    console_early_init();
 
     kprintf("starting K-OS (v" XSTR(MAJOR) "." XSTR(MINOR) "." XSTR(PATCH) ")");
     if(magic != MULTIBOOT_BOOTLOADER_MAGIC)
         panic("main - multiboot loader did not pass correct magic number");
-    if(!(mbd->flags & MULTIBOOT_INFO_MEM_MAP))
+    if(!(mbi->flags & MULTIBOOT_INFO_MEM_MAP))
         panic("main - multiboot loader did not pass memory map");
 
     debug_init();
@@ -101,6 +104,8 @@ void kmain(uint32_t magic, multiboot_info_t *mbd) {
         }
     }
     kprintf("main - finished initcalls");
+
+    module_load();
 
     root_task_init(umain);
 

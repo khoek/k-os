@@ -31,7 +31,7 @@ void panic(char *message) {
 
     vram_color(t, 0x0C);
     vram_puts(t, "\nKERNEL PANIC (");
-    if(get_percpu_ptr() && get_percpu(this_proc)) {
+    if(percpu_up && get_percpu_ptr() && get_percpu(this_proc)) {
         vram_putsf(t, "core %u", get_percpu(this_proc)->num);
     } else {
         vram_puts(t, "invalid percpu ptr");

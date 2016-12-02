@@ -10,6 +10,7 @@
 #include "bug/debug.h"
 #include "mm/mm.h"
 #include "mm/cache.h"
+#include "mm/module.h"
 #include "sched/task.h"
 #include "log/log.h"
 #include "misc/stats.h"
@@ -18,6 +19,8 @@
 
 #define MAX_ORDER 10
 #define ADDRESS_SPACE_SIZE 4294967295ULL
+
+#define MALLOC_SIZE (MALLOC_NUM_PAGES * PAGE_SIZE)
 
 #define PAGE_TABLE_EXTENT (PAGE_SIZE * NUM_ENTRIES)
 
@@ -30,6 +33,10 @@
 
 //TODO asynchronously free the boot stack, etc. (as a task after all CPUs have come up)
 
+page_t *pages;
+
+__initdata uint32_t lowmem;
+
 extern uint32_t image_start;
 extern uint32_t image_end;
 
@@ -39,13 +46,11 @@ extern uint32_t init_mem_end;
 static phys_addr_t kernel_start;
 static phys_addr_t kernel_end;
 static phys_addr_t malloc_start;
+static phys_addr_t malloc_end;
 
-__initdata uint32_t mods_count;
-
-page_t *pages;
 static list_head_t free_page_list[MAX_ORDER + 1];
-static __initdata uint8_t mmap_buff[MMAP_BUFF_SIZE];
-static uint32_t mmap_length;
+static __initdata multiboot_memory_map_t mmap[MMAP_BUFF_SIZE];
+static __initdata uint32_t mmap_length;
 
 static DEFINE_SPINLOCK(alloc_lock);
 
@@ -306,141 +311,147 @@ static void claim_page(uint32_t idx) {
     pages_avaliable++;
 }
 
-void __init mm_init() {
-    multiboot_module_t *mods = multiboot_info->mods;
-    mods_count = multiboot_info->mods_count;
-
-    kernel_start = ((uint32_t) &image_start);
-    kernel_end = ((uint32_t) &image_end);
-
-    for (uint32_t i = 0; i < mods_count; i++) {
-        uint32_t start = mods[i].start;
-        uint32_t end = mods[i].end;
-
-        if (kernel_start > start) {
-            kernel_start = start;
-        }
-
-        if (kernel_end < end) {
-            kernel_end = end;
-        }
+void claim_pages(uint32_t idx, uint32_t num) {
+    for(uint32_t i = 0; i < num; i++) {
+        claim_page(idx + i);
     }
+}
 
-    for(uint32_t i = 0; i <= MAX_ORDER; i++) {
-        list_init(&free_page_list[i]);
-    }
+static inline bool page_is_between_addr(uint32_t idx, uint32_t start,
+    uint32_t end) {
+    uint32_t start_idx = DIV_DOWN(start, PAGE_SIZE);
+    uint32_t end_idx = DIV_DOWN(end, PAGE_SIZE);
+    return idx >= start_idx && idx <= end_idx;
+}
 
-    //preserve the mmap_length struct
-    mmap_length = multiboot_info->mmap_length;
-    memcpy(mmap_buff, multiboot_info->mmap, mmap_length);
-    multiboot_memory_map_t *mmap = (multiboot_memory_map_t *) mmap_buff;
+static inline bool is_kernel_page(uint32_t idx) {
+    return page_is_between_addr(idx, kernel_start, kernel_end);
+}
 
-    kprintf("mm - kernel image 0x%p-0x%p", kernel_start, kernel_end);
+static inline bool is_malloc_page(uint32_t idx) {
+    return page_is_between_addr(idx, malloc_start, malloc_end);
+}
 
-    uint32_t best_len = 0;
-    for (uint32_t i = 0; i < mmap_length / sizeof (multiboot_memory_map_t); i++) {
-        if (mmap[i].type == MULTIBOOT_MEMORY_AVAILABLE) {
-            if (mmap[i].addr >= ADDRESS_SPACE_SIZE) {
+static phys_addr_t find_region(uint32_t num_pages) {
+    for(uint32_t i = 0; i < mmap_length; i++) {
+        if(mmap[i].type == MULTIBOOT_MEMORY_AVAILABLE) {
+            if(mmap[i].addr >= ADDRESS_SPACE_SIZE) {
                 continue;
             }
 
-            uint32_t start = mmap[i].addr;
-            uint64_t end = mmap[i].addr + mmap[i].len;
+            uint32_t start = DIV_UP(mmap[i].addr, PAGE_SIZE);
+            uint64_t end = DIV_UP(mmap[i].addr + mmap[i].len, PAGE_SIZE);
 
-            if (end > ADDRESS_SPACE_SIZE) {
-                end = ADDRESS_SPACE_SIZE;
+            if(end > ADDRESS_SPACE_SIZE / PAGE_SIZE) {
+                end = ADDRESS_SPACE_SIZE / PAGE_SIZE;
             }
 
-            if (start <= kernel_start && kernel_start < end) {
-                if (kernel_end < end) {
-                    if (kernel_start - start > end - kernel_end) {
-                        end = kernel_start;
-                    } else {
-                        start = kernel_end;
-                    }
-                } else {
-                    end = kernel_start;
+            if(end - start < num_pages) {
+                continue;
+            }
+
+            uint32_t reg_len = 0;
+            uint32_t reg_start = 0;
+            while(start < end) {
+                if(!reg_len) {
+                    reg_start = start;
                 }
-            } else if (start <= kernel_end && kernel_end < end) {
-                start = kernel_end;
-            } else if (kernel_start <= start && end <= kernel_end) {
-                continue;
-            }
 
-            start = DIV_UP(start, PAGE_SIZE) * PAGE_SIZE;
-            end = DIV_DOWN(end, PAGE_SIZE) * PAGE_SIZE;
+                if(is_kernel_page(start) || is_module_page(start)) {
+                    reg_len = 0;
+                } else {
+                    reg_len++;
+                }
 
-            if (start >= end) {
-                continue;
-            }
+                start++;
 
-            if (end - start > best_len) {
-                best_len = end - start;
-                malloc_start = start;
+                if(reg_len >= num_pages) {
+                    return reg_start * PAGE_SIZE;
+                }
             }
         }
     }
 
-    if (best_len < DIV_UP(sizeof (uint32_t) * NUM_ENTRIES * NUM_ENTRIES, PAGE_SIZE) * PAGE_SIZE) panic("MM - could not find a sufficiently large contiguous memory region");
+    return 0;
+}
 
-    pages = (page_t *) (malloc_start + VIRTUAL_BASE);
-
-    //Replace the boot page table with the init one, and map in the page array
-    mmu_init(kernel_end, malloc_start);
-
-    multiboot_info = (void *) map_page((phys_addr_t) multiboot_info);
-    if(mods) {
-        mods = multiboot_info->mods = (void *) map_page((phys_addr_t) mods);
-    }
-
-    for (uint32_t i = 0; i < mods_count; i++) {
-        uint32_t start = mods[i].start;
-        uint32_t end = mods[i].end;
-        uint32_t len = end - start;
-        uint32_t num_pages = DIV_UP(end - start, PAGE_SIZE);
-
-        mods[i].start = (uint32_t) map_pages(start, num_pages);
-        mods[i].end = mods[i].start + len;
-    }
-
-    //this may arbitrarily corrupt multiboot data structures, including the mmap
-    //structure, which caused a bug
-    for (uint32_t page = 0; page < NUM_ENTRIES * NUM_ENTRIES; page++) {
-        pages[page].flags = PAGE_FLAG_PERM | PAGE_FLAG_USED;
-        pages[page].order = 0;
-    }
-
-    uint32_t malloc_page_end = DIV_DOWN(malloc_start, PAGE_SIZE) + MALLOC_NUM_PAGES;
-
-    for (uint32_t i = 0; i < mmap_length / sizeof(multiboot_memory_map_t); i++) {
+static void find_free_pages() {
+    for(uint32_t i = 0; i < mmap_length; i++) {
         if (mmap[i].type == MULTIBOOT_MEMORY_AVAILABLE) {
-            if (mmap[i].addr >= ADDRESS_SPACE_SIZE) {
+            if(mmap[i].addr >= ADDRESS_SPACE_SIZE) {
                 continue;
             }
 
-            uint32_t start = mmap[i].addr;
-            uint64_t end = mmap[i].addr + mmap[i].len;
+            uint32_t start = DIV_UP(mmap[i].addr, PAGE_SIZE);
+            uint64_t end = DIV_UP(mmap[i].addr + mmap[i].len, PAGE_SIZE);
 
-            if (end > ADDRESS_SPACE_SIZE) {
-                end = ADDRESS_SPACE_SIZE;
+            if(end > ADDRESS_SPACE_SIZE / PAGE_SIZE) {
+                end = ADDRESS_SPACE_SIZE / PAGE_SIZE;
             }
 
-            start = start == 0 ? 0 : DIV_UP(start, PAGE_SIZE);
-            end = end == 0 ? 0 : DIV_DOWN(end, PAGE_SIZE);
-
-            for (uint32_t j = start; j < end; j++) {
-                if (j >= malloc_page_end) {
+            for(uint32_t j = start; j < end; j++) {
+                if (!is_kernel_page(j)
+                    && !is_module_page(j)
+                    && !is_malloc_page(j)) {
                     claim_page(j);
                 }
             }
         }
     }
+}
+
+void __init mm_init() {
+    for(uint32_t i = 0; i <= MAX_ORDER; i++) {
+        list_init(&free_page_list[i]);
+    }
+
+    kernel_start = debug_kernel_start(((uint32_t) &image_start));
+    kernel_end = debug_kernel_end(((uint32_t) &image_end));
+    lowmem = mbi->mem_lower;
+
+    kprintf("mm - kernel image 0x%p-0x%p", kernel_start, kernel_end);
+
+    //This call saves the module list to a buffer.
+    module_init();
+
+    //Save the mmap to our buffer so it survives after mmu_init().
+    mmap_length = mbi->mmap_length / sizeof(multiboot_memory_map_t);
+    if(mmap_length > MMAP_BUFF_SIZE) {
+        panicf("mmap too large! %u > %u", mmap_length, MMAP_BUFF_SIZE);
+    }
+    memcpy(mmap, mbi->mmap, mmap_length * sizeof(multiboot_memory_map_t));
+
+    //Find where to put the page array.
+    malloc_start = find_region(MALLOC_NUM_PAGES);
+    if(!malloc_start) {
+        panic("could not find a sufficiently large contiguous memory region!");
+    }
+    malloc_end = malloc_start + MALLOC_SIZE;
+
+    //Replace the boot page table with the init one, and map in the page array.
+    pages = mmu_init(kernel_end, malloc_start);
+
+    kprintf("mm - pages @ %X-%X -> %X", malloc_start, malloc_end, pages);
+
+    //At this point, everything that wasn't kernel mem or module mem may not
+    //exist anymore. We can only use addresses for preallocated space
+    //henceforth. This includes the multiboot data, so null the pointer.
+    mbi = NULL;
+
+    //In particular, this loop will probably (this caused bugs in the past)
+    //drill holes in multiboot data so we can't ever use mbi again.
+    for (uint32_t page = 0; page < NUM_ENTRIES * NUM_ENTRIES; page++) {
+        pages[page].flags = PAGE_FLAG_PERM | PAGE_FLAG_USED;
+        pages[page].order = 0;
+    }
+
+    //Find the free pages and free them.
+    find_free_pages();
 
     pages_in_use = 0;
 
-    kprintf("mm - paging: %u MB, malloc: %u MB, avaliable: %u MB",
-            DIV_DOWN(DIV_UP(sizeof (uint32_t) * NUM_ENTRIES * NUM_ENTRIES, PAGE_SIZE) * PAGE_SIZE, 1024 * 1024),
-            DIV_DOWN(DIV_UP(sizeof (page_t) * NUM_ENTRIES * NUM_ENTRIES, PAGE_SIZE) * PAGE_SIZE, 1024 * 1024),
+    kprintf("mm - malloc: %u MB, avaliable: %u MB",
+            DIV_DOWN(MALLOC_SIZE, 1024 * 1024),
             DIV_DOWN(pages_avaliable * PAGE_SIZE, 1024 * 1024));
 }
 

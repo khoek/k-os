@@ -147,21 +147,19 @@ static inline void loadcr3(uint32_t phys) {
     asm volatile("mov %0, %%cr3" :: "a" (phys));
 }
 
+#define virt_is_valid(task, addr) ({                                          \
+    ptab_t *tab;                                                              \
+    if(task && ((uint32_t) addr) < VIRTUAL_BASE) {                            \
+        tab = dir_get_tab(task->arch.dir, addr_to_diridx(addr));              \
+    } else {                                                                  \
+        tab = &kptab[addr_to_diridx(addr) - addr_to_diridx((void *) VIRTUAL_BASE)];                                                       \
+    }                                                                         \
+    tab && (tabentry_get_flags(tab, addr_to_tabidx(addr)) & MMUFLAG_PRESENT); \
+})
+
+#define resolve_virt(t, p) ({dir_lookup_addr(t->arch.dir, p);})
+
 #include "sched/task.h"
-
-static inline bool virt_is_valid(thread_t *task, void *addr) {
-    ptab_t *tab;
-    if(task && ((uint32_t) addr) < VIRTUAL_BASE) {
-        tab = dir_get_tab(task->arch.dir, addr_to_diridx(addr));
-    } else {
-        tab = &kptab[addr_to_diridx(addr) - addr_to_diridx((void *) VIRTUAL_BASE)];
-    }
-    return tab && (tabentry_get_flags(tab, addr_to_tabidx(addr)) & MMUFLAG_PRESENT);
-}
-
-static inline phys_addr_t resolve_virt(thread_t *t, void *p) {
-    return dir_lookup_addr(t->arch.dir, p);
-}
 
 void build_page_dir(pdir_t *dir);
 void copy_mem(thread_t *to, thread_t *from);
@@ -172,6 +170,6 @@ void * map_pages(phys_addr_t phys, uint32_t pages);
 void user_map_page(thread_t *task, void *virt, phys_addr_t page);
 void user_map_pages(thread_t *task, void *virt, phys_addr_t page, uint32_t num);
 
-void __init mmu_init(phys_addr_t kernel_end, phys_addr_t malloc_start);
+void * __init mmu_init(phys_addr_t kernel_end, phys_addr_t malloc_start);
 
 #endif

@@ -213,7 +213,7 @@ typedef struct multiboot_info {
   multiboot_uint16_t vbe_interface_len;
 } multiboot_info_t;
 
-extern multiboot_info_t *multiboot_info;
+extern multiboot_info_t *mbi;
 
 #endif /* ! ASM_FILE */
 

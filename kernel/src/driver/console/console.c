@@ -10,6 +10,7 @@
 #include "driver/console/tty.h"
 
 console_t *con_global = NULL;
+static console_t glob;
 
 void console_lockup(console_t *con) {
     con->lockup = true;
@@ -58,20 +59,29 @@ static driver_t console_driver = {
     .destroy = console_destroy
 };
 
+extern __init void vram_early_init(console_t *con);
+extern __init void vram_early_remap(console_t *con);
+
+__init void console_early_init() {
+    con_global = &glob;
+    con_global->lockup = false;
+    spinlock_init(&con_global->lock);
+
+    vram_early_init(con_global);
+}
+
+__init void console_early_remap() {
+    vram_early_remap(con_global);
+}
+
 static INITCALL console_init() {
     register_bus(&console_bus, "console");
     register_driver(&console_driver);
-
-    con_global = kmalloc(sizeof(console_t));
-    con_global->lockup = false;
-    spinlock_init(&con_global->lock);
 
     vram_init(con_global);
     keyboard_init(con_global);
 
     con_global->device.bus = &console_bus;
-
-    vram_clear(con_global);
 
     return 0;
 }

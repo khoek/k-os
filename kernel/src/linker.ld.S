@@ -54,12 +54,16 @@ SECTIONS {
         _ebss = .;
     }
 
-    .strtab : AT(ADDR(.strtab) - VIRTUAL_BASE) {
+    .strtab ALIGN(0x1000) : AT(ADDR(.strtab) - VIRTUAL_BASE) {
+        strtab_start = .;
         *(.strtab)
+        strtab_end = .;
     }
 
-    .symtab : AT(ADDR(.symtab) - VIRTUAL_BASE) {
+    .symtab ALIGN(0x1000) : AT(ADDR(.symtab) - VIRTUAL_BASE) {
+        symtab_start = .;
         *(.symtab)
+        symtab_end = .;
     }
 
     .init.text ALIGN (0x1000) : AT(ADDR(.init.text) - VIRTUAL_BASE) {
