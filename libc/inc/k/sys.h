@@ -9,9 +9,6 @@ unsigned long long _uptime();
 int _alloc_page();
 int _free_page();
 
-void play(int freq);
-void stop();
-
 #define PAGE_SIZE 4096
 
 extern void *_data_start;

@@ -3,8 +3,7 @@
 
 #include "common/types.h"
 
-void play(uint32_t freq);
-void stop();
 void beep();
+void set_spkr_freq(uint32_t freq);
 
 #endif

@@ -210,23 +210,10 @@ fstat:
 
     ret
 
-play:
-    mov $20, %eax
-    mov 4(%esp), %ecx
-    int $0x80
-
-    ret
-
-stop:
-    mov $21, %eax
-    int $0x80
-
-    ret
-
 read:
     push %ebx
 
-    mov $22, %eax
+    mov $20, %eax
     mov 16(%esp), %ebx
     mov 12(%esp), %edx
     mov 8(%esp), %ecx
@@ -238,7 +225,7 @@ read:
 write:
     push %ebx
 
-    mov $23, %eax
+    mov $21, %eax
     mov 16(%esp), %ebx
     mov 12(%esp), %edx
     mov 8(%esp), %ecx
@@ -250,7 +237,7 @@ write:
 execve:
     push %ebx
 
-    mov $24, %eax
+    mov $22, %eax
     mov 16(%esp), %ebx
     mov 12(%esp), %edx
     mov 8(%esp), %ecx
@@ -262,7 +249,7 @@ execve:
 waitpid:
     push %ebx
 
-    mov $25, %eax
+    mov $23, %eax
     mov 16(%esp), %ebx
     mov 12(%esp), %edx
     mov 8(%esp), %ecx

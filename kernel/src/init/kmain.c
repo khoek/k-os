@@ -19,6 +19,8 @@
 #include "fs/type/devfs.h"
 #include "driver/console/console.h"
 
+#define TTY_NAME "tty"
+
 multiboot_info_t *mbi;
 
 static bool verbose = false;
@@ -55,11 +57,9 @@ static void umain() {
     kprintf("init - ktaskd created");
 
     path_t out;
-    char *str = devfs_get_strpath("tty");
-    if(!vfs_lookup(NULL, str, &out)) {
-        panicf("init - cannot open tty (%s)", str);
+    if(!devfs_lookup(TTY_NAME, &out)) {
+        panicf("init - cannot open \"" TTY_NAME "\"");
     }
-    kfree(str);
 
     if(!verbose) {
         vlog_disable();

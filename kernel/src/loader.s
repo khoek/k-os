@@ -79,8 +79,7 @@ entry_ap:
     cli
 
     # Enable the A20 line (FAST A20)
-    in $0x92, %al
-    or $2, %al
+    mov $2, %al
     out %al, $0x92
 
     # Load the GDT

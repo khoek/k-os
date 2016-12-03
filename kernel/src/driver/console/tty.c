@@ -156,11 +156,9 @@ void tty_create(char *name) {
     devfs_publish_pending();
 
     path_t out;
-    char *str = devfs_get_strpath(name);
-    if(!vfs_lookup(NULL, str, &out)) {
-        panicf("tty - lookup of console (%s) failure", str);
+    if(!devfs_lookup(name, &out)) {
+        panicf("tty - lookup of console (%s) failure", name);
     }
-    kfree(str);
 
     char_device_t *cdev = char_device_alloc();
     cdev->private = vfs_open_file(out.dentry->inode);

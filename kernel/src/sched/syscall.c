@@ -345,21 +345,6 @@ static DEFINE_SYSCALL(fstat) {
     return ret;
 }
 
-extern void play(uint32_t freq);
-extern void stop();
-
-static DEFINE_SYSCALL(play) {
-    play(reg(ecx));
-
-    return 0;
-}
-
-static DEFINE_SYSCALL(stop) {
-    stop();
-
-    return 0;
-}
-
 static DEFINE_SYSCALL(read) {
     int32_t ret = -1;
 
@@ -503,12 +488,10 @@ static syscall_t syscalls[MAX_SYSCALL] = {
     [16] = SYSCALL_NAME(free_page),
     [17] = SYSCALL_NAME(stat),
     [19] = SYSCALL_NAME(fstat),
-    [20] = SYSCALL_NAME(play),
-    [21] = SYSCALL_NAME(stop),
-    [22] = SYSCALL_NAME(read),
-    [23] = SYSCALL_NAME(write),
-    [24] = SYSCALL_NAME(execve),
-    [25] = SYSCALL_NAME(waitpid),
+    [20] = SYSCALL_NAME(read),
+    [21] = SYSCALL_NAME(write),
+    [22] = SYSCALL_NAME(execve),
+    [23] = SYSCALL_NAME(waitpid),
 };
 
 static void syscall_handler(interrupt_t *interrupt, void *data) {

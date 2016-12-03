@@ -5,7 +5,7 @@ int isdigit(int c) {
     return c >= '0' && c <= '9';
 }
 
-char *itoa(int value, char *buff, int base) {
+char * itoa(int value, char *buff, int base) {
     char *charset = "0123456789abcdefghijklmnopqrstuvwxyz";
     char *ret = buff;
     char scratch[64];

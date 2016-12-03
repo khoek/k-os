@@ -1,5 +1,8 @@
+#include <stdio.h>
+#include <string.h>
+#include <fcntl.h>
+#include <unistd.h>
 #include <k/sys.h>
-#include <k/log.h>
 
 #define BPM 128
 
@@ -73,6 +76,18 @@
 #define eighth(f)    PLAY(f,  8)
 #define sixteenth(f) PLAY(f, 16)
 
+int spkr_id;
+
+static void play(int freq) {
+    char buff[100];
+    sprintf(buff, "%d\n", freq);
+    write(spkr_id, buff, strlen(buff));
+}
+
+static void stop() {
+    play(0);
+}
+
 static inline void playsound(int freq, int millis) {
     play(freq);
     _msleep(millis);
@@ -80,6 +95,8 @@ static inline void playsound(int freq, int millis) {
 }
 
 int main() {
+    spkr_id = open("/dev/spkr", 0);
+
     quarter(F2);
     quarter(D3);
     quarter(C3);

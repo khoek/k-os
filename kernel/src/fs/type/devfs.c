@@ -171,7 +171,7 @@ static void devfs_add_dev(void *device, device_type_t type, char *name) {
     spin_unlock_irqstore(&devfs_lock, flags);
 }
 
-char * devfs_get_strpath(char *name) {
+static char * get_strpath(const char *name) {
     uint32_t mntlen = strlen(mntpoint);
     uint32_t namelen = strlen(name);
 
@@ -182,6 +182,13 @@ char * devfs_get_strpath(char *name) {
     str[mntlen + namelen + 1] = '\0';
 
     return str;
+}
+
+bool devfs_lookup(const char *name, path_t *out) {
+    char *path = get_strpath(name);
+    bool ret = vfs_lookup(NULL, path, out);
+    kfree(path);
+    return ret;
 }
 
 void devfs_add_chardev(char_device_t *device, char *name) {

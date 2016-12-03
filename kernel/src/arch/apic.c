@@ -31,8 +31,8 @@
 #define REG_LVT_LINT1   0x360
 
 //There are the codes to divide by these factors.
-#define DIVIDE_FACTOR_ONE  0x0
-#define DIVIDE_FACTOR_FOUR 0x1
+#define DIVIDE_FACTOR_ONE       0x0
+#define DIVIDE_FACTOR_FOUR      0x1
 #define DIVIDE_FACTOR_SIXTYFOUR 0x7
 
 #define TIMER_MODE_PERIODIC (1 << 17)

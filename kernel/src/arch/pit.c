@@ -1,5 +1,6 @@
 #include "common/types.h"
 #include "common/asm.h"
+#include "lib/printf.h"
 #include "arch/gdt.h"
 #include "arch/idt.h"
 #include "time/clock.h"
@@ -18,7 +19,8 @@
 #define REG_CNT2 (REG_CNTBASE + 0x1)
 #define REG_CNT3 (REG_CNTBASE + 0x2)
 
-#define SPKR_ENABLE 0x3
+#define SPKR_ENABLE  0x3
+#define SPKR_DISABLE 0x0
 
 //Shifts for command words
 #define SHIFT_SC  6
@@ -68,6 +70,7 @@
 #define CMD_BCD_ON  0x1
 
 static volatile uint64_t ticks;
+static uint32_t spkr_freq = 0;
 
 static uint64_t pit_read() {
     return ticks;
@@ -115,31 +118,11 @@ static clock_event_source_t pit_clock_event_source = {
     .freq = TIMER_FREQ,
 };
 
-void play(uint32_t freq) {
-    set_counter(SEL_C2, MD_3, PIT_CLOCK / freq);
-
-    uint8_t val = inb(REG_KBD);
-    if((val & SPKR_ENABLE) != SPKR_ENABLE) {
-        outb(REG_KBD, val | SPKR_ENABLE);
-    }
-}
-
-void stop() {
-    outb(REG_KBD, inb(REG_KBD) & SPKR_ENABLE);
-}
-
-void beep() {
-    play(1000);
-    sleep(10);
-    stop();
-}
-
 #define BUSYWAIT_INITAL 60000
 #define BUSYWAIT_THRESHOLD 23864
 
 void pit_busywait_20ms() {
-    barrier();
-    set_counter(SEL_C0, MD_3, BUSYWAIT_INITAL);
+    set_counter(SEL_C0, MD_2, BUSYWAIT_INITAL);
     barrier();
     uint16_t ret = read_counter(SEL_C0);
     barrier();
@@ -156,13 +139,103 @@ static void handle_pit(interrupt_t *interrupt, void *data) {
     pit_clock_event_source.event(&pit_clock_event_source);
 }
 
+#define SPKR_RBUFF_LEN 100
+#define SPKR_WBUFF_LEN 100
+
+static DEFINE_SPINLOCK(pit_lock);
+static uint32_t wbuff_front = 0, rbuff_front = 0, rbuff_len = 0;
+static char spkr_rbuff[SPKR_RBUFF_LEN];
+static char spkr_wbuff[SPKR_WBUFF_LEN];
+
+//called under pit_lock
+static void reload_spkr_freq() {
+    //FIXME use vsnprintf to prevent buffer overflow
+    wbuff_front = 0;
+    rbuff_front = 0;
+    rbuff_len = sprintf(spkr_rbuff, "%u\n", spkr_freq);
+    BUG_ON(rbuff_len + 1 >= SPKR_RBUFF_LEN);
+asm volatile ("xchg %bx,%bx");
+    if(spkr_freq) {
+        set_counter(SEL_C2, MD_3, PIT_CLOCK / spkr_freq);
+
+        outb(REG_KBD, SPKR_ENABLE);
+    } else {
+        outb(REG_KBD, SPKR_DISABLE);
+    }
+}
+
+void spkr_set_freq(uint32_t freq) {
+    uint32_t flags;
+    spin_lock_irqsave(&pit_lock, &flags);
+
+    spkr_freq = freq;
+    reload_spkr_freq();
+
+    spin_unlock_irqstore(&pit_lock, flags);
+}
+
+void beep() {
+    spkr_set_freq(1000);
+    sleep(10);
+    spkr_set_freq(0);
+}
+
+static ssize_t spkr_char_read(char_device_t UNUSED(*cdev), char *buff, size_t len) {
+    uint32_t flags;
+    spin_lock_irqsave(&pit_lock, &flags);
+
+    size_t left = len;
+    while(left--) {
+        *buff++ = spkr_rbuff[rbuff_front++];
+        rbuff_front %= rbuff_len;
+    }
+
+    spin_unlock_irqstore(&pit_lock, flags);
+
+    return len;
+}
+
+static ssize_t spkr_char_write(char_device_t *cdev, char *buff, size_t len) {
+    uint32_t flags;
+    spin_lock_irqsave(&pit_lock, &flags);
+
+    size_t left = len;
+    while(left--) {
+        spkr_wbuff[wbuff_front++] = *buff;
+        if(*buff == '\n') {
+            spkr_wbuff[wbuff_front] = '\0';
+            spkr_freq = atoi(spkr_wbuff);
+            reload_spkr_freq();
+        } else if(wbuff_front == SPKR_WBUFF_LEN - 1) {
+            wbuff_front = 0;
+        }
+
+        buff++;
+    }
+
+    spin_unlock_irqstore(&pit_lock, flags);
+
+    return len;
+}
+
+static char_device_ops_t spkr_ops = {
+    .read = spkr_char_read,
+    .write = spkr_char_write,
+};
+
 void __init pit_init() {
+    //Initialize "PIT" (counter 0)
     set_counter(SEL_C0, MD_3, PIT_CLOCK / TIMER_FREQ);
-
     register_isr(PIT_IRQ + IRQ_OFFSET, CPL_KRNL, handle_pit, NULL);
-
     register_clock(&pit_clock);
     register_clock_event_source(&pit_clock_event_source);
+
+    //Initialize SPKR (counter 2)
+    spkr_freq = 0;
+    reload_spkr_freq();
+    char_device_t *spkr = char_device_alloc();
+    spkr->ops = &spkr_ops;
+    register_char_device(spkr, "spkr");
 
     kprintf("pit - timer registered");
 }
