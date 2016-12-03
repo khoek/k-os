@@ -23,6 +23,7 @@ uint32_t rand32() {
 }
 
 static INITCALL rand_init() {
+    //FIXME this is awful
     srand((uint32_t) rdtsc());
 
     return 0;

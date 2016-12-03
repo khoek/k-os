@@ -36,7 +36,7 @@ static uint64_t hpet_read()  {
 
 static clock_t hpet_clock = {
     .name = "HPET",
-    .rating = 10,
+    .rating = 5,
 
     .read = hpet_read,
 };

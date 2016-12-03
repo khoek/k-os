@@ -9,6 +9,7 @@
 #include "arch/mp.h"
 #include "arch/pic.h"
 #include "arch/pit.h"
+#include "arch/tsc.h"
 #include "arch/hpet.h"
 #include "bug/panic.h"
 #include "mm/mm.h"
@@ -124,6 +125,9 @@ static INITCALL acpi_init() {
     acpi_rsdp_t *rsdp;
     acpi_sdt_t *rsdt;
 
+    pit_init();
+    tsc_init();
+
     kprintf("acpi - parsing tables");
 
     uint8_t *search = map_pages(VRAM_START, VRAM_PAGES);
@@ -197,11 +201,6 @@ static INITCALL acpi_init() {
     if(!madt) {
         kprintf("acpi - pic fallback");
         pic_init();
-    }
-
-    if(!madt || !hpet) {
-        kprintf("acpi - pit fallback");
-        pit_init();
     }
 
     kprintf("acpi - initialized successfully");

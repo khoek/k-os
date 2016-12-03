@@ -4,6 +4,8 @@
 #include "arch/idt.h"
 #include "arch/pic.h"
 #include "arch/apic.h"
+#include "arch/tsc.h"
+#include "arch/pit.h"
 #include "mm/mm.h"
 #include "sched/sched.h"
 #include "time/clock.h"
@@ -27,6 +29,11 @@
 #define REG_LVT_TIMER   0x320
 #define REG_LVT_LINT0   0x350
 #define REG_LVT_LINT1   0x360
+
+//There are the codes to divide by these factors.
+#define DIVIDE_FACTOR_ONE  0x0
+#define DIVIDE_FACTOR_FOUR 0x1
+#define DIVIDE_FACTOR_SIXTYFOUR 0x7
 
 #define TIMER_MODE_PERIODIC (1 << 17)
 
@@ -73,7 +80,26 @@ static void apic_eoi() {
 }
 
 static void handle_timer() {
-    apic_clock_event_source.event(&apic_clock_event_source);
+    if(!get_percpu(this_proc)->num) {
+        apic_clock_event_source.event(&apic_clock_event_source);
+    }
+}
+
+#define CALIBRATE_INITIAL 0xC0000000
+
+static void calibrate_timer() {
+    barrier();
+    writel(apic_base, REG_TIMER_DIVIDE, DIVIDE_FACTOR_ONE);
+    writel(apic_base, REG_TIMER_INITIAL, CALIBRATE_INITIAL);
+    barrier();
+    tsc_busywait_100ms();
+    barrier();
+    uint32_t ticks = readl(apic_base, REG_TIMER_CURRENT);
+    barrier();
+
+    apic_clock_event_source.freq = (CALIBRATE_INITIAL - ticks) * 10;
+
+    kprintf("apic - timer tsc calibrated (%uHz)", apic_clock_event_source.freq);
 }
 
 void __init apic_enable() {
@@ -84,9 +110,17 @@ void __init apic_enable() {
     writel(apic_base, REG_LVT_LINT1, APIC_DISABLE);
     writel(apic_base, REG_TASK_PRIO, 0);
 
-    writel(apic_base, REG_TIMER_DIVIDE, 1);
-    writel(apic_base, REG_TIMER_INITIAL, 160000);
+    writel(apic_base, REG_TIMER_DIVIDE, DIVIDE_FACTOR_ONE);
+    writel(apic_base, REG_TIMER_INITIAL, 0);
+
     writel(apic_base, REG_SPURIOUS, APIC_MASTER_ENABLE | 0xFF);
+
+    if(!apic_clock_event_source.freq) {
+        calibrate_timer();
+    }
+
+    writel(apic_base, REG_TIMER_DIVIDE, DIVIDE_FACTOR_ONE);
+    writel(apic_base, REG_TIMER_INITIAL, apic_clock_event_source.freq);
 }
 
 void __init apic_init(phys_addr_t base) {

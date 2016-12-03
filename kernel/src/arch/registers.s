@@ -43,3 +43,11 @@ set_eflags:
 # Return to the caller's frame
     jmp *%ecx
 .size set_eflags, .-set_eflags
+
+.global rdtsc
+
+.type rdtsc, @function
+rdtsc:
+    rdtsc
+    ret
+.size rdtsc, .-rdtsc

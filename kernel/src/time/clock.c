@@ -73,7 +73,7 @@ void register_clock_event_listener(clock_event_listener_t *clock_event_listener)
 
 static uint64_t _unsafe_uptime() {
     if(active) {
-        return active->read() / (active->freq / MILLIS_PER_SEC);
+        return MILLIS_PER_SEC * active->read() / active->freq;
     }
 
     return 0;

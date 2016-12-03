@@ -13,10 +13,9 @@ typedef struct timer {
     void *data;
 } timer_t;
 
+static uint64_t last_now;
 static cache_t *timer_cache;
-
 static DEFINE_LIST(active_timers);
-
 static DEFINE_SPINLOCK(timer_lock);
 
 void timer_create(uint32_t millis, timer_callback_t callback, void *data) {
@@ -61,7 +60,10 @@ static void time_tick(clock_event_source_t *source) {
     uint32_t flags;
     spin_lock_irqsave(&timer_lock, &flags);
 
-    uint32_t left = 1; //FIXME calc from source->freq
+    uint32_t now = uptime();
+    uint32_t left = now - last_now;
+    last_now = now;
+
     timer_t *timer;
     LIST_FOR_EACH_ENTRY(timer, &active_timers, list) {
         left = decrement_timer(timer, left);
