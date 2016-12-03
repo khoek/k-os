@@ -9,7 +9,8 @@ DOCDIR := doc
 
 ASFLAGS := --32
 
-CCFLAGS := -Wall -Wextra -Werror -Wno-unused-parameter -m32 -I$(INCDIR) \
+CCFLAGS := -Wall -Wextra -Werror -Wno-unused-parameter             \
+	-Wno-missing-field-initializers -m32 -I$(INCDIR)               \
 	-std=gnu99 -fno-strict-aliasing -nostdlib -ffreestanding -c -g \
 	-include "common/config.h"
 
