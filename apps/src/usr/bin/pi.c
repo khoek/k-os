@@ -1,5 +1,5 @@
 //This code has been shamelessly stolen.
-//It's the first program that I haven't wrote to run on K-OS!!
+//It's the first program that I didn't write to run on K-OS!!
 
 #include <stdio.h>
 #include <string.h>
