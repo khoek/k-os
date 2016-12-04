@@ -2,7 +2,9 @@
 
 #include <k/sys.h>
 #include <k/log.h>
+#include <fcntl.h>
 #include <stdio.h>
+#include <stdbool.h>
 #include <string.h>
 #include <unistd.h>
 #include <sys/socket.h>
@@ -11,17 +13,113 @@
 
 #define LINE_ENDING "\r\n"
 
-char send_str_buff[2048];
-static void send_str(int fd, const char *fmt, ...) {
+static int send_buff_front = 0;
+static char send_buff[4096];
+
+static void append_str(const char *fmt, ...) {
     va_list va;
     va_start(va, fmt);
-    vsprintf(send_str_buff, fmt, va);
+    send_buff_front += vsprintf(send_buff + send_buff_front, fmt, va);
     va_end(va);
-
-    send(fd, send_str_buff, strlen(send_str_buff), 0);
 }
 
-char content[2048];
+static void append_binary(char *data, int len) {
+    memcpy(send_buff + send_buff_front, data, len);
+    send_buff_front += len;
+}
+
+static void commit_buffer(int fd) {
+    send(fd, send_buff, send_buff_front, 0);
+}
+
+static bool recv_line(int fd, char *buff) {
+    char c;
+    if(recv(fd, &c, 1, 0) == -1) {
+        return false;
+    }
+    while(c != '\r') {
+        *buff++ = c;
+        if(recv(fd, &c, 1, 0) == -1) {
+            return false;
+        }
+    }
+    *buff = '\0';
+    if(recv(fd, &c, 1, 0) == -1) {
+        return false;
+    }
+    return true;
+}
+
+static int read_file(int fid, char *buff) {
+    int len = 0;
+    while(read(fid, &buff[len], 1)) {
+        len++;
+    }
+    return len;
+}
+
+static const char * get_type(char *res) {
+    char *rid = strrchr(res, '.');
+    if(rid++) {
+        if(!strcmp(rid, "html")) {
+            return "text/html";
+        } else if(!strcmp(rid, "ico")) {
+            return "image/vnd.microsoft.icon";
+        }
+    }
+
+    return "application/octet-stream";
+}
+
+char line[512];
+char content[4096];
+static void handle_conn(int fd) {
+    if(!recv_line(fd, line)) {
+        return;
+    }
+
+    char *method = line;
+    char *res = strchr(method, ' ');
+    *res++ = '\0';
+    char *protocol = strchr(res, ' ');
+    *protocol++ = '\0';
+
+    printf("(%s) %s:%s\n", protocol, method, res);
+
+    if(!strcmp(method, "GET") && *res) {
+        if(!strcmp(res, "/")) {
+            res = "/index.html";
+        }
+
+        res++;
+
+        char path[100];
+        sprintf(path, "/var/www/%s", res);
+        int fid = open(path, 0);
+
+        if(fid != -1) {
+            int len = read_file(fid, content);
+            close(fid);
+
+            append_str("%s 200 OK" LINE_ENDING, protocol);
+            append_str("Content-Type: %s" LINE_ENDING, get_type(res));
+            append_str("Content-Length: %u" LINE_ENDING, len);
+            append_str("Connection: close" LINE_ENDING LINE_ENDING);
+
+            append_binary(content, len);
+        } else {
+            append_str("%s 404 Not Found" LINE_ENDING, protocol);
+            append_str("Connection: close" LINE_ENDING LINE_ENDING);
+        }
+    } else {
+        append_str("%s 501 Not Implemented" LINE_ENDING, protocol);
+    }
+
+    commit_buffer(fd);
+    shutdown(fd, SHUT_RDWR);
+    close(fd);
+}
+
 int main() {
     int fds = socket(AF_INET, SOCK_STREAM, 0);
 
@@ -40,30 +138,17 @@ int main() {
         return 2;
     }
 
-    printf("HTTP: listen() succeeded");
+    printf("HTTP: listen() succeeded\n");
 
-    int client_num = 1;
     while(1) {
         int fd = accept(fds, NULL, 0);
-        int len = sprintf(content, "<!doctype html>"
-                            "<html><head><title>K-OS</title></head><body><center><h1 style='font-size:90pt'>K-OS</h1><p>Welcome. You are client number %u.</p></center></html>", client_num);
 
-        printf("HTTP: accept(), client #%u\n", client_num);
+        //nonblocking collect zombies
 
-        send_str(fd, "HTTP/1.1 200 OK" LINE_ENDING);
-        send_str(fd, "Content-Type: text/html" LINE_ENDING);
-        send_str(fd, "Content-Length: %u" LINE_ENDING, len);
-        send_str(fd, "Connection: close" LINE_ENDING LINE_ENDING);
-
-        send_str(fd, content);
-
-        shutdown(fd, SHUT_RDWR);
-
-        close(fd);
-
-        printf("HTTP: close()\n");
-
-        client_num++;
+        if(!fork()) {
+            handle_conn(fd);
+            return 0;
+        }
     }
 
     return close(fds);
