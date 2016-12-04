@@ -63,6 +63,18 @@ char * strchr(char *str, char c) {
     return NULL;
 }
 
+char * strrchr(char *str, char c) {
+    char *end = str + strlen(str);
+    while(end >= str) {
+        if(*end == c) {
+             return end;
+        }
+        end--;
+    }
+
+    return NULL;
+}
+
 int strcmp(const char *a, const char *b) {
     while(1) {
         if(!(*a) && !(*b)) {
