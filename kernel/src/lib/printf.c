@@ -183,10 +183,6 @@ static char *iaddr(char *str, unsigned char *addr, int size, int type) {
 }
 
 int vsprintf(char *buf, const char *fmt, va_list args) {
-  /*memcpy(buf, fmt, strlen(fmt));
-  buf[strlen(fmt)] = '\0';
-  return strlen(fmt);
-*/
   int len;
   unsigned long num;
   int i, base;
