@@ -12,10 +12,8 @@ extern volatile uint32_t next_ap_acpi_id;
 extern volatile void *next_ap_stack;
 
 extern uint32_t entry_ap_start;
-void entry_ap();
 extern uint32_t entry_ap_end;
 
-void __noreturn mp_ap_init();
 void __init mp_init();
 
 #endif
