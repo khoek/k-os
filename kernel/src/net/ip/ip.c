@@ -26,7 +26,7 @@ const ip_and_port_t IP_AND_PORT_NONE = { .port = 0, .ip = { .addr = {0x00, 0x00,
 void ip_build(packet_t *packet, uint8_t protocol, ip_t dst) {
     ip_header_t *hdr = kmalloc(sizeof(ip_header_t));
 
-    hdr->version_ihl = (IP(4) << 4) | ((uint8_t) (sizeof(ip_header_t) / sizeof(uint32_t)));
+    hdr->version_ihl = (IP_V4 << 4) | ((uint8_t) (sizeof(ip_header_t) / sizeof(uint32_t)));
     hdr->dscp_ecn = 0;
     hdr->total_length = swap_uint16(sizeof(ip_header_t) + packet->tran.size + packet->payload.size);
     hdr->ident = 0;

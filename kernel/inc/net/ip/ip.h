@@ -6,7 +6,9 @@
 #include "net/socket.h"
 #include "net/packet.h"
 
-typedef struct ip { uint32_t padding[0]; uint8_t addr[4]; } ip_t;
+typedef struct ip {
+    uint8_t addr[4];
+} PACKED ip_t;
 
 extern const ip_t IP_BROADCAST;
 extern const ip_t IP_NONE;
@@ -19,6 +21,8 @@ typedef struct ip_and_port {
 } ip_and_port_t;
 
 extern const ip_and_port_t IP_AND_PORT_NONE;
+
+#define IP_V4 4
 
 #define IP_PROT_ICMP 0x01
 #define IP_PROT_TCP  0x06
@@ -34,8 +38,6 @@ extern const ip_and_port_t IP_AND_PORT_NONE;
 #define IP_FLAG_EVIL       (1 << 5) //RFC 3514 :D
 #define IP_FLAG_DONT_FRAG  (1 << 6)
 #define IP_FLAG_MORE_FRAGS (1 << 7)
-
-#define IP(version) (version)
 
 typedef struct ip_header {
     uint8_t  version_ihl;
