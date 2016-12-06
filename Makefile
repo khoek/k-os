@@ -1,4 +1,4 @@
-ROOTDIR ?= $(shell realpath .)
+ROOTDIR ?= $(shell readlink -f .)
 include Makefile.config
 
 .PHONY: all toolchain clean clean-toolchain run debug kernel libc util apps dist run

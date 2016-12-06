@@ -1,4 +1,4 @@
-ROOTDIR ?= $(shell realpath .)/..
+ROOTDIR ?= $(shell readlink -f .)/..
 include $(ROOTDIR)/Makefile.config
 
 .PHONY: all clean
