@@ -3,7 +3,7 @@
 #include <k/sys.h>
 #include <k/log.h>
 #include <stdio.h>
-#include <wait.h>
+#include <sys/wait.h>
 #include <string.h>
 #include <unistd.h>
 
