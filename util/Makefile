@@ -1,4 +1,5 @@
-include ../Makefile.config
+ROOTDIR ?= $(shell realpath .)/..
+include $(ROOTDIR)/Makefile.config
 
 .PHONY: all clean
 
@@ -18,4 +19,4 @@ $(OBJS): $(OBJDIR)/% : $(SRCDIR)/%.c
 	@$(CC) $(CCFLAGS) -o $@ $<
 
 clean:
-	rm -rf $(OBJDIR)
+	@rm -rf $(OBJDIR)

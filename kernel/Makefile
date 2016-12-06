@@ -1,4 +1,5 @@
-include ../Makefile.config
+ROOTDIR ?= $(shell realpath .)/..
+include $(ROOTDIR)/Makefile.config
 
 .PHONY: all clean doc
 
@@ -32,21 +33,21 @@ all: $(KBINARY)
 $(ASOBJS): $(OBJDIR)/%.o : $(SRCDIR)/%.s
 	@echo "      as  $(patsubst $(SRCDIR)/%,%,$<)"
 	@mkdir -p $(shell dirname $@)
-	@$(AS) $(ASFLAGS) -o $@ $<
+	@$(KAS) $(ASFLAGS) -o $@ $<
 
 $(CCOBJS): $(OBJDIR)/%.o : $(SRCDIR)/%.c
 	@echo "      cc  $(patsubst $(SRCDIR)/%,%,$<)"
 	@mkdir -p $(shell dirname $@)
-	@$(CC) $(CCFLAGS) -o $@ $<
+	@$(KCC) $(CCFLAGS) -o $@ $<
 
 $(LDSCRIPT): $(LDSCRIPTSRC)
 	@echo "      cc  $(patsubst $(SRCDIR)/%,%,$<)"
 	@mkdir -p $(shell dirname $@)
-	@$(CPP) -I$(INCDIR) -D__LINKER__ -P -o $@ $<
+	@$(KCPP) -I$(INCDIR) -D__LINKER__ -P -o $@ $<
 
 $(KBINARY): $(OBJS) $(LDSCRIPT)
 	@echo "      ld  $@"
-	@$(CC) $(LDFLAGS) -T $(LDSCRIPT) -o $@ $(OBJS)
+	@$(KCC) $(LDFLAGS) -T $(LDSCRIPT) -o $@ $(OBJS)
 
 clean:
 	rm -rf $(OBJDIR)

@@ -1,4 +1,5 @@
-include ../Makefile.config
+ROOTDIR ?= $(shell realpath .)/..
+include $(ROOTDIR)/Makefile.config
 
 .PHONY: all clean
 
@@ -24,17 +25,17 @@ all: $(LIBCAR)
 $(ASOBJS): $(OBJDIR)/%.o : $(SRCDIR)/%.s
 	@echo "      as  $(patsubst $(SRCDIR)/%,%,$<)"
 	@mkdir -p $(shell dirname $@)
-	@$(AS) $(ASFLAGS) -o $@ $<
+	@$(KAS) $(ASFLAGS) -o $@ $<
 
 $(CCOBJS): $(OBJDIR)/%.o : $(SRCDIR)/%.c
 	@echo "      cc  $(patsubst $(SRCDIR)/%,%,$<)"
 	@mkdir -p $(shell dirname $@)
-	@$(CC) $(CCFLAGS) -o $@ $<
+	@$(KCC) $(CCFLAGS) -o $@ $<
 
 $(LIBCAR): $(OBJS)
 	@echo "      ar  $@"
 	@rm -f $@
-	@$(AR) rcs $@ $(OBJS)
+	@$(KAR) rcs $@ $(OBJS)
 
 clean:
 	rm -rf $(OBJDIR)

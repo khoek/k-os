@@ -1,9 +1,7 @@
-include ../Makefile.config
+ROOTDIR ?= $(shell realpath .)/..
+include $(ROOTDIR)/Makefile.config
 
 .PHONY: all clean
-
-KERNELDIR ?= ../kernel
-APPSDIR ?= ../apps
 
 SRCDIR := root
 OBJDIR := build
@@ -30,7 +28,7 @@ $(OBJS): $(OBJDIR)/% : $(SRCDIR)/%
 
 cdrom.iso: $(OBJS) $(OBJDIR)/$(ROOTRAMFS) $(OBJDIR)/$(KBINARY)
 	@echo "      mkimage"
-	@grub-mkrescue -o $(IMAGE) $(OBJDIR) 
+	@grub-mkrescue -o $(IMAGE) $(OBJDIR)
 
 clean:
 	rm -rf $(OBJDIR)

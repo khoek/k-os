@@ -1,44 +1,41 @@
-CORES = 1
-
-UTILDIR = $(realpath util)
-UTILBINDIR = $(UTILDIR)/$(UTILBINPREFIX)
-LIBDIR = $(realpath libc)
-KERNELDIR = $(realpath kernel)
-APPSDIR = $(realpath apps)
-DISTDIR = $(realpath dist)
-
-QEMUARGS = -smp cores=$(CORES) -boot d -cdrom $(DISTDIR)/$(IMAGE) -drive id=disk,format=raw,file=$(HDD),if=none -device ahci,id=ahci -device ide-drive,drive=disk,bus=ahci.0
-
+ROOTDIR ?= $(shell realpath .)
 include Makefile.config
 
-export UTILDIR UTILBINDIR LIBDIR KERNELDIR APPSDIR DISTDIR
-
-.PHONY: kernel libc util apps dist run
-.NOTPARALLEL:
+.PHONY: all toolchain clean clean-toolchain run debug kernel libc util apps dist run
 
 all: kernel libc util apps dist
 
+complete: toolchain
+	$(MAKE) all
+
+toolchain:
+	+$(MAKE) -C toolchain all
+
 kernel:
-	@make -C kernel all
+	$(MAKE) -C kernel all
 
 libc:
-	@make -C libc all
+	$(MAKE) -C libc all
 
 util:
-	@make -C util all
+	$(MAKE) -C util all
 
 apps: libc util
-	@make -C apps all
+	$(MAKE) -C apps all
 
 dist: kernel apps
-	@make -C dist all
+	$(MAKE) -C dist all
 
 clean:
-	@make -C util clean
-	@make -C libc clean
-	@make -C kernel clean
-	@make -C apps clean
-	@make -C dist clean
+	@rm -rf $(HDD)
+	$(MAKE) -C util clean
+	$(MAKE) -C libc clean
+	$(MAKE) -C kernel clean
+	$(MAKE) -C apps clean
+	$(MAKE) -C dist clean
+
+clean-toolchain:
+	$(MAKE) -C toolchain clean
 
 $(HDD):
 	@echo "      dd  $(HDD)"

@@ -1,9 +1,7 @@
-include ../Makefile.config
+ROOTDIR ?= $(shell realpath .)/..
+include $(ROOTDIR)/Makefile.config
 
 .PHONY: all clean
-
-LIBDIR ?= ../libc
-UTILBINDIR ?= ../util/bin
 
 LIBCLD := linker.ld
 
@@ -24,13 +22,13 @@ LIBS := $(LIBDIR)/$(LIBCAR)
 all: $(ROOTRAMFS)
 
 $(ROOTRAMFS): $(OBJS) $(RESO)
-	@$(UTILBINDIR)/$(MKROOTRAMFS) -o $@ $(OUTDIR)
 	@echo "      mkrootramfs"
+	@$(UTILBINDIR)/$(MKROOTRAMFS) -o $@ $(OUTDIR)
 
 $(OBJS): $(OUTDIR)/% : $(SRCDIR)/%.c $(LIBS)
 	@echo "      cc  $(patsubst $(SRCDIR)%,%,$<) -> $(patsubst $(OUTDIR)%,%,$@)"
 	@mkdir -p $(shell dirname $@)
-	@$(CC) $(CCFLAGS) -T $(LIBDIR)/$(LIBCLD) -o $@ $< $(LIBS)
+	@$(KCC) $(CCFLAGS) -T $(LIBDIR)/$(LIBCLD) -o $@ $< $(LIBS)
 
 $(RESO): $(OUTDIR)/% : $(RESDIR)/%
 	@echo "      cp  $(patsubst $(RESDIR)%,%,$<) -> $(patsubst $(OUTDIR)%,%,$@)"
