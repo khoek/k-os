@@ -1,0 +1,8 @@
+language: c
+addons:
+  apt:
+      packages:
+          - bison
+          - flex
+script:
+  - make complete
