@@ -1,5 +1,5 @@
-#ifndef KERNEL_COMMON_COMPILER_H
-#define KERNEL_COMMON_COMPILER_H
+#ifndef LIBC_K_COMPILER_H
+#define LIBC_K_COMPILER_H
 
 #define ALIGN(a)    __attribute__((aligned((a))))
 #define UNUSED(v) v __attribute__((unused))

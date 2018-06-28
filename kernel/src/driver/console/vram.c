@@ -180,9 +180,10 @@ static void execute_escseq(console_t *con, char c, int32_t n, int32_t m) {
             con->col = MIN(nc, CONSOLE_WIDTH - 1);
 
             do_refresh_cursor(con);
+            break;
         }
+        //Erase Display
         case 'J':{
-            //Erase Display
             uint32_t v = n == -1 ? 0 : n;
 
             switch(v) {
@@ -203,6 +204,7 @@ static void execute_escseq(console_t *con, char c, int32_t n, int32_t m) {
                     break;
                 }
             }
+            break;
         }
         default: {
             break;

@@ -682,6 +682,8 @@ static void deactivate_thread(thread_t *t) {
         case THREAD_AWAKE: {
             BUG_ON(!t->active);
             list_add(&t->state_list, &queued_threads);
+
+            FALLTHROUGH;
         }
         case THREAD_SLEEPING: {
             ACCESS_ONCE(tasks_going)--;
@@ -798,7 +800,7 @@ void __noreturn sched_loop() {
     irqdisable();
 
     kprintf("sched - proc #%u is READY", get_percpu(this_proc)->num);
-    
+
     get_percpu(locks_held) = 0;
     list_init(&get_percpu(lock_list));
     get_percpu(switch_time) = 0;

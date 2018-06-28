@@ -134,7 +134,7 @@ static void probe_function(uint8_t bus, uint8_t device, uint8_t function) {
     register_device(&dev->device, &pci_bus.node);
 }
 
-static char * bridge_name_prefix = "bridge";
+static const char bridge_name_prefix[] = "bridge";
 
 static char * bridge_name(device_t UNUSED(*device)) {
     static int next_id = 0;

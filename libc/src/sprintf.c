@@ -36,6 +36,8 @@
 #include <stdio.h>
 #include <string.h>
 
+#include <k/compiler.h>
+
 #define NOFLOAT
 
 #define ZEROPAD 1               // Pad with zero
@@ -285,7 +287,7 @@ repeat:
 
       case 'A':
         flags |= LARGE;
-
+        FALLTHROUGH;
       case 'a':
         if (qualifier == 'l') {
           str = eaddr(str, va_arg(args, unsigned char *), field_width, flags);
@@ -301,7 +303,7 @@ repeat:
 
       case 'X':
         flags |= LARGE;
-
+        FALLTHROUGH;
       case 'x':
         base = 16;
         break;

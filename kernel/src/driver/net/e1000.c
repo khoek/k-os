@@ -254,7 +254,7 @@ int32_t net_825xx_send(packet_t *packet) {
     return desc->sta & TX_DESC_STATUS_DD ? 0 : -1;
 }
 
-static char * net_825xx_name_prefix = "net_825xx_";
+static const char net_825xx_name_prefix[] = "net_825xx_";
 
 static char * net_825xx_name(device_t UNUSED(*device)) {
     static int next_id = 0;

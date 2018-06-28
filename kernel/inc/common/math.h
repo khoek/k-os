@@ -8,7 +8,7 @@
 #define MAX(a, b) ((a > b) ? a : b)
 
 #define DIV_DOWN(x, y) ((x) / (y))
-#define DIV_UP(x, y)   ((!(x)) ? (0) : ((((x) - 1) / (y)) + 1))
+#define DIV_UP(x, y)   ((((uint32_t) (x)) == 0) ? (0) : (((((uint32_t) (x)) - 1) / ((uint32_t) (y))) + 1))
 
 extern uint32_t log2_NaN();
 

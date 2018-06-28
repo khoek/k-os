@@ -17,7 +17,7 @@ static node_t root = {
 static DEFINE_LIST(buses);
 
 static uint32_t next_id = 0;
-static const char *generic_name = "dev";
+static const char generic_name[] = "dev";
 
 static inline void node_init(node_t *node) {
     list_init(&node->children);

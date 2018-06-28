@@ -24,7 +24,7 @@ static bus_t console_bus = {
     .match = console_match
 };
 
-static char * console_name_prefix = "console";
+static const char console_name_prefix[] = "console";
 
 static char * console_name(device_t UNUSED(*device)) {
     static int next_id = 0;

@@ -29,12 +29,13 @@
 //
 
 /*
- *  This file includes modifications made by Keeley Hoek <escortkeel@gmail.com>.
+ *  2018: This file includes modifications made by Keeley Hoek <keeley@hoek.io>.
  */
 
 #include <stdarg.h>
 
 #include "lib/string.h"
+#include "common/compiler.h"
 
 #define NOFLOAT
 
@@ -285,7 +286,7 @@ repeat:
 
       case 'A':
         flags |= LARGE;
-
+        FALLTHROUGH;
       case 'a':
         if (qualifier == 'l') {
           str = eaddr(str, va_arg(args, unsigned char *), field_width, flags);
@@ -301,6 +302,7 @@ repeat:
 
       case 'X':
         flags |= LARGE;
+        FALLTHROUGH;
 
       case 'x':
         base = 16;
