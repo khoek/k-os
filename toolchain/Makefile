@@ -28,7 +28,7 @@ AR_GCC := $(NAME_GCC).tar.gz
 URL_BINUTILS := http://ftp.gnu.org/gnu/binutils/$(AR_BINUTILS)
 URL_GMP := http://ftp.gnu.org/gnu/gmp/$(AR_GMP)
 URL_MPFR := http://ftp.gnu.org/gnu/mpfr/$(AR_MPFR)
-URL_MPC := http://www.multiprecision.org/mpc/download/$(AR_MPC)
+URL_MPC := https://ftp.gnu.org/gnu/mpc/$(AR_MPC)
 URL_GCC := http://ftp.gnu.org/gnu/gcc/gcc-$(GCC_VER)/$(AR_GCC)
 
 BISON := $(shell command -v bison 2> /dev/null)
