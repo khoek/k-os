@@ -5,5 +5,7 @@ addons:
           - bison
           - flex
           - xorriso
+install:
+  - make -C toolchain all
 script:
-  - make complete
+  - make all
