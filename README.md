@@ -1,4 +1,4 @@
-# K-OS [![Build Status](https://travis-ci.org/khoek/k-os.svg?branch=master)](https://travis-ci.org/khoek/k-os.svg?branch=master)
+# K-OS [![Build Status](https://travis-ci.org/khoek/k-os.svg?branch=master)](https://travis-ci.org/khoek/k-os)
 
 An operating system written by Keeley Hoek as a hobby. It was inspired by Charlie Somerville's [JSOS](https://github.com/charliesome/JSOS).
 
