@@ -1,4 +1,4 @@
-# K-OS [![Build Status](https://drone.io/github.com/escortkeel/k-os/status.png)](https://drone.io/github.com/escortkeel/k-os/latest)
+# K-OS [![Build Status](https://travis-ci.org/khoek/k-os.svg?branch=master)](https://drone.io/github.com/escortkeel/k-os/latest)
 
 An operating system written by Keeley Hoek as a hobby. It was inspired by Charlie Somerville's [JSOS](https://github.com/charliesome/JSOS).
 
@@ -62,7 +62,7 @@ To enable/disable these options edit the "kernel/config.h" file.
 
 Where not explicitly indicated otherwise, all files are licensed under the following terms:
 
-    Copyright (c) 2016, Keeley Hoek
+    Copyright (c) 2018, Keeley Hoek
     All rights reserved.
 
     Redistribution and use in source and binary forms, with or without modification,
