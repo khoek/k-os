@@ -4,5 +4,6 @@ addons:
       packages:
           - bison
           - flex
+          - xorriso
 script:
   - make complete
