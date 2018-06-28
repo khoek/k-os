@@ -81,27 +81,27 @@ $(SRCDIR)/$(NAME_GCC)/configure: $(ARTIFACT_BINUTILS) $(ARTIFACT_GMP) $(ARTIFACT
 
 $(SRCDIR)/$(NAME_BINUTILS)/Makefile: $(SRCDIR)/$(NAME_BINUTILS)/configure
 	mkdir -p $(BUILDDIR)
-	cd $(SRCDIR)/$(NAME_BINUTILS) && sh $< --target=$(TARGET) --prefix=$(BUILDDIR)
+	cd $(SRCDIR)/$(NAME_BINUTILS) && sh $< $(TOOLCHAIN_CONFFLAGS) --target=$(TARGET) --prefix=$(BUILDDIR)
 	cd $(TOOLCHAINDIR)
 
 $(SRCDIR)/$(NAME_GMP)/Makefile: $(SRCDIR)/$(NAME_GMP)/configure
 	mkdir -p $(BUILDDIR)
-	cd $(SRCDIR)/$(NAME_GMP) && sh $< --prefix=$(BUILDDIR) --disable-shared
+	cd $(SRCDIR)/$(NAME_GMP) && sh $< $(TOOLCHAIN_CONFFLAGS) --prefix=$(BUILDDIR) --disable-shared
 	cd $(TOOLCHAINDIR)
 
 $(SRCDIR)/$(NAME_MPFR)/Makefile: $(SRCDIR)/$(NAME_MPFR)/configure
 	mkdir -p $(BUILDDIR)
-	cd $(SRCDIR)/$(NAME_MPFR) && sh $< --prefix=$(BUILDDIR) --with-gmp=$(BUILDDIR) --disable-shared
+	cd $(SRCDIR)/$(NAME_MPFR) && sh $< $(TOOLCHAIN_CONFFLAGS) --prefix=$(BUILDDIR) --with-gmp=$(BUILDDIR) --disable-shared
 	cd $(TOOLCHAINDIR)
 
 $(SRCDIR)/$(NAME_MPC)/Makefile: $(SRCDIR)/$(NAME_MPC)/configure
 	mkdir -p $(BUILDDIR)
-	cd $(SRCDIR)/$(NAME_MPC) && sh $< --target=$(TARGET) --prefix=$(BUILDDIR) --with-gmp=$(BUILDDIR) --with-mpfr=$(BUILDDIR) --disable-shared
+	cd $(SRCDIR)/$(NAME_MPC) && sh $< $(TOOLCHAIN_CONFFLAGS) --target=$(TARGET) --prefix=$(BUILDDIR) --with-gmp=$(BUILDDIR) --with-mpfr=$(BUILDDIR) --disable-shared
 	cd $(TOOLCHAINDIR)
 
 $(SRCDIR)/$(NAME_GCC)/Makefile: $(SRCDIR)/$(NAME_GCC)/configure
 	mkdir -p $(BUILDDIR)
-	cd $(SRCDIR)/$(NAME_GCC) && sh $< --target=$(TARGET) --prefix=$(BUILDDIR) --enable-languages=c --without-headers --disable-nls --with-gmp=$(BUILDDIR) --with-mpfr=$(BUILDDIR) --with-mpc=$(BUILDDIR)
+	cd $(SRCDIR)/$(NAME_GCC) && sh $< $(TOOLCHAIN_CONFFLAGS) --target=$(TARGET) --prefix=$(BUILDDIR) --enable-languages=c --without-headers --disable-nls --with-gmp=$(BUILDDIR) --with-mpfr=$(BUILDDIR) --with-mpc=$(BUILDDIR)
 	cd $(TOOLCHAINDIR)
 
 $(ARTIFACT_BINUTILS): $(SRCDIR)/$(NAME_BINUTILS)/Makefile
