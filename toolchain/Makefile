@@ -114,8 +114,8 @@ endif
 ifndef AUTOMAKE
     $(error "'automake' not available, please install it")
 endif
-	$(MAKE) -C $(shell dirname $<)
-	$(MAKE) -C $(shell dirname $<) install
+	$(MAKE) $(TOOLCHAIN_MAKEFLAGS) -C $(shell dirname $<)
+	$(MAKE) $(TOOLCHAIN_MAKEFLAGS) -C $(shell dirname $<) install
 
 $(ARTIFACT_GMP): $(SRCDIR)/$(NAME_GMP)/Makefile
 ifndef BISON
@@ -127,8 +127,8 @@ endif
 ifndef AUTOMAKE
     $(error "'automake' not available, please install it")
 endif
-	$(MAKE) -C $(shell dirname $<)
-	$(MAKE) -C $(shell dirname $<) install
+	$(MAKE) $(TOOLCHAIN_MAKEFLAGS) -C $(shell dirname $<)
+	$(MAKE) $(TOOLCHAIN_MAKEFLAGS) -C $(shell dirname $<) install
 
 $(ARTIFACT_MPFR): $(SRCDIR)/$(NAME_MPFR)/Makefile
 ifndef BISON
@@ -140,8 +140,8 @@ endif
 ifndef AUTOMAKE
     $(error "'automake' not available, please install it")
 endif
-	$(MAKE) -C $(shell dirname $<)
-	$(MAKE) -C $(shell dirname $<) install
+	$(MAKE) $(TOOLCHAIN_MAKEFLAGS) -C $(shell dirname $<)
+	$(MAKE) $(TOOLCHAIN_MAKEFLAGS) -C $(shell dirname $<) install
 
 $(ARTIFACT_MPC): $(SRCDIR)/$(NAME_MPC)/Makefile
 ifndef BISON
@@ -153,8 +153,8 @@ endif
 ifndef AUTOMAKE
     $(error "'automake' not available, please install it")
 endif
-	$(MAKE) -C $(shell dirname $<)
-	$(MAKE) -C $(shell dirname $<) install
+	$(MAKE) $(TOOLCHAIN_MAKEFLAGS) -C $(shell dirname $<)
+	$(MAKE) $(TOOLCHAIN_MAKEFLAGS) -C $(shell dirname $<) install
 
 $(ARTIFACT_GCC): $(SRCDIR)/$(NAME_GCC)/Makefile
 ifndef BISON
@@ -166,8 +166,8 @@ endif
 ifndef AUTOMAKE
     $(error "'automake' not available, please install it")
 endif
-	$(MAKE) -C $(shell dirname $<) all-gcc
-	$(MAKE) -C $(shell dirname $<) install-gcc
+	$(MAKE) $(TOOLCHAIN_MAKEFLAGS) -C $(shell dirname $<) all-gcc
+	$(MAKE) $(TOOLCHAIN_MAKEFLAGS) -C $(shell dirname $<) install-gcc
 
 check: check-binutils check-gmp check-mpfr check-mpc
 

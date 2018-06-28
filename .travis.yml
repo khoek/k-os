@@ -6,6 +6,7 @@ addons:
           - flex
           - xorriso
 install:
+  - export TOOLCHAIN_MAKEFLAGS="V=0"
   - make -C toolchain all
 script:
   - make all
