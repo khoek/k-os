@@ -25,8 +25,8 @@ CCOBJS := $(patsubst $(SRCDIR)/%.c,$(OBJDIR)/%.o,$(CCSRCS))
 
 OBJS := $(ASOBJS) $(CCOBJS)
 
-LDSCRIPTSRC := $(SRCDIR)/linker.ld.S
-LDSCRIPT := $(OBJDIR)/linker.ld
+LDSCRIPTSRC := $(SRCDIR)/arch/linker.ld.S
+LDSCRIPT := $(OBJDIR)/arch/linker.ld
 
 all: $(KBINARY)
 
