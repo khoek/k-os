@@ -3,9 +3,10 @@
 
 #define SYSCALL(name) __k_##name
 
-#ifdef LIBC_SOURCE
+#ifndef __ASSEMBLER__
 #include "k/compiler.h"
 
+#include "dirent.h"
 #include "sys/types.h"
 #include "sys/socket.h"
 

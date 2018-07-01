@@ -70,7 +70,7 @@ static uint32_t entry_reconstruct(entry_t *e, const path_t *root) {
 
             frecord_t *fr = ((void *) e) + sizeof(entry_t) + e->name_len;
 
-            file_t *f = vfs_open_file(out.dentry->inode);
+            file_t *f = vfs_open_file(out.dentry);
             vfs_write(f, fr->data, fr->len);
 
             kprintf("rootramfs - created \"/%s\"", path);

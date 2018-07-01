@@ -64,10 +64,10 @@ static void char_file_close(file_t *file) {
 
 static file_ops_t char_file_ops = {
     .open = char_file_open,
+    .close = char_file_close,
     .seek = char_file_seek,
     .read = char_file_read,
     .write = char_file_write,
-    .close = char_file_close,
 };
 
 static inode_ops_t char_inode_ops = {
@@ -100,10 +100,10 @@ static void block_file_close(file_t *file) {
 
 static file_ops_t block_file_ops = {
     .open = block_file_open,
+    .close = block_file_close,
     .seek = block_file_seek,
     .read = block_file_read,
     .write = block_file_write,
-    .close = block_file_close,
 };
 
 static inode_ops_t block_inode_ops = {

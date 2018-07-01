@@ -65,9 +65,9 @@ static void umain() {
         vlog_disable();
     }
 
-    ufdt_add(0, vfs_open_file(out.dentry->inode));
-    ufdt_add(0, vfs_open_file(out.dentry->inode));
-    ufdt_add(0, vfs_open_file(out.dentry->inode));
+    ufdt_add(0, vfs_open_file(out.dentry));
+    ufdt_add(0, vfs_open_file(out.dentry));
+    ufdt_add(0, vfs_open_file(out.dentry));
 
     if(!try_load_init("/sbin/init")
         && !try_load_init("/etc/init")

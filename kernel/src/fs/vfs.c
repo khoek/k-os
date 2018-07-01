@@ -32,11 +32,10 @@ static DEFINE_SPINLOCK(mount_hashtable_lock);
 dentry_t * dentry_alloc(const char *name) {
     dentry_t *new = cache_alloc(dentry_cache);
     new->name = name;
-    new->child = NULL;
     new->inode = NULL;
     new->flags = 0;
-    hashtable_init(new->children);
-    list_init(&new->siblings);
+    hashtable_init(new->children_tab);
+    list_init(&new->children_list);
 
     return new;
 }
@@ -86,13 +85,9 @@ static mount_t * mount_alloc(fs_t *fs) {
 void dentry_activate(dentry_t *child, dentry_t *parent) {
     child->parent = parent;
 
-    hashtable_add(str_to_key(child->name, strlen(child->name)), &child->node, parent->children);
-
-    if(parent->child) {
-        list_add(&child->siblings, &parent->child->siblings);
-    } else {
-        list_init(&child->siblings);
-        parent->child = child;
+    if(parent) {
+        hashtable_add(str_to_key(child->name, strlen(child->name)), &child->node, parent->children_tab);
+        list_add(&child->list, &parent->children_list);
     }
 }
 
@@ -276,7 +271,6 @@ static bool get_path_wd(const path_t *start, const char *orig_pathname, path_t *
     return true;
 }
 
-
 bool vfs_create(const path_t *start, const char *pathname, uint32_t mode, bool excl) {
     path_t wd;
     char *last;
@@ -420,7 +414,7 @@ bool vfs_lookup(const path_t *start, const char *orig_path, path_t *out) {
 
         //have we cached this child?
         dentry_t *child;
-        HASHTABLE_FOR_EACH_COLLISION(str_to_key(path, len), child, wd->children, node) {
+        HASHTABLE_FOR_EACH_COLLISION(str_to_key(path, len), child, wd->children_tab, node) {
             if(!memcmp(child->name, path, len)) {
                 wd = child;
                 goto lookup_next;
@@ -454,10 +448,11 @@ lookup_next:
     return !!wd;
 }
 
-file_t * vfs_open_file(inode_t *inode) {
-    file_t *file = file_alloc(inode->ops->file_ops);
+file_t * vfs_open_file(dentry_t *dentry) {
+    file_t *file = file_alloc(dentry->inode->ops->file_ops);
+    file->dentry = dentry;
     if(file) {
-        file->ops->open(file, inode);
+        file->ops->open(file, dentry->inode);
     }
 
     return file;
@@ -522,6 +517,10 @@ void generic_getattr(inode_t *inode, stat_t *stat) {
 
     stat->st_blksize = 1 << inode->blkshift;
     stat->st_blocks = inode->blocks;
+}
+
+uint32_t vfs_iterate(file_t *file, dir_entry_dat_t *buff, uint32_t num) {
+  return file->ops->iterate(file, buff, num);
 }
 
 static INITCALL vfs_init() {

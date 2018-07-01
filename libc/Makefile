@@ -34,7 +34,7 @@ $(ASOBJS): $(OBJDIR)/%.o : $(SRCDIR)/%.s
 $(ASPPOBJS): $(OBJDIR)/%.o : $(SRCDIR)/%.S
 	@echo "      as  $(patsubst $(SRCDIR)/%,%,$<)"
 	@mkdir -p $(shell dirname $@)
-	@$(KCC) $(ASFLAGS) -o $@ $<
+	$(KCC) $(ASFLAGS) -o $@ $<
 
 $(CCOBJS): $(OBJDIR)/%.o : $(SRCDIR)/%.c
 	@echo "      cc  $(patsubst $(SRCDIR)/%,%,$<)"

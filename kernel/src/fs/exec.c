@@ -29,7 +29,7 @@ char ** copy_strtab(char *const raw[]) {
 }
 
 bool execute_path(path_t *p, char **raw_argv, char **raw_envp) {
-    file_t *f = vfs_open_file(p->dentry->inode);
+    file_t *f = vfs_open_file(p->dentry);
     if(!f) return false;
 
     if(!binfmt_load(f, copy_strtab(raw_argv), copy_strtab(raw_envp))) {

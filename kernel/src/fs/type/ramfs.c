@@ -91,6 +91,9 @@ static void ramfs_file_open(file_t *file, inode_t *inode) {
     file->private = inode->private;
 }
 
+static void ramfs_file_close(file_t *file) {
+}
+
 static off_t ramfs_file_seek(file_t *file, off_t offset) {
     file->offset = offset;
     return file->offset;
@@ -118,15 +121,38 @@ static ssize_t ramfs_file_write(file_t *file, const char *buff, size_t bytes) {
     return ret;
 }
 
-static void ramfs_file_close(file_t *file) {
+uint32_t ramfs_file_iterate(file_t *file, dir_entry_dat_t *buff, uint32_t num) {
+    uint32_t curpos = 0;
+    uint32_t num_read = 0;
+    dentry_t *child;
+    LIST_FOR_EACH_ENTRY(child, &file->dentry->children_list, list) {
+        if(num_read >= num) {
+            break;
+        }
+
+        if(curpos >= file->offset) {
+            buff[num_read].ino = child->inode->ino;
+            buff[num_read].type = child->inode->mode & INODE_FLAG_DIRECTORY ? ENTRY_TYPE_DIR : ENTRY_TYPE_FILE;
+            strcpy(buff[num_read].name, child->name);
+
+            num_read++;
+        }
+
+        curpos++;
+    }
+
+    file->offset = curpos;
+    return num_read;
 }
 
 static file_ops_t ramfs_file_ops = {
     .open   = ramfs_file_open,
+    .close  = ramfs_file_close,
     .seek   = ramfs_file_seek,
     .read   = ramfs_file_read,
     .write  = ramfs_file_write,
-    .close  = ramfs_file_close,
+
+    .iterate = ramfs_file_iterate,
 };
 
 static void ramfs_inode_lookup(inode_t *inode, dentry_t *dentry);

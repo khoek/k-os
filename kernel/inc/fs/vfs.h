@@ -22,6 +22,7 @@ typedef struct mount mount_t;
 typedef struct path path_t;
 
 typedef struct file file_t;
+typedef struct dirent dirent_t;
 typedef struct file_ops file_ops_t;
 
 typedef struct inode inode_t;
@@ -85,12 +86,24 @@ struct file {
     file_ops_t *ops;
 };
 
+#define ENTRY_TYPE_FILE 0
+#define ENTRY_TYPE_DIR  1
+
+typedef struct dir_entry_dat {
+    uint32_t ino;
+    uint8_t type;
+    char name[256];
+} dir_entry_dat_t;
+
 struct file_ops {
     void (*open)(file_t *file, inode_t *inode);
+    void (*close)(file_t *file);
+
     off_t (*seek)(file_t *file, off_t offset);
     ssize_t (*read)(file_t *file, char *buff, size_t bytes);
     ssize_t (*write) (file_t *file, const char *buff, size_t bytes);
-    void (*close)(file_t *file);
+
+    uint32_t (*iterate)(file_t *file, dir_entry_dat_t *buff, uint32_t num);
 };
 
 struct inode {
@@ -124,6 +137,7 @@ struct inode_ops {
     //Target is supposedly a child of inode. Populate target->inode with the
     //correct inode if it exists, or set target->inode = NULL if it does not.
     void (*lookup)(inode_t *inode, dentry_t *target);
+
     bool (*create)(inode_t *inode, dentry_t *d, uint32_t mode);
     bool (*mkdir)(inode_t *inode, dentry_t *d, uint32_t mode);
     void (*getattr)(dentry_t *dentry, stat_t *stat);
@@ -137,13 +151,13 @@ struct dentry {
     inode_t *inode;
 
     dentry_t *parent;
-    dentry_t *child;
-    DECLARE_HASHTABLE(children, DENTRY_HASH_BITS);
-    list_head_t siblings;
+    DECLARE_HASHTABLE(children_tab, DENTRY_HASH_BITS);
+    list_head_t children_list;
 
     void *private;
 
     hashtable_node_t node;
+    list_head_t list;
 };
 
 struct stat {
@@ -192,9 +206,10 @@ void vfs_getattr(dentry_t *dentry, stat_t *stat);
 void generic_getattr(inode_t *inode, stat_t *stat);
 
 bool vfs_lookup(const path_t *start, const char *path, path_t *out);
-file_t * vfs_open_file(inode_t *inode);
+file_t * vfs_open_file(dentry_t *dentry);
 off_t vfs_seek(file_t *file, uint32_t off);
 ssize_t vfs_read(file_t *file, void *buff, size_t bytes);
 ssize_t vfs_write(file_t *file, const void *buff, size_t bytes);
+uint32_t vfs_iterate(file_t *file, dir_entry_dat_t *buff, uint32_t num);
 
 #endif

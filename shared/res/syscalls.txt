@@ -18,11 +18,13 @@
 15:alloc_page:
 16:free_page:
 
-17:stat:const char *path, void *buff
-18:lstat:
-19:fstat:ufd_idx_t ufd, void *buff
-20:read:ufd_idx_t ufd, void *buff, uint32_t len
-21:write:ufd_idx_t ufd, const void *buff, uint32_t len
+17:readdir:ufd_idx_t ufd, struct dirent *user_buff, uint32_t count
 
-22:execve:const char *pathname, char *const argv[], char *const envp[]
-23:waitpid:pid_t pid, int *stat_loc, int options
+18:stat:const char *path, void *buff
+19:lstat:
+20:fstat:ufd_idx_t ufd, void *buff
+21:read:ufd_idx_t ufd, void *buff, uint32_t len
+22:write:ufd_idx_t ufd, const void *buff, uint32_t len
+
+23:execve:const char *pathname, char *const argv[], char *const envp[]
+24:waitpid:pid_t pid, int *stat_loc, int options

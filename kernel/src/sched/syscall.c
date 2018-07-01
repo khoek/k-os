@@ -12,11 +12,15 @@
 #include "sync/atomic.h"
 #include "sched/task.h"
 #include "sched/sched.h"
-#include "arch/syscall.h"
+#include "sched/syscall.h"
 #include "net/socket.h"
 #include "fs/vfs.h"
 #include "fs/exec.h"
 #include "log/log.h"
+
+syscall_t syscalls[MAX_SYSCALL] = {
+#include "shared/syscall_ents.h"
+};
 
 DEFINE_SYSCALL(exit, uint32_t code) {
     task_node_exit(code);
@@ -27,7 +31,7 @@ DEFINE_SYSCALL(exit, uint32_t code) {
     return 0;
 }
 
-DEFINE_SYSCALL(fork) {
+DEFINE_SYSCALL(fork)  {
     void *prep = arch_prepare_fork(state);
     thread_t *child = thread_fork(current, 0, arch_ret_from_fork, prep);
 
@@ -64,7 +68,7 @@ DEFINE_SYSCALL(log, const char *loc, uint32_t len) {
     return 0;
 }
 
-DEFINE_SYSCALL(uptime) {
+DEFINE_SYSCALL(uptime)  {
     return uptime();
 }
 
@@ -75,7 +79,7 @@ DEFINE_SYSCALL(open, const char *pathname, uint32_t flags) {
 
     path_t path;
     if(vfs_lookup(&pwd, pathname, &path)) {
-        return ufdt_add(flags, vfs_open_file(path.dentry->inode));
+        return ufdt_add(flags, vfs_open_file(path.dentry));
     } else {
         return -1;
     }
@@ -265,12 +269,40 @@ DEFINE_SYSCALL(recv, ufd_idx_t ufd, void *user_buff, uint32_t buffsize, uint32_t
     return ret;
 }
 
-DEFINE_SYSCALL(alloc_page) {
+DEFINE_SYSCALL(alloc_page)  {
     UNIMPLEMENTED();
 }
 
-DEFINE_SYSCALL(free_page) {
+DEFINE_SYSCALL(free_page)  {
     UNIMPLEMENTED();
+}
+
+struct dirent {
+    ino_t d_ino;
+    char d_name[];
+};
+
+DEFINE_SYSCALL(readdir, ufd_idx_t ufd, struct dirent *user_buff, uint32_t count) {
+    int32_t ret = -1;
+
+    file_t *fd = ufdt_get(ufd);
+    if(fd) {
+        //TODO sanitize buffer/size arguments
+
+        dir_entry_dat_t *buff = kmalloc(count * sizeof(dir_entry_dat_t));
+        uint32_t num = vfs_iterate(fd, buff, count);
+        for(uint32_t i = 0; i < num; i++) {
+          user_buff[i].d_ino = buff[i].ino;
+          strcpy(user_buff[i].d_name, buff[i].name);
+        }
+        kfree(buff);
+
+        ret = num;
+
+        ufdt_put(ufd);
+    }
+
+    return ret;
 }
 
 DEFINE_SYSCALL(stat, const char *pathname, void *buff) {
@@ -296,7 +328,7 @@ DEFINE_SYSCALL(stat, const char *pathname, void *buff) {
     return ret;
 }
 
-DEFINE_SYSCALL(lstat) {
+DEFINE_SYSCALL(lstat)  {
     UNIMPLEMENTED();
 }
 

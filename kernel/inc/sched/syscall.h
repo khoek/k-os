@@ -5,8 +5,6 @@
 
 #include "shared/syscall_decls.h"
 
-syscall_t syscalls[MAX_SYSCALL] = {
-#include "shared/syscall_ents.h"
-};
+extern syscall_t syscalls[];
 
 #endif
