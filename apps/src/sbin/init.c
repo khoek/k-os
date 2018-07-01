@@ -5,6 +5,8 @@
 #include <sys/wait.h>
 #include <string.h>
 
+#include <k/log.h>
+
 int main(int argc, char **argv) {
     char *shell_argv[] = {"/sbin/ksh", NULL};
     char *shell_envp[] = {NULL};

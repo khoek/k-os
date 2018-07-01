@@ -48,7 +48,7 @@ static chunk_t * chunk_find(record_t *r, ssize_t off, bool create) {
     return create ? chunk_alloc(r) : NULL;
 }
 
-static ssize_t chunk_write(chunk_t *c, char *buff, ssize_t len, ssize_t off) {
+static ssize_t chunk_write(chunk_t *c, const char *buff, ssize_t len, ssize_t off) {
     len = MIN(CHUNK_SIZE - off, len);
     memcpy(c->buff + off, buff, len);
     c->used = c->used + MAX(0, off - c->used + len);
@@ -61,7 +61,7 @@ static ssize_t chunk_read(chunk_t *c, char *buff, ssize_t len, ssize_t off) {
     return len;
 }
 
-static ssize_t record_write(record_t *r, char *buff, ssize_t len, ssize_t off) {
+static ssize_t record_write(record_t *r, const char *buff, ssize_t len, ssize_t off) {
     ssize_t written = 0;
     while(written < len) {
         chunk_t *c = chunk_find(r, off + written, true);
@@ -107,7 +107,7 @@ static ssize_t ramfs_file_read(file_t *file, char *buff, size_t bytes) {
     return ret;
 }
 
-static ssize_t ramfs_file_write(file_t *file, char *buff, size_t bytes) {
+static ssize_t ramfs_file_write(file_t *file, const char *buff, size_t bytes) {
     record_t *r = file->private;
     if(!r) {
         return -1;

@@ -10,17 +10,17 @@ DOCDIR := doc
 
 ASFLAGS := --32
 
-CCFLAGS := -Wall -Wextra -Werror -Wno-unused-parameter             \
+CCFLAGS := -Wall -Wextra -Werror -Wno-unused-parameter           \
 	-Wno-missing-field-initializers -m32 -I$(INCDIR)               \
 	-std=gnu99 -fno-strict-aliasing -nostdlib -ffreestanding -c -g \
 	-include "common/config.h"
 
 LDFLAGS := -m32 -nostdlib -ffreestanding -g -Wl,--build-id=none
 
-ASSRCS := $(shell find $(SRCDIR) -type f -name "*.s")
+ASSRCS := $(shell find -L $(SRCDIR) -type f -name "*.s")
 ASOBJS := $(patsubst $(SRCDIR)/%.s,$(OBJDIR)/%.o,$(ASSRCS))
 
-CCSRCS := $(shell find $(SRCDIR) -type f -name "*.c")
+CCSRCS := $(shell find -L $(SRCDIR) -type f -name "*.c")
 CCOBJS := $(patsubst $(SRCDIR)/%.c,$(OBJDIR)/%.o,$(CCSRCS))
 
 OBJS := $(ASOBJS) $(CCOBJS)
@@ -38,7 +38,7 @@ $(ASOBJS): $(OBJDIR)/%.o : $(SRCDIR)/%.s
 $(CCOBJS): $(OBJDIR)/%.o : $(SRCDIR)/%.c
 	@echo "      cc  $(patsubst $(SRCDIR)/%,%,$<)"
 	@mkdir -p $(shell dirname $@)
-	@$(KCC) $(CCFLAGS) -o $@ $<
+	@$(KCC) $(CCFLAGS) -DKERNEL_SOURCE -o $@ $<
 
 $(LDSCRIPT): $(LDSCRIPTSRC)
 	@echo "      cc  $(patsubst $(SRCDIR)/%,%,$<)"

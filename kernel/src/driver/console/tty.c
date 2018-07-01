@@ -139,7 +139,7 @@ static ssize_t tty_char_read(char_device_t *cdev, char *buff, size_t len) {
     return total;
 }
 
-static ssize_t tty_char_write(char_device_t *cdev, char *buff, size_t len) {
+static ssize_t tty_char_write(char_device_t *cdev, const char *buff, size_t len) {
     //TODO move the cursor and other stuff
 
     vfs_write(cdev->private, buff, len);

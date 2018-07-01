@@ -25,4 +25,6 @@ typedef int32_t blksize_t;
 typedef uint32_t useconds_t;
 typedef int32_t suseconds_t;
 
+typedef uint32_t ufd_idx_t;
+
 #endif

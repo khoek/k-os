@@ -471,7 +471,7 @@ ssize_t vfs_read(file_t *file, void *buff, size_t bytes) {
     return file->ops->read(file, buff, bytes);
 }
 
-ssize_t vfs_write(file_t *file, void *buff, size_t bytes) {
+ssize_t vfs_write(file_t *file, const void *buff, size_t bytes) {
     return file->ops->write(file, buff, bytes);
 }
 

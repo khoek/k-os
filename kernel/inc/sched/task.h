@@ -31,8 +31,6 @@ typedef struct thread thread_t;
 #include "fs/fd.h"
 #include "fs/vfs.h"
 
-typedef int32_t pid_t;
-
 typedef int32_t ufd_idx_t;
 
 typedef struct ufd {

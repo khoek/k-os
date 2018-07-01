@@ -1,6 +1,5 @@
 #include "common/types.h"
 #include "lib/string.h"
-#include "init/initcall.h"
 #include "common/asm.h"
 #include "arch/gdt.h"
 #include "arch/idt.h"
@@ -13,21 +12,14 @@
 #include "sync/atomic.h"
 #include "sched/task.h"
 #include "sched/sched.h"
+#include "arch/syscall.h"
 #include "net/socket.h"
 #include "fs/vfs.h"
 #include "fs/exec.h"
 #include "log/log.h"
 
-#define MAX_SYSCALL 256
-
-typedef uint64_t (*syscall_t)(cpu_state_t *);
-
-#define SYSCALL_NAME(name) sys_##name
-#define DEFINE_SYSCALL(name) uint64_t SYSCALL_NAME(name) (cpu_state_t *state)
-#define reg(r) (state->reg.r)
-
-static DEFINE_SYSCALL(exit) {
-    task_node_exit(reg(ecx));
+DEFINE_SYSCALL(exit, uint32_t code) {
+    task_node_exit(code);
 
     //We should have S_DIE marked right now, which will kill us in
     //deliver_signals().
@@ -35,27 +27,9 @@ static DEFINE_SYSCALL(exit) {
     return 0;
 }
 
-typedef struct fork_data {
-    cpu_state_t resume_state;
-} fork_data_t;
-
-void ret_from_fork(void *arg) {
-    check_irqs_disabled();
-
-    fork_data_t forkd;
-    memcpy(&forkd, arg, sizeof(fork_data_t));
-    kfree(arg);
-
-    forkd.resume_state.reg.edx = 0;
-    forkd.resume_state.reg.eax = 0;
-
-    pl_enter_userland((void *) forkd.resume_state.exec.eip, (void *) forkd.resume_state.stack.esp, &forkd.resume_state.reg);
-}
-
-static DEFINE_SYSCALL(fork) {
-    fork_data_t *forkd = kmalloc(sizeof(fork_data_t));
-    memcpy(&forkd->resume_state, state, sizeof(cpu_state_t));
-    thread_t *child = thread_fork(current, 0, ret_from_fork, forkd);
+DEFINE_SYSCALL(fork) {
+    void *prep = arch_prepare_fork(state);
+    thread_t *child = thread_fork(current, 0, arch_ret_from_fork, prep);
 
     return child->node->pid;
 }
@@ -64,23 +38,23 @@ static void sleep_callback(thread_t *task) {
     thread_wake(task);
 }
 
-static DEFINE_SYSCALL(msleep) {
+DEFINE_SYSCALL(msleep, uint32_t millis) {
     irqdisable();
 
     thread_sleep_prepare();
-    timer_create(reg(ecx), (void (*)(void *)) sleep_callback, current);
+    timer_create(millis, (void (*)(void *)) sleep_callback, current);
     sched_switch();
 
     return 0;
 }
 
-static DEFINE_SYSCALL(log) {
-    if(reg(edx) > 1023) {
+DEFINE_SYSCALL(log, const char *loc, uint32_t len) {
+    if(len > 1023) {
         kprintf("syscall - task log string too long!");
     } else {
-        char *buff = kmalloc(reg(edx) + 1);
-        memcpy(buff, (void *) reg(ecx), reg(edx));
-        buff[reg(edx)] = '\0';
+        char *buff = kmalloc(len + 1);
+        memcpy(buff, loc, len);
+        buff[len] = '\0';
 
         kprintf("user[%u] - %s", obtain_task_node(current)->pid, buff);
 
@@ -90,25 +64,24 @@ static DEFINE_SYSCALL(log) {
     return 0;
 }
 
-static DEFINE_SYSCALL(uptime) {
+DEFINE_SYSCALL(uptime) {
     return uptime();
 }
 
-static DEFINE_SYSCALL(open) {
-    //TODO verify that reg(ecx) is a pointer to a valid path string, and that reg(edx) are valid flags
+DEFINE_SYSCALL(open, const char *pathname, uint32_t flags) {
+    //TODO verify that path is a pointer to a valid path string, and that flags are valid flags
 
     path_t pwd = get_pwd(current);
 
     path_t path;
-    if(vfs_lookup(&pwd, (const char *) reg(ecx), &path)) {
-        return ufdt_add(reg(edx), vfs_open_file(path.dentry->inode));
+    if(vfs_lookup(&pwd, pathname, &path)) {
+        return ufdt_add(flags, vfs_open_file(path.dentry->inode));
     } else {
         return -1;
     }
 }
 
-static DEFINE_SYSCALL(close) {
-    ufd_idx_t ufd = reg(ecx);
+DEFINE_SYSCALL(close, ufd_idx_t ufd) {
     //TODO sanitize arguments
 
     file_t *gfd = ufdt_get(ufd);
@@ -122,10 +95,10 @@ static DEFINE_SYSCALL(close) {
     }
 }
 
-static DEFINE_SYSCALL(socket) {
+DEFINE_SYSCALL(socket, uint32_t family, uint32_t type, uint32_t protocol) {
     int32_t ret = -1;
 
-    sock_t *sock = sock_create(reg(ecx), reg(edx), reg(ebx));
+    sock_t *sock = sock_create(family, type, protocol);
     if(sock) {
         file_t *fd = sock_create_fd(sock);
         if(fd) {
@@ -139,65 +112,62 @@ static DEFINE_SYSCALL(socket) {
     return ret;
 }
 
-static DEFINE_SYSCALL(listen) {
+DEFINE_SYSCALL(listen, ufd_idx_t ufd, uint32_t backlog) {
     int32_t ret = -1;
 
-    file_t *fd = ufdt_get(reg(ecx));
+    file_t *fd = ufdt_get(ufd);
     if(fd) {
-        ret = sock_listen(gfd_to_sock(fd), reg(edx)) ? 0 : -1;
+        ret = sock_listen(gfd_to_sock(fd), backlog) ? 0 : -1;
     }
 
-    ufdt_put(reg(ecx));
+    ufdt_put(ufd);
 
     return ret;
 }
 
-static DEFINE_SYSCALL(accept) {
+DEFINE_SYSCALL(accept, ufd_idx_t ufd, struct sockaddr *user_addr, socklen_t *len) {
     int32_t ret = -1;
 
-    file_t *fd = ufdt_get(reg(ecx));
+    file_t *fd = ufdt_get(ufd);
     if(fd) {
         //TODO sanitize address buff/size buff arguments
 
         sock_t *sock = gfd_to_sock(fd);
-        struct sockaddr *useraddr = (struct sockaddr *) reg(edx);
         sock_t *child = sock_accept(sock);
 
         if(child) {
             ret = ufdt_add(0, sock_create_fd(child));
 
-            if(useraddr) {
-                useraddr->sa_family = child->family->family;
-                memcpy(child->peer.addr, &useraddr->sa_data, child->family->addr_len);
-                *((socklen_t *) reg(ebx)) = child->family->addr_len;
+            if(user_addr) {
+                user_addr->sa_family = child->family->family;
+                memcpy(child->peer.addr, &user_addr->sa_data, child->family->addr_len);
+                *len = child->family->addr_len;
             }
         }
 
-        ufdt_put(reg(ecx));
+        ufdt_put(ufd);
     }
 
     return ret;
 }
 
-static DEFINE_SYSCALL(bind) {
+DEFINE_SYSCALL(bind, ufd_idx_t ufd, const struct sockaddr *user_addr, socklen_t len) {
     int32_t ret = -1;
 
-    file_t *fd = ufdt_get(reg(ecx));
+    file_t *fd = ufdt_get(ufd);
     if(fd) {
         //TODO sanitize address/size arguments
 
         sock_t *sock = gfd_to_sock(fd);
 
-        struct sockaddr *useraddr = (struct sockaddr *) reg(edx);
-
         sock_addr_t addr;
-        if(reg(ebx) < sock->family->addr_len + sizeof(struct sockaddr)) {
+        if(len < sock->family->addr_len + sizeof(struct sockaddr)) {
             //FIXME errno = EINVAL
-        } else if(useraddr->sa_family != sock->family->family) {
+        } else if(user_addr->sa_family != sock->family->family) {
             //FIXME errno = EAFNOSUPPORT
         } else {
             void *rawaddr = kmalloc(sock->family->addr_len);
-            memcpy(rawaddr, &useraddr->sa_data, sock->family->addr_len);
+            memcpy(rawaddr, &user_addr->sa_data, sock->family->addr_len);
 
             addr.family = sock->family->family;
             addr.addr = rawaddr;
@@ -205,37 +175,35 @@ static DEFINE_SYSCALL(bind) {
             ret = sock_bind(sock, &addr) ? 0 : -1;
         }
 
-        ufdt_put(reg(ecx));
+        ufdt_put(ufd);
     }
 
     return ret;
 }
 
-static DEFINE_SYSCALL(connect) {
+DEFINE_SYSCALL(connect, ufd_idx_t ufd, const struct sockaddr *user_addr, socklen_t len) {
     int32_t ret = -1;
 
-    file_t *fd = ufdt_get(reg(ecx));
+    file_t *fd = ufdt_get(ufd);
     if(fd) {
         //TODO sanitize address/size arguments
 
         sock_t *sock = gfd_to_sock(fd);
 
-        struct sockaddr *useraddr = (struct sockaddr *) reg(edx);
-
         sock_addr_t addr;
-        if(useraddr->sa_family == AF_UNSPEC) {
+        if(user_addr->sa_family == AF_UNSPEC) {
             addr.family = AF_UNSPEC;
             addr.addr = NULL;
 
             ret = sock_connect(sock, &addr) ? 0 : -1;
         } else {
-            if(reg(ebx) < sock->family->addr_len + sizeof(struct sockaddr)) {
+            if(len < sock->family->addr_len + sizeof(struct sockaddr)) {
                 //FIXME errno = EINVAL
-            } else if(useraddr->sa_family != sock->family->family) {
+            } else if(user_addr->sa_family != sock->family->family) {
                 //FIXME errno = EAFNOSUPPORT
             } else {
                 void *rawaddr = kmalloc(sock->family->addr_len);
-                memcpy(rawaddr, &useraddr->sa_data, sock->family->addr_len);
+                memcpy(rawaddr, &user_addr->sa_data, sock->family->addr_len);
 
                 addr.family = sock->family->family;
                 addr.addr = rawaddr;
@@ -244,71 +212,71 @@ static DEFINE_SYSCALL(connect) {
             }
         }
 
-        ufdt_put(reg(ecx));
+        ufdt_put(ufd);
     }
 
     return ret;
 }
 
-static DEFINE_SYSCALL(shutdown) {
+DEFINE_SYSCALL(shutdown, ufd_idx_t ufd, int how) {
     int32_t ret = -1;
 
-    file_t *fd = ufdt_get(reg(ecx));
+    file_t *fd = ufdt_get(ufd);
     if(fd) {
-        ret = sock_shutdown(gfd_to_sock(fd), reg(edx));
+        ret = sock_shutdown(gfd_to_sock(fd), how);
 
-        ufdt_put(reg(ecx));
+        ufdt_put(ufd);
     }
 
     return ret;
 }
 
-static DEFINE_SYSCALL(send) {
+DEFINE_SYSCALL(send, ufd_idx_t ufd, const void *user_buff, uint32_t buffsize, uint32_t flags) {
     int32_t ret = -1;
 
-    file_t *fd = ufdt_get(reg(ecx));
+    file_t *fd = ufdt_get(ufd);
     if(fd) {
         //TODO sanitize buffer/size arguments
 
         //This buffer will be freed by the net subsystem
-        void *buff = kmalloc(reg(ebx));
-        memcpy(buff, (void *) reg(edx), reg(ebx));
+        void *buff = kmalloc(buffsize);
+        memcpy(buff, user_buff, buffsize);
 
-        ret = sock_send(gfd_to_sock(fd), buff, reg(ebx), reg(esi));
+        ret = sock_send(gfd_to_sock(fd), buff, buffsize, flags);
 
-        ufdt_put(reg(ecx));
+        ufdt_put(ufd);
     }
 
     return ret;
 }
 
-static DEFINE_SYSCALL(recv) {
+DEFINE_SYSCALL(recv, ufd_idx_t ufd, void *user_buff, uint32_t buffsize, uint32_t flags) {
     int32_t ret = -1;
 
-    file_t *fd = ufdt_get(reg(ecx));
+    file_t *fd = ufdt_get(ufd);
     if(fd) {
         //TODO sanitize buffer/size arguments
 
-        ret = sock_recv(gfd_to_sock(fd), (void *) reg(edx), reg(ebx), reg(esi));
+        ret = sock_recv(gfd_to_sock(fd), user_buff, buffsize, flags);
 
-        ufdt_put(reg(ecx));
+        ufdt_put(ufd);
     }
 
     return ret;
 }
 
-static DEFINE_SYSCALL(alloc_page) {
-    panic("Unimplemented");
+DEFINE_SYSCALL(alloc_page) {
+    UNIMPLEMENTED();
 }
 
-static DEFINE_SYSCALL(free_page) {
-    panic("Unimplemented");
+DEFINE_SYSCALL(free_page) {
+    UNIMPLEMENTED();
 }
 
-static DEFINE_SYSCALL(stat) {
+DEFINE_SYSCALL(stat, const char *pathname, void *buff) {
     int32_t ret = -1;
 
-    //TODO verify that reg(ecx) is a pointer to a valid path string, and that reg(edx) are valid flags
+    //TODO verify that path is a pointer to a valid path string, etc.
 
     thread_t *me = current;
 
@@ -319,8 +287,8 @@ static DEFINE_SYSCALL(stat) {
     spin_unlock_irqstore(&me->fs->lock, flags);
 
     path_t path;
-    if(vfs_lookup(&pwd, (const char *) reg(ecx), &path)) {
-        vfs_getattr(path.dentry, (void *) reg(edx));
+    if(vfs_lookup(&pwd, pathname, &path)) {
+        vfs_getattr(path.dentry, buff);
 
         ret = 0;
     }
@@ -328,62 +296,63 @@ static DEFINE_SYSCALL(stat) {
     return ret;
 }
 
-static DEFINE_SYSCALL(fstat) {
+DEFINE_SYSCALL(lstat) {
+    UNIMPLEMENTED();
+}
+
+DEFINE_SYSCALL(fstat, ufd_idx_t ufd, void *buff) {
     int32_t ret = -1;
 
-    file_t *fd = ufdt_get(reg(ecx));
+    file_t *fd = ufdt_get(ufd);
     if(fd) {
         //TODO sanitize stat ptr
 
-        vfs_getattr(fd->dentry, (void *) reg(edx));
-
+        vfs_getattr(fd->dentry, buff);
         ret = 0;
 
-        ufdt_put(reg(ecx));
+        ufdt_put(ufd);
     }
 
     return ret;
 }
 
-static DEFINE_SYSCALL(read) {
+DEFINE_SYSCALL(read, ufd_idx_t ufd, void *user_buff, uint32_t len) {
     int32_t ret = -1;
 
-    file_t *fd = ufdt_get(reg(ecx));
+    file_t *fd = ufdt_get(ufd);
     if(fd) {
         //TODO sanitize buffer/size arguments
 
-        void *buff = kmalloc(reg(ebx));
-        ret = vfs_read(fd, buff, reg(ebx));
-        memcpy((void *) reg(edx), buff, reg(ebx));
+        void *buff = kmalloc(len);
+        ret = vfs_read(fd, buff, len);
+        memcpy(user_buff, buff, len);
         kfree(buff);
 
-        ufdt_put(reg(ecx));
+        ufdt_put(ufd);
     }
 
     return ret;
 }
 
-static DEFINE_SYSCALL(write) {
+DEFINE_SYSCALL(write, ufd_idx_t ufd, const void *buff, uint32_t len) {
     int32_t ret = -1;
 
-    file_t *fd = ufdt_get(reg(ecx));
+    file_t *fd = ufdt_get(ufd);
     if(fd) {
         //TODO sanitize buffer/size arguments
 
-        ret = vfs_write(fd, (void *) reg(edx), reg(ebx));
+        ret = vfs_write(fd, buff, len);
 
-        ufdt_put(reg(ecx));
+        ufdt_put(ufd);
     }
 
     return ret;
 }
 
-static DEFINE_SYSCALL(execve) {
-    char *pathname = (void *) reg(ecx);
-
+DEFINE_SYSCALL(execve, const char *pathname, char *const user_argv[], char *const user_envp[]) {
     //FIXME sanitize
-    char **argv = copy_strtab((void *) reg(edx));
-    char **envp = copy_strtab((void *) reg(ebx));
+    char **argv = copy_strtab(user_argv);
+    char **envp = copy_strtab(user_envp);
 
     thread_t *me = current;
 
@@ -433,14 +402,8 @@ static task_node_t * find_child(task_node_t *me, pid_t pid) {
     return NULL;
 }
 
-static DEFINE_SYSCALL(waitpid) {
-    thread_t *me = current;
-
-    pid_t pid = (pid_t) reg(ecx);
-    int *stat_loc = (void *) reg(edx);
-    int UNUSED(options) = (int) reg(ebx);
-
-    task_node_t *node = obtain_task_node(me);
+DEFINE_SYSCALL(waitpid, pid_t pid, int *stat_loc, int UNUSED(options)) {
+    task_node_t *node = obtain_task_node(current);
 
     pid_t cpid = -1;
     if(pid == -1) {
@@ -467,56 +430,3 @@ static DEFINE_SYSCALL(waitpid) {
 
     return cpid;
 }
-
-static syscall_t syscalls[MAX_SYSCALL] = {
-    [ 0] = SYSCALL_NAME(exit),
-    [ 1] = SYSCALL_NAME(fork),
-    [ 2] = SYSCALL_NAME(msleep),
-    [ 3] = SYSCALL_NAME(log),
-    [ 4] = SYSCALL_NAME(uptime),
-    [ 5] = SYSCALL_NAME(open),
-    [ 6] = SYSCALL_NAME(close),
-    [ 7] = SYSCALL_NAME(socket),
-    [ 8] = SYSCALL_NAME(listen),
-    [ 9] = SYSCALL_NAME(accept),
-    [10] = SYSCALL_NAME(bind),
-    [11] = SYSCALL_NAME(connect),
-    [12] = SYSCALL_NAME(shutdown),
-    [13] = SYSCALL_NAME(send),
-    [14] = SYSCALL_NAME(recv),
-    [15] = SYSCALL_NAME(alloc_page),
-    [16] = SYSCALL_NAME(free_page),
-    [17] = SYSCALL_NAME(stat),
-    [19] = SYSCALL_NAME(fstat),
-    [20] = SYSCALL_NAME(read),
-    [21] = SYSCALL_NAME(write),
-    [22] = SYSCALL_NAME(execve),
-    [23] = SYSCALL_NAME(waitpid),
-};
-
-static void syscall_handler(interrupt_t *interrupt, void *data) {
-    enter_syscall();
-
-    cpu_state_t *state = &interrupt->cpu;
-
-    if(state->reg.eax >= MAX_SYSCALL || !syscalls[state->reg.eax]) {
-        panicf("Unregistered Syscall #%u", state->reg.eax);
-    } else {
-        uint64_t ret = syscalls[state->reg.eax](state);
-        state->reg.edx = ret >> 32;
-        state->reg.eax = ret;
-    }
-
-    leave_syscall();
-
-    //This might not return (as in S_DIE).
-    deliver_signals();
-}
-
-static INITCALL syscall_init() {
-    register_isr(0x80, CPL_USER, syscall_handler, NULL);
-
-    return 0;
-}
-
-core_initcall(syscall_init);

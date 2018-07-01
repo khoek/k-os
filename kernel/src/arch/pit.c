@@ -154,7 +154,7 @@ static void reload_spkr_freq() {
     rbuff_front = 0;
     rbuff_len = sprintf(spkr_rbuff, "%u\n", spkr_freq);
     BUG_ON(rbuff_len + 1 >= SPKR_RBUFF_LEN);
-    
+
     if(spkr_freq) {
         set_counter(SEL_C2, MD_3, PIT_CLOCK / spkr_freq);
 
@@ -195,7 +195,7 @@ static ssize_t spkr_char_read(char_device_t UNUSED(*cdev), char *buff, size_t le
     return len;
 }
 
-static ssize_t spkr_char_write(char_device_t *cdev, char *buff, size_t len) {
+static ssize_t spkr_char_write(char_device_t *cdev, const char *buff, size_t len) {
     uint32_t flags;
     spin_lock_irqsave(&pit_lock, &flags);
 

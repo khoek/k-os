@@ -1,3 +1,5 @@
+#include <k/syscall.h>
+
 .global _start
 
 .extern main
@@ -16,4 +18,4 @@ _start:
     call main
 
     push %eax
-    call _exit
+    call SYSCALL(exit)

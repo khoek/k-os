@@ -11,6 +11,7 @@
 #define __noreturn  __attribute__((noreturn))
 
 #define FALLTHROUGH __attribute__((fallthrough))
+#define UNREACHABLE __builtin_unreachable
 
 #define STR(s)  #s
 #define XSTR(s) STR(s)

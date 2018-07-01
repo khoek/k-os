@@ -1,7 +1,7 @@
 ROOTDIR ?= $(shell readlink -f .)
 include Makefile.config
 
-.PHONY: all toolchain clean clean-toolchain run debug kernel libc util apps dist run
+.PHONY: all toolchain clean clean-toolchain run debug shared kernel libc util apps dist run
 
 all: kernel libc util apps dist
 
@@ -11,14 +11,17 @@ complete: toolchain
 toolchain:
 	+$(MAKE) -C toolchain all
 
-kernel:
-	$(MAKE) -C kernel all
-
-libc:
-	$(MAKE) -C libc all
-
 util:
 	$(MAKE) -C util all
+
+shared: util
+	$(MAKE) -C shared all
+
+kernel: shared
+	$(MAKE) -C kernel all
+
+libc: shared
+	$(MAKE) -C libc all
 
 apps: libc util
 	$(MAKE) -C apps all
@@ -28,9 +31,10 @@ dist: kernel apps
 
 clean:
 	@rm -rf $(HDD)
+	$(MAKE) -C shared clean
 	$(MAKE) -C util clean
-	$(MAKE) -C libc clean
 	$(MAKE) -C kernel clean
+	$(MAKE) -C libc clean
 	$(MAKE) -C apps clean
 	$(MAKE) -C dist clean
 

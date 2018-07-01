@@ -12,10 +12,10 @@ OUTDIR := build
 CCFLAGS := -Wall -Wextra -Werror -Wno-unused-parameter -m32 -std=gnu99 \
         -nostdlib -ffreestanding -I$(LIBDIR)/inc -g -O3 -fno-strict-aliasing
 
-RESS := $(shell find $(RESDIR) -type f -name "*")
+RESS := $(shell find -L $(RESDIR) -type f -name "*")
 RESO := $(patsubst $(RESDIR)/%,$(OUTDIR)/%,$(RESS))
 
-SRCS := $(shell find $(SRCDIR) -type f -name "*.c")
+SRCS := $(shell find -L $(SRCDIR) -type f -name "*.c")
 OBJS := $(patsubst $(SRCDIR)/%.c,$(OUTDIR)/%,$(SRCS))
 LIBS := $(LIBDIR)/$(LIBCAR)
 

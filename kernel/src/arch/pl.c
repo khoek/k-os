@@ -178,3 +178,26 @@ void arch_thread_build(thread_t *t) {
     t->arch.cr3 = (uint32_t) page_to_phys(page);
     build_page_dir(t->arch.dir);
 }
+
+typedef struct fork_data {
+    cpu_state_t resume_state;
+} fork_data_t;
+
+void arch_ret_from_fork(void *arg) {
+    check_irqs_disabled();
+
+    fork_data_t forkd;
+    memcpy(&forkd, arg, sizeof(fork_data_t));
+    kfree(arg);
+
+    forkd.resume_state.reg.edx = 0;
+    forkd.resume_state.reg.eax = 0;
+
+    pl_enter_userland((void *) forkd.resume_state.exec.eip, (void *) forkd.resume_state.stack.esp, &forkd.resume_state.reg);
+}
+
+void * arch_prepare_fork(cpu_state_t *state) {
+    fork_data_t *forkd = kmalloc(sizeof(fork_data_t));
+    memcpy(&forkd->resume_state, state, sizeof(cpu_state_t));
+    return forkd;
+}

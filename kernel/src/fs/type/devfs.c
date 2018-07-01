@@ -52,7 +52,7 @@ static ssize_t char_file_read(file_t *file, char *buff, size_t bytes) {
     return cdev->ops->read(cdev, buff, bytes);
 }
 
-static ssize_t char_file_write(file_t *file, char *buff, size_t bytes) {
+static ssize_t char_file_write(file_t *file, const char *buff, size_t bytes) {
     devfs_device_t *device = file->private;
     char_device_t *cdev = device->chardev;
 
@@ -89,7 +89,7 @@ static ssize_t block_file_read(file_t *file, char *buff, size_t bytes) {
     return -1;
 }
 
-static ssize_t block_file_write(file_t *file, char *buff, size_t bytes) {
+static ssize_t block_file_write(file_t *file, const char *buff, size_t bytes) {
     //TODO implement buffered IO scheduler for block abstracted writes
 
     return -1;

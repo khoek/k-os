@@ -18,7 +18,7 @@ void * sbrk(intptr_t incr) {
             return (void *) -1;
         } else {
             for(uint32_t i = 0; i < DIV_UP((uint32_t) _data_end, PAGE_SIZE) - DIV_UP(((uint32_t) _data_end) + incr, PAGE_SIZE); i++) {
-                _free_page();
+                SYSCALL(free_page)();
             }
         }
 
@@ -28,17 +28,17 @@ void * sbrk(intptr_t incr) {
         return old_end;
     } else if(incr > 0) {
         for(uint32_t i = 0; i < DIV_UP(((uint32_t) _data_end) + incr, PAGE_SIZE) - DIV_UP((uint32_t) _data_end, PAGE_SIZE); i++) {
-            if(_alloc_page() == -1) {
+            if(SYSCALL(alloc_page)() == -1) {
                 errno_t old_errno = errno;
 
                 do {
                     i--;
-                    if(_free_page() == -1) break;
+                    if(SYSCALL(free_page)() == -1) break;
                 } while(i > 0);
 
                 errno = old_errno;
 
-                //errno should have been set by _free_page
+                //errno should have been set by SYSCALL(free_page)
                 return (void *) -1;
             }
         }

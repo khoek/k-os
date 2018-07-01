@@ -1,6 +1,9 @@
 #ifndef LIBC_UNISTD_H
 #define LIBC_UNISTD_H
 
+#define _exit _Exit
+
+#include <stdlib.h>
 #include <stddef.h>
 #include <inttypes.h>
 

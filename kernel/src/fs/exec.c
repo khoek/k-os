@@ -4,7 +4,7 @@
 #include "fs/binfmt.h"
 #include "fs/exec.h"
 
-uint32_t strtab_len(char **tab) {
+uint32_t strtab_len(char * const tab[]) {
     if(!tab) return 0;
 
     uint32_t len = 0;
@@ -14,7 +14,7 @@ uint32_t strtab_len(char **tab) {
     return len;
 }
 
-char ** copy_strtab(char **raw) {
+char ** copy_strtab(char *const raw[]) {
     if(!raw) return NULL;
 
     uint32_t len = strtab_len(raw);

@@ -13,5 +13,7 @@ void pl_bootstrap_userland(void *user_ip, void *user_stack, uint32_t argc,
 void pl_setup_thread(thread_t *task, void *ip, void *arg);
 
 void arch_thread_build(thread_t *t);
+void arch_ret_from_fork(void *arg);
+void * arch_prepare_fork(cpu_state_t *state);
 
 #endif

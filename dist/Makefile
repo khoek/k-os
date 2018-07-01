@@ -6,7 +6,7 @@ include $(ROOTDIR)/Makefile.config
 SRCDIR := root
 OBJDIR := build
 
-SRCS := $(shell find $(SRCDIR) -type f -name "*")
+SRCS := $(shell find -L $(SRCDIR) -type f -name "*")
 OBJS := $(patsubst $(SRCDIR)/%,$(OBJDIR)/%,$(SRCS))
 
 all: $(IMAGE)
