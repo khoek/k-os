@@ -6,12 +6,11 @@
 
 #define ENTRY_AP_BASE 0x8000
 
-#ifdef __LINKER__
-
+#ifdef LINKER_SOURCE
 #define INITCALL_SECTION(id) *(.init.call.##id)
+#endif
 
-#else
-
+#ifdef KERNEL_SOURCE
 #define INITCALL int __init
 
 #define __init     __attribute__ ((section(".init.text"), cold))
@@ -37,7 +36,6 @@ extern initcall_t initcall_start, initcall_end;
 #define postfs_initcall(fn)   DEFINE_INITCALL(8, fn)
 #define device_initcall(fn)   DEFINE_INITCALL(9, fn)
 #define module_initcall(fn)   DEFINE_INITCALL(10, fn)
-
 #endif
 
 #endif

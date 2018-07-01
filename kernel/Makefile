@@ -25,7 +25,7 @@ CCOBJS := $(patsubst $(SRCDIR)/%.c,$(OBJDIR)/%.o,$(CCSRCS))
 
 OBJS := $(ASOBJS) $(CCOBJS)
 
-LDSCRIPTSRC := $(SRCDIR)/arch/linker.ld.S
+LDSCRIPTSRC := $(SRCDIR)/arch/linker.ld.pp
 LDSCRIPT := $(OBJDIR)/arch/linker.ld
 
 all: $(KBINARY)
@@ -41,9 +41,9 @@ $(CCOBJS): $(OBJDIR)/%.o : $(SRCDIR)/%.c
 	@$(KCC) $(CCFLAGS) -DKERNEL_SOURCE -o $@ $<
 
 $(LDSCRIPT): $(LDSCRIPTSRC)
-	@echo "      cc  $(patsubst $(SRCDIR)/%,%,$<)"
+	@echo "      pp  $(patsubst $(SRCDIR)/%,%,$<)"
 	@mkdir -p $(shell dirname $@)
-	@$(KCPP) -I$(INCDIR) -D__LINKER__ -P -o $@ $<
+	@$(KCPP) -I$(INCDIR) -DLINKER_SOURCE -P -o $@ $<
 
 $(KBINARY): $(OBJS) $(LDSCRIPT)
 	@echo "      ld  $@"
