@@ -10,7 +10,6 @@
 #include "log/log.h"
 
 void breakpoint_triggered() {
-
 }
 
 typedef struct {
@@ -45,7 +44,7 @@ const elf_symbol_t * debug_lookup_symbol(uint32_t address) {
     if(!strtabsz || !symtabsz) return NULL;
 
     for(uint32_t i = 0; i < (symtabsz / sizeof(elf_symbol_t)); i++) {
-        if (ELF32_ST_TYPE(symtab[i].info) == ELF_TYPE_FUNC && address > symtab[i].value && address <= symtab[i].value + symtab[i].size) {
+        if (ELF32_ST_TYPE(symtab[i].info) == ELF_TYPE_FUNC && address >= symtab[i].value && address < symtab[i].value + symtab[i].size) {
             return &symtab[i];
         }
     }
