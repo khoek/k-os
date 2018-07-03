@@ -366,7 +366,7 @@ DEFINE_SYSCALL(read, ufd_idx_t ufd, void *user_buff, uint32_t len) {
 
         void *buff = kmalloc(len);
         ret = vfs_read(fd, buff, len);
-        memcpy(user_buff, buff, len);
+        memcpy(user_buff, buff, ret);
         kfree(buff);
 
         ufdt_put(ufd);
