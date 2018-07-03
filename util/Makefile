@@ -1,7 +1,9 @@
-ROOTDIR ?= $(shell readlink -f .)/..
+ROOTDIR ?= $(shell readlink -f ..)
 include $(ROOTDIR)/Makefile.config
 
 .PHONY: all clean
+
+.DELETE_ON_ERROR:
 
 SRCDIR := src
 OBJDIR := $(UTILBINDIR)

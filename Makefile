@@ -1,15 +1,36 @@
 ROOTDIR ?= $(shell readlink -f .)
 include Makefile.config
 
-.PHONY: all toolchain clean clean-toolchain run debug shared kernel libc util apps dist run
+.PHONY: all complete aux aux-required toolchain-required libc-required toolchain run debug shared kernel libk libc util apps dist run clean-all clean-all-noredl clean clean-libc clean-toolchain clean-aux
 
-all: kernel libc util apps dist
+.DELETE_ON_ERROR:
 
-complete: toolchain
+all: dist
+
+complete: aux
 	$(MAKE) all
 
+aux:
+	$(MAKE) toolchain
+	$(MAKE) libc
+
+aux-required: libc-required
+
+dl: toolchain-dl libc-dl
+
 toolchain:
-	+$(MAKE) -C toolchain all
+	$(MAKE) -C toolchain all
+toolchain-required:
+	$(MAKE) -C toolchain required
+toolchain-dl:
+	$(MAKE) -C toolchain dl
+
+libc: toolchain-required
+	$(MAKE) -C libc all
+libc-required: toolchain-required
+	$(MAKE) -C libc required
+libc-dl:
+	$(MAKE) -C libc dl
 
 util:
 	$(MAKE) -C util all
@@ -17,29 +38,56 @@ util:
 shared: util
 	$(MAKE) -C shared all
 
-kernel: shared
+kernel: aux-required shared
 	$(MAKE) -C kernel all
 
-libc: shared
-	$(MAKE) -C libc all
+libk: aux-required shared
+	$(MAKE) -C libk all
 
-apps: libc util
+apps: aux-required libk util
 	$(MAKE) -C apps all
 
 dist: kernel apps
 	$(MAKE) -C dist all
 
-clean:
-	@rm -rf $(HDD)
+clean-all:
+	$(MAKE) -C toolchain clean-all
+	$(MAKE) -C libc clean-all
 	$(MAKE) -C shared clean
 	$(MAKE) -C util clean
 	$(MAKE) -C kernel clean
-	$(MAKE) -C libc clean
+	$(MAKE) -C libk clean
 	$(MAKE) -C apps clean
 	$(MAKE) -C dist clean
 
+clean-all-noredl:
+	$(MAKE) -C toolchain clean
+	$(MAKE) -C libc clean
+	$(MAKE) -C shared clean
+	$(MAKE) -C util clean
+	$(MAKE) -C kernel clean
+	$(MAKE) -C libk clean
+	$(MAKE) -C apps clean
+	$(MAKE) -C dist clean
+
+clean:
+	$(MAKE) -C shared clean
+	$(MAKE) -C util clean
+	$(MAKE) -C kernel clean
+	$(MAKE) -C libk clean
+	$(MAKE) -C apps clean
+	$(MAKE) -C dist clean
+
+clean-aux: clean-libc clean-toolchain
+
+clean-libc:
+	$(MAKE) -C libc clean
+
 clean-toolchain:
 	$(MAKE) -C toolchain clean
+
+clean-run:
+	@rm -rf $(HDD)
 
 $(HDD):
 	@echo "      dd  $(HDD)"

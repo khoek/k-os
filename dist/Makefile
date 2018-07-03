@@ -3,6 +3,8 @@ include $(ROOTDIR)/Makefile.config
 
 .PHONY: all clean
 
+.DELETE_ON_ERROR:
+
 SRCDIR := root
 OBJDIR := build
 

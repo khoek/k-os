@@ -1,0 +1,37 @@
+diff -ruEwN src/newlib-3.0.0/config.sub src/newlib-3.0.0-custom/config.sub
+--- src/newlib-3.0.0/config.sub		2018-01-19 05:07:45.000000000 +1100
++++ src/newlib-3.0.0-custom/config.sub	2018-07-02 18:33:43.398756860 +1000
+@@ -1399,7 +1399,7 @@
+ 	      | -morphos* | -superux* | -rtmk* | -rtmk-nova* | -windiss* \
+ 	      | -powermax* | -dnix* | -nx6 | -nx7 | -sei* | -dragonfly* \
+ 	      | -skyos* | -haiku* | -rdos* | -toppers* | -drops* | -es* \
+-	      | -onefs* | -tirtos* | -phoenix*)
++	      | -onefs* | -tirtos* | -phoenix* | -kos*)
+ 	# Remember, each alternative MUST END IN *, to match a version number.
+ 		;;
+ 	-qnx*)
+diff -ruEwN src/newlib-3.0.0/newlib/configure.host src/newlib-3.0.0-custom/newlib/configure.host
+--- src/newlib-3.0.0/newlib/configure.host	2018-01-19 05:07:45.000000000 +1100
++++ src/newlib-3.0.0-custom/newlib/configure.host	2018-07-03 04:53:44.213609000 +1000
+@@ -571,6 +571,11 @@
+   z8k-*-coff)
+ 	sys_dir=z8ksim
+ 	;;
++  i[34567]86-*-kos*)
++	sys_dir=kos
++	unix_dir=unix
++	posix_dir=posix
++	;;
+ esac
+
+ # Host specific flag settings -- usually for features that are not
+diff -ruEwN src/newlib-3.0.0/newlib/libc/sys/configure.in src/newlib-3.0.0-custom/newlib/libc/sys/configure.in
+--- src/newlib-3.0.0/newlib/libc/sys/configure.in		2018-01-19 05:07:45.000000000 +1100
++++ src/newlib-3.0.0-custom/newlib/libc/sys/configure.in	2018-07-02 18:36:25.860549444 +1000
+@@ -49,6 +49,7 @@
+ 	tirtos) AC_CONFIG_SUBDIRS(tirtos) ;;
+ 	w65) AC_CONFIG_SUBDIRS(w65) ;;
+ 	z8ksim) AC_CONFIG_SUBDIRS(z8ksim) ;;
++	kos) AC_CONFIG_SUBDIRS(kos) ;;
+   esac;
+ fi

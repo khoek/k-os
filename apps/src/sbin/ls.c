@@ -1,17 +1,18 @@
 #include <stdio.h>
-#include <fcntl.h>
 #include <dirent.h>
 
-#include <k/syscall.h>
-
 int main(int argc, char **argv) {
-    int fd = open(argv[1], 0);
+    DIR *dir = opendir(argc > 0 ? argv[1] : ".");
+    if(dir == NULL) {
+        printf("%s: cannot access '%s'\n", argv[0], argv[1]);
+        return 1;
+    }
 
     uint32_t count = 0;
-    struct dirent ent;
-    while(SYSCALL(readdir)(fd, &ent, 1) == 1) {
+    struct dirent *ent;
+    while((ent = readdir(dir)) != NULL) {
         count++;
-        printf("%s ", ent.d_name);
+        printf("%s ", ent->d_name);
     }
     if(count) {
       printf("\n");

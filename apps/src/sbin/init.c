@@ -1,15 +1,13 @@
-#define NULL ((void *) 0)
-
 #include <stdio.h>
 #include <unistd.h>
 #include <sys/wait.h>
 #include <string.h>
 
-#include <k/log.h>
-
 int main(int argc, char **argv) {
     char *shell_argv[] = {"/sbin/ksh", NULL};
     char *shell_envp[] = {NULL};
+
+    //printf("GREREEEEEEEEEEETING");
 
     while(1) {
         pid_t shell_id = fork();

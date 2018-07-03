@@ -4,9 +4,9 @@
 *.iso
 *.img
 *.elf
+.flag.*
 build
 doc
 util/bin
 rootramfs
 Makefile.local
-.gdbinit

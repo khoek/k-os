@@ -1,51 +1,116 @@
-ROOTDIR ?= $(shell readlink -f .)/..
+ROOTDIR ?= $(shell readlink -f ..)
 include $(ROOTDIR)/Makefile.config
 
-.PHONY: all clean
+DLDIR := $(LIBCDIR)/dl
+SRCDIR := $(LIBCDIR)/src
+PATCHDIR := $(LIBCDIR)/patch
+BUILDDIR := $(LIBCDIR)/build
 
-SRCDIR := src
-INCDIR := inc
-OBJDIR := build
+# might need to export LIBS too to get to work, see osedev "Porting newlib":
+# LIBS        libraries to pass to the linker, e.g. -l<library>
+export CC_FOR_TARGET := $(TOOLCHAINBINDIR)/bin/$(TARGET)-gcc
+#export CFLAGS := -nostdlib -ffreestanding
+#export LIBS := -lgcc
+export AR_FOR_TARGET := $(TOOLCHAINBINDIR)/bin/$(TARGET)-ar
+export AS_FOR_TARGET := $(TOOLCHAINBINDIR)/bin/$(TARGET)-as
+#export DLLTOOL_FOR_TARGET :=
+export LD_FOR_TARGET := $(TOOLCHAINBINDIR)/bin/$(TARGET)-ld
+#export LIPO_FOR_TARGET :=
+export NM_FOR_TARGET := $(TOOLCHAINBINDIR)/bin/$(TARGET)-nm
+export RANLIB_FOR_TARGET := $(TOOLCHAINBINDIR)/bin/$(TARGET)-ranlib
+export STRIP_FOR_TARGET := $(TOOLCHAINBINDIR)/bin/$(TARGET)-strip
+#export WINDRES_FOR_TARGET :=
+#export WINDMC_FOR_TARGET :=
+export OBJCOPY_FOR_TARGET := $(TOOLCHAINBINDIR)/bin/$(TARGET)-objcopy
+export OBJDUMP_FOR_TARGET := $(TOOLCHAINBINDIR)/bin/$(TARGET)-objdump
+export READELF_FOR_TARGET := $(TOOLCHAINBINDIR)/bin/$(TARGET)-readelf
 
-ASFLAGS := -m32 -I$(INCDIR) -nostdlib -ffreestanding -c
+WGETFLAGS := -c
 
-CCFLAGS := -Wall -Wextra -Werror -Wno-unused-parameter -m32 -I$(INCDIR) \
-	-std=gnu99 -nostdlib -ffreestanding --sysroot=$(INCDIR) -c -g -O3			\
-	-fno-strict-aliasing
+# These versions CANNOT be higher: automake requires perl version <= 5.22,
+# and newlib (currently, 3.0.0) needs these versions of automake and
+# autoconf.
+NAME_NEWLIB := newlib-$(NEWLIB_VER)
 
-ASSRCS := $(shell find -L $(SRCDIR) -type f -name "*.s")
-ASOBJS := $(patsubst $(SRCDIR)/%.s,$(OBJDIR)/%.o,$(ASSRCS))
+AR_NEWLIB := $(NAME_NEWLIB).tar.gz
 
-ASPPSRCS := $(shell find -L $(SRCDIR) -type f -name "*.S")
-ASPPOBJS := $(patsubst $(SRCDIR)/%.S,$(OBJDIR)/%.o,$(ASPPSRCS))
+URL_NEWLIB := ftp://sourceware.org/pub/newlib/$(AR_NEWLIB)
 
-CCSRCS := $(shell find -L $(SRCDIR) -type f -name "*.c")
-CCOBJS := $(patsubst $(SRCDIR)/%.c,$(OBJDIR)/%.o,$(CCSRCS))
+ARTIFACT_NEWLIB := $(LIBCBINDIR)/$(TARGET)/lib/libc.a
 
-OBJS := $(ASOBJS) $(ASPPOBJS) $(CCOBJS)
+PATCH_NEWLIB := $(PATCHDIR)/$(NAME_NEWLIB).patch
 
-all: $(LIBCAR)
+export AUTOCONF := $(TOOLCHAINBINDIR)/bin/autoconf
+export AUTORECONF := $(TOOLCHAINBINDIR)/bin/autoreconf
+export AUTOMAKE := $(TOOLCHAINBINDIR)/bin/automake
+export ACLOCAL := $(TOOLCHAINBINDIR)/bin/aclocal
 
-$(ASOBJS): $(OBJDIR)/%.o : $(SRCDIR)/%.s
-	@echo "      as  $(patsubst $(SRCDIR)/%,%,$<)"
-	@mkdir -p $(shell dirname $@)
-	@$(KCC) $(ASFLAGS) -o $@ $<
+FLAG_DIST_BUILT := .flag.dist-built
 
-$(ASPPOBJS): $(OBJDIR)/%.o : $(SRCDIR)/%.S
-	@echo "      as  $(patsubst $(SRCDIR)/%,%,$<)"
-	@mkdir -p $(shell dirname $@)
-	$(KCC) $(ASFLAGS) -o $@ $<
+.PHONY: all required dl clean-all clean clean-dl clean-src clean-build clean-noredl
 
-$(CCOBJS): $(OBJDIR)/%.o : $(SRCDIR)/%.c
-	@echo "      cc  $(patsubst $(SRCDIR)/%,%,$<)"
-	@mkdir -p $(shell dirname $@)
-	@$(KCC) $(CCFLAGS) -DLIBC_SOURCE -o $@ $<
+.DELETE_ON_ERROR:
 
-$(LIBCAR): $(OBJS)
-	@echo "      ar  $@"
-	@rm -f $@
-	@$(KAR) rcs $@ $(OBJS)
+all: $(ARTIFACT_NEWLIB)
+	@touch $(FLAG_DIST_BUILT)
 
-clean:
-	rm -rf $(OBJDIR)
-	rm -rf $(LIBCAR)
+$(FLAG_DIST_BUILT):
+	$(MAKE) all
+	@touch $(FLAG_DIST_BUILT)
+
+required: $(FLAG_DIST_BUILT)
+
+dl: $(DLDIR)/$(AR_NEWLIB)
+
+$(DLDIR)/$(AR_NEWLIB):
+	$(WGET) -P $(DLDIR) $(WGETFLAGS) $(URL_NEWLIB)
+
+$(SRCDIR)/$(NAME_NEWLIB)/configure: $(DLDIR)/$(AR_NEWLIB)
+	mkdir -p $(SRCDIR)
+	$(TAR) -C $(SRCDIR) -xf $(DLDIR)/$(AR_NEWLIB)
+	touch $@
+
+#TODO ADD SOME CONSTANDS FOR THESE COMMANDS
+.flag.$(NAME_NEWLIB)-patched: $(SRCDIR)/$(NAME_NEWLIB)/configure
+	rm -rf $(SRCDIR)/$(NAME_NEWLIB)/newlib/libc/sys/kos
+	cp -a sys $(SRCDIR)/$(NAME_NEWLIB)/newlib/libc/sys/kos
+	mkdir -p $(SRCDIR)/$(NAME_NEWLIB)/newlib/libc/sys/kos/include
+	cp -a $(LIBKDIR)/inc/. $(SRCDIR)/$(NAME_NEWLIB)/newlib/libc/sys/kos/include
+	patch -p0 < $(PATCH_NEWLIB)
+	touch $@
+
+.flag.$(NAME_NEWLIB)-reconfigured: .flag.$(NAME_NEWLIB)-patched
+	(cd $(SRCDIR)/$(NAME_NEWLIB)/newlib/libc/sys; $(AUTOCONF))
+	(cd $(SRCDIR)/$(NAME_NEWLIB)/newlib/libc/sys/kos; $(ACLOCAL) -I ../../.. && $(AUTOCONF) && $(AUTOMAKE) --cygnus --add-missing Makefile)
+	#(cd $(SRCDIR)/$(NAME_NEWLIB)/newlib/libc/sys/kos; $(AUTORECONF))
+	touch $@
+
+$(BUILDDIR)/$(NAME_NEWLIB)/Makefile: .flag.$(NAME_NEWLIB)-reconfigured $(ARTIFACT_AUTOMAKE) $(ARTIFACT_AUTOCONF)
+	mkdir -p $(LIBCBINDIR)
+	mkdir -p $(BUILDDIR)/$(NAME_NEWLIB)
+	cd $(BUILDDIR)/$(NAME_NEWLIB) && sh $(SRCDIR)/$(NAME_NEWLIB)/configure -v --build=$(shell gcc -dumpmachine) --target=$(TARGET) --prefix=$(LIBCBINDIR)
+	cd $(LIBCDIR)
+
+$(ARTIFACT_NEWLIB): $(BUILDDIR)/$(NAME_NEWLIB)/Makefile
+	$(MAKE) -C $(shell dirname $<)
+	$(MAKE) -C $(shell dirname $<) install
+
+clean-all: clean-dl clean-src clean-build clean-dist
+
+clean: clean-noredl
+
+clean-noredl: clean-src clean-build clean-dist
+
+clean-dl:
+	rm -rf $(DLDIR)
+
+clean-src:
+	rm -rf $(SRCDIR)
+	rm -f .flag.$(NAME_NEWLIB)-patched .flag.$(NAME_NEWLIB)-reconfigured
+
+clean-build:
+	rm -rf $(BUILDDIR)
+
+clean-dist:
+	rm -rf $(LIBCBINDIR)
+	rm -f $(FLAG_DIST_BUILT)

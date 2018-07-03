@@ -1,17 +1,13 @@
-#define NULL ((void *) 0)
-
-#include <k/sys.h>
-#include <k/log.h>
 #include <stdio.h>
 #include <sys/wait.h>
 #include <string.h>
 #include <unistd.h>
 
-void putc(char c) {
+void wc(char c) {
     write(1, &c, 1);
 }
 
-char getc() {
+char rc() {
     char c;
     read(0, &c, 1);
     return c;
@@ -21,29 +17,29 @@ char getc() {
 #define CSI_DOUBLE_PARTB ((char) '[')
 
 static void send_backspace_esc() {
-    putc(CSI_DOUBLE_PARTA);
-    putc(CSI_DOUBLE_PARTB);
-    putc('D');
+    wc(CSI_DOUBLE_PARTA);
+    wc(CSI_DOUBLE_PARTB);
+    wc('D');
 
-    putc(' ');
+    wc(' ');
 
-    putc(CSI_DOUBLE_PARTA);
-    putc(CSI_DOUBLE_PARTB);
-    putc('D');
+    wc(CSI_DOUBLE_PARTA);
+    wc(CSI_DOUBLE_PARTB);
+    wc('D');
 }
 
 void print_welcome() {
-    putc(CSI_DOUBLE_PARTA);
-    putc(CSI_DOUBLE_PARTB);
-    putc('2');
-    putc('J');
+    wc(CSI_DOUBLE_PARTA);
+    wc(CSI_DOUBLE_PARTB);
+    wc('2');
+    wc('J');
 
-    putc(CSI_DOUBLE_PARTA);
-    putc(CSI_DOUBLE_PARTB);
-    putc('1');
-    putc(';');
-    putc('1');
-    putc('H');
+    wc(CSI_DOUBLE_PARTA);
+    wc(CSI_DOUBLE_PARTB);
+    wc('1');
+    wc(';');
+    wc('1');
+    wc('H');
 
     printf("Welcome to KSH!\n");
     printf("Copyright (c) 2016, Keeley Hoek.\n");
@@ -52,6 +48,7 @@ void print_welcome() {
 
 void print_linestart() {
     printf("root@k-os:/$ ");
+    fflush(stdout);
 }
 
 char buff2[100];
@@ -104,7 +101,7 @@ int main(int argc, char **argv) {
     uint32_t off = 0;
     char buff[512];
     while(1) {
-        char c = getc();
+        char c = rc();
 
         switch(c) {
             case '\x7f': {
@@ -116,7 +113,7 @@ int main(int argc, char **argv) {
                 break;
             }
             case '\n': {
-                putc('\n');
+                wc('\n');
                 buff[off] = '\0';
                 if(off) execute_command(buff);
                 off = 0;
@@ -125,7 +122,7 @@ int main(int argc, char **argv) {
                 break;
             }
             default: {
-                putc(c);
+                wc(c);
                 buff[off++] = c;
 
                 break;

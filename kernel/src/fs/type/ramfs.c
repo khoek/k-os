@@ -7,6 +7,8 @@
 
 #define CHUNK_SIZE 512
 
+static uint32_t global_ino_count = 0x10;
+
 typedef struct chunk {
     int32_t used;
     char *buff;
@@ -173,6 +175,7 @@ static void ramfs_inode_lookup(inode_t *inode, dentry_t *dentry) {
 
 static bool ramfs_inode_create(inode_t *inode, dentry_t *new, uint32_t mode) {
     new->inode = inode_alloc(inode->fs, &ramfs_inode_ops);
+    new->inode->ino = global_ino_count++;
     new->inode->flags = 0;
     new->inode->mode = mode;
 

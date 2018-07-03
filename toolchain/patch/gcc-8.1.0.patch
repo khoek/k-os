@@ -1,0 +1,121 @@
+diff -ruEwN src/gcc-8.1.0/config.sub src/gcc-8.1.0-custom/config.sub
+--- src/gcc-8.1.0/config.sub	2018-01-03 15:25:18.000000000 +1100
++++ src/gcc-8.1.0-custom/config.sub	2018-07-03 01:39:12.125176000 +1000
+@@ -1416,7 +1416,7 @@
+ 	      | -morphos* | -superux* | -rtmk* | -rtmk-nova* | -windiss* \
+ 	      | -powermax* | -dnix* | -nx6 | -nx7 | -sei* | -dragonfly* \
+ 	      | -skyos* | -haiku* | -rdos* | -toppers* | -drops* | -es* \
+-	      | -onefs* | -tirtos* | -phoenix* | -fuchsia* | -redox* | -bme*)
++	      | -onefs* | -tirtos* | -phoenix* | -fuchsia* | -redox* | -bme* | -kos*)
+ 	# Remember, each alternative MUST END IN *, to match a version number.
+ 		;;
+ 	-qnx*)
+diff -ruEwN src/gcc-8.1.0/fixincludes/mkfixinc.sh src/gcc-8.1.0-custom/fixincludes/mkfixinc.sh
+--- src/gcc-8.1.0/fixincludes/mkfixinc.sh	2016-06-22 07:57:20.000000000 +1000
++++ src/gcc-8.1.0-custom/fixincludes/mkfixinc.sh	2018-07-03 01:50:48.459265000 +1000
+@@ -11,6 +11,7 @@
+ 
+ # Check for special fix rules for particular targets
+ case $machine in
++    *-kos* | \
+     i?86-*-cygwin* | \
+     i?86-*-mingw32* | \
+     x86_64-*-mingw32* | \
+diff -ruEwN src/gcc-8.1.0/gcc/config/kos.h src/gcc-8.1.0-custom/gcc/config/kos.h
+--- src/gcc-8.1.0/gcc/config/kos.h	1970-01-01 10:00:00.000000000 +1000
++++ src/gcc-8.1.0-custom/gcc/config/kos.h	2018-07-03 01:49:37.305959000 +1000
+@@ -0,0 +1,32 @@
++/* Useful if you wish to make target-specific GCC changes. */
++#undef TARGET_KOS
++#define TARGET_KOS 1
++ 
++/* Default arguments you want when running your
++   i686-kos-gcc/x86_64-kos-gcc toolchain */
++#undef LIB_SPEC
++#define LIB_SPEC "-lc" /* link against C standard library */
++ 
++/* Files that are linked before user code.
++   The %s tells GCC to look for these files in the library directory. */
++#undef STARTFILE_SPEC
++#define STARTFILE_SPEC "crt0.o%s crti.o%s crtbegin.o%s"
++ 
++/* Files that are linked after user code. */
++#undef ENDFILE_SPEC
++#define ENDFILE_SPEC "crtend.o%s crtn.o%s"
++ 
++/* Don't automatically add extern "C" { } around header files. */
++#undef  NO_IMPLICIT_EXTERN_C
++#define NO_IMPLICIT_EXTERN_C 1
++ 
++/* Additional predefined macros. */
++#undef TARGET_OS_CPP_BUILTINS
++#define TARGET_OS_CPP_BUILTINS()      \
++  do {                                \
++    builtin_define ("__KOS__");      \
++    builtin_define ("__unix__");      \
++    builtin_assert ("system=kos");   \
++    builtin_assert ("system=unix");   \
++    builtin_assert ("system=posix");   \
++  } while(0);
+diff -ruEwN src/gcc-8.1.0/gcc/config.gcc src/gcc-8.1.0-custom/gcc/config.gcc
+--- src/gcc-8.1.0/gcc/config.gcc	2018-04-28 05:31:35.000000000 +1000
++++ src/gcc-8.1.0-custom/gcc/config.gcc	2018-07-03 01:41:57.727102000 +1000
+@@ -935,6 +935,11 @@
+   default_use_cxa_atexit=yes
+   use_gcc_stdint=wrap
+   ;;
++*-*-kos*)
++  gas=yes
++  gnu_ld=yes
++  default_use_cxa_atexit=yes
++  ;;
+ esac
+ 
+ case ${target} in
+@@ -3121,6 +3126,12 @@
+ 	c_target_objs="m32c-pragma.o"
+ 	cxx_target_objs="m32c-pragma.o"
+  	;;
++i[34567]86-*-kos*)
++	tm_file="${tm_file} i386/unix.h i386/att.h dbxelf.h elfos.h glibc-stdint.h i386/i386elf.h kos.h"
++	;;
++x86_64-*-kos*)
++	tm_file="${tm_file} i386/unix.h i386/att.h dbxelf.h elfos.h glibc-stdint.h i386/i386elf.h i386/x86-64.h kos.h"
++	;;
+ *)
+ 	echo "*** Configuration ${target} not supported" 1>&2
+ 	exit 1
+diff -ruEwN src/gcc-8.1.0/libgcc/config.host src/gcc-8.1.0-custom/libgcc/config.host
+--- src/gcc-8.1.0/libgcc/config.host	2018-04-07 06:04:17.000000000 +1000
++++ src/gcc-8.1.0-custom/libgcc/config.host	2018-07-03 01:48:09.377276000 +1000
+@@ -1359,6 +1359,14 @@
+ 	tmake_file="$tmake_file nvptx/t-nvptx"
+ 	extra_parts="crt0.o"
+ 	;;
++i[34567]86-*-kos*)
++	extra_parts="$extra_parts crti.o crtbegin.o crtend.o crtn.o"
++	tmake_file="$tmake_file i386/t-crtstuff t-crtstuff-pic t-libgcc-pic"
++	;;
++x86_64-*-kos*)
++	extra_parts="$extra_parts crti.o crtbegin.o crtend.o crtn.o"
++	tmake_file="$tmake_file i386/t-crtstuff t-crtstuff-pic t-libgcc-pic"
++	;;
+ *)
+ 	echo "*** Configuration ${host} not supported" 1>&2
+ 	exit 1
+diff -ruEwN src/gcc-8.1.0/libstdc++-v3/crossconfig.m4 src/gcc-8.1.0-custom/libstdc++-v3/crossconfig.m4
+--- src/gcc-8.1.0/libstdc++-v3/crossconfig.m4	2018-03-13 09:52:16.000000000 +1100
++++ src/gcc-8.1.0-custom/libstdc++-v3/crossconfig.m4	2018-07-03 01:45:10.771967000 +1000
+@@ -290,6 +290,12 @@
+     AC_DEFINE(HAVE_TANF)
+     AC_DEFINE(HAVE_TANHF)
+     ;;
++  *-kos*)
++    GLIBCXX_CHECK_COMPILER_FEATURES
++    GLIBCXX_CHECK_LINKER_FEATURES
++    GLIBCXX_CHECK_MATH_SUPPORT
++    GLIBCXX_CHECK_STDLIB_SUPPORT
++    ;;
+   *)
+     AC_MSG_ERROR([No support for this host/target combination.])
+    ;;

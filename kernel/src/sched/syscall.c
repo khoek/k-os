@@ -22,7 +22,7 @@ syscall_t syscalls[MAX_SYSCALL] = {
 #include "shared/syscall_ents.h"
 };
 
-DEFINE_SYSCALL(exit, uint32_t code) {
+DEFINE_SYSCALL(_exit, int32_t code) {
     task_node_exit(code);
 
     //We should have S_DIE marked right now, which will kill us in
@@ -269,8 +269,10 @@ DEFINE_SYSCALL(recv, ufd_idx_t ufd, void *user_buff, uint32_t buffsize, uint32_t
     return ret;
 }
 
-DEFINE_SYSCALL(alloc_page)  {
-    UNIMPLEMENTED();
+DEFINE_SYSCALL(alloc_page, void *addr)  {
+    page_t *page = alloc_page(0);
+    user_map_page(current, addr, page_to_phys(page));
+    return 0;
 }
 
 DEFINE_SYSCALL(free_page)  {
@@ -279,11 +281,15 @@ DEFINE_SYSCALL(free_page)  {
 
 struct dirent {
     ino_t d_ino;
-    char d_name[];
-};
+    off_t d_off;
+    uint16_t d_reclen;
+    uint8_t d_type;
+    char d_name[256];		/* We must not include limits.h! */
+} PACKED;
 
-DEFINE_SYSCALL(readdir, ufd_idx_t ufd, struct dirent *user_buff, uint32_t count) {
+DEFINE_SYSCALL(getdents, ufd_idx_t ufd, struct dirent *user_buff, uint32_t buffsize) {
     int32_t ret = -1;
+    uint32_t count = buffsize / sizeof(struct dirent);
 
     file_t *fd = ufdt_get(ufd);
     if(fd) {
@@ -292,7 +298,17 @@ DEFINE_SYSCALL(readdir, ufd_idx_t ufd, struct dirent *user_buff, uint32_t count)
         dir_entry_dat_t *buff = kmalloc(count * sizeof(dir_entry_dat_t));
         uint32_t num = vfs_iterate(fd, buff, count);
         for(uint32_t i = 0; i < num; i++) {
+          // kprintf("struct data %X %X %X", sizeof(user_buff[i].d_ino), sizeof(user_buff[i].d_off), sizeof(struct dirent));
+          // kprintf("writing %X to %X", buff[i].ino, &user_buff[i].d_ino);
+          // kprintf("writing %X to %X", sizeof(struct dirent), &user_buff[i].d_off);
+          // kprintf("writing %X to %X", sizeof(struct dirent), &user_buff[i].d_reclen);
+          // kprintf("writing %X to %X", buff[i].type, &user_buff[i].d_type);
+          // kprintf("writing %s to %X", buff[i].name, &user_buff[i].d_name);
           user_buff[i].d_ino = buff[i].ino;
+          user_buff[i].d_off = sizeof(struct dirent);
+          user_buff[i].d_reclen = sizeof(struct dirent);
+          user_buff[i].d_type = buff[i].type;
+          // kprintf("read: %X.%s@%Xvs%X", buff[i].ino, buff[i].name, buff + i, user_buff + i);
           strcpy(user_buff[i].d_name, buff[i].name);
         }
         kfree(buff);
@@ -302,7 +318,7 @@ DEFINE_SYSCALL(readdir, ufd_idx_t ufd, struct dirent *user_buff, uint32_t count)
         ufdt_put(ufd);
     }
 
-    return ret;
+    return ret * sizeof(struct dirent);
 }
 
 DEFINE_SYSCALL(stat, const char *pathname, void *buff) {
@@ -461,4 +477,11 @@ DEFINE_SYSCALL(waitpid, pid_t pid, int *stat_loc, int UNUSED(options)) {
     }
 
     return cpid;
+}
+
+DEFINE_SYSCALL(unimplemented, char *msg) {
+    if(!strcmp(msg, "fstat")) {
+        return 0;
+    }
+    panicf("unimplemented libc hook: %s", msg);
 }
