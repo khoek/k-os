@@ -298,17 +298,10 @@ DEFINE_SYSCALL(getdents, ufd_idx_t ufd, struct dirent *user_buff, uint32_t buffs
         dir_entry_dat_t *buff = kmalloc(count * sizeof(dir_entry_dat_t));
         uint32_t num = vfs_iterate(fd, buff, count);
         for(uint32_t i = 0; i < num; i++) {
-          // kprintf("struct data %X %X %X", sizeof(user_buff[i].d_ino), sizeof(user_buff[i].d_off), sizeof(struct dirent));
-          // kprintf("writing %X to %X", buff[i].ino, &user_buff[i].d_ino);
-          // kprintf("writing %X to %X", sizeof(struct dirent), &user_buff[i].d_off);
-          // kprintf("writing %X to %X", sizeof(struct dirent), &user_buff[i].d_reclen);
-          // kprintf("writing %X to %X", buff[i].type, &user_buff[i].d_type);
-          // kprintf("writing %s to %X", buff[i].name, &user_buff[i].d_name);
           user_buff[i].d_ino = buff[i].ino;
           user_buff[i].d_off = sizeof(struct dirent);
           user_buff[i].d_reclen = sizeof(struct dirent);
           user_buff[i].d_type = buff[i].type;
-          // kprintf("read: %X.%s@%Xvs%X", buff[i].ino, buff[i].name, buff + i, user_buff + i);
           strcpy(user_buff[i].d_name, buff[i].name);
         }
         kfree(buff);
