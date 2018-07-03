@@ -2,7 +2,10 @@
 #include <dirent.h>
 
 int main(int argc, char **argv) {
-    DIR *dir = opendir(argc > 0 ? argv[1] : ".");
+    if(argc <= 1) {
+        argv[1] = ".";
+    }
+    DIR *dir = opendir(argv[1]);
     if(dir == NULL) {
         printf("%s: cannot access '%s'\n", argv[0], argv[1]);
         return 1;
