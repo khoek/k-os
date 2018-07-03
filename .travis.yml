@@ -8,6 +8,6 @@ addons:
 install:
   - export TOOLCHAIN_CONFFLAGS=--quiet
   - export TOOLCHAIN_MAKEFLAGS="V=0"
-  - make -C toolchain all
+  - make aux
 script:
   - make all
