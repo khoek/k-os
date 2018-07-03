@@ -13,7 +13,7 @@ SRCS := syscall_hooks.S
 OBJS := $(addprefix $(BUILDDIR)/$(SHAREDINCPREFIX)/shared/, $(INCS)) $(addprefix $(BUILDDIR)/$(SHAREDSRCPREFIX)/shared/, $(SRCS))
 
 all: $(OBJS)
-	cp -a res/inc/. $(BUILDDIR)/inc
+	-cp -a res/inc/. $(BUILDDIR)/inc
 
 $(BUILDDIR)/inc/shared/syscall_decls.h: data/syscalls.txt
 	@echo "      py  $(patsubst $(SRCDIR)/%,%,$@)"
