@@ -42,42 +42,40 @@ append_out:
     spin_unlock_irqstore(&keybuff_lock, flags);
 }
 
+//read at most len bytes from the key buffer, blocking only if it is empty
 ssize_t keybuff_read(char *buff, size_t len) {
-    uint32_t coppied = 0;
+    uint32_t flags;
+    spin_lock_irqsave(&keybuff_lock, &flags);
 
-    while(coppied < len) {
-        uint32_t flags;
+    if(keybuff_front == keybuff_back) {
+read_retry:
+        read_waiting++;
+
+        spin_unlock_irqstore(&keybuff_lock, flags);
+
+        semaphore_down(&wait_semaphore);
+
         spin_lock_irqsave(&keybuff_lock, &flags);
 
         if(keybuff_front == keybuff_back) {
-read_retry:
-            read_waiting++;
-
-            spin_unlock_irqstore(&keybuff_lock, flags);
-
-            semaphore_down(&wait_semaphore);
-
-            spin_lock_irqsave(&keybuff_lock, &flags);
-
-            if(keybuff_front == keybuff_back) {
-                    goto read_retry;
-            }
+                goto read_retry;
         }
-
-        uint32_t chunk_len = keybuff_front < keybuff_back ? KEYBUFFLEN - keybuff_back : keybuff_front - keybuff_back;
-        uint32_t left = len - coppied;
-        chunk_len = MIN(chunk_len, left);
-
-        memcpy(buff, &keybuff[keybuff_back], chunk_len);
-
-        coppied += chunk_len;
-        buff += chunk_len;
-        keybuff_back = (keybuff_back + chunk_len) % KEYBUFFLEN;
-
-        spin_unlock_irqstore(&keybuff_lock, flags);
     }
 
-    return coppied;
+    uint32_t copied = 0;
+    while(copied < len && keybuff_front != keybuff_back) {
+        uint32_t chunk_len = keybuff_front < keybuff_back ? KEYBUFFLEN - keybuff_back : keybuff_front - keybuff_back;
+        chunk_len = MIN(chunk_len, len - copied);
+
+        memcpy(buff + copied, &keybuff[keybuff_back], chunk_len);
+
+        copied += chunk_len;
+        keybuff_back = (keybuff_back + chunk_len) % KEYBUFFLEN;
+    }
+
+    spin_unlock_irqstore(&keybuff_lock, flags);
+
+    return copied;
 }
 
 #define CTRL_REG 0x64

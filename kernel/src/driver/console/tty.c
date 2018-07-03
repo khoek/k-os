@@ -121,22 +121,25 @@ static char handle_keystate(uint8_t code) {
     return press ? translate_keycode(code) : 0;
 }
 
+//read at most len available bytes, or block if none are avaiable
 static ssize_t tty_char_read(char_device_t *cdev, char *buff, size_t len) {
-    char *tmp = kmalloc(len);
+    ssize_t actual = 0;
 
-    size_t total = 0;
-    while(total < len) {
-        size_t amt = vfs_read(cdev->private, tmp, len - total);
-        for(size_t i = 0; i < amt; i++) {
-            buff[total] = handle_keystate(tmp[i]);
-            if(buff[total]) {
-                total++;
+    // There might not be any real characters to give back (i.e. handle_keystate
+    // might return 0 for every char in the buffer---normally there are just a
+    // few chars waiting to be processed). In this case, we just retry, with
+    // vfs_read handling the blocking if neccessary.
+    while(!actual) {
+        ssize_t amt = vfs_read(cdev->private, buff, len);
+        for(ssize_t i = 0; i < amt; i++) {
+            buff[actual] = handle_keystate(buff[i]);
+            if(buff[actual]) {
+                actual++;
             }
         }
-
-        //TODO possibly give up
     }
-    return total;
+
+    return actual;
 }
 
 static ssize_t tty_char_write(char_device_t *cdev, const char *buff, size_t len) {
