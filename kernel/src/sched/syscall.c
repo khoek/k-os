@@ -75,6 +75,11 @@ DEFINE_SYSCALL(uptime)  {
 DEFINE_SYSCALL(open, const char *pathname, uint32_t flags) {
     //TODO verify that path is a pointer to a valid path string, and that flags are valid flags
 
+    if(!pathname) {
+        //errno = EFAULT            <- I looked it up!/ (tried lon linux!)
+        return -1;
+    }
+
     path_t pwd = get_pwd(current);
 
     path_t path;
