@@ -29,7 +29,9 @@ void print_welcome() {
 }
 
 void print_linestart() {
-    printf("root@k-os:/$ ");
+    char cwd[MAX_CMD_LEN + 1];
+    getcwd(cwd, MAX_CMD_LEN + 1);
+    printf("root@k-os:%s$ ", cwd);
 }
 
 char * try_execve(char *path_part, char **argv_tab, uint32_t cmd_len) {
