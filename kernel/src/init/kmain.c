@@ -44,7 +44,7 @@ static bool try_load_init(char *path) {
 
     path_t out;
     if(vfs_lookup(NULL, path, &out)) {
-        execute_path(&out, argv, ENVP);
+        execute_path(out.dentry, argv, ENVP);
     }
 
     return false;

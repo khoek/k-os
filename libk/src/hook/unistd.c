@@ -1,4 +1,5 @@
 #include <unistd.h>
+#include <fcntl.h>
 #include <errno.h>
 #undef errno
 extern int errno;
@@ -20,7 +21,13 @@ int write(int fd, const void *buf, size_t count) {
 }
 
 int execve(const char *filename, char *const argv[], char *const envp[]) {
-    return SYSCALL(execve)(filename, argv, envp);
+    int fd = open(filename, 0);
+    //TODO handle err conditions
+    return fexecve(fd, argv, envp);
+}
+
+int fexecve(int fd, char *const argv[], char *const envp[]) {
+    return SYSCALL(fexecve)(fd, argv, envp);
 }
 
 pid_t fork() {

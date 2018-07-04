@@ -324,13 +324,7 @@ DEFINE_SYSCALL(stat, const char *pathname, void *buff) {
 
     //TODO verify that path is a pointer to a valid path string, etc.
 
-    thread_t *me = current;
-
-    path_t pwd;
-    uint32_t flags;
-    spin_lock_irqsave(&me->fs->lock, &flags);
-    pwd = me->fs->pwd;
-    spin_unlock_irqstore(&me->fs->lock, flags);
+    path_t pwd = get_pwd(current);
 
     path_t path;
     if(vfs_lookup(&pwd, pathname, &path)) {
@@ -395,28 +389,20 @@ DEFINE_SYSCALL(write, ufd_idx_t ufd, const void *buff, uint32_t len) {
     return ret;
 }
 
-DEFINE_SYSCALL(execve, const char *pathname, char *const user_argv[], char *const user_envp[]) {
-    //FIXME sanitize
-    char **argv = copy_strtab(user_argv);
-    char **envp = copy_strtab(user_envp);
+DEFINE_SYSCALL(fexecve, ufd_idx_t ufd, char *const user_argv[], char *const user_envp[]) {
+    int32_t ret = -1;
 
-    thread_t *me = current;
+    file_t *fd = ufdt_get(ufd);
+    if(fd) {
+        //FIXME sanitize
+        char **argv = copy_strtab(user_argv);
+        char **envp = copy_strtab(user_envp);
 
-    path_t pwd;
-    uint32_t flags;
-    spin_lock_irqsave(&me->fs->lock, &flags);
-    pwd = me->fs->pwd;
-    spin_unlock_irqstore(&me->fs->lock, flags);
-
-    path_t p;
-    if(!vfs_lookup(&pwd, pathname, &p)) {
-        return -1;
+        ret = execute_path(fd->dentry, argv, envp);
+        BUG_ON(ret);
     }
 
-    bool ret = execute_path(&p, argv, envp);
-    BUG_ON(ret);
-
-    return -1;
+    return ret;
 }
 
 static task_node_t * reap_zombie(task_node_t *node) {

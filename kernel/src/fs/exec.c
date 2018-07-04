@@ -28,8 +28,8 @@ char ** copy_strtab(char *const raw[]) {
     return copy;
 }
 
-bool execute_path(path_t *p, char **raw_argv, char **raw_envp) {
-    file_t *f = vfs_open_file(p->dentry);
+bool execute_path(dentry_t *d, char **raw_argv, char **raw_envp) {
+    file_t *f = vfs_open_file(d);
     if(!f) return false;
 
     if(!binfmt_load(f, copy_strtab(raw_argv), copy_strtab(raw_envp))) {
