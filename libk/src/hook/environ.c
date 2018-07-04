@@ -1,6 +1,4 @@
-/*
- * Version of environ for no OS.
- */
+//FIXME populate these
 
-char *__env[1] = { 0 }; 
-char **environ = __env; 
+char *__env[1] = { 0 };
+char **environ = __env;
