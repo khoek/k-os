@@ -271,6 +271,17 @@ static bool get_path_wd(const path_t *start, const char *orig_pathname, path_t *
     return true;
 }
 
+//sanitise the (newly-created) inode associated to this dentry
+static bool validate_inode(dentry_t *dentry) {
+    BUG_ON(!dentry);
+    if(!dentry->inode->ino) {
+        panicf("Bad inode, ino = 0 for %X->%X", dentry, dentry->inode);
+        return false;
+    }
+
+    return true;
+}
+
 bool vfs_create(const path_t *start, const char *pathname, uint32_t mode, bool excl) {
     path_t wd;
     char *last;
@@ -290,7 +301,7 @@ bool vfs_create(const path_t *start, const char *pathname, uint32_t mode, bool e
         char *copy = strdup(last);
         dentry_t *new = dentry_alloc(copy);
         wd.dentry->inode->ops->create(wd.dentry->inode, new, mode);
-        if(!new->inode)  {
+        if(!new->inode || !validate_inode(new))  {
             kfree(copy);
             return false;
         }
@@ -299,7 +310,6 @@ bool vfs_create(const path_t *start, const char *pathname, uint32_t mode, bool e
     }
 
     return true;
-
 }
 
 bool vfs_mkdir(const path_t *start, const char *pathname, uint32_t mode) {
@@ -313,7 +323,7 @@ bool vfs_mkdir(const path_t *start, const char *pathname, uint32_t mode) {
     char *copy = strdup(last);
     dentry_t *newdir = dentry_alloc(copy);
     wd.dentry->inode->ops->mkdir(wd.dentry->inode, newdir, mode);
-    if(!newdir->inode)  {
+    if(!newdir->inode || !validate_inode(newdir))  {
         kfree(copy);
         return false;
     }

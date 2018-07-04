@@ -187,6 +187,7 @@ static bool ramfs_inode_create(inode_t *inode, dentry_t *new, uint32_t mode) {
 
 static bool ramfs_inode_mkdir(inode_t *inode, dentry_t *new, uint32_t mode) {
     new->inode = inode_alloc(inode->fs, &ramfs_inode_ops);
+    new->inode->ino = global_ino_count++;
     new->inode->flags = INODE_FLAG_DIRECTORY;
     new->inode->mode = mode;
 
