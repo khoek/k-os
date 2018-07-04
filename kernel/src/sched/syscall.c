@@ -80,10 +80,8 @@ DEFINE_SYSCALL(open, const char *pathname, uint32_t flags) {
         return -1;
     }
 
-    path_t pwd = get_pwd(current);
-
     path_t path;
-    if(vfs_lookup(&pwd, pathname, &path)) {
+    if(vfs_lookup(&obtain_fs_context(current)->pwd, pathname, &path)) {
         return ufdt_add(flags, vfs_open_file(path.dentry));
     } else {
         return -1;
@@ -324,10 +322,8 @@ DEFINE_SYSCALL(stat, const char *pathname, void *buff) {
 
     //TODO verify that path is a pointer to a valid path string, etc.
 
-    path_t pwd = get_pwd(current);
-
     path_t path;
-    if(vfs_lookup(&pwd, pathname, &path)) {
+    if(vfs_lookup(&obtain_fs_context(current)->pwd, pathname, &path)) {
         vfs_getattr(path.dentry, buff);
 
         ret = 0;
@@ -465,6 +461,73 @@ DEFINE_SYSCALL(waitpid, pid_t pid, int *stat_loc, int UNUSED(options)) {
     }
 
     return cpid;
+}
+
+DEFINE_SYSCALL(chdir, const char *pathname) {
+    if(!pathname) {
+        //errno = EFAULT            <- I looked it up!/ (tried lon linux!)
+        return -1;
+    }
+
+    path_t path;
+    if(vfs_lookup(&obtain_fs_context(current)->pwd, pathname, &path)) {
+        //FIXME this desperately needs to be locked
+        obtain_fs_context(current)->pwd = path;
+    } else {
+        return -1;
+    }
+
+    return 0;
+}
+
+DEFINE_SYSCALL(getcwd, char *buff, size_t size) {
+    path_t pwd = obtain_fs_context(current)->pwd;
+    uint32_t path_len = 0;
+
+    path_t cur = pwd;
+    while(cur.dentry->parent || cur.mount->parent) {
+        if(!cur.dentry->parent) {
+              BUG_ON(cur.dentry != cur.mount->fs->root);
+              cur.dentry = cur.mount->mountpoint;
+              cur.mount = cur.mount->parent;
+        }
+
+        // +1 for DIRECTORY_SEPARATOR, not null byte
+        path_len += strlen(cur.dentry->name) + 1;
+        cur.dentry = cur.dentry->parent;
+    }
+
+    bool at_root = !path_len;
+    if(at_root) {
+        path_len = 1;
+    }
+
+    // + 1 for null byte
+    if(size < path_len + 1) {
+        //FIXME set errno
+        return -1;
+    }
+    buff[path_len] = 0;
+
+    uint32_t pos = path_len;
+    cur = pwd;
+    while(cur.dentry && (cur.dentry->parent || cur.mount->parent || at_root)) {
+        if(!cur.dentry->parent && cur.mount->parent) {
+              BUG_ON(cur.dentry != cur.mount->fs->root);
+              cur.dentry = cur.mount->mountpoint;
+              cur.mount = cur.mount->parent;
+        }
+
+        uint32_t seg_len = strlen(cur.dentry->name);
+        pos -= seg_len + 1;
+        buff[pos] = DIRECTORY_SEPARATOR;
+        memcpy(buff + pos + 1, cur.dentry->name, seg_len);
+        cur.dentry = cur.dentry->parent;
+    }
+
+    BUG_ON(pos != 0);
+
+    return (uint32_t) buff;
 }
 
 DEFINE_SYSCALL(unimplemented, char *msg) {

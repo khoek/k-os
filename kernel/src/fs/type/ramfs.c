@@ -7,8 +7,6 @@
 
 #define CHUNK_SIZE 512
 
-static uint32_t global_ino_count = 0x10;
-
 typedef struct chunk {
     int32_t used;
     char *buff;
@@ -123,30 +121,6 @@ static ssize_t ramfs_file_write(file_t *file, const char *buff, size_t bytes) {
     return ret;
 }
 
-uint32_t ramfs_file_iterate(file_t *file, dir_entry_dat_t *buff, uint32_t num) {
-    uint32_t curpos = 0;
-    uint32_t num_read = 0;
-    dentry_t *child;
-    LIST_FOR_EACH_ENTRY(child, &file->dentry->children_list, list) {
-        if(num_read >= num) {
-            break;
-        }
-
-        if(curpos >= file->offset) {
-            buff[num_read].ino = child->inode->ino;
-            buff[num_read].type = child->inode->mode & INODE_FLAG_DIRECTORY ? ENTRY_TYPE_DIR : ENTRY_TYPE_FILE;
-            strcpy(buff[num_read].name, child->name);
-
-            num_read++;
-        }
-
-        curpos++;
-    }
-
-    file->offset = curpos;
-    return num_read;
-}
-
 static file_ops_t ramfs_file_ops = {
     .open   = ramfs_file_open,
     .close  = ramfs_file_close,
@@ -154,7 +128,7 @@ static file_ops_t ramfs_file_ops = {
     .read   = ramfs_file_read,
     .write  = ramfs_file_write,
 
-    .iterate = ramfs_file_iterate,
+    .iterate = simple_file_iterate,
 };
 
 static void ramfs_inode_lookup(inode_t *inode, dentry_t *dentry);
@@ -175,7 +149,6 @@ static void ramfs_inode_lookup(inode_t *inode, dentry_t *dentry) {
 
 static bool ramfs_inode_create(inode_t *inode, dentry_t *new, uint32_t mode) {
     new->inode = inode_alloc(inode->fs, &ramfs_inode_ops);
-    new->inode->ino = global_ino_count++;
     new->inode->flags = 0;
     new->inode->mode = mode;
 
@@ -187,7 +160,6 @@ static bool ramfs_inode_create(inode_t *inode, dentry_t *new, uint32_t mode) {
 
 static bool ramfs_inode_mkdir(inode_t *inode, dentry_t *new, uint32_t mode) {
     new->inode = inode_alloc(inode->fs, &ramfs_inode_ops);
-    new->inode->ino = global_ino_count++;
     new->inode->flags = INODE_FLAG_DIRECTORY;
     new->inode->mode = mode;
 
@@ -204,6 +176,7 @@ static fs_type_t ramfs = {
 
 static void ramfs_fill(fs_t *fs) {
     dentry_t *root = fs->root = dentry_alloc("");
+    root->parent = NULL;
     root->fs = fs;
 
     root->inode = inode_alloc(fs, &ramfs_inode_ops);

@@ -37,3 +37,11 @@ pid_t fork() {
 int close(int fildes) {
     return SYSCALL(close)(fildes);
 }
+
+int chdir(const char *path) {
+    return SYSCALL(chdir)(path);
+}
+
+char *getcwd(char *buff, size_t len) {
+    return (void *) SYSCALL(getcwd)(buff, len);
+}

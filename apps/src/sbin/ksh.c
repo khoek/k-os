@@ -58,8 +58,14 @@ char * try_execve(char *path_part, char **argv_tab, uint32_t cmd_len) {
     memcpy(path_buff + count, argv_tab[0], cmd_len + 1);
 
     int fd = open(path_buff, 0);
-    if(fd != -1) {
+    if(fd == -1) {
+        // FIXME check type of error, abort if not file-not-found
+        // perror(argv_tab[0]);
+    } else {
         fexecve(fd, argv_tab, envp_tab);
+
+        perror(argv_tab[0]);
+        return NULL;
     }
 
     return *path_part ? path_part + 1 : NULL;
@@ -116,16 +122,33 @@ void execute_command(char *raw) {
     } else {
         uint32_t cmd_len = strlen(argv_tab[0]);
 
-        try_execve("", argv_tab, cmd_len);
+        if(!strcmp(argv_tab[0], "cd")) {
+            switch(num_args) {
+                case 1: {
+                    printf("ksh: cd: no arguments not supported\n");
+                    break;
+                }
+                case 2: {
+                    chdir(argv_tab[1]);
+                    break;
+                }
+                default: {
+                    printf("ksh: cd: too many arguments\n");
+                    break;
+                }
+            }
+        } else {
+            try_execve("", argv_tab, cmd_len);
 
-        bool cmd_contains_sep = strchr(argv_tab[0], DIRECTORY_SEPARATOR) != NULL;
-        if(!cmd_contains_sep) {
-            char *next = PATH;
-            while((next = try_execve(next, argv_tab, cmd_len)));
+            bool cmd_contains_sep = strchr(argv_tab[0], DIRECTORY_SEPARATOR) != NULL;
+            if(!cmd_contains_sep) {
+                char *next = PATH;
+                while((next = try_execve(next, argv_tab, cmd_len)));
+            }
+
+            printf("%s: command not found\n", argv_tab[0]);
+            exit(1);
         }
-
-        printf("%s: command not found\n", argv_tab[0]);
-        exit(1);
     }
 }
 

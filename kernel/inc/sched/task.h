@@ -87,6 +87,7 @@ typedef struct thread {
     spinlock_t lock;
 
     //Inter-thread (shared) data:
+    //FIXME these first two things should be associated to the task node!
     ufd_context_t *ufd;
     fs_context_t *fs;
     task_node_t *node;
@@ -114,12 +115,22 @@ typedef struct thread {
     list_head_t poll_list;
 } thread_t;
 
+//FIXME delete the obtain_* functions because they aren't remotely thread safe
+
 static inline task_node_t * obtain_task_node(thread_t *t) {
     uint32_t flags;
     spin_lock_irqsave(&t->lock, &flags);
     task_node_t *node = t->node;
     spin_unlock_irqstore(&t->lock, flags);
     return node;
+}
+
+static inline fs_context_t * obtain_fs_context(thread_t *t) {
+    uint32_t flags;
+    spin_lock_irqsave(&t->lock, &flags);
+    fs_context_t *fs = t->fs;
+    spin_unlock_irqstore(&t->lock, flags);
+    return fs;
 }
 
 #include "mm/mm.h"
@@ -131,8 +142,6 @@ thread_t * thread_fork(thread_t *t, uint32_t flags, void (*setup)(void *arg), vo
 void thread_exit();
 
 void task_node_exit(int32_t code);
-
-path_t get_pwd(thread_t *t);
 
 bool ufdt_valid(ufd_idx_t ufd);
 ufd_idx_t ufdt_add(uint32_t flags, file_t *gfd);

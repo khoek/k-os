@@ -18,6 +18,8 @@
 
 mount_t *root_mount;
 
+static uint32_t global_ino_count = 1;
+
 static cache_t *dentry_cache;
 static cache_t *inode_cache;
 static cache_t *fs_cache;
@@ -25,6 +27,8 @@ static cache_t *mount_cache;
 
 static DEFINE_HASHTABLE(fs_types, 5);
 static DEFINE_SPINLOCK(fs_type_lock);
+
+static DEFINE_SPINLOCK(global_ino_lock);
 
 static DEFINE_HASHTABLE(mount_hashtable, log2(PAGE_SIZE / sizeof(hashtable_node_t)));
 static DEFINE_SPINLOCK(mount_hashtable_lock);
@@ -34,6 +38,7 @@ dentry_t * dentry_alloc(const char *name) {
     new->name = name;
     new->inode = NULL;
     new->flags = 0;
+    new->parent = 0;
     hashtable_init(new->children_tab);
     list_init(&new->children_list);
 
@@ -52,6 +57,11 @@ inode_t * inode_alloc(fs_t *fs, inode_ops_t *ops) {
 
     new->fs = fs;
     new->ops = ops;
+
+    uint32_t flags;
+    spin_lock_irqsave(&global_ino_lock, &flags);
+    new->ino = global_ino_count++;
+    spin_unlock_irqstore(&global_ino_lock, flags);
 
     return new;
 }
@@ -157,6 +167,8 @@ fs_t * vfs_fs_create(const char *raw_type, const char *device) {
 
     dentry_t *root = type->create(type, device);
     if(!root) return false;
+    BUG_ON(root->parent);
+    BUG_ON(root != root->fs->root);
 
     fs_t *fs = root->fs;
     BUG_ON(!fs);
@@ -239,7 +251,7 @@ bool vfs_umount(path_t *mountpoint) {
 static char * last_segment(const char *path) {
     const char *seg = path;
     while(*path) {
-        if(*path == PATH_SEPARATOR && *(path + 1)) seg = path + 1;
+        if(*path == DIRECTORY_SEPARATOR && *(path + 1)) seg = path + 1;
         path++;
     }
 
@@ -340,11 +352,11 @@ bool vfs_lookup(const path_t *start, const char *orig_path, path_t *out) {
     mount_t *mount;
     dentry_t *wd;
 
-    if(*path != PATH_SEPARATOR && start) {
+    if(*path != DIRECTORY_SEPARATOR && start) {
         mount = start->mount;
         wd = start->dentry;
     } else {
-        if(*path == PATH_SEPARATOR) {
+        if(*path == DIRECTORY_SEPARATOR) {
             path++;
         }
 
@@ -380,7 +392,7 @@ bool vfs_lookup(const path_t *start, const char *orig_path, path_t *out) {
 
         //determine the name of the next working directory
         uint32_t len = 0;
-        while(*next != PATH_SEPARATOR && *next) {
+        while(*next != DIRECTORY_SEPARATOR && *next) {
             next++;
             len++;
         }
@@ -460,8 +472,8 @@ lookup_next:
 
 file_t * vfs_open_file(dentry_t *dentry) {
     file_t *file = file_alloc(dentry->inode->ops->file_ops);
-    file->dentry = dentry;
     if(file) {
+        file->dentry = dentry;
         file->ops->open(file, dentry->inode);
     }
 
@@ -478,6 +490,38 @@ ssize_t vfs_read(file_t *file, void *buff, size_t bytes) {
 
 ssize_t vfs_write(file_t *file, const void *buff, size_t bytes) {
     return file->ops->write(file, buff, bytes);
+}
+
+uint32_t simple_file_iterate(file_t *file, dir_entry_dat_t *buff, uint32_t num) {
+    uint32_t curpos = 0;
+    uint32_t num_read = 0;
+    dentry_t *child;
+    LIST_FOR_EACH_ENTRY(child, &file->dentry->children_list, list) {
+        if(num_read >= num) {
+            break;
+        }
+
+        if(curpos >= file->offset) {
+            buff[num_read].ino = child->inode->ino;
+            buff[num_read].type = child->inode->mode & INODE_FLAG_DIRECTORY ? ENTRY_TYPE_DIR : ENTRY_TYPE_FILE;
+            strcpy(buff[num_read].name, child->name);
+
+            num_read++;
+        }
+
+        curpos++;
+    }
+
+    file->offset = curpos;
+    return num_read;
+}
+
+bool fs_no_create(inode_t *inode, dentry_t *d, uint32_t mode) {
+    return false;
+}
+
+bool fs_no_mkdir(inode_t *inode, dentry_t *d, uint32_t mode) {
+    return false;
 }
 
 static void fs_add(fs_t *fs) {
@@ -530,6 +574,7 @@ void generic_getattr(inode_t *inode, stat_t *stat) {
 }
 
 uint32_t vfs_iterate(file_t *file, dir_entry_dat_t *buff, uint32_t num) {
+  if(!file->ops->iterate) return -1;
   return file->ops->iterate(file, buff, num);
 }
 

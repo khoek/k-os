@@ -1,8 +1,8 @@
 #ifndef KERNEL_FS_VFS_H
 #define KERNEL_FS_VFS_H
 
-#define PATH_SEPARATOR '/'
-#define PATH_SEPARATOR_STR "/"
+#define DIRECTORY_SEPARATOR '/'
+#define DIRECTORY_SEPARATOR_STR "/"
 
 #define FSTYPE_FLAG_NODEV (1 << 0)
 
@@ -199,6 +199,10 @@ bool vfs_umount(path_t *mountpoint);
 bool vfs_create(const path_t *start, const char *pathname, uint32_t mode, bool excl);
 bool vfs_mkdir(const path_t *start, const char *pathname, uint32_t mode);
 
+uint32_t simple_file_iterate(file_t *file, dir_entry_dat_t *buff, uint32_t num);
+
+bool fs_no_create(inode_t *inode, dentry_t *d, uint32_t mode);
+bool fs_no_mkdir(inode_t *inode, dentry_t *d, uint32_t mode);
 dentry_t * fs_create_nodev(fs_type_t *type, void (*fill)(fs_t *fs));
 dentry_t * fs_create_single(fs_type_t *type, void (*fill)(fs_t *fs));
 

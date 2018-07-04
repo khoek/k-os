@@ -110,11 +110,31 @@ static inode_ops_t block_inode_ops = {
     .file_ops = &block_file_ops,
 };
 
-static void root_inode_lookup(inode_t *inode, dentry_t *target) {
+static void devfs_root_file_open(file_t *file, inode_t *inode) {
 }
 
-static inode_ops_t root_inode_ops = {
-    .lookup = root_inode_lookup,
+static void devfs_root_file_close(file_t *file) {
+}
+
+static file_ops_t devfs_root_file_ops = {
+    .open   = devfs_root_file_open,
+    .close  = devfs_root_file_close,
+
+    .iterate = simple_file_iterate,
+};
+
+static void devfs_root_inode_lookup(inode_t *inode, dentry_t *target) {
+}
+
+static inode_ops_t devfs_root_inode_ops = {
+    .file_ops = &devfs_root_file_ops,
+
+    .lookup = devfs_root_inode_lookup,
+    .create = fs_no_create,
+    .mkdir = fs_no_mkdir,
+
+    //FIXME define devfs_root_inode_getattr
+    //.mkdir = devfs_root_inode_getattr,
 };
 
 static inode_t * devfs_inode_alloc(devfs_device_t *device) {
@@ -135,24 +155,22 @@ static inode_t * devfs_inode_alloc(devfs_device_t *device) {
     return inode;
 }
 
-static dentry_t * devfs_create(fs_type_t *fs_type, const char *device);
-
-static fs_type_t devfs_type = {
-    .name  = "devfs",
-    .flags = FSTYPE_FLAG_NODEV,
-    .create  = devfs_create,
-};
-
 static void devfs_fill(fs_t *fs) {
     fs->root = dentry_alloc("");
     fs->root->fs = fs;
-    fs->root->inode = inode_alloc(fs, &root_inode_ops);
+    fs->root->inode = inode_alloc(fs, &devfs_root_inode_ops);
     fs->root->inode->flags |= INODE_FLAG_DIRECTORY;
 }
 
 static dentry_t * devfs_create(fs_type_t *fs_type, const char *device) {
     return fs_create_single(fs_type, devfs_fill);
 }
+
+static fs_type_t devfs_type = {
+    .name  = "devfs",
+    .flags = FSTYPE_FLAG_NODEV,
+    .create  = devfs_create,
+};
 
 static void devfs_add_dev(void *device, device_type_t type, char *name) {
     devfs_device_t *d = kmalloc(sizeof(devfs_device_t));

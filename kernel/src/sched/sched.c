@@ -163,18 +163,6 @@ static inline fs_context_t * fs_context_dup(fs_context_t *src) {
     return dst;
 }
 
-static inline fs_context_t * obtain_fs_context(thread_t *t) {
-    uint32_t flags;
-    spin_lock_irqsave(&t->lock, &flags);
-    fs_context_t *fs = t->fs;
-    spin_unlock_irqstore(&t->lock, flags);
-    return fs;
-}
-
-path_t get_pwd(thread_t *t) {
-    return obtain_fs_context(t)->pwd;
-}
-
 static inline void fs_context_destroy(fs_context_t *fs) {
     kfree(fs);
 }
