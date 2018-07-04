@@ -27,6 +27,7 @@
 22:write:ufd_idx_t ufd, const void *buff, uint32_t len
 
 23:fexecve:int fd, char *const argv[], char *const envp[]
-24:waitpid:pid_t pid, int *stat_loc, int options
+24:getpid:
+25:waitpid:pid_t pid, int *stat_loc, int options
 
-25:unimplemented:char *msg
+26:unimplemented:char *msg

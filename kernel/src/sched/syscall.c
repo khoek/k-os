@@ -434,6 +434,10 @@ static task_node_t * find_child(task_node_t *me, pid_t pid) {
     return NULL;
 }
 
+DEFINE_SYSCALL(getpid) {
+    return obtain_task_node(current)->pid;
+}
+
 DEFINE_SYSCALL(waitpid, pid_t pid, int *stat_loc, int UNUSED(options)) {
     task_node_t *node = obtain_task_node(current);
 

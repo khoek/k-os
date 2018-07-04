@@ -1,3 +1,5 @@
+#include <unistd.h>
+
 #include <sys/time.h>
 #include <sys/times.h>
 
@@ -7,8 +9,6 @@ extern int errno;
 
 #include <k/sys.h>
 
-int getpid () {
-    errno = ENOSYS;
-    SYSCALL(unimplemented)("getpid");
-    return -1;
+pid_t getpid() {
+    return SYSCALL(getpid)();
 }
