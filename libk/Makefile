@@ -11,7 +11,7 @@ OBJDIR := build
 
 ASFLAGS := -m32 -I$(INCDIR) -nostdlib -ffreestanding -c
 
-CCFLAGS := -Wall -Wextra -Werror -Wno-unused-parameter -m32 -I$(INCDIR) \
+CFLAGS := -Wall -Wextra -Werror -Wno-unused-parameter -m32 -I$(INCDIR) \
 	-I$(LIBCBINDIR)/$(TARGET)/include																			\
 	-std=gnu99 -nostdlib -ffreestanding --sysroot=$(INCDIR) 							\
 	--sysroot=$(LIBCBINDIR)/$(TARGET)/include -c -g -O3
@@ -42,7 +42,7 @@ $(ASPPOBJS): $(OBJDIR)/%.o : $(SRCDIR)/%.S
 $(CCOBJS): $(OBJDIR)/%.o : $(SRCDIR)/%.c
 	@echo "      cc  $(patsubst $(SRCDIR)/%,%,$<)"
 	@mkdir -p $(shell dirname $@)
-	@$(KCC) $(CCFLAGS) -DLIBK_SOURCE -o $@ $<
+	@$(KCC) $(CFLAGS) -DLIBK_SOURCE -o $@ $<
 
 $(LIBKAR): $(OBJS)
 	@echo "      ar  $@"

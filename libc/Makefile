@@ -6,21 +6,13 @@ SRCDIR := $(LIBCDIR)/src
 PATCHDIR := $(LIBCDIR)/patch
 BUILDDIR := $(LIBCDIR)/build
 
-# might need to export LIBS too to get to work, see osedev "Porting newlib":
-# LIBS        libraries to pass to the linker, e.g. -l<library>
 export CC_FOR_TARGET := $(TOOLCHAINBINDIR)/bin/$(TARGET)-gcc
-#export CFLAGS := -nostdlib -ffreestanding
-#export LIBS := -lgcc
 export AR_FOR_TARGET := $(TOOLCHAINBINDIR)/bin/$(TARGET)-ar
 export AS_FOR_TARGET := $(TOOLCHAINBINDIR)/bin/$(TARGET)-as
-#export DLLTOOL_FOR_TARGET :=
 export LD_FOR_TARGET := $(TOOLCHAINBINDIR)/bin/$(TARGET)-ld
-#export LIPO_FOR_TARGET :=
 export NM_FOR_TARGET := $(TOOLCHAINBINDIR)/bin/$(TARGET)-nm
 export RANLIB_FOR_TARGET := $(TOOLCHAINBINDIR)/bin/$(TARGET)-ranlib
 export STRIP_FOR_TARGET := $(TOOLCHAINBINDIR)/bin/$(TARGET)-strip
-#export WINDRES_FOR_TARGET :=
-#export WINDMC_FOR_TARGET :=
 export OBJCOPY_FOR_TARGET := $(TOOLCHAINBINDIR)/bin/$(TARGET)-objcopy
 export OBJDUMP_FOR_TARGET := $(TOOLCHAINBINDIR)/bin/$(TARGET)-objdump
 export READELF_FOR_TARGET := $(TOOLCHAINBINDIR)/bin/$(TARGET)-readelf

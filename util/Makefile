@@ -8,7 +8,7 @@ include $(ROOTDIR)/Makefile.config
 SRCDIR := src
 OBJDIR := $(UTILBINDIR)
 
-CCFLAGS := -Wall -Wextra -Werror -Wno-unused-parameter -std=gnu99 -g -O3
+CFLAGS := -Wall -Wextra -Werror -Wno-unused-parameter -std=gnu99 -g -O3
 
 SRCS := $(shell find -L $(SRCDIR) -type f -name "*.c")
 OBJS := $(patsubst $(SRCDIR)/%.c,$(OBJDIR)/%,$(SRCS))
@@ -18,7 +18,7 @@ all: $(OBJS)
 $(OBJS): $(OBJDIR)/% : $(SRCDIR)/%.c
 	@echo "      cc  $(patsubst $(SRCDIR)/%,%,$<)"
 	@mkdir -p $(shell dirname $@)
-	@$(CC) $(CCFLAGS) -o $@ $<
+	@$(CC) $(CFLAGS) -o $@ $<
 
 clean:
 	@rm -rf $(OBJDIR)

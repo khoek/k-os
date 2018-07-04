@@ -12,7 +12,7 @@ DOCDIR := doc
 
 ASFLAGS := --32
 
-CCFLAGS := -Wall -Wextra -Werror -Wno-unused-parameter           \
+CFLAGS := -Wall -Wextra -Werror -Wno-unused-parameter           \
 	-Wno-missing-field-initializers -m32 -I$(INCDIR)               \
 	-std=gnu99 -fno-strict-aliasing -nostdlib -ffreestanding -c -g \
 	-include "common/config.h"
@@ -40,7 +40,7 @@ $(ASOBJS): $(OBJDIR)/%.o : $(SRCDIR)/%.s
 $(CCOBJS): $(OBJDIR)/%.o : $(SRCDIR)/%.c
 	@echo "      cc  $(patsubst $(SRCDIR)/%,%,$<)"
 	@mkdir -p $(shell dirname $@)
-	@$(KCC) $(CCFLAGS) -DKERNEL_SOURCE -o $@ $<
+	@$(KCC) $(CFLAGS) -DKERNEL_SOURCE -o $@ $<
 
 $(LDSCRIPT): $(LDSCRIPTSRC)
 	@echo "      pp  $(patsubst $(SRCDIR)/%,%,$<)"
