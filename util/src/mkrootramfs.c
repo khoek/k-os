@@ -57,7 +57,7 @@ static bool is_dir(const char *path) {
    return S_ISDIR(statbuf.st_mode);
 }
 
-#define PATH_SEPARATOR '/'
+#define DIRECTORY_SEPARATOR '/'
 
 static void *buff;
 static uint32_t off;
@@ -113,7 +113,7 @@ out:
 static int build_entry(const char *orig_filepath, const struct stat *info, const int typeflag, struct FTW *pathinfo) {
     const char *filepath = orig_filepath;
     while(*filepath) {
-        if(*filepath == PATH_SEPARATOR) {
+        if(*filepath == DIRECTORY_SEPARATOR) {
             filepath++;
             break;
         }
