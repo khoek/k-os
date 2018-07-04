@@ -1,12 +1,20 @@
+#include <stdlib.h>
 #include <stdio.h>
+#include <stdbool.h>
+#include <stdint.h>
+#include <errno.h>
 #include <sys/wait.h>
 #include <string.h>
+#include <fcntl.h>
 #include <unistd.h>
 
 #define MAX_CMD_LEN 256
 #define MAX_NUM_ARGS 100
 
 #define CSI_DOUBLE "\x1b["
+
+#define PATH_SEPARATOR ':'
+#define DIRECTORY_SEPARATOR '/'
 
 static void send_backspace_esc() {
     printf(CSI_DOUBLE "D");
@@ -15,9 +23,6 @@ static void send_backspace_esc() {
 }
 
 void print_welcome() {
-    printf(CSI_DOUBLE "2J");
-    printf(CSI_DOUBLE "1;1H");
-
     printf("Welcome to KSH!\n");
     printf("Copyright (c) 2018, Keeley Hoek.\n");
     printf("All rights reserved.\n\n");
@@ -26,6 +31,39 @@ void print_welcome() {
 void print_linestart() {
     printf("root@k-os:/$ ");
 }
+
+char * try_execve(char *path_part, char **argv_tab, uint32_t cmd_len) {
+    char *envp_tab[] = { NULL };
+    char path_buff[MAX_CMD_LEN + 1];
+
+    uint32_t count = 0;
+    while(*path_part && *path_part != PATH_SEPARATOR && count < MAX_CMD_LEN) {
+        path_buff[count++] = *path_part++;
+    }
+
+    if(count + 1 + cmd_len >= MAX_CMD_LEN) {
+        path_buff[count] = 0;
+        printf("path lookup too long: %s/%s\n", path_buff, argv_tab[0]);
+        exit(1);
+    }
+
+    // If path_part was nontrivial and doesn't end in a DIRECTORY_SEPARATOR, add
+    // one.
+    if(count && path_buff[count - 1] != DIRECTORY_SEPARATOR) {
+        path_buff[count++] = DIRECTORY_SEPARATOR;
+    }
+
+    memcpy(path_buff + count, argv_tab[0], cmd_len + 1);
+
+    int fd = open(path_buff, 0);
+    if(fd != -1) {
+        fexecve(fd, argv_tab, envp_tab);
+    }
+
+    return *path_part ? path_part + 1 : NULL;
+}
+
+char *PATH = "/usr/sbin:/usr/bin:/sbin:/bin";
 
 void execute_command(char *raw) {
     char cmd_buff[MAX_CMD_LEN + 1];
@@ -74,9 +112,18 @@ void execute_command(char *raw) {
     if(cpid) {
         waitpid(cpid, NULL, 0);
     } else {
-        execve(argv_tab[0], argv_tab, NULL);
+        uint32_t cmd_len = strlen(argv_tab[0]);
+
+        try_execve("", argv_tab, cmd_len);
+
+        bool cmd_contains_sep = strchr(argv_tab[0], DIRECTORY_SEPARATOR) != NULL;
+        if(!cmd_contains_sep) {
+            char *next = PATH;
+            while((next = try_execve(next, argv_tab, cmd_len)));
+        }
+
         printf("%s: command not found\n", argv_tab[0]);
-        _exit(1);
+        exit(1);
     }
 }
 
