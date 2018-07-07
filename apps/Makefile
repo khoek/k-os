@@ -5,41 +5,43 @@ include $(ROOTDIR)/Makefile.config
 
 .DELETE_ON_ERROR:
 
-LIBKLD := linker.ld
-
 RESDIR := res
 SRCDIR := src
 OUTDIR := build
 
-CFLAGS := -Wall -Wextra -Werror -Wno-unused-parameter -m32 -std=gnu99         \
-	-nostdlib -ffreestanding -I$(LIBKDIR)/inc -I$(LIBCBINDIR)/$(TARGET)/include  \
-	-g -O3 -T $(LIBKDIR)/$(LIBKLD)
-LIBS := $(LIBKDIR)/libk.a $(LIBCBINDIR)/$(TARGET)/lib/libc.a $(LIBCBINDIR)/$(TARGET)/lib/libg.a $(LIBCBINDIR)/$(TARGET)/lib/libm.a $(LIBKDIR)/libk.a
+CFLAGS := -Wall -Wextra -Werror -Wno-unused-parameter -std=gnu99 -g -O3
 
 RESS := $(shell find -L $(RESDIR) -type f -name "*")
 RESO := $(patsubst $(RESDIR)/%,$(OUTDIR)/%,$(RESS))
+
+EXTRAS := $(shell mkdir -p $(APPSEXTRAPREFIX); find -L $(APPSEXTRAPREFIX) -type f -name "*")
+EXTRAO := $(patsubst $(APPSEXTRAPREFIX)/%,$(OUTDIR)/%,$(EXTRAS))
 
 SRCS := $(shell find -L $(SRCDIR) -type f -name "*.c")
 OBJS := $(patsubst $(SRCDIR)/%.c,$(OUTDIR)/%,$(SRCS))
 
 all: $(ROOTRAMFS)
-	@echo $(CFLAGS)
-	@echo $(LIBS)
 
-$(ROOTRAMFS): $(OBJS) $(RESO)
+$(ROOTRAMFS): $(RESO) $(EXTRAO) $(OBJS)
 	@echo "      mkrootramfs"
 	@$(UTILBINDIR)/$(MKROOTRAMFS) -o $@ $(OUTDIR)
-
-$(OBJS): $(OUTDIR)/% : $(SRCDIR)/%.c $(LIBS)
-	@echo "      cc  $(patsubst $(SRCDIR)%,%,$<) -> $(patsubst $(OUTDIR)%,%,$@)"
-	@mkdir -p $(shell dirname $@)
-	@$(KCC) $(CFLAGS) -o $@ $< $(LIBS)
 
 $(RESO): $(OUTDIR)/% : $(RESDIR)/%
 	@echo "      cp  $(patsubst $(RESDIR)%,%,$<) -> $(patsubst $(OUTDIR)%,%,$@)"
 	@mkdir -p $(shell dirname $@)
 	@cp $< $@
 
+$(EXTRAO): $(OUTDIR)/% : $(APPSEXTRAPREFIX)/%
+	@echo "      cp  $(patsubst $(APPSEXTRAPREFIX)%,%,$<) -> $(patsubst $(OUTDIR)%,%,$@)"
+	@mkdir -p $(shell dirname $@)
+	@cp $< $@
+
+$(OBJS): $(OUTDIR)/% : $(SRCDIR)/%.c $(KSYSLIBDIR)/libc.a
+	@echo "      cc  $(patsubst $(SRCDIR)%,%,$<) -> $(patsubst $(OUTDIR)%,%,$@)"
+	@mkdir -p $(shell dirname $@)
+	@$(KCC) $(CFLAGS) -o $@ $<
+
 clean:
+	rm -rf $(APPSEXTRAPREFIX)
 	rm -rf $(OUTDIR)
 	rm -rf $(ROOTRAMFS)

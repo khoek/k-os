@@ -1,6 +1,8 @@
 ROOTDIR ?= $(shell readlink -f ..)
 include $(ROOTDIR)/Makefile.config
 
+############# TODO CHECK LIBCSTARTDIR is being output correct
+
 DLDIR := $(TOOLCHAINDIR)/dl
 SRCDIR := $(TOOLCHAINDIR)/src
 PATCHDIR := $(TOOLCHAINDIR)/patch
@@ -43,6 +45,7 @@ ARTIFACT_GMP := $(TOOLCHAINBINDIR)/lib/libgmp.a
 ARTIFACT_MPFR := $(TOOLCHAINBINDIR)/lib/libmpfr.a
 ARTIFACT_MPC := $(TOOLCHAINBINDIR)/lib/libmpc.a
 ARTIFACT_GCC := $(TOOLCHAINBINDIR)/bin/$(TARGET)-gcc
+ARTIFACT_LIBGCC := $(TOOLCHAINBINDIR)/lib/gcc/$(TARGET)/$(GCC_VER)/libgcc.a
 
 PATCH_AUTOCONF := $(PATCHDIR)/$(NAME_AUTOCONF).patch
 PATCH_BINUTILS := $(PATCHDIR)/$(NAME_BINUTILS).patch
@@ -66,7 +69,7 @@ endif
 
 FLAG_DIST_BUILT := .flag.dist-built
 
-.PHONY: all required tools dl check check-binutils check-gmp check-mpfr check-mpc clean-full clean clean-dl clean-src clean-build clean-noredl
+.PHONY: all required tools libgcc dl check check-binutils check-gmp check-mpfr check-mpc clean-full clean clean-dl clean-src clean-build clean-noredl
 
 .DELETE_ON_ERROR:
 
@@ -75,11 +78,12 @@ all: tools check
 
 $(FLAG_DIST_BUILT):
 	$(MAKE) all
-	touch $(FLAG_DIST_BUILT)
 
 required: $(FLAG_DIST_BUILT)
 
 tools: $(ARTIFACT_AUTOCONF) $(ARTIFACT_AUTOMAKE) $(ARTIFACT_BINUTILS) $(ARTIFACT_GCC)
+
+libgcc: $(ARTIFACT_LIBGCC)
 
 dl: $(DLDIR)/$(AR_PERL) $(DLDIR)/$(AR_AUTOMAKE) $(DLDIR)/$(AR_AUTOCONF) $(DLDIR)/$(AR_BINUTILS) $(DLDIR)/$(AR_GMP) $(DLDIR)/$(AR_MPFR) $(DLDIR)/$(AR_MPC) $(DLDIR)/$(AR_GCC)
 
@@ -149,6 +153,7 @@ $(SRCDIR)/$(NAME_GCC)/configure: $(DLDIR)/$(AR_GCC)
 
 .flag.$(NAME_BINUTILS)-patched: $(SRCDIR)/$(NAME_BINUTILS)/configure
 	patch -p0 < $(PATCH_BINUTILS)
+	sed -i "s_KOSLIBDIRS_/$(KSYSLIBPREFIX)_g" $(SRCDIR)/$(NAME_BINUTILS)/ld/configure.tgt
 	touch $@
 
 .flag.$(NAME_BINUTILS)-reconfigured: .flag.$(NAME_BINUTILS)-patched $(ARTIFACT_AUTOMAKE)
@@ -157,6 +162,9 @@ $(SRCDIR)/$(NAME_GCC)/configure: $(DLDIR)/$(AR_GCC)
 
 .flag.$(NAME_GCC)-patched: $(SRCDIR)/$(NAME_GCC)/configure
 	patch -p0 < $(PATCH_GCC)
+	sed -i "s_KOSSYSHEADDIR_/$(KSYSHEADERPREFIX)_g" $(SRCDIR)/$(NAME_GCC)/gcc/config.gcc
+	rm -f $(SRCDIR)/$(NAME_GCC)/gcc/config/kos-autogen.h
+	echo "#undef STANDARD_STARTFILE_PREFIX\n#define STANDARD_STARTFILE_PREFIX \"$(KSYSSTARTDIR)\"\n" > $(SRCDIR)/$(NAME_GCC)/gcc/config/kos-autogen.h
 	touch $@
 
 .flag.$(NAME_GCC)-reconfigured: .flag.$(NAME_GCC)-patched $(ARTIFACT_AUTOCONF)
@@ -184,7 +192,7 @@ $(BUILDDIR)/$(NAME_AUTOMAKE)/Makefile: $(SRCDIR)/$(NAME_AUTOMAKE)/configure $(AR
 $(BUILDDIR)/$(NAME_BINUTILS)/Makefile: .flag.$(NAME_BINUTILS)-reconfigured
 	mkdir -p $(TOOLCHAINBINDIR)
 	mkdir -p $(BUILDDIR)/$(NAME_BINUTILS)
-	cd $(BUILDDIR)/$(NAME_BINUTILS) && sh $(SRCDIR)/$(NAME_BINUTILS)/configure $(TOOLCHAIN_CONFFLAGS) --target=$(TARGET) --prefix=$(TOOLCHAINBINDIR)
+	cd $(BUILDDIR)/$(NAME_BINUTILS) && sh $(SRCDIR)/$(NAME_BINUTILS)/configure $(TOOLCHAIN_CONFFLAGS) --target=$(TARGET) --prefix=$(TOOLCHAINBINDIR) --with-sysroot=$(KSYSROOT)
 	cd $(TOOLCHAINDIR)
 
 $(BUILDDIR)/$(NAME_GMP)/Makefile: $(SRCDIR)/$(NAME_GMP)/configure
@@ -206,9 +214,10 @@ $(BUILDDIR)/$(NAME_MPC)/Makefile: $(SRCDIR)/$(NAME_MPC)/configure $(ARTIFACT_GMP
 	cd $(TOOLCHAINDIR)
 
 $(BUILDDIR)/$(NAME_GCC)/Makefile: .flag.$(NAME_GCC)-reconfigured $(ARTIFACT_BINUTILS) $(ARTIFACT_GMP) $(ARTIFACT_MPFR) $(ARTIFACT_MPC)
+	mkdir -p $(KSYSHEADERDIR)
 	mkdir -p $(TOOLCHAINBINDIR)
 	mkdir -p $(BUILDDIR)/$(NAME_GCC)
-	cd $(BUILDDIR)/$(NAME_GCC) && sh $(SRCDIR)/$(NAME_GCC)/configure $(TOOLCHAIN_CONFFLAGS) --target=$(TARGET) --prefix=$(TOOLCHAINBINDIR) --enable-languages=c --without-headers --disable-nls --with-gmp=$(TOOLCHAINBINDIR) --with-mpfr=$(TOOLCHAINBINDIR) --with-mpc=$(TOOLCHAINBINDIR)
+	cd $(BUILDDIR)/$(NAME_GCC) && sh $(SRCDIR)/$(NAME_GCC)/configure $(TOOLCHAIN_CONFFLAGS) --target=$(TARGET) --prefix=$(TOOLCHAINBINDIR) --enable-languages=c --without-headers --disable-nls --with-gmp=$(TOOLCHAINBINDIR) --with-mpfr=$(TOOLCHAINBINDIR) --with-mpc=$(TOOLCHAINBINDIR) --with-sysroot=$(KSYSROOT)
 	cd $(TOOLCHAINDIR)
 
 $(ARTIFACT_PERL): $(SRCDIR)/$(NAME_PERL)/Makefile
@@ -241,10 +250,20 @@ $(ARTIFACT_MPC): $(BUILDDIR)/$(NAME_MPC)/Makefile
 	$(MAKE) $(TOOLCHAIN_MAKEFLAGS) -C $(shell dirname $<) install
 
 $(ARTIFACT_GCC): $(BUILDDIR)/$(NAME_GCC)/Makefile
+	mkdir -p $(KSYSHEADERDIR)
 	$(MAKE) $(TOOLCHAIN_MAKEFLAGS) -C $(shell dirname $<) all-gcc
-	$(MAKE) $(TOOLCHAIN_MAKEFLAGS) -C $(shell dirname $<) all-target-libgcc
 	$(MAKE) $(TOOLCHAIN_MAKEFLAGS) -C $(shell dirname $<) install-gcc
+
+$(ARTIFACT_LIBGCC): $(BUILDDIR)/$(NAME_GCC)/Makefile
+	$(MAKE) $(TOOLCHAIN_MAKEFLAGS) -C $(shell dirname $<) all-target-libgcc
 	$(MAKE) $(TOOLCHAIN_MAKEFLAGS) -C $(shell dirname $<) install-target-libgcc
+
+# FIXME I don't think this is necessary---gcc should autodetect where it put it
+# during the build phase
+# publish-libgcc: $(ARTIFACT_LIBGCC)
+# 	@mkdir -p $(KSYSLIBDIR)
+# 	@rm -f $(KSYSLIBDIR)/libgcc.a
+# 	cp $(ARTIFACT_LIBGCC) $(KSYSLIBDIR)/libgcc.a
 
 check: check-binutils check-gmp check-mpfr check-mpc
 

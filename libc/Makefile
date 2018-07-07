@@ -32,6 +32,8 @@ ARTIFACT_NEWLIB := $(LIBCBINDIR)/$(TARGET)/lib/libc.a
 
 PATCH_NEWLIB := $(PATCHDIR)/$(NAME_NEWLIB).patch
 
+PUBLISHED_NEWLIB := $(KSYSLIBDIR)/libc.a
+
 export AUTOCONF := $(TOOLCHAINBINDIR)/bin/autoconf
 export AUTORECONF := $(TOOLCHAINBINDIR)/bin/autoreconf
 export AUTOMAKE := $(TOOLCHAINBINDIR)/bin/automake
@@ -39,16 +41,15 @@ export ACLOCAL := $(TOOLCHAINBINDIR)/bin/aclocal
 
 FLAG_DIST_BUILT := .flag.dist-built
 
-.PHONY: all required dl clean-all clean clean-dl clean-src clean-build clean-noredl
+.PHONY: all required dl libgcc publish clean-all clean clean-dl clean-src clean-build clean-noredl
 
 .DELETE_ON_ERROR:
 
-all: $(ARTIFACT_NEWLIB)
+all: publish libgcc
 	@touch $(FLAG_DIST_BUILT)
 
 $(FLAG_DIST_BUILT):
 	$(MAKE) all
-	@touch $(FLAG_DIST_BUILT)
 
 required: $(FLAG_DIST_BUILT)
 
@@ -65,9 +66,9 @@ $(SRCDIR)/$(NAME_NEWLIB)/configure: $(DLDIR)/$(AR_NEWLIB)
 #TODO ADD SOME CONSTANDS FOR THESE COMMANDS
 .flag.$(NAME_NEWLIB)-patched: $(SRCDIR)/$(NAME_NEWLIB)/configure
 	rm -rf $(SRCDIR)/$(NAME_NEWLIB)/newlib/libc/sys/kos
-	cp -a sys $(SRCDIR)/$(NAME_NEWLIB)/newlib/libc/sys/kos
+	cp -r sys $(SRCDIR)/$(NAME_NEWLIB)/newlib/libc/sys/kos
 	mkdir -p $(SRCDIR)/$(NAME_NEWLIB)/newlib/libc/sys/kos/include
-	cp -a $(LIBKDIR)/inc/. $(SRCDIR)/$(NAME_NEWLIB)/newlib/libc/sys/kos/include
+	cp -r $(LIBKDIR)/inc/. $(SRCDIR)/$(NAME_NEWLIB)/newlib/libc/sys/kos/include
 	patch -p0 < $(PATCH_NEWLIB)
 	touch $@
 
@@ -86,6 +87,21 @@ $(BUILDDIR)/$(NAME_NEWLIB)/Makefile: .flag.$(NAME_NEWLIB)-reconfigured $(ARTIFAC
 $(ARTIFACT_NEWLIB): $(BUILDDIR)/$(NAME_NEWLIB)/Makefile
 	$(MAKE) -C $(shell dirname $<)
 	$(MAKE) -C $(shell dirname $<) install
+	cp -r -L $(LIBKDIR)/inc/. $(LIBCHEADERDIR)
+
+#FIXME HACKY
+#FIXME Clean this if we run make clean? surely...
+libgcc: $(ARTIFACT_NEWLIB)
+		$(MAKE) $(TOOLCHAIN_MAKEFLAGS) -C $(TOOLCHAINDIR) libgcc
+
+publish: $(PUBLISHED_NEWLIB)
+
+$(PUBLISHED_NEWLIB): $(ARTIFACT_NEWLIB)
+	@mkdir -p $(KSYSLIBDIR)
+	cp -r $(LIBCHEADERDIR)/. $(KSYSHEADERDIR)
+	cp $(LIBCBINDIR)/$(TARGET)/lib/libc.a $(KSYSLIBDIR)
+	cp $(LIBCBINDIR)/$(TARGET)/lib/libg.a $(KSYSLIBDIR)
+	cp $(LIBCBINDIR)/$(TARGET)/lib/libm.a $(KSYSLIBDIR)
 
 clean-all: clean-dl clean-src clean-build clean-dist
 

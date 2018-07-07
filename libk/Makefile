@@ -9,12 +9,15 @@ SRCDIR := src
 INCDIR := inc
 OBJDIR := build
 
+LIBDIR := $(LIBKBINDIR)/lib
+CRTDIR := $(LIBKBINDIR)/crt
+
+CRTOBJS := $(CRTDIR)/crt0.o
+
 ASFLAGS := -m32 -I$(INCDIR) -nostdlib -ffreestanding -c
 
-CFLAGS := -Wall -Wextra -Werror -Wno-unused-parameter -m32 -I$(INCDIR) \
-	-I$(LIBCBINDIR)/$(TARGET)/include																			\
-	-std=gnu99 -nostdlib -ffreestanding --sysroot=$(INCDIR) 							\
-	--sysroot=$(LIBCBINDIR)/$(TARGET)/include -c -g -O3
+CFLAGS := -Wall -Wextra -Werror -Wno-unused-parameter -std=gnu99 -c -g -O3 \
+ 	-nostdlib -ffreestanding
 
 ASSRCS := $(shell find -L $(SRCDIR) -type f -name "*.s")
 ASOBJS := $(patsubst $(SRCDIR)/%.s,$(OBJDIR)/%.o,$(ASSRCS))
@@ -27,7 +30,11 @@ CCOBJS := $(patsubst $(SRCDIR)/%.c,$(OBJDIR)/%.o,$(CCSRCS))
 
 OBJS := $(ASOBJS) $(ASPPOBJS) $(CCOBJS)
 
-all: $(LIBKAR)
+all: publish
+
+$(CRTOBJS): $(CRTDIR)/%.o : $(OBJDIR)/%.o
+	@mkdir -p $(shell dirname $@)
+	cp $< $@
 
 $(ASOBJS): $(OBJDIR)/%.o : $(SRCDIR)/%.s
 	@echo "      as  $(patsubst $(SRCDIR)/%,%,$<)"
@@ -44,11 +51,19 @@ $(CCOBJS): $(OBJDIR)/%.o : $(SRCDIR)/%.c
 	@mkdir -p $(shell dirname $@)
 	@$(KCC) $(CFLAGS) -DLIBK_SOURCE -o $@ $<
 
-$(LIBKAR): $(OBJS)
+$(LIBDIR)/$(LIBKAR): $(OBJS)
 	@echo "      ar  $@"
 	@rm -f $@
+	@mkdir -p $(shell dirname $@)
 	@$(KAR) rcs $@ $(OBJS)
+
+$(KSYSLIBDIR)/$(LIBKAR): $(LIBDIR)/$(LIBKAR) $(CRTOBJS)
+	@mkdir -p $(KSYSLIBDIR)
+	cp -r $(LIBDIR)/. $(KSYSLIBDIR)
+	cp -r $(CRTDIR)/. $(KSYSLIBDIR)
+
+publish: $(KSYSLIBDIR)/$(LIBKAR)
 
 clean:
 	rm -rf $(OBJDIR)
-	rm -rf $(LIBKAR)
+	rm -rf $(LIBKBINDIR)

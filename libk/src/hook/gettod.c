@@ -9,6 +9,7 @@ extern int errno;
 
 int gettimeofday (struct timeval *ptimeval, void *ptimezone) {
     errno = ENOSYS;
-    SYSCALL(unimplemented)("gettimeofday");
+    //FIXME for bash
+    //SYSCALL(unimplemented)("gettimeofday");
     return -1;
 }

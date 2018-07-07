@@ -167,8 +167,10 @@ void copy_mem(thread_t *to, thread_t *from);
 void * map_page(phys_addr_t phys);
 void * map_pages(phys_addr_t phys, uint32_t pages);
 
+page_t * user_get_page(thread_t *task, void *virt);
 void user_map_page(thread_t *task, void *virt, phys_addr_t page);
 void user_map_pages(thread_t *task, void *virt, phys_addr_t page, uint32_t num);
+page_t * user_alloc_page(thread_t *task, void *virt, uint32_t flags);
 
 void * __init mmu_init(phys_addr_t kernel_end, phys_addr_t malloc_start);
 

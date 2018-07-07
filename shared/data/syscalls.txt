@@ -31,6 +31,7 @@
 
 25:fexecve:int fd, char *const argv[], char *const envp[]
 26:getpid:
-27:waitpid:pid_t pid, int *stat_loc, int options
+27:getppid:
+28:waitpid:pid_t pid, int *stat_loc, int options
 
 100:unimplemented:char *msg

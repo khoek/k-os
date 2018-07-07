@@ -1,6 +1,6 @@
 diff -ruEwN src/binutils-2.30/bfd/config.bfd src/binutils-2.30-custom/bfd/config.bfd
 --- src/binutils-2.30/bfd/config.bfd	2018-01-14 00:31:15.000000000 +1100
-+++ src/binutils-2.30-custom/bfd/config.bfd	2018-07-03 02:22:40.728589000 +1000
++++ src/binutils-2.30-custom/bfd/config.bfd	2018-07-05 03:16:31.029543175 +1000
 @@ -1868,6 +1868,18 @@
      targ_defvec=m68k_coff_vec
      targ_selvecs=ieee_vec
@@ -22,7 +22,7 @@ diff -ruEwN src/binutils-2.30/bfd/config.bfd src/binutils-2.30-custom/bfd/config
      echo 1>&2 "*** BFD does not support target ${targ}."
 diff -ruEwN src/binutils-2.30/config.sub src/binutils-2.30-custom/config.sub
 --- src/binutils-2.30/config.sub	2018-01-14 00:31:15.000000000 +1100
-+++ src/binutils-2.30-custom/config.sub	2018-07-03 02:02:58.559350000 +1000
++++ src/binutils-2.30-custom/config.sub	2018-07-05 03:16:31.029543175 +1000
 @@ -1416,7 +1416,7 @@
  	      | -morphos* | -superux* | -rtmk* | -rtmk-nova* | -windiss* \
  	      | -powermax* | -dnix* | -nx6 | -nx7 | -sei* | -dragonfly* \
@@ -34,7 +34,7 @@ diff -ruEwN src/binutils-2.30/config.sub src/binutils-2.30-custom/config.sub
  	-qnx*)
 diff -ruEwN src/binutils-2.30/gas/configure.tgt src/binutils-2.30-custom/gas/configure.tgt
 --- src/binutils-2.30/gas/configure.tgt	2018-01-14 00:31:15.000000000 +1100
-+++ src/binutils-2.30-custom/gas/configure.tgt	2018-07-03 02:02:58.559350000 +1000
++++ src/binutils-2.30-custom/gas/configure.tgt	2018-07-05 03:16:31.029543175 +1000
 @@ -494,6 +494,7 @@
    *-*-aros*)				fmt=elf em=linux ;;
    *-*-vxworks* | *-*-windiss)		fmt=elf em=vxworks ;;
@@ -45,7 +45,7 @@ diff -ruEwN src/binutils-2.30/gas/configure.tgt src/binutils-2.30-custom/gas/con
  case ${cpu_type} in
 diff -ruEwN src/binutils-2.30/ld/configure.tgt src/binutils-2.30-custom/ld/configure.tgt
 --- src/binutils-2.30/ld/configure.tgt	2018-01-14 00:31:16.000000000 +1100
-+++ src/binutils-2.30-custom/ld/configure.tgt	2018-07-03 02:02:58.559350000 +1000
++++ src/binutils-2.30-custom/ld/configure.tgt	2018-07-05 03:17:34.411096578 +1000
 @@ -881,6 +881,15 @@
  			;;
  *-tandem-none)		targ_emul=st2000
@@ -62,21 +62,32 @@ diff -ruEwN src/binutils-2.30/ld/configure.tgt src/binutils-2.30-custom/ld/confi
  *)
    echo 2>&1 "*** ld does not support target ${targ}"
    echo 2>&1 "*** see ld/configure.tgt for supported targets"
+@@ -938,6 +947,10 @@
+ *-*-netbsd*)
+   ;;
+
++*-*-kos*)
++  NATIVE_LIB_DIRS="KOSLIBDIRS"
++  ;;
++
+ alpha*-*-*)
+   NATIVE_LIB_DIRS='/usr/local/lib /usr/ccs/lib /lib /usr/lib'
+   ;;
 diff -ruEwN src/binutils-2.30/ld/emulparams/elf_i386_kos.sh src/binutils-2.30-custom/ld/emulparams/elf_i386_kos.sh
 --- src/binutils-2.30/ld/emulparams/elf_i386_kos.sh	1970-01-01 10:00:00.000000000 +1000
-+++ src/binutils-2.30-custom/ld/emulparams/elf_i386_kos.sh	2018-07-03 02:02:58.571349000 +1000
++++ src/binutils-2.30-custom/ld/emulparams/elf_i386_kos.sh	2018-07-05 03:16:31.029543175 +1000
 @@ -0,0 +1,3 @@
 +. ${srcdir}/emulparams/elf_i386.sh
 +GENERATE_SHLIB_SCRIPT=yes
 +GENERATE_PIE_SCRIPT=yes
 diff -ruEwN src/binutils-2.30/ld/emulparams/elf_x86_64_kos.sh src/binutils-2.30-custom/ld/emulparams/elf_x86_64_kos.sh
 --- src/binutils-2.30/ld/emulparams/elf_x86_64_kos.sh	1970-01-01 10:00:00.000000000 +1000
-+++ src/binutils-2.30-custom/ld/emulparams/elf_x86_64_kos.sh	2018-07-03 02:02:58.571349000 +1000
++++ src/binutils-2.30-custom/ld/emulparams/elf_x86_64_kos.sh	2018-07-05 03:16:31.029543175 +1000
 @@ -0,0 +1 @@
 +. ${srcdir}/emulparams/elf_x86_64.sh
 diff -ruEwN src/binutils-2.30/ld/Makefile.am src/binutils-2.30-custom/ld/Makefile.am
 --- src/binutils-2.30/ld/Makefile.am	2018-01-14 00:31:16.000000000 +1100
-+++ src/binutils-2.30-custom/ld/Makefile.am	2018-07-03 02:02:58.571349000 +1000
++++ src/binutils-2.30-custom/ld/Makefile.am	2018-07-05 03:16:31.029543175 +1000
 @@ -435,7 +435,8 @@
  	exgateelf.c \
  	ez80.c \

@@ -564,6 +564,7 @@ void task_node_exit(int32_t code) {
 
     task_node_t *node = obtain_task_node(me);
     BUG_ON(!node);
+    node->exit_code = code;
 
     //FIXME don't do this (maybe)
     irqdisable();

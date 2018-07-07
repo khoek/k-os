@@ -85,7 +85,7 @@ void dump_stack_trace(console_t *t) {
     eip = get_address(me, ebp, 1);
 
     for(uint32_t frame = 0; eip && ebp && ebp > last_ebp && (!me || (ebp >= top && ebp <= bot)) && frame < MAX_STACK_FRAMES; frame++) {
-        const elf_symbol_t *symbol = debug_lookup_symbol(eip - 1);
+        const elf_symbol_t *symbol = debug_lookup_symbol(eip);
         if(symbol) {
             vram_putsf(t, "    %s+0x%X/0x%X\n", debug_symbol_name(symbol), eip - 1 - symbol->value, eip - 1);
         } else {

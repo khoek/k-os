@@ -172,11 +172,35 @@ void pl_setup_thread(thread_t *t, void *ip, void *arg) {
     set_live_state(t, state);
 }
 
-void arch_thread_build(thread_t *t) {
-    page_t *page = alloc_page(0);
+//replaces page dir with new passed one, or creates new one if newdir is NULL
+void * arch_replace_mem(thread_t *t, void *newdir) {
+    void *olddir = t->arch.dir;
+
+    page_t *page;
+    if(newdir) {
+        page = virt_to_page(newdir);
+    } else {
+        page = alloc_page(ALLOC_ZERO);
+        build_page_dir(page_to_virt(page));
+    }
+
     t->arch.dir = page_to_virt(page);
     t->arch.cr3 = (uint32_t) page_to_phys(page);
-    build_page_dir(t->arch.dir);
+
+    //FIXME is this a hack?
+    if(t == current) {
+        loadcr3(t->arch.cr3);
+    }
+
+    return olddir;
+}
+
+void arch_free_mem(void *dir) {
+    //FIXME free page directory dir
+}
+
+void arch_thread_build(thread_t *t) {
+    arch_replace_mem(t, NULL);
 }
 
 typedef struct fork_data {

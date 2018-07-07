@@ -44,7 +44,8 @@ static bool elf_header_valid(Elf32_Ehdr *ehdr) {
 
 static void * designate_space(thread_t *t, void *start, uint32_t num_pages) {
     while(resolve_virt(t, start)) {
-        start += num_pages * PAGE_SIZE;
+        panic("WRITING TO ALREADY ALLOC'D SPACE!");
+        //start += num_pages * PAGE_SIZE;
     }
 
     page_t *page = alloc_pages(num_pages, ALLOC_ZERO);
@@ -53,19 +54,18 @@ static void * designate_space(thread_t *t, void *start, uint32_t num_pages) {
     return start;
 }
 
-static uint32_t calculate_argc(char **argv) {
-    if(!argv) return 0;
+static uint32_t calculate_strtablen(char **tab) {
+    if(!tab) return 0;
 
-    uint32_t argc = 0;
-    while(*(argv++)) {
-        argc++;
+    uint32_t tablen = 0;
+    while(*(tab++)) {
+        tablen++;
     }
-    return argc;
+    return tablen;
 }
 
 uint32_t strcpylen(char *dest, const char *src) {
     uint32_t len = 0;
-
     while ((*dest++ = *src++) != '\0') {
         len++;
     }
@@ -73,112 +73,92 @@ uint32_t strcpylen(char *dest, const char *src) {
     return len;
 }
 
-static uint32_t build_argv(char **start, char **argv) {
-    uint32_t argc = calculate_argc(argv);
-
-    if(argv) {
-        char *end = (void *) (start + argc * sizeof(char *) + 1);
-        while(*argv) {
-            *(start++) = end;
-            end += strcpylen(end, *argv++) + 1;
-        }
+//returns a pointer to just after the copied strtab
+static void * build_strtab(char **start, char **tab, uint32_t *out_tablen) {
+    uint32_t tablen = calculate_strtablen(tab);
+    if(out_tablen) {
+        *out_tablen = tablen;
     }
 
+    char *end = (void *) (start + tablen * sizeof(char *) + 1);
+    while(*tab) {
+        *(start++) = end;
+        end += strcpylen(end, *tab++) + 1;
+    }
     *start = NULL;
 
-    return argc;
+    return end;
 }
 
 static bool load_elf(file_t *f, char **argv, char **envp) {
     irqdisable();
 
+    void *olddir = arch_replace_mem(current, NULL);
+
     Elf32_Ehdr *ehdr = kmalloc(sizeof(Elf32_Ehdr));
     if(vfs_read(f, ehdr, sizeof(Elf32_Ehdr)) != sizeof(Elf32_Ehdr)) {
-        return false;
+        goto fail;
     }
 
-    if(!elf_header_valid(ehdr)) return false;
-    if(!ehdr->e_phoff) return false;
+    if(!elf_header_valid(ehdr)) goto fail;
+    if(!ehdr->e_phoff) goto fail;
 
     kprintf("binfmt_elf - phdr @ %X", ehdr->e_phoff);
 
     Elf32_Phdr *phdr = kmalloc(sizeof(Elf32_Phdr) * ehdr->e_phnum);
     if(vfs_seek(f, ehdr->e_phoff) != ehdr->e_phoff) {
-        return false;
+        goto fail;
     }
     if(vfs_read(f, phdr, sizeof(Elf32_Phdr) * ehdr->e_phnum)
         != ((ssize_t) (sizeof(Elf32_Phdr) * ehdr->e_phnum))) {
-        return false;
+        goto fail;
     }
 
     for(uint32_t i = 0; i < ehdr->e_phnum; i++) {
-        //TODO validate the segments as we are going
+        // TODO: validate the segments as we are going, like, everything is
+        // vulnerable!
         switch(phdr[i].p_type) {
             case PT_NULL:
                 break;
             case PT_LOAD: {
-                kprintf("binfmt_elf - LOAD (%X, %X) @ %X -> %X", phdr[i].p_filesz, phdr[i].p_memsz, phdr[i].p_offset, phdr[i].p_vaddr);
-
-                volatile uint32_t data_len = MIN(phdr[i].p_filesz, phdr[i].p_memsz);
-                uint32_t zero_len = phdr[i].p_memsz - data_len;
-
-                uint32_t data_coppied = 0;
-                uint32_t zeroes_written = 0;
+                kprintf("binfmt_elf - LOAD (%X, %X) @ %X -> %X - %X", phdr[i].p_filesz, phdr[i].p_memsz, phdr[i].p_offset, phdr[i].p_vaddr, phdr[i].p_vaddr + phdr[i].p_memsz);
 
                 void *addr = (void *) phdr[i].p_vaddr;
                 if(vfs_seek(f, phdr[i].p_offset) != phdr[i].p_offset) {
-                    return false;
+                    goto fail;
                 }
 
-                while(data_coppied < data_len) {
-                    page_t *page = alloc_page(0);
-                    void *virt = page_to_virt(page);
-                    phys_addr_t phys = page_to_phys(page);
-
-                    user_map_page(current, addr, phys);
-
-                    uint32_t data_left = data_len - data_coppied;
-                    ssize_t chunk_len = MIN(data_left, PAGE_SIZE);
-
-                    if(vfs_read(f, virt, chunk_len) != chunk_len) {
-                        return false;
+                uint32_t bytes_written = 0;
+                while(bytes_written < phdr[i].p_memsz) {
+                    if(!user_get_page(current, addr + bytes_written)) {
+                        user_alloc_page(current, addr + bytes_written, 0);
                     }
 
-                    data_coppied += chunk_len;
-                    data_left -= chunk_len;
+                    uint32_t page_bytes_left = PAGE_SIZE - (bytes_written % PAGE_SIZE);
 
-                    //zero the rest of the page
-                    if(!data_left) {
-                        uint32_t zero_chunk_len = PAGE_SIZE - chunk_len;
-
-                        memset(virt + chunk_len, 0, zero_chunk_len);
-                        zeroes_written += zero_chunk_len;
+                    int32_t chunk_len;
+                    if(bytes_written < phdr[i].p_filesz) {
+                        chunk_len = MIN(page_bytes_left, phdr[i].p_filesz - bytes_written);
+                        if(vfs_read(f, addr + bytes_written, chunk_len) != chunk_len) {
+                            goto fail;
+                        }
+                    } else {
+                        chunk_len = MIN(page_bytes_left, phdr[i].p_memsz - bytes_written);
+                        memset(addr + bytes_written, 0, chunk_len);
                     }
 
-                    //TODO unmap the mapped page
-
-                    addr += PAGE_SIZE;
+                    bytes_written += chunk_len;
                 }
 
-                while(zeroes_written < zero_len) {
-                    //zero the whole page for security
-                    page_t *page = alloc_page(ALLOC_ZERO);
-                    user_map_page(current, addr, page_to_phys(page));
-
-                    zeroes_written += PAGE_SIZE;
-
-                    //TODO unmap the mapped page
-
-                    addr += PAGE_SIZE;
-                }
                 break;
             }
             case PT_TLS: {
+                panicf("binfmt_elf - unsupported phdr TLS");
                 break;
             }
             default:
-                kprintf("binfmt_elf - unsupported phdr type (0x%X)", phdr[i].p_type);
-                continue;
+                panicf("binfmt_elf - unsupported phdr type (0x%X)", phdr[i].p_type);
+                break;
         }
     }
 
@@ -198,12 +178,22 @@ static bool load_elf(file_t *f, char **argv, char **envp) {
 
     void *ustack = designate_stack(me) + USTACK_SIZE;
 
-    void *uargv = designate_args(me);
-    uint32_t argc = build_argv(uargv, argv);
+    uint32_t argc;
+    void *arg_buff = designate_args(me);
+
+    void *uargv = arg_buff;
+    arg_buff = build_strtab(arg_buff, argv, &argc);
+
+    // void *uenvp = arg_buff;
+    // arg_buff = build_strtab(arg_buff, envp, NULL);
 
     pl_bootstrap_userland((void *) ehdr->e_entry, ustack, argc, uargv, NULL);
 
     BUG();
+
+fail:
+    arch_replace_mem(current, olddir);
+    return false;
 }
 
 static binfmt_t elf = {

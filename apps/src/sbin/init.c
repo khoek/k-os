@@ -24,12 +24,12 @@ int main(int argc, char **argv) {
         if(shell_id) {
             pid_t child;
             while((child = wait(NULL)) != shell_id);
+            first_shell = false;
         } else {
             if(!first_shell) {
-                printf("Shell died, respawning!\n");
+                printf("\nShell died, respawning!\n");
             }
 
-            first_shell = false;
             execve("/sbin/ksh", shell_argv, shell_envp);
         }
     }

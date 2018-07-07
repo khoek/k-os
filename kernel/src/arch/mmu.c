@@ -13,9 +13,18 @@ ptab_t kptab[KERNEL_NUM_TABLES] ALIGN(PAGE_SIZE);
 static uint32_t kernel_next_page;
 static DEFINE_SPINLOCK(map_lock);
 
+static inline phys_addr_t do_user_get_page(thread_t *task, uint32_t diridx, uint32_t tabidx) {
+    ptab_t *tab = dir_get_tab(task->arch.dir, diridx);
+    return tab ? tabentry_get_phys(tab, tabidx) : 0;
+}
+
+page_t * user_get_page(thread_t *task, void *virt) {
+    phys_addr_t phys = do_user_get_page(task, addr_to_diridx(virt), addr_to_tabidx(virt));
+    return phys ? phys_to_page(phys) : NULL;
+}
+
 static inline void do_user_map_page(thread_t *task, uint32_t diridx, uint32_t tabidx, phys_addr_t phys) {
     pdir_t *dir = task->arch.dir;
-
     ptab_t *tab = dir_get_tab(dir, diridx);
     if(!tab) {
         page_t *table_page = alloc_page(ALLOC_ZERO);
@@ -41,6 +50,12 @@ void user_map_pages(thread_t *task, void *virt, phys_addr_t phys, uint32_t num) 
         uint32_t off = i * PAGE_SIZE;
         user_map_page(task, virt + off, phys + off);
     }
+}
+
+page_t * user_alloc_page(thread_t *task, void *virt, uint32_t flags) {
+    page_t *page = alloc_page(flags);
+    user_map_page(current, virt, page_to_phys(page));
+    return page;
 }
 
 void copy_mem(thread_t *to, thread_t *from) {

@@ -430,18 +430,36 @@ static task_node_t * find_child(task_node_t *me, pid_t pid) {
     return NULL;
 }
 
+//FIXME not remotely thread-safe
 DEFINE_SYSCALL(getpid) {
     return obtain_task_node(current)->pid;
 }
 
-DEFINE_SYSCALL(waitpid, pid_t pid, int *stat_loc, int UNUSED(options)) {
+//FIXME not remotely thread-safe
+DEFINE_SYSCALL(getppid) {
+    task_node_t *parent = obtain_task_node(current)->parent;
+    return parent ? parent->pid : 0;
+}
+
+#define WNOHANG 1
+#define WUNTRACED 2
+
+DEFINE_SYSCALL(waitpid, pid_t pid, int *stat_loc, int options) {
     task_node_t *node = obtain_task_node(current);
 
     pid_t cpid = -1;
     if(pid == -1) {
         task_node_t *zombie;
-        if(!wait_for_condition(zombie = reap_zombie(node))) {
-            return -1; //FIXME ERRINTR
+        zombie = reap_zombie(node);
+
+        if(!zombie) {
+            if(options & WNOHANG) {
+                return 0;
+            } else {
+                if(!wait_for_condition(zombie = reap_zombie(node))) {
+                    return -1; //FIXME ERRINTR
+                }
+            }
         }
 
         if(stat_loc) *stat_loc = WSTATE_EXITED | zombie->exit_code;

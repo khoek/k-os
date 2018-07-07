@@ -7,10 +7,10 @@ extern int errno;
 #include <k/sys.h>
 #include <k/math.h>
 
-extern uint32_t __mem_start;
+extern uint32_t __executable_start;
 extern uint32_t _end;
 
-void *_data_start = &__mem_start;
+void *_data_start = &__executable_start;
 void *_data_end = &_end;
 
 int brk(void *addr) {

@@ -1,0 +1,28 @@
+diff -ruEwN src/bash-4.4/configure src/bash-4.4-custom/configure
+--- src/bash-4.4/configure	2018-07-07 16:02:25.820984723 +1000
++++ src/bash-4.4-custom/configure	2018-07-07 16:01:39.018234634 +1000
+@@ -14642,9 +14642,9 @@
+   $as_echo_n "(cached) " >&6
+ else
+   if test "$cross_compiling" = yes; then :
+-  { $as_echo "$as_me:${as_lineno-$LINENO}: WARNING: cannot check whether getcwd allocates memory when cross-compiling -- defaulting to no" >&5
+-$as_echo "$as_me: WARNING: cannot check whether getcwd allocates memory when cross-compiling -- defaulting to no" >&2;}
+-    bash_cv_getcwd_malloc=no
++  { $as_echo "$as_me:${as_lineno-$LINENO}: WARNING: cannot check whether getcwd allocates memory when cross-compiling -- defaulting to yes" >&5
++$as_echo "$as_me: WARNING: cannot check whether getcwd allocates memory when cross-compiling -- defaulting to yes" >&2;}
++    bash_cv_getcwd_malloc=yes
+ 
+ else
+   cat confdefs.h - <<_ACEOF >conftest.$ac_ext
+diff -ruEwN src/bash-4.4/support/config.sub src/bash-4.4-custom/support/config.sub
+--- src/bash-4.4/support/config.sub	2013-12-18 02:49:47.000000000 +1100
++++ src/bash-4.4-custom/support/config.sub	2018-07-07 16:01:39.194230044 +1000
+@@ -1376,7 +1376,7 @@
+ 	      | -os2* | -vos* | -palmos* | -uclinux* | -nucleus* \
+ 	      | -morphos* | -superux* | -rtmk* | -rtmk-nova* | -windiss* \
+ 	      | -powermax* | -dnix* | -nx6 | -nx7 | -sei* | -dragonfly* \
+-	      | -skyos* | -haiku* | -rdos* | -toppers* | -drops* | -es*)
++	      | -skyos* | -haiku* | -rdos* | -toppers* | -drops* | -es* | -kos*)
+ 	# Remember, each alternative MUST END IN *, to match a version number.
+ 		;;
+ 	-qnx*)

@@ -237,11 +237,7 @@ static page_t * do_alloc_pages(uint32_t number) {
     panicf("OOM! wanted %X (%X/%X)", number, pages_in_use, pages_avaliable);
 }
 
-page_t * alloc_page(uint32_t flags) {
-    return alloc_pages(1, flags);
-}
-
-page_t * alloc_pages(uint32_t num, uint32_t flags) {
+static page_t * _alloc_pages(uint32_t num, uint32_t flags) {
     uint32_t f;
     spin_lock_irqsave(&alloc_lock, &f);
 
@@ -270,6 +266,14 @@ page_t * alloc_pages(uint32_t num, uint32_t flags) {
     spin_unlock_irqstore(&alloc_lock, f);
 
     return pages;
+}
+
+page_t * alloc_page(uint32_t flags) {
+    return _alloc_pages(1, flags);
+}
+
+page_t * alloc_pages(uint32_t num, uint32_t flags) {
+    return _alloc_pages(num, flags);
 }
 
 void free_page(page_t *page) {
@@ -441,8 +445,10 @@ void __init mm_init() {
     //In particular, this loop will probably (this caused bugs in the past)
     //drill holes in multiboot data so we can't ever use mbi again.
     for (uint32_t page = 0; page < NUM_ENTRIES * NUM_ENTRIES; page++) {
+        pages[page].addr = 0;
         pages[page].flags = PAGE_FLAG_PERM | PAGE_FLAG_USED;
         pages[page].order = 0;
+        pages[page].compound_num = 0;
     }
 
     //Find the free pages and free them.
