@@ -410,8 +410,8 @@ bool vfs_lookup(const path_t *start, const char *orig_path, path_t *out) {
                 if(path[1] == '.') {
                     while(!cwd.dentry->parent && cwd.mount != root_mount) {
                         BUG_ON(!cwd.mount->parent);
-                        cwd.mount = cwd.mount->parent;
                         cwd.dentry = cwd.mount->mountpoint;
+                        cwd.mount = cwd.mount->parent;
 
                         BUG_ON(!(cwd.dentry->inode->flags & INODE_FLAG_MOUNTPOINT));
                     }
