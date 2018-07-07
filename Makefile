@@ -80,7 +80,6 @@ clean:
 	$(MAKE) -C util clean
 	$(MAKE) -C kernel clean
 	$(MAKE) -C libk clean
-	$(MAKE) -C extern clean
 	$(MAKE) -C apps clean
 	$(MAKE) -C dist clean
 
