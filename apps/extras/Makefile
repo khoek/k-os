@@ -1,11 +1,10 @@
-ROOTDIR ?= $(shell readlink -f ..)
+ROOTDIR ?= $(shell readlink -f ../..)
 include $(ROOTDIR)/Makefile.config
 
 DLDIR := dl
 SRCDIR := src
 BUILDDIR := build
 PATCHDIR := patch
-BINDIR := dist
 
 export CFLAGS := -D_POSIX_VERSION=200809L -DNO_TTY_DRIVER=1 -g
 
@@ -39,7 +38,7 @@ ARTIFACT_COREUTILS := fakecore
 
 PATCH_BASH := $(PATCHDIR)/$(NAME_BASH).patch
 
-PUBLISHED_BASH := $(APPSEXTRADIR)/sbin/bash
+PUBLISHED_BASH := $(APPSDIR)/build/sbin/bash
 
 FLAG_DIST_BUILT := .flag.dist-built
 
@@ -79,16 +78,14 @@ $(SRCDIR)/$(NAME_COREUTILS)/configure: $(DLDIR)/$(AR_COREUTILS)
 	touch $@
 
 $(BUILDDIR)/$(NAME_BASH)/Makefile: .flag.$(NAME_BASH)-patched
-	mkdir -p $(BINDIR)
 	mkdir -p $(BUILDDIR)/$(NAME_BASH)
-	cd $(EXTERNDIR)/$(BUILDDIR)/$(NAME_BASH) && sh $(EXTERNDIR)/$(SRCDIR)/$(NAME_BASH)/configure -v --build=$(shell gcc -dumpmachine) --host=$(TARGET) --prefix=$(EXTERNDIR)/$(BINDIR)
-	cd $(EXTERNDIR)
+	cd $(APPSDIR)/extras/$(BUILDDIR)/$(NAME_BASH) && sh $(APPSDIR)/extras/$(SRCDIR)/$(NAME_BASH)/configure -v --build=$(shell gcc -dumpmachine) --host=$(TARGET)
+	cd $(APPSDIR)/extras
 
 $(BUILDDIR)/$(NAME_COREUTILS)/Makefile: $(SRCDIR)/$(NAME_COREUTILS)/configure
-	mkdir -p $(BINDIR)
 	mkdir -p $(BUILDDIR)/$(NAME_COREUTILS)
-	cd $(EXTERNDIR)/$(BUILDDIR)/$(NAME_COREUTILS) && sh $(EXTERNDIR)/$(SRCDIR)/$(NAME_COREUTILS)/configure -v --build=$(shell gcc -dumpmachine) --host=$(TARGET) --prefix=$(EXTERNDIR)/$(BINDIR)
-	cd $(EXTERNDIR)
+	cd $(APPSDIR)/extras/$(BUILDDIR)/$(NAME_COREUTILS) && sh $(APPSDIR)/extras/$(SRCDIR)/$(NAME_COREUTILS)/configure -v --build=$(shell gcc -dumpmachine) --host=$(TARGET)
+	cd $(APPSDIR)/extras
 
 $(ARTIFACT_BASH): $(BUILDDIR)/$(NAME_BASH)/Makefile
 	$(MAKE) -C $(shell dirname $<)
@@ -120,5 +117,4 @@ clean-build:
 	rm -rf $(BUILDDIR)
 
 clean-dist:
-	rm -rf $(EXTERNDIR)/$(BINDIR)
 	rm -f $(FLAG_DIST_BUILT)

@@ -1,7 +1,7 @@
 ROOTDIR ?= $(shell readlink -f .)
 include Makefile.config
 
-.PHONY: all complete aux aux-required toolchain-required libc-required toolchain run debug shared kernel libk libc extern util apps dist run clean-all clean-all-noredl clean clean-libc clean-toolchain clean-aux
+.PHONY: all complete aux aux-required toolchain-required libc-required toolchain run debug shared kernel libk libc util apps dist run clean-all clean-all-noredl clean clean-libc clean-toolchain clean-aux
 
 .DELETE_ON_ERROR:
 
@@ -38,16 +38,13 @@ util:
 shared: util
 	$(MAKE) -C shared all
 
-extern: aux-required libk
-	$(MAKE) -C extern all
-
 kernel: aux-required shared
 	$(MAKE) -C kernel all
 
 libk: aux-required shared
 	$(MAKE) -C libk all
 
-apps: aux-required extern libk util
+apps: aux-required libk util
 	$(MAKE) -C apps all
 
 dist: kernel apps
@@ -60,7 +57,6 @@ clean-all:
 	$(MAKE) -C util clean
 	$(MAKE) -C kernel clean
 	$(MAKE) -C libk clean
-	$(MAKE) -C extern clean
 	$(MAKE) -C apps clean-all
 	$(MAKE) -C dist clean-all
 
@@ -71,8 +67,7 @@ clean-all-noredl:
 	$(MAKE) -C util clean
 	$(MAKE) -C kernel clean
 	$(MAKE) -C libk clean
-	$(MAKE) -C extern clean
-	$(MAKE) -C apps clean-all
+	$(MAKE) -C apps clean-all-noredl
 	$(MAKE) -C dist clean-all
 
 clean:
