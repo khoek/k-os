@@ -25,9 +25,9 @@ toolchain-required:
 toolchain-dl:
 	$(MAKE) -C toolchain dl
 
-libc: toolchain-required
+libc: toolchain-required shared
 	$(MAKE) -C libc all
-libc-required: toolchain-required
+libc-required: toolchain-required shared
 	$(MAKE) -C libc required
 libc-dl:
 	$(MAKE) -C libc dl
