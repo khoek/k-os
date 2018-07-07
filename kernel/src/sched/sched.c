@@ -140,8 +140,8 @@ static inline ufd_context_t * ufd_context_dup(ufd_context_t *src) {
 static inline fs_context_t * fs_context_build() {
     fs_context_t *fs = kmalloc(sizeof(fs_context_t));
     fs->refs = 1;
-    fs->root = ROOT_PATH(root_mount);
-    fs->pwd = ROOT_PATH(root_mount);
+    fs->root = MNT_ROOT(root_mount);
+    fs->pwd = MNT_ROOT(root_mount);
     spinlock_init(&fs->lock);
 
     return fs;

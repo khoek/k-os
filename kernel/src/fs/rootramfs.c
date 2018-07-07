@@ -93,6 +93,6 @@ void rootramfs_load(void *start, uint32_t len) {
 
     uint32_t off = sizeof(rootramfs_header_t);
     while(off < len) {
-        off += entry_reconstruct(start + off, &ROOT_PATH(root_mount));
+        off += entry_reconstruct(start + off, &MNT_ROOT(root_mount));
     }
 }

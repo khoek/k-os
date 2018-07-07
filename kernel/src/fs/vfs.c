@@ -349,43 +349,34 @@ bool vfs_lookup(const path_t *start, const char *orig_path, path_t *out) {
     char *path = strdup(orig_path);
     char *new_path = path;
 
-    mount_t *mount;
-    dentry_t *wd;
+    path_t cwd;
 
     if(*path != DIRECTORY_SEPARATOR && start) {
-        mount = start->mount;
-        wd = start->dentry;
+        cwd = *start;
     } else {
         if(*path == DIRECTORY_SEPARATOR) {
             path++;
         }
 
-        mount = root_mount;
-        wd = root_mount->fs->root;
+        cwd = MNT_ROOT(root_mount);
     }
 
     bool finished = false;
-    while(!finished && *path && wd) {
+    while(!finished && *path && cwd.dentry) {
         char *next = path;
 
-        BUG_ON(!wd->inode);
+        BUG_ON(!cwd.dentry->inode);
 
-        if(!(wd->inode->flags & INODE_FLAG_DIRECTORY)) {
-            wd = NULL;
+        if(!(cwd.dentry->inode->flags & INODE_FLAG_DIRECTORY)) {
+            cwd.dentry = NULL;
             break;
         }
 
-        //If wd points to a mountpoint then decend it
-        if(wd->inode->flags & INODE_FLAG_MOUNTPOINT) {
-            path_t mnt;
-            mnt.mount = mount;
-            mnt.dentry = wd;
-
-            mount_t *submount = get_mount(&mnt);
+        //If cwd.dentry points to a mountpoint then decend it
+        if(cwd.dentry->inode->flags & INODE_FLAG_MOUNTPOINT) {
+            mount_t *submount = get_mount(&cwd);
             BUG_ON(!submount);
-
-            mount = submount;
-            wd = submount->fs->root;
+            cwd = MNT_ROOT(submount);
 
             goto lookup_next;
         }
@@ -417,16 +408,18 @@ bool vfs_lookup(const path_t *start, const char *orig_path, path_t *out) {
             }
             case 2: {
                 if(path[1] == '.') {
-                    if(wd->parent) {
-                        wd = wd->parent;
-                    } else if(wd->inode->flags & INODE_FLAG_MOUNTPOINT) {
-                        BUG_ON(!mount->parent);
-                        wd = mount->mountpoint;
-                        mount = mount->parent;
-                    } else if(mount == root_mount) {
-                        //do nothing
+                    while(!cwd.dentry->parent && cwd.mount != root_mount) {
+                        BUG_ON(!cwd.mount->parent);
+                        cwd.mount = cwd.mount->parent;
+                        cwd.dentry = cwd.mount->mountpoint;
+
+                        BUG_ON(!(cwd.dentry->inode->flags & INODE_FLAG_MOUNTPOINT));
+                    }
+
+                    if(cwd.dentry->parent) {
+                        cwd.dentry = cwd.dentry->parent;
                     } else {
-                        BUG();
+                        //do nothing if we are at the root
                     }
 
                     goto lookup_next;
@@ -436,38 +429,43 @@ bool vfs_lookup(const path_t *start, const char *orig_path, path_t *out) {
 
         //have we cached this child?
         dentry_t *child;
-        HASHTABLE_FOR_EACH_COLLISION(str_to_key(path, len), child, wd->children_tab, node) {
+        HASHTABLE_FOR_EACH_COLLISION(str_to_key(path, len), child, cwd.dentry->children_tab, node) {
             if(!memcmp(child->name, path, len)) {
-                wd = child;
+                cwd.dentry = child;
                 goto lookup_next;
             }
         }
 
         //request the fs driver resolves the path segment into a new dentry
         child = dentry_alloc(strdup(path));
-        wd->inode->ops->lookup(wd->inode, child);
+        cwd.dentry->inode->ops->lookup(cwd.dentry->inode, child);
 
         //does the requested path segment resolve?
         if(!child->inode) {
             dentry_free(child);
-            wd = NULL;
+            cwd.dentry = NULL;
             break;
         }
 
-        wd = child;
+        cwd.dentry = child;
 
 lookup_next:
         path = next;
     }
 
-    if(wd) {
-        out->dentry = wd;
-        out->mount = mount;
+    if(cwd.dentry) {
+        if(cwd.dentry->inode->flags & INODE_FLAG_MOUNTPOINT) {
+            mount_t *submount = get_mount(&cwd);
+            BUG_ON(!submount);
+            cwd = MNT_ROOT(submount);
+        }
+
+        *out = cwd;
     }
 
     kfree(new_path);
 
-    return !!wd;
+    return cwd.dentry;
 }
 
 file_t * vfs_open_file(dentry_t *dentry) {
