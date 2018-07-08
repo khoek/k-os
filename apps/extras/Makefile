@@ -50,7 +50,7 @@ FLAG_DIST_BUILT := .flag.dist-built
 all: publish
 	@touch $(FLAG_DIST_BUILT)
 
-$(FLAG_DIST_BUILT):
+$(FLAG_DIST_BUILT): $(KSYSLIBDIR)/libk.a $(KSYSLIBDIR)/libc.a
 	$(MAKE) all
 
 required: $(FLAG_DIST_BUILT)
@@ -63,12 +63,14 @@ $(DLDIR)/$(AR_BASH):
 $(DLDIR)/$(AR_COREUTILS):
 	$(WGET) -P $(DLDIR) $(WGETFLAGS) $(URL_COREUTILS)
 
-$(SRCDIR)/$(NAME_BASH)/configure: $(DLDIR)/$(AR_BASH)
+$(SRCDIR)/$(NAME_BASH)/configure: $(DLDIR)/$(AR_BASH) $(KSYSLIBDIR)/libk.a $(KSYSLIBDIR)/libc.a
+	rm -rf $(BUILDDIR)/$(NAME_BASH)
 	mkdir -p $(SRCDIR)
 	$(TAR) -C $(SRCDIR) -xf $(DLDIR)/$(AR_BASH)
 	touch $@
 
-$(SRCDIR)/$(NAME_COREUTILS)/configure: $(DLDIR)/$(AR_COREUTILS)
+$(SRCDIR)/$(NAME_COREUTILS)/configure: $(DLDIR)/$(AR_COREUTILS) $(KSYSLIBDIR)/libk.a $(KSYSLIBDIR)/libc.a
+	rm -rf $(BUILDDIR)/$(NAME_COREUTILS)
 	mkdir -p $(SRCDIR)
 	$(TAR) -C $(SRCDIR) -xf $(DLDIR)/$(AR_COREUTILS)
 	touch $@

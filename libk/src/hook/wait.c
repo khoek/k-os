@@ -1,9 +1,4 @@
 #include <sys/wait.h>
-
-#include <errno.h>
-#undef errno
-extern int errno;
-
 #include <k/sys.h>
 
 pid_t wait(int *stat_loc) {
@@ -11,5 +6,5 @@ pid_t wait(int *stat_loc) {
 }
 
 pid_t waitpid(pid_t pid, int *stat_loc, int options) {
-    return SYSCALL(waitpid)(pid, stat_loc, options);
+    return MAKE_SYSCALL(waitpid, pid, stat_loc, options);
 }

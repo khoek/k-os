@@ -3,6 +3,7 @@
 #include "lib/printf.h"
 #include "arch/gdt.h"
 #include "arch/idt.h"
+#include "time/timer.h"
 #include "time/clock.h"
 #include "log/log.h"
 
@@ -174,10 +175,15 @@ void spkr_set_freq(uint32_t freq) {
     spin_unlock_irqstore(&pit_lock, flags);
 }
 
+static void end_beep(void *unused) {
+    spkr_set_freq(0);
+}
+
 void beep() {
     spkr_set_freq(1000);
-    sleep(10);
-    spkr_set_freq(0);
+    
+    //FIXME make sure we aren't being called too early to use a timer
+    timer_create(10, (void (*)(void *)) end_beep, NULL);
 }
 
 static ssize_t spkr_char_read(char_device_t UNUSED(*cdev), char *buff, size_t len) {

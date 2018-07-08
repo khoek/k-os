@@ -25,7 +25,7 @@ all: $(ROOTRAMFS)
 extras:
 	$(MAKE) -C $(EXTRASDIR) all
 
-$(EXTRA_FLAG_DIST_BUILT):
+$(EXTRA_FLAG_DIST_BUILT): $(KSYSLIBDIR)/libk.a $(KSYSLIBDIR)/libc.a
 	$(MAKE) extras
 
 $(ROOTRAMFS): $(RESO) $(OBJS) $(EXTRA_FLAG_DIST_BUILT)
@@ -37,10 +37,10 @@ $(RESO): $(OUTDIR)/% : $(RESDIR)/%
 	@mkdir -p $(shell dirname $@)
 	@cp $< $@
 
-$(OBJS): $(OUTDIR)/% : $(SRCDIR)/%.c $(KSYSLIBDIR)/libc.a
+$(OBJS): $(OUTDIR)/% : $(SRCDIR)/%.c $(KSYSLIBDIR)/libk.a $(KSYSLIBDIR)/libc.a
 	@echo "      cc  $(patsubst $(SRCDIR)%,%,$<) -> $(patsubst $(OUTDIR)%,%,$@)"
 	@mkdir -p $(shell dirname $@)
-	@$(KCC) $(CFLAGS) -o $@ $<
+	@$(KCC) $(CFLAGS) $< -o $@
 
 clean-all: clean
 	$(MAKE) -C $(EXTRASDIR) clean-all

@@ -1,4 +1,3 @@
-//FIXME populate these
+#include <unistd.h>
 
-char *__env[1] = { 0 };
-char **environ = __env;
+char **environ;

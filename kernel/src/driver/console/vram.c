@@ -36,6 +36,44 @@ static void do_erase(console_t *con, bool to_end) {
     }
 }
 
+static void do_refresh_cursor(console_t *con) {
+    outb(con->port, 0x0e);
+    outb(con->port + 1, ((con->row * CONSOLE_WIDTH + con->col) >> 8) & 0xff);
+
+    outb(con->port, 0x0f);
+    outb(con->port + 1, (con->row * CONSOLE_WIDTH + con->col) & 0xff);
+}
+
+static void cursor_up(console_t *con, uint32_t amt) {
+    con->row -= MIN(con->row, amt);
+    do_refresh_cursor(con);
+}
+
+static void cursor_down(console_t *con, uint32_t amt) {
+    con->row += MAX(CONSOLE_HEIGHT - con->row, amt);
+    do_refresh_cursor(con);
+}
+
+static void cursor_forward(console_t *con, uint32_t amt) {
+    con->col += MAX(CONSOLE_WIDTH - con->col, amt);
+    do_refresh_cursor(con);
+}
+
+static void cursor_back(console_t *con, uint32_t amt) {
+    con->col -= MIN(con->col, amt);
+    do_refresh_cursor(con);
+}
+
+static void cursor_position(console_t *con, uint32_t r, uint32_t c) {
+    if(r > 0) r--;
+    if(c > 0) c--;
+
+    con->row = MIN(r, CONSOLE_HEIGHT - 1);
+    con->col = MIN(c, CONSOLE_WIDTH - 1);
+
+    do_refresh_cursor(con);
+}
+
 void vram_color(console_t *con, char c) {
     uint32_t flags;
     spin_lock_irqsave(&con->lock, &flags);
@@ -54,19 +92,43 @@ void vram_clear(console_t *con) {
     spin_unlock_irqstore(&con->lock, flags);
 }
 
+//FIXME define system for registering this
+extern void beep();
+
+static void process_char(console_t *con, char c) {
+    switch(c) {
+        //Bell
+        case '\x7': {
+            beep();
+            break;
+        }
+        //Backspace
+        case '\x8': {
+            cursor_back(con, 1);
+            break;
+        }
+        case '\n': {
+            con->col = 0;
+            con->row++;
+            break;
+        }
+        case '\r': {
+            con->col = 0;
+            break;
+        }
+        default: {
+            con->vram[(con->row * CONSOLE_WIDTH + con->col) * 2] = c;
+            con->vram[(con->row * CONSOLE_WIDTH + con->col) * 2 + 1] = con->color;
+            con->col++;
+            break;
+        }
+    }
+}
+
 static void vram_putc(console_t *con, char c) {
     check_irqs_disabled();
 
-    if(c == '\n') {
-        con->col = 0;
-        con->row++;
-    } else if(c == '\r') {
-        con->col = 0;
-    } else {
-        con->vram[(con->row * CONSOLE_WIDTH + con->col) * 2] = c;
-        con->vram[(con->row * CONSOLE_WIDTH + con->col) * 2 + 1] = con->color;
-        con->col++;
-    }
+    process_char(con, c);
 
     if(con->col == CONSOLE_WIDTH) {
         con->col = 0;
@@ -83,14 +145,6 @@ static void vram_putc(console_t *con, char c) {
 
         con->row = CONSOLE_HEIGHT - 1;
     }
-}
-
-static void do_refresh_cursor(console_t *con) {
-    outb(con->port, 0x0e);
-    outb(con->port + 1, ((con->row * CONSOLE_WIDTH + con->col) >> 8) & 0xff);
-
-    outb(con->port, 0x0f);
-    outb(con->port + 1, (con->row * CONSOLE_WIDTH + con->col) & 0xff);
 }
 
 static size_t read_escseq_args(console_t *con, int32_t *n, int32_t *m, char *c) {
@@ -138,54 +192,32 @@ static void execute_escseq(console_t *con, char c, int32_t n, int32_t m) {
     switch(c) {
         //Cursor Up
         case 'A': {
-            uint32_t amt = n == -1 ? 1 : n;
-            con->row -= MIN(con->row, amt);
-            do_refresh_cursor(con);
+            cursor_up(con, n == -1 ? 1 : n);
             break;
         }
         //Cursor Down
         case 'B': {
-            uint32_t amt = n == -1 ? 1 : n;
-            con->row += MAX(CONSOLE_HEIGHT - con->row, amt);
-            do_refresh_cursor(con);
+            cursor_down(con, n == -1 ? 1 : n);
             break;
         }
         //Cursor Forward
         case 'C': {
-            uint32_t amt = n == -1 ? 1 : n;
-            con->col += MAX(CONSOLE_WIDTH - con->col, amt);
-            do_refresh_cursor(con);
+            cursor_forward(con, n == -1 ? 1 : n);
             break;
         }
         //Cursor Back
         case 'D': {
-            uint32_t amt = n == -1 ? 1 : n;
-            con->col -= MIN(con->col, amt);
-            do_refresh_cursor(con);
+            cursor_back(con, n == -1 ? 1 : n);
             break;
         }
         //Cursor Position
         case 'H': {
-            uint32_t nr = 0;
-            if(n > 0) {
-                nr = n - 1;
-            }
-
-            uint32_t nc = 0;
-            if(m > 0) {
-                nc = m - 1;
-            }
-
-            con->row = MIN(nr, CONSOLE_HEIGHT - 1);
-            con->col = MIN(nc, CONSOLE_WIDTH - 1);
-
-            do_refresh_cursor(con);
+            cursor_position(con, n == -1 ? 0 : n, m == -1 ? 0 : m);
             break;
         }
         //Erase Display
         case 'J':{
             uint32_t v = n == -1 ? 0 : n;
-
             switch(v) {
                 //clear to end of screen
                 case 1: {

@@ -1,16 +1,15 @@
 #include <grp.h>
-
 #include <k/sys.h>
 
 void endgrent() {
-    SYSCALL(unimplemented)("endgrent");
+    MAKE_SYSCALL(unimplemented, "endgrent", true);
 }
 
 struct group *getgrent() {
-    SYSCALL(unimplemented)("getgrent");
+    MAKE_SYSCALL(unimplemented, "getgrent", true);
     return NULL;
 }
 
 void setgrent() {
-    SYSCALL(unimplemented)("setgrent");
+    MAKE_SYSCALL(unimplemented, "setgrent", true);
 }

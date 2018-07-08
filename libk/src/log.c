@@ -9,7 +9,7 @@
 static char buff[KPRINTF_BUFF_SIZE];
 
 void kprint(const char *str) {
-    SYSCALL(log)(str, strlen(str));
+    MAKE_SYSCALL(log, str, strlen(str));
 }
 
 void kprintf(const char *fmt, ...) {
@@ -20,4 +20,3 @@ void kprintf(const char *fmt, ...) {
 
     kprint(buff);
 }
-

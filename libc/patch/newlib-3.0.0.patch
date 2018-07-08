@@ -1,6 +1,6 @@
 diff -ruEwN src/newlib-3.0.0/config.sub src/newlib-3.0.0-custom/config.sub
---- src/newlib-3.0.0/config.sub		2018-01-19 05:07:45.000000000 +1100
-+++ src/newlib-3.0.0-custom/config.sub	2018-07-02 18:33:43.398756860 +1000
+--- src/newlib-3.0.0/config.sub	2018-01-19 05:07:45.000000000 +1100
++++ src/newlib-3.0.0-custom/config.sub	2018-07-08 18:34:37.714814000 +1000
 @@ -1399,7 +1399,7 @@
  	      | -morphos* | -superux* | -rtmk* | -rtmk-nova* | -windiss* \
  	      | -powermax* | -dnix* | -nx6 | -nx7 | -sei* | -dragonfly* \
@@ -12,22 +12,57 @@ diff -ruEwN src/newlib-3.0.0/config.sub src/newlib-3.0.0-custom/config.sub
  	-qnx*)
 diff -ruEwN src/newlib-3.0.0/newlib/configure.host src/newlib-3.0.0-custom/newlib/configure.host
 --- src/newlib-3.0.0/newlib/configure.host	2018-01-19 05:07:45.000000000 +1100
-+++ src/newlib-3.0.0-custom/newlib/configure.host	2018-07-03 04:53:44.213609000 +1000
-@@ -571,6 +571,11 @@
++++ src/newlib-3.0.0-custom/newlib/configure.host	2018-07-08 18:34:37.714814000 +1000
+@@ -571,6 +571,14 @@
    z8k-*-coff)
  	sys_dir=z8ksim
  	;;
 +  i[34567]86-*-kos*)
 +	sys_dir=kos
-+	unix_dir=unix
 +	posix_dir=posix
++	unix_dir=unix
++	syscall_dir=
++	have_crt0="no"
++	newlib_cflags="${newlib_cflags} -DREENTRANT_SYSCALLS_PROVIDED -DMISSING_SYSCALL_NAMES -D__DYNAMIC_REENT__ -D_NO_EXECVE -D_NO_GETCWD"
 +	;;
  esac
 
  # Host specific flag settings -- usually for features that are not
+diff -ruEwN src/newlib-3.0.0/newlib/libc/posix/_isatty.c src/newlib-3.0.0-custom/newlib/libc/posix/_isatty.c
+--- src/newlib-3.0.0/newlib/libc/posix/_isatty.c	2018-01-19 05:07:45.000000000 +1100
++++ src/newlib-3.0.0-custom/newlib/libc/posix/_isatty.c	2018-07-08 19:44:43.560843000 +1000
+@@ -1,5 +1,7 @@
+ /* isatty.c */
+
++#if !defined(MISSING_SYSCALL_NAMES) && !defined(_NO_ISATTY)
++
+ /* Dumb implementation so programs will at least run.  */
+
+ #include <sys/stat.h>
+@@ -19,3 +21,5 @@
+   errno = ENOTTY;
+   return 0;
+ }
++
++#endif
+diff -ruEwN src/newlib-3.0.0/newlib/libc/posix/isatty.c src/newlib-3.0.0-custom/newlib/libc/posix/isatty.c
+--- src/newlib-3.0.0/newlib/libc/posix/isatty.c	2018-01-19 05:07:45.000000000 +1100
++++ src/newlib-3.0.0-custom/newlib/libc/posix/isatty.c	2018-07-08 19:44:46.588722000 +1000
+@@ -1,3 +1,5 @@
++#if !defined(MISSING_SYSCALL_NAMES) && !defined(_NO_ISATTY)
++
+ /* isatty.c */
+
+ #include <unistd.h>
+@@ -8,3 +10,5 @@
+ {
+   return _isatty (fd);
+ }
++
++#endif
 diff -ruEwN src/newlib-3.0.0/newlib/libc/sys/configure.in src/newlib-3.0.0-custom/newlib/libc/sys/configure.in
---- src/newlib-3.0.0/newlib/libc/sys/configure.in		2018-01-19 05:07:45.000000000 +1100
-+++ src/newlib-3.0.0-custom/newlib/libc/sys/configure.in	2018-07-02 18:36:25.860549444 +1000
+--- src/newlib-3.0.0/newlib/libc/sys/configure.in	2018-01-19 05:07:45.000000000 +1100
++++ src/newlib-3.0.0-custom/newlib/libc/sys/configure.in	2018-07-08 18:34:37.718814000 +1000
 @@ -49,6 +49,7 @@
  	tirtos) AC_CONFIG_SUBDIRS(tirtos) ;;
  	w65) AC_CONFIG_SUBDIRS(w65) ;;

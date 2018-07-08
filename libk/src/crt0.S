@@ -1,5 +1,6 @@
 .globl _start
 _start:
+	mov %ecx, environ
 	pushl	%ecx
 	pushl	%ebx
 	pushl	%eax

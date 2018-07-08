@@ -134,7 +134,7 @@ static inode_ops_t devfs_root_inode_ops = {
     .mkdir = fs_no_mkdir,
 
     //FIXME define devfs_root_inode_getattr
-    //.mkdir = devfs_root_inode_getattr,
+    //.getattr = devfs_root_inode_getattr,
 };
 
 static inode_t * devfs_inode_alloc(devfs_device_t *device) {

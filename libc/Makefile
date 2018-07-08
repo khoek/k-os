@@ -63,7 +63,7 @@ $(SRCDIR)/$(NAME_NEWLIB)/configure: $(DLDIR)/$(AR_NEWLIB)
 	$(TAR) -C $(SRCDIR) -xf $(DLDIR)/$(AR_NEWLIB)
 	touch $@
 
-#TODO ADD SOME CONSTANDS FOR THESE COMMANDS
+#TODO ADD SOME CONSTANTS FOR THESE COMMANDS
 .flag.$(NAME_NEWLIB)-patched: $(SRCDIR)/$(NAME_NEWLIB)/configure
 	rm -rf $(SRCDIR)/$(NAME_NEWLIB)/newlib/libc/sys/kos
 	cp -r sys $(SRCDIR)/$(NAME_NEWLIB)/newlib/libc/sys/kos
@@ -75,7 +75,6 @@ $(SRCDIR)/$(NAME_NEWLIB)/configure: $(DLDIR)/$(AR_NEWLIB)
 .flag.$(NAME_NEWLIB)-reconfigured: .flag.$(NAME_NEWLIB)-patched
 	(cd $(SRCDIR)/$(NAME_NEWLIB)/newlib/libc/sys; $(AUTOCONF))
 	(cd $(SRCDIR)/$(NAME_NEWLIB)/newlib/libc/sys/kos; $(ACLOCAL) -I ../../.. && $(AUTOCONF) && $(AUTOMAKE) --cygnus --add-missing Makefile)
-	#(cd $(SRCDIR)/$(NAME_NEWLIB)/newlib/libc/sys/kos; $(AUTORECONF))
 	touch $@
 
 $(BUILDDIR)/$(NAME_NEWLIB)/Makefile: .flag.$(NAME_NEWLIB)-reconfigured $(ARTIFACT_AUTOMAKE) $(ARTIFACT_AUTOCONF)

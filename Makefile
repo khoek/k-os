@@ -1,7 +1,7 @@
 ROOTDIR ?= $(shell readlink -f .)
 include Makefile.config
 
-.PHONY: all complete aux aux-required toolchain-required libc-required toolchain run debug shared kernel libk libc util apps dist run clean-all clean-all-noredl clean clean-libc clean-toolchain clean-aux
+.PHONY: all complete aux aux-required toolchain-required libc-required toolchain run debug shared kernel libk libc util apps dist run clean-all clean-all-noredl clean clean-run clean-aux clean-libc clean-toolchain
 
 .DELETE_ON_ERROR:
 
@@ -50,7 +50,7 @@ apps: aux-required libk util
 dist: kernel apps
 	$(MAKE) -C dist all
 
-clean-all:
+clean-all: clean-run
 	$(MAKE) -C toolchain clean-all
 	$(MAKE) -C libc clean-all
 	$(MAKE) -C shared clean
@@ -60,7 +60,7 @@ clean-all:
 	$(MAKE) -C apps clean-all
 	$(MAKE) -C dist clean-all
 
-clean-all-noredl:
+clean-all-noredl: clean-run
 	$(MAKE) -C toolchain clean
 	$(MAKE) -C libc clean
 	$(MAKE) -C shared clean
@@ -70,13 +70,16 @@ clean-all-noredl:
 	$(MAKE) -C apps clean-all-noredl
 	$(MAKE) -C dist clean-all
 
-clean:
+clean: clean-run
 	$(MAKE) -C shared clean
 	$(MAKE) -C util clean
 	$(MAKE) -C kernel clean
 	$(MAKE) -C libk clean
 	$(MAKE) -C apps clean
 	$(MAKE) -C dist clean
+
+clean-run:
+	@rm -rf $(HDD)
 
 clean-aux: clean-libc clean-toolchain
 
@@ -85,9 +88,6 @@ clean-libc:
 
 clean-toolchain:
 	$(MAKE) -C toolchain clean
-
-clean-run:
-	@rm -rf $(HDD)
 
 $(HDD):
 	@echo "      dd  $(HDD)"

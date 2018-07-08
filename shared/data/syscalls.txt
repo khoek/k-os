@@ -21,7 +21,7 @@
 17:getdents:ufd_idx_t ufd, struct dirent *user_buff, uint32_t buffsize
 
 18:stat:const char *path, void *buff
-19:lstat:
+19:lstat:const char *path, void *buff
 20:fstat:ufd_idx_t ufd, void *buff
 21:read:ufd_idx_t ufd, void *buff, uint32_t len
 22:write:ufd_idx_t ufd, const void *buff, uint32_t len
@@ -34,4 +34,4 @@
 27:getppid:
 28:waitpid:pid_t pid, int *stat_loc, int options
 
-100:unimplemented:char *msg
+100:unimplemented:char *msg, bool fatal

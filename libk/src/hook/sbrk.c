@@ -1,9 +1,4 @@
 #include <unistd.h>
-
-#include <errno.h>
-#undef errno
-extern int errno;
-
 #include <k/sys.h>
 #include <k/math.h>
 
@@ -24,7 +19,7 @@ void * sbrk(ptrdiff_t incr) {
             return (void *) -1;
         } else {
             for(uint32_t i = 0; i < DIV_DOWN((uint32_t) _data_end, PAGE_SIZE) - DIV_DOWN(((uint32_t) _data_end) + incr, PAGE_SIZE); i++) {
-                SYSCALL(free_page)();
+                MAKE_SYSCALL(free_page);
             }
         }
 
@@ -34,12 +29,12 @@ void * sbrk(ptrdiff_t incr) {
         return old_end;
     } else if(incr > 0) {
         for(uint32_t i = 0; i < DIV_DOWN(((uint32_t) _data_end) + incr, PAGE_SIZE) - DIV_DOWN((uint32_t) _data_end, PAGE_SIZE); i++) {
-            if(SYSCALL(alloc_page)(_data_end + PAGE_SIZE * (i + 1)) == -1) {
+            if(MAKE_SYSCALL(alloc_page, _data_end + PAGE_SIZE * (i + 1)) == -1) {
                 int old_errno = errno;
 
                 do {
                     i--;
-                    if(SYSCALL(free_page)() == -1) break;
+                    if(MAKE_SYSCALL(free_page) == -1) break;
                 } while(i > 0);
 
                 errno = old_errno;
