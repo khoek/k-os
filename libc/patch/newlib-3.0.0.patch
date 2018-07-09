@@ -1,6 +1,6 @@
 diff -ruEwN src/newlib-3.0.0/config.sub src/newlib-3.0.0-custom/config.sub
 --- src/newlib-3.0.0/config.sub	2018-01-19 05:07:45.000000000 +1100
-+++ src/newlib-3.0.0-custom/config.sub	2018-07-08 18:34:37.714814000 +1000
++++ src/newlib-3.0.0-custom/config.sub	2018-07-10 02:47:18.457564307 +1000
 @@ -1399,7 +1399,7 @@
  	      | -morphos* | -superux* | -rtmk* | -rtmk-nova* | -windiss* \
  	      | -powermax* | -dnix* | -nx6 | -nx7 | -sei* | -dragonfly* \
@@ -12,7 +12,7 @@ diff -ruEwN src/newlib-3.0.0/config.sub src/newlib-3.0.0-custom/config.sub
  	-qnx*)
 diff -ruEwN src/newlib-3.0.0/newlib/configure.host src/newlib-3.0.0-custom/newlib/configure.host
 --- src/newlib-3.0.0/newlib/configure.host	2018-01-19 05:07:45.000000000 +1100
-+++ src/newlib-3.0.0-custom/newlib/configure.host	2018-07-08 18:34:37.714814000 +1000
++++ src/newlib-3.0.0-custom/newlib/configure.host	2018-07-10 02:47:18.465563967 +1000
 @@ -571,6 +571,14 @@
    z8k-*-coff)
  	sys_dir=z8ksim
@@ -26,18 +26,52 @@ diff -ruEwN src/newlib-3.0.0/newlib/configure.host src/newlib-3.0.0-custom/newli
 +	newlib_cflags="${newlib_cflags} -DREENTRANT_SYSCALLS_PROVIDED -DMISSING_SYSCALL_NAMES -D__DYNAMIC_REENT__ -D_NO_EXECVE -D_NO_GETCWD"
 +	;;
  esac
-
+ 
  # Host specific flag settings -- usually for features that are not
+diff -ruEwN src/newlib-3.0.0/newlib/libc/include/sys/types.h src/newlib-3.0.0-custom/newlib/libc/include/sys/types.h
+--- src/newlib-3.0.0/newlib/libc/include/sys/types.h	2018-01-19 05:07:45.000000000 +1100
++++ src/newlib-3.0.0-custom/newlib/libc/include/sys/types.h	2018-07-10 02:47:18.465563967 +1000
+@@ -65,7 +65,6 @@
+ 
+ #if __BSD_VISIBLE
+ #include <machine/endian.h>
+-#include <sys/select.h>
+ #  define	physadr		physadr_t
+ #  define	quad		quad_t
+ 
+@@ -239,6 +238,10 @@
+ #include <sys/_pthreadtypes.h>
+ #include <machine/types.h>
+ 
++#if __BSD_VISIBLE
++#include <sys/select.h>
++#endif /* __BSD_VISIBLE */
++
+ #endif  /* !__need_inttypes */
+ 
+ #undef __need_inttypes
+diff -ruEwN src/newlib-3.0.0/newlib/libc/include/sys/utime.h src/newlib-3.0.0-custom/newlib/libc/include/sys/utime.h
+--- src/newlib-3.0.0/newlib/libc/include/sys/utime.h	2018-01-19 05:07:45.000000000 +1100
++++ src/newlib-3.0.0-custom/newlib/libc/include/sys/utime.h	2018-07-10 02:53:42.926120548 +1000
+@@ -9,6 +9,8 @@
+ extern "C" {
+ #endif
+ 
++#include <time.h>
++
+ struct utimbuf 
+ {
+   time_t actime;
 diff -ruEwN src/newlib-3.0.0/newlib/libc/posix/_isatty.c src/newlib-3.0.0-custom/newlib/libc/posix/_isatty.c
 --- src/newlib-3.0.0/newlib/libc/posix/_isatty.c	2018-01-19 05:07:45.000000000 +1100
-+++ src/newlib-3.0.0-custom/newlib/libc/posix/_isatty.c	2018-07-08 19:44:43.560843000 +1000
++++ src/newlib-3.0.0-custom/newlib/libc/posix/_isatty.c	2018-07-10 02:47:18.465563967 +1000
 @@ -1,5 +1,7 @@
  /* isatty.c */
-
+ 
 +#if !defined(MISSING_SYSCALL_NAMES) && !defined(_NO_ISATTY)
 +
  /* Dumb implementation so programs will at least run.  */
-
+ 
  #include <sys/stat.h>
 @@ -19,3 +21,5 @@
    errno = ENOTTY;
@@ -47,12 +81,12 @@ diff -ruEwN src/newlib-3.0.0/newlib/libc/posix/_isatty.c src/newlib-3.0.0-custom
 +#endif
 diff -ruEwN src/newlib-3.0.0/newlib/libc/posix/isatty.c src/newlib-3.0.0-custom/newlib/libc/posix/isatty.c
 --- src/newlib-3.0.0/newlib/libc/posix/isatty.c	2018-01-19 05:07:45.000000000 +1100
-+++ src/newlib-3.0.0-custom/newlib/libc/posix/isatty.c	2018-07-08 19:44:46.588722000 +1000
++++ src/newlib-3.0.0-custom/newlib/libc/posix/isatty.c	2018-07-10 02:47:18.469563797 +1000
 @@ -1,3 +1,5 @@
 +#if !defined(MISSING_SYSCALL_NAMES) && !defined(_NO_ISATTY)
 +
  /* isatty.c */
-
+ 
  #include <unistd.h>
 @@ -8,3 +10,5 @@
  {
@@ -62,7 +96,7 @@ diff -ruEwN src/newlib-3.0.0/newlib/libc/posix/isatty.c src/newlib-3.0.0-custom/
 +#endif
 diff -ruEwN src/newlib-3.0.0/newlib/libc/sys/configure.in src/newlib-3.0.0-custom/newlib/libc/sys/configure.in
 --- src/newlib-3.0.0/newlib/libc/sys/configure.in	2018-01-19 05:07:45.000000000 +1100
-+++ src/newlib-3.0.0-custom/newlib/libc/sys/configure.in	2018-07-08 18:34:37.718814000 +1000
++++ src/newlib-3.0.0-custom/newlib/libc/sys/configure.in	2018-07-10 02:47:18.469563797 +1000
 @@ -49,6 +49,7 @@
  	tirtos) AC_CONFIG_SUBDIRS(tirtos) ;;
  	w65) AC_CONFIG_SUBDIRS(w65) ;;
@@ -70,3 +104,4 @@ diff -ruEwN src/newlib-3.0.0/newlib/libc/sys/configure.in src/newlib-3.0.0-custo
 +	kos) AC_CONFIG_SUBDIRS(kos) ;;
    esac;
  fi
+ 

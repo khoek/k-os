@@ -13,3 +13,17 @@ struct group *getgrent() {
 void setgrent() {
     MAKE_SYSCALL(unimplemented, "setgrent", true);
 }
+
+struct group * getgrnam(const char *name) {
+    MAKE_SYSCALL(unimplemented, "getgrnam", true);
+    return NULL;
+}
+
+struct group * getgrgid(gid_t gid) {
+    MAKE_SYSCALL(unimplemented, "getgrgid", true);
+    return NULL;
+}
+
+int setgroups(size_t size, const gid_t *list) {
+    return MAKE_SYSCALL(unimplemented, "setgroups", true);
+}

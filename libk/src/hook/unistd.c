@@ -19,6 +19,14 @@ int write(int fd, const void *buf, size_t count) {
     return MAKE_SYSCALL(write, fd, buf, count);
 }
 
+int fsync(int fd) {
+    return MAKE_SYSCALL(unimplemented, "fsync", true);
+}
+
+int fdatasync(int fd) {
+    return MAKE_SYSCALL(unimplemented, "fdatasync", true);
+}
+
 int execve(const char *filename, char *const argv[], char *const envp[]) {
     int fd = open(filename, 0);
     //TODO handle err conditions
@@ -35,14 +43,6 @@ pid_t fork() {
 
 int close(int fildes) {
     return MAKE_SYSCALL(close, fildes);
-}
-
-pid_t getpid() {
-    return MAKE_SYSCALL(getpid);
-}
-
-pid_t getppid() {
-    return MAKE_SYSCALL(getppid);
 }
 
 int chdir(const char *path) {
@@ -93,6 +93,25 @@ uid_t getuid() {
 
 int setuid(uid_t uid) {
     return MAKE_SYSCALL(unimplemented, "setuid", true);
+}
+
+pid_t getpid() {
+    return MAKE_SYSCALL(getpid);
+}
+
+pid_t getppid() {
+    return MAKE_SYSCALL(getppid);
+}
+
+//FIXME unimplemented
+pid_t getpgid(pid_t pid) {
+    MAKE_SYSCALL(unimplemented, "getpgid", true);
+    return 0;
+}
+
+//FIXME unimplemented
+int setpgid(pid_t pid, pid_t pgid) {
+    return MAKE_SYSCALL(unimplemented, "setpgid", true);
 }
 
 //FIXME unimplemented
@@ -179,4 +198,28 @@ ssize_t readlink(const char *path, char *buf, size_t bufsize) {
 
 int symlink(const char *path1, const char *path2) {
     return MAKE_SYSCALL(unimplemented, "symlink", true);
+}
+
+int getdtablesize() {
+    return MAKE_SYSCALL(unimplemented, "getdtablesize", true);
+}
+
+int truncate(const char *path, off_t length) {
+    return MAKE_SYSCALL(unimplemented, "truncate", true);
+}
+
+int ftruncate(int fildes, off_t length) {
+    return MAKE_SYSCALL(unimplemented, "ftruncate", true);
+}
+
+long pathconf(const char *path, int name) {
+    return MAKE_SYSCALL(unimplemented, "pathconf", true);
+}
+
+long fpathconf(int fildes, int name) {
+    return MAKE_SYSCALL(unimplemented, "fpathconf", true);
+}
+
+int nice(int incr) {
+    return MAKE_SYSCALL(unimplemented, "nice", true);
 }

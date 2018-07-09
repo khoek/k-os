@@ -11,6 +11,8 @@
 #define AF_LINK   5
 #define AF_MAX    6
 
+#define PF_INET6	AF_INET6
+
 #define SHUT_RD   1
 #define SHUT_RDWR 2
 #define SHUT_WR   3

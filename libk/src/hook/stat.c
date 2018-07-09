@@ -20,3 +20,19 @@ int lstat(const char *file, struct stat *st) {
 int fstat(int fd, struct stat *st) {
     return MAKE_SYSCALL(fstat, fd, st);
 }
+
+int chmod(const char *pathname, mode_t mode) {
+    return MAKE_SYSCALL(unimplemented, "chmod", true);
+}
+
+int fchmod(int fd, mode_t mode) {
+    return MAKE_SYSCALL(unimplemented, "fchmod", true);
+}
+
+int mkdir(const char *pathname, mode_t mode) {
+    return MAKE_SYSCALL(unimplemented, "mkdir", true);
+}
+
+int rmdir(const char *pathname) {
+    return MAKE_SYSCALL(unimplemented, "rmdir", true);
+}

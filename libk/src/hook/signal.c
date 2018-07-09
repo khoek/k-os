@@ -6,6 +6,10 @@ int sigprocmask(int how, const sigset_t *set, sigset_t *oset) {
     return MAKE_SYSCALL(unimplemented, "sigprocmask", false);
 }
 
+int pthread_sigmask(int how, const sigset_t *restrict set, sigset_t *restrict oset) {
+    return MAKE_SYSCALL(unimplemented, "pthread_sigmask", true);
+}
+
 int sigsuspend(const sigset_t *mask) {
     // FIXME for bash
     return MAKE_SYSCALL(unimplemented, "sigsuspend", false);

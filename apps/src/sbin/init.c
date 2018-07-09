@@ -30,7 +30,7 @@ int main(int argc, char **argv) {
                 printf("\nShell died, respawning!\n");
             }
 
-            execve("/sbin/bash", shell_argv, shell_envp);
+            execve("/bin/bash", shell_argv, shell_envp);
         }
     }
 
