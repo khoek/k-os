@@ -8,6 +8,7 @@
 #include "fs/char.h"
 #include "driver/console/console.h"
 #include "driver/console/tty.h"
+#include "log/log.h"
 
 console_t *con_global = NULL;
 static console_t glob;

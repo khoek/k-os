@@ -90,28 +90,33 @@ static void * build_strtab(char **start, char **tab, uint32_t *out_tablen) {
     return end;
 }
 
-static bool load_elf(file_t *f, char **argv, char **envp) {
-    irqdisable();
+static int32_t load_elf(binary_t *binary) {
+    uint32_t flags;
+    irqsave(&flags);
 
     void *olddir = arch_replace_mem(current, NULL);
 
     Elf32_Ehdr *ehdr = kmalloc(sizeof(Elf32_Ehdr));
-    if(vfs_read(f, ehdr, sizeof(Elf32_Ehdr)) != sizeof(Elf32_Ehdr)) {
-        goto fail;
+    if(vfs_seek(binary->file, 0) != 0) {
+        goto fail_io;
+    }
+    if(vfs_read(binary->file, ehdr, sizeof(Elf32_Ehdr)) != sizeof(Elf32_Ehdr)) {
+        //TODO check for error, and in this case report fail_io instead
+        goto fail_not_elf;
     }
 
-    if(!elf_header_valid(ehdr)) goto fail;
-    if(!ehdr->e_phoff) goto fail;
+    if(!elf_header_valid(ehdr)) goto fail_not_elf;
+    if(!ehdr->e_phoff) goto fail_not_elf;
 
     kprintf("binfmt_elf - phdr @ %X", ehdr->e_phoff);
 
     Elf32_Phdr *phdr = kmalloc(sizeof(Elf32_Phdr) * ehdr->e_phnum);
-    if(vfs_seek(f, ehdr->e_phoff) != ehdr->e_phoff) {
-        goto fail;
+    if(vfs_seek(binary->file, ehdr->e_phoff) != ehdr->e_phoff) {
+        goto fail_io;
     }
-    if(vfs_read(f, phdr, sizeof(Elf32_Phdr) * ehdr->e_phnum)
+    if(vfs_read(binary->file, phdr, sizeof(Elf32_Phdr) * ehdr->e_phnum)
         != ((ssize_t) (sizeof(Elf32_Phdr) * ehdr->e_phnum))) {
-        goto fail;
+        goto fail_io;
     }
 
     for(uint32_t i = 0; i < ehdr->e_phnum; i++) {
@@ -124,8 +129,8 @@ static bool load_elf(file_t *f, char **argv, char **envp) {
                 kprintf("binfmt_elf - LOAD (%X, %X) @ %X -> %X - %X", phdr[i].p_filesz, phdr[i].p_memsz, phdr[i].p_offset, phdr[i].p_vaddr, phdr[i].p_vaddr + phdr[i].p_memsz);
 
                 void *addr = (void *) phdr[i].p_vaddr;
-                if(vfs_seek(f, phdr[i].p_offset) != phdr[i].p_offset) {
-                    goto fail;
+                if(vfs_seek(binary->file, phdr[i].p_offset) != phdr[i].p_offset) {
+                    goto fail_io;
                 }
 
                 uint32_t bytes_written = 0;
@@ -134,13 +139,13 @@ static bool load_elf(file_t *f, char **argv, char **envp) {
                         user_alloc_page(current, addr + bytes_written, 0);
                     }
 
-                    uint32_t page_bytes_left = PAGE_SIZE - (bytes_written % PAGE_SIZE);
+                    uint32_t page_bytes_left = PAGE_SIZE - (((uint32_t) (addr + bytes_written)) % PAGE_SIZE);
 
                     int32_t chunk_len;
                     if(bytes_written < phdr[i].p_filesz) {
                         chunk_len = MIN(page_bytes_left, phdr[i].p_filesz - bytes_written);
-                        if(vfs_read(f, addr + bytes_written, chunk_len) != chunk_len) {
-                            goto fail;
+                        if(vfs_read(binary->file, addr + bytes_written, chunk_len) != chunk_len) {
+                            goto fail_io;
                         }
                     } else {
                         chunk_len = MIN(page_bytes_left, phdr[i].p_memsz - bytes_written);
@@ -170,11 +175,11 @@ static bool load_elf(file_t *f, char **argv, char **envp) {
 
     task_node_t *node = obtain_task_node(me);
 
-    uint32_t flags;
-    spin_lock_irqsave(&node->lock, &flags);
-    node->argv = argv;
-    node->envp = envp;
-    spin_unlock_irqstore(&node->lock, flags);
+    //an irqsave guards this entire function
+    spin_lock(&node->lock);
+    node->argv = binary->argv;
+    node->envp = binary->envp;
+    spin_unlock(&node->lock);
 
     void *ustack = designate_stack(me) + USTACK_SIZE;
 
@@ -182,18 +187,26 @@ static bool load_elf(file_t *f, char **argv, char **envp) {
     void *arg_buff = designate_args(me);
 
     void *uargv = arg_buff;
-    arg_buff = build_strtab(arg_buff, argv, &argc);
+    arg_buff = build_strtab(arg_buff, binary->argv, &argc);
 
     // void *uenvp = arg_buff;
-    // arg_buff = build_strtab(arg_buff, envp, NULL);
+    // arg_buff = build_strtab(arg_buff, binary->envp, NULL);
 
     pl_bootstrap_userland((void *) ehdr->e_entry, ustack, argc, uargv, NULL);
 
     BUG();
 
-fail:
+fail_not_elf:
     arch_replace_mem(current, olddir);
-    return false;
+
+    irqstore(flags);
+    return -ENOEXEC;
+
+fail_io:
+    arch_replace_mem(current, olddir);
+
+    irqstore(flags);
+    return -EIO;
 }
 
 static binfmt_t elf = {

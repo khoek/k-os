@@ -1,4 +1,5 @@
 #include "common/types.h"
+#include "bug/debug.h"
 #include "lib/string.h"
 #include "init/initcall.h"
 #include "mm/cache.h"
@@ -26,11 +27,13 @@ static chunk_t * chunk_alloc(record_t *r) {
     chunk_t *c = cache_alloc(chunk_cache);
     c->used = 0;
     c->buff = cache_alloc(chunk_buff_cache);
+
+    //FIXME is this the right call?
     list_add_before(&c->list, &r->chunks);
     return c;
 }
 
-static chunk_t * chunk_find(record_t *r, ssize_t off, bool create) {
+static chunk_t * chunk_find(record_t *r, ssize_t off) {
     chunk_t *c;
     LIST_FOR_EACH_ENTRY(c, &r->chunks, list) {
         if(off >= CHUNK_SIZE) {
@@ -38,25 +41,25 @@ static chunk_t * chunk_find(record_t *r, ssize_t off, bool create) {
             continue;
         }
 
-        if(c->used == off && !create) {
-            return NULL;
-        }
-
         return c;
     }
 
-    return create ? chunk_alloc(r) : NULL;
+    return NULL;
 }
 
 static ssize_t chunk_write(chunk_t *c, const char *buff, ssize_t len, ssize_t off) {
+    BUG_ON(off >= CHUNK_SIZE);
+
     len = MIN(CHUNK_SIZE - off, len);
     memcpy(c->buff + off, buff, len);
-    c->used = c->used + MAX(0, off - c->used + len);
+    c->used = MAX(c->used, off + len);
     return len;
 }
 
 static ssize_t chunk_read(chunk_t *c, char *buff, ssize_t len, ssize_t off) {
-    len = MIN(MAX(0, c->used - off), len);
+    BUG_ON(off > c->used);
+
+    len = MIN(c->used - off, len);
     memcpy(buff, c->buff + off, len);
     return len;
 }
@@ -64,7 +67,15 @@ static ssize_t chunk_read(chunk_t *c, char *buff, ssize_t len, ssize_t off) {
 static ssize_t record_write(record_t *r, const char *buff, ssize_t len, ssize_t off) {
     ssize_t written = 0;
     while(written < len) {
-        chunk_t *c = chunk_find(r, off + written, true);
+        //FIXME this call to chunk_find is insane:
+        //we should just find the first chunk we need, and keep taking the next
+        //in the list. Probably, the list_add_before in chunk_alloc is wrong for
+        //these purposes (figure out which of list_add and list_add_before puts
+        //the entry at the end of the list).
+        chunk_t *c = chunk_find(r, off + written);
+        if(!c) {
+            c = chunk_alloc(r);
+        }
         written += chunk_write(c, buff + written, len - written, (off + written) % CHUNK_SIZE);
     }
     return written;
@@ -73,9 +84,23 @@ static ssize_t record_write(record_t *r, const char *buff, ssize_t len, ssize_t 
 static ssize_t record_read(record_t *r, char *buff, ssize_t len, ssize_t off) {
     ssize_t read = 0;
     while(read < len) {
-        chunk_t *c = chunk_find(r, off + read, false);
-        if(!c) break;
-        read += chunk_read(c, buff + read, len - read, (off + read) % CHUNK_SIZE);
+        //FIXME this call to chunk_find is insane:
+        //we should just find the first chunk we need, and keep taking the next
+        //in the list. Probably, the list_add_before in chunk_alloc is wrong for
+        //these purposes (figure out which of list_add and list_add_before puts
+        //the entry at the end of the list).
+        chunk_t *c = chunk_find(r, off + read);
+        if(!c) {
+            break;
+        }
+
+        uint32_t amt = chunk_read(c, buff + read, len - read, (off + read) % CHUNK_SIZE);
+        //if we didn't read to the end of the chunk, but is has no more data,
+        //i.e. we found the last chunk
+        if(!amt) {
+            break;
+        }
+        read += amt;
     }
     return read;
 }

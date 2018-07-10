@@ -27,6 +27,10 @@ int fdatasync(int fd) {
     return MAKE_SYSCALL(unimplemented, "fdatasync", true);
 }
 
+int fchdir(int fd) {
+    return MAKE_SYSCALL(unimplemented, "fchdir", true);
+}
+
 int execve(const char *filename, char *const argv[], char *const envp[]) {
     int fd = open(filename, 0);
     //TODO handle err conditions

@@ -14,7 +14,7 @@ int stat(const char *file, struct stat *st) {
 }
 
 int lstat(const char *file, struct stat *st) {
-    return MAKE_SYSCALL(unimplemented, "lstat", true);
+    return MAKE_SYSCALL(lstat, file, st);
 }
 
 int fstat(int fd, struct stat *st) {

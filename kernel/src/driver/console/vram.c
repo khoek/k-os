@@ -107,6 +107,13 @@ static void process_char(console_t *con, char c) {
             cursor_back(con, 1);
             break;
         }
+        //FIXME this is super lame
+        //Tab
+        case '\x9': {
+            process_char(con, ' ');
+            process_char(con, ' ');
+            break;
+        }
         case '\n': {
             con->col = 0;
             con->row++;

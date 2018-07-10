@@ -149,3 +149,33 @@ void * memchr(void *ptr, int value, size_t bytes) {
     }
     return NULL;
 }
+
+char ** alloc_strtab(uint32_t len) {
+    char **tab = kmalloc(sizeof(char *) * (len + 1));
+    tab[len] = NULL;
+    return tab;
+}
+
+uint32_t strtab_len(char * const tab[]) {
+    if(!tab) return 0;
+
+    uint32_t len = 0;
+    while(*(tab++)) {
+        len++;
+    }
+    return len;
+}
+
+char ** copy_strtab(char *const raw[]) {
+    if(!raw) return NULL;
+
+    uint32_t len = strtab_len(raw);
+
+    char **copy = alloc_strtab(len);
+    for(uint32_t i = 0; i < len; i++) {
+        copy[i] = strdup(raw[i]);
+    }
+    copy[len] = NULL;
+
+    return copy;
+}
