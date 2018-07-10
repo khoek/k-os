@@ -9,9 +9,15 @@
 #include "mm/mm.h"
 #include "driver/console/console.h"
 
+#define TABSTOP_WIDTH 8
+
 #define PUTSF_BUFF_SIZE 1024
 
 #define ESCSEQ_BUFF_SIZE 128
+
+#define ASCII_BELL      '\x7'
+#define ASCII_BACKSPACE '\x8'
+#define ASCII_TAB       '\x9'
 
 static void do_clear(console_t *con) {
     for(uint32_t i = 0; i < CONSOLE_WIDTH * CONSOLE_HEIGHT; i++) {
@@ -92,51 +98,8 @@ void vram_clear(console_t *con) {
     spin_unlock_irqstore(&con->lock, flags);
 }
 
-//FIXME define system for registering this
-extern void beep();
-
-static void process_char(console_t *con, char c) {
-    switch(c) {
-        //Bell
-        case '\x7': {
-            beep();
-            break;
-        }
-        //Backspace
-        case '\x8': {
-            cursor_back(con, 1);
-            break;
-        }
-        //FIXME this is super lame
-        //Tab
-        case '\x9': {
-            process_char(con, ' ');
-            process_char(con, ' ');
-            break;
-        }
-        case '\n': {
-            con->col = 0;
-            con->row++;
-            break;
-        }
-        case '\r': {
-            con->col = 0;
-            break;
-        }
-        default: {
-            con->vram[(con->row * CONSOLE_WIDTH + con->col) * 2] = c;
-            con->vram[(con->row * CONSOLE_WIDTH + con->col) * 2 + 1] = con->color;
-            con->col++;
-            break;
-        }
-    }
-}
-
-static void vram_putc(console_t *con, char c) {
-    check_irqs_disabled();
-
-    process_char(con, c);
-
+//handle column and row overflows
+static void fix_pos_overflow(console_t *con) {
     if(con->col == CONSOLE_WIDTH) {
         con->col = 0;
         con->row++;
@@ -152,6 +115,60 @@ static void vram_putc(console_t *con, char c) {
 
         con->row = CONSOLE_HEIGHT - 1;
     }
+}
+
+//FIXME define system for registering this
+extern void beep();
+
+static void process_char(console_t *con, char c) {
+    switch(c) {
+        //Bell
+        case ASCII_BELL: {
+            beep();
+            break;
+        }
+        //Backspace
+        case ASCII_BACKSPACE: {
+            cursor_back(con, 1);
+            break;
+        }
+        //Tab
+        case ASCII_TAB: {
+            con->col++;
+            if(con->col == CONSOLE_WIDTH) {
+                fix_pos_overflow(con);
+                break;
+            }
+
+            while((con->col % TABSTOP_WIDTH) && con->col < CONSOLE_WIDTH - 1) {
+                con->col++;
+            }
+            break;
+        }
+        case '\n': {
+            con->col = 0;
+            con->row++;
+            fix_pos_overflow(con);
+            break;
+        }
+        case '\r': {
+            con->col = 0;
+            break;
+        }
+        default: {
+            con->vram[(con->row * CONSOLE_WIDTH + con->col) * 2] = c;
+            con->vram[(con->row * CONSOLE_WIDTH + con->col) * 2 + 1] = con->color;
+            con->col++;
+            fix_pos_overflow(con);
+            break;
+        }
+    }
+}
+
+static void vram_putc(console_t *con, char c) {
+    check_irqs_disabled();
+
+    process_char(con, c);
 }
 
 static size_t read_escseq_args(console_t *con, int32_t *n, int32_t *m, char *c) {
