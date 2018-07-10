@@ -227,3 +227,7 @@ long fpathconf(int fildes, int name) {
 int nice(int incr) {
     return MAKE_SYSCALL(unimplemented, "nice", true);
 }
+
+int getpagesize() {
+    return PAGE_SIZE;
+}

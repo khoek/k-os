@@ -138,18 +138,35 @@ static inode_ops_t devfs_root_inode_ops = {
 };
 
 static inode_t * devfs_inode_alloc(devfs_device_t *device) {
-    void *ops = NULL;
+    inode_t *inode;
 
     switch(device->type) {
         case CHAR_DEV:
-            ops = &char_inode_ops;
+            inode = inode_alloc(devfs, &char_inode_ops);
+            inode->mode = S_IFCHR | 0755;
             break;
         case BLCK_DEV:
-            ops = &block_inode_ops;
+            inode = inode_alloc(devfs, &block_inode_ops);
+            inode->mode = S_IFBLK | 0755;
             break;
     }
 
-    inode_t *inode = inode_alloc(devfs, ops);
+    //FIXME sensibly populate these
+    inode->uid = 0;
+    inode->gid = 0;
+    inode->nlink = 0;
+    inode->dev = 0;
+    inode->rdev = 0;
+
+    inode->atime = 0;
+    inode->mtime = 0;
+    inode->ctime = 0;
+
+    inode->blkshift = 12;
+    inode->blocks = 8;
+
+    inode->size = 0;
+
     inode->private = device;
 
     return inode;
@@ -158,8 +175,28 @@ static inode_t * devfs_inode_alloc(devfs_device_t *device) {
 static void devfs_fill(fs_t *fs) {
     fs->root = dentry_alloc("");
     fs->root->fs = fs;
-    fs->root->inode = inode_alloc(fs, &devfs_root_inode_ops);
+
+    inode_t *inode = inode_alloc(fs, &devfs_root_inode_ops);
+    fs->root->inode = inode;
     fs->root->inode->flags |= INODE_FLAG_DIRECTORY;
+
+    inode->mode = S_IFDIR | 0755;
+
+    //FIXME sensibly populate these
+    inode->uid = 0;
+    inode->gid = 0;
+    inode->nlink = 0;
+    inode->dev = 0;
+    inode->rdev = 0;
+
+    inode->atime = 0;
+    inode->mtime = 0;
+    inode->ctime = 0;
+
+    inode->blkshift = 12;
+    inode->blocks = 8;
+    
+    inode->size = 1 << inode->blkshift;
 }
 
 static dentry_t * devfs_create(fs_type_t *fs_type, const char *device) {

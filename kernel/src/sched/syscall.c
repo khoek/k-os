@@ -372,10 +372,7 @@ DEFINE_SYSCALL(read, ufd_idx_t ufd, void *user_buff, uint32_t len) {
     if(fd) {
         //TODO sanitize buffer/size arguments
 
-        void *buff = kmalloc(len);
-        ret = vfs_read(fd, buff, len);
-        memcpy(user_buff, buff, ret);
-        kfree(buff);
+        ret = vfs_read(fd, user_buff, len);
 
         ufdt_put(ufd);
     }

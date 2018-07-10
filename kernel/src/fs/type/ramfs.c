@@ -49,7 +49,6 @@ static chunk_t * chunk_find(record_t *r, ssize_t off) {
 
 static ssize_t chunk_write(chunk_t *c, const char *buff, ssize_t len, ssize_t off) {
     BUG_ON(off >= CHUNK_SIZE);
-
     len = MIN(CHUNK_SIZE - off, len);
     memcpy(c->buff + off, buff, len);
     c->used = MAX(c->used, off + len);
@@ -58,13 +57,14 @@ static ssize_t chunk_write(chunk_t *c, const char *buff, ssize_t len, ssize_t of
 
 static ssize_t chunk_read(chunk_t *c, char *buff, ssize_t len, ssize_t off) {
     BUG_ON(off > c->used);
-
     len = MIN(c->used - off, len);
     memcpy(buff, c->buff + off, len);
     return len;
 }
 
-static ssize_t record_write(record_t *r, const char *buff, ssize_t len, ssize_t off) {
+static ssize_t record_write(inode_t *inode, const char *buff, ssize_t len, ssize_t off) {
+    record_t *r = inode->private;
+
     ssize_t written = 0;
     while(written < len) {
         //FIXME this call to chunk_find is insane:
@@ -76,12 +76,16 @@ static ssize_t record_write(record_t *r, const char *buff, ssize_t len, ssize_t 
         if(!c) {
             c = chunk_alloc(r);
         }
+        uint32_t old_used = c->used;
         written += chunk_write(c, buff + written, len - written, (off + written) % CHUNK_SIZE);
+        inode->size += c->used - old_used;
     }
     return written;
 }
 
-static ssize_t record_read(record_t *r, char *buff, ssize_t len, ssize_t off) {
+static ssize_t record_read(inode_t *inode, char *buff, ssize_t len, ssize_t off) {
+    record_t *r = inode->private;
+
     ssize_t read = 0;
     while(read < len) {
         //FIXME this call to chunk_find is insane:
@@ -113,7 +117,6 @@ static record_t * record_create() {
 }
 
 static void ramfs_file_open(file_t *file, inode_t *inode) {
-    file->private = inode->private;
 }
 
 static void ramfs_file_close(file_t *file) {
@@ -125,23 +128,13 @@ static off_t ramfs_file_seek(file_t *file, off_t offset) {
 }
 
 static ssize_t ramfs_file_read(file_t *file, char *buff, size_t bytes) {
-    record_t *r = file->private;
-    if(!r) {
-        return -1;
-    }
-
-    ssize_t ret = record_read(r, buff, bytes, file->offset);
+    ssize_t ret = record_read(file->dentry->inode, buff, bytes, file->offset);
     file->offset += ret;
     return ret;
 }
 
 static ssize_t ramfs_file_write(file_t *file, const char *buff, size_t bytes) {
-    record_t *r = file->private;
-    if(!r) {
-        return -1;
-    }
-
-    ssize_t ret = record_write(r, buff, bytes, file->offset);
+    ssize_t ret = record_write(file->dentry->inode, buff, bytes, file->offset);
     file->offset += ret;
     return ret;
 }
@@ -175,10 +168,29 @@ static void ramfs_inode_lookup(inode_t *inode, dentry_t *dentry) {
 static bool ramfs_inode_create(inode_t *inode, dentry_t *new, uint32_t mode) {
     new->inode = inode_alloc(inode->fs, &ramfs_inode_ops);
     new->inode->flags = 0;
+
+    if(!S_ISREG(mode)) {
+        return false;
+    }
     new->inode->mode = mode;
 
-    record_t *r = record_create();
-    new->inode->private = r;
+    //FIXME sensibly populate these
+    new->inode->uid = 0;
+    new->inode->gid = 0;
+    new->inode->nlink = 0;
+    new->inode->dev = 0;
+    new->inode->rdev = 0;
+
+    new->inode->atime = 0;
+    new->inode->mtime = 0;
+    new->inode->ctime = 0;
+
+    new->inode->blkshift = 12;
+    new->inode->blocks = 8;
+
+    new->inode->size = 0;
+
+    new->inode->private = record_create();
 
     return new;
 }
@@ -186,7 +198,29 @@ static bool ramfs_inode_create(inode_t *inode, dentry_t *new, uint32_t mode) {
 static bool ramfs_inode_mkdir(inode_t *inode, dentry_t *new, uint32_t mode) {
     new->inode = inode_alloc(inode->fs, &ramfs_inode_ops);
     new->inode->flags = INODE_FLAG_DIRECTORY;
+
+    if(!S_ISDIR(mode)) {
+        return false;
+    }
     new->inode->mode = mode;
+
+    //FIXME sensibly populate these
+    new->inode->uid = 0;
+    new->inode->gid = 0;
+    new->inode->nlink = 0;
+    new->inode->dev = 0;
+    new->inode->rdev = 0;
+
+    new->inode->atime = 0;
+    new->inode->mtime = 0;
+    new->inode->ctime = 0;
+
+    new->inode->blkshift = 12;
+    new->inode->blocks = 8;
+
+    new->inode->size = 1 << new->inode->blkshift;
+
+    new->inode->private = NULL;
 
     return true;
 }

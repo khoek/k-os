@@ -42,7 +42,7 @@ static uint32_t entry_reconstruct(entry_t *e, const path_t *root) {
                 part[0] = '\0';
                 path_t out;
                 if(!vfs_lookup(root, path, &out)) {
-                    if(!vfs_mkdir(root, path, 0755)) {
+                    if(!vfs_mkdir(root, path, S_IFDIR | 0755)) {
                         panicf("rootramfs - vfs_mkdir() failed");
                     }
                 }
@@ -59,7 +59,7 @@ static uint32_t entry_reconstruct(entry_t *e, const path_t *root) {
             memcpy(path, e->name, e->name_len);
             path[e->name_len] = '\0';
 
-            if(!vfs_create(root, path, 0755, true)) {
+            if(!vfs_create(root, path, S_IFREG | 0755, true)) {
                 panicf("rootramfs - vfs_create() failed");
             }
 

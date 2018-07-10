@@ -14,6 +14,34 @@
 
 #define MNT_ROOT(mnt) ((path_t) {.mount = mnt, .dentry = mnt->fs->root})
 
+#define	S_IFMT   0170000	/* type of file */
+#define S_IFDIR  0040000	/* directory */
+#define S_IFCHR  0020000	/* character special */
+#define S_IFBLK  0060000	/* block special */
+#define S_IFREG  0100000	/* regular */
+#define S_IFLNK  0120000	/* symbolic link */
+#define S_IFSOCK 0140000	/* socket */
+#define S_IFIFO  0010000	/* fifo */
+
+#define S_GETTTYPE(m) ((m) & S_IFMT)
+#define	S_ISDIR(m)	(S_GETTTYPE(m) == S_IFDIR)
+#define	S_ISCHR(m)	(S_GETTTYPE(m) == S_IFCHR)
+#define	S_ISBLK(m)	(S_GETTTYPE(m) == S_IFBLK)
+#define	S_ISREG(m)	(S_GETTTYPE(m) == S_IFREG)
+#define	S_ISLNK(m)	(S_GETTTYPE(m) == S_IFLNK)
+#define	S_ISSOCK(m)	(S_GETTTYPE(m) == S_IFSOCK)
+#define	S_ISFIFO(m)	(S_GETTTYPE(m) == S_IFIFO)
+
+#define 	S_BLKSIZE  1024 /* size of a block */
+
+#define	S_ISUID		0004000	/* set user id on execution */
+#define	S_ISGID		0002000	/* set group id on execution */
+#define	S_ISVTX		0001000	/* save swapped text even after use */
+#define	S_IREAD		0000400	/* read permission, owner */
+#define	S_IWRITE 	0000200	/* write permission, owner */
+#define	S_IEXEC		0000100	/* execute/search permission, owner */
+#define	S_ENFMT 	0002000	/* enforcement-mode locking */
+
 typedef struct fs_type fs_type_t;
 typedef struct fs fs_t;
 
@@ -161,21 +189,23 @@ struct dentry {
 };
 
 struct stat {
-    uint32_t st_dev;
+    int16_t st_dev;
     uint32_t st_ino;
     uint32_t st_mode;
-    uint32_t st_nlink;
-    uint32_t st_uid;
-    uint32_t st_gid;
-    uint32_t st_rdev;
+    uint16_t st_nlink;
+    uint16_t st_uid;
+    uint16_t st_gid;
+    int16_t st_rdev;
     int32_t st_size;
-
-    uint32_t st_atime;
-    uint32_t st_mtime;
-    uint32_t st_ctime;
-
+    int64_t st_atime;
+    int32_t st_spare1;
+    int64_t st_mtime;
+    int32_t st_spare2;
+    int64_t st_ctime;
+    int32_t st_spare3;
     int32_t st_blksize;
     int32_t st_blocks;
+    int32_t st_spare4[2];
 };
 
 dentry_t * dentry_alloc(const char *name);

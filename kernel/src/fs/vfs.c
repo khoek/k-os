@@ -483,10 +483,16 @@ off_t vfs_seek(file_t *file, uint32_t off) {
 }
 
 ssize_t vfs_read(file_t *file, void *buff, size_t bytes) {
+    if(file->dentry->inode->flags & INODE_FLAG_DIRECTORY) {
+        return -EISDIR;
+    }
     return file->ops->read(file, buff, bytes);
 }
 
 ssize_t vfs_write(file_t *file, const void *buff, size_t bytes) {
+    if(file->dentry->inode->flags & INODE_FLAG_DIRECTORY) {
+        return -EISDIR;
+    }
     return file->ops->write(file, buff, bytes);
 }
 
