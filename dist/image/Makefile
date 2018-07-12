@@ -1,5 +1,5 @@
-ROOTDIR ?= $(shell readlink -f ../..)
-include $(ROOTDIR)/Makefile.config
+ROOTPATH ?= $(shell readlink -f ../..)
+include $(ROOTPATH)/Makefile.config
 
 .PHONY: all clean
 
@@ -13,12 +13,12 @@ OBJS := $(patsubst $(SRCDIR)/%,$(OBJDIR)/%,$(SRCS))
 
 all: $(IMAGE)
 
-$(OBJDIR)/$(ROOTRAMFS): $(APPSDIR)/$(ROOTRAMFS)
+$(OBJDIR)/$(ROOTRAMFS): $(APPSPATH)/$(ROOTRAMFS)
 	@echo "      cp  $< -> $@"
 	@mkdir -p $(shell dirname $@)
 	@cp -r $< $@
 
-$(OBJDIR)/$(KBINARY): $(KERNELDIR)/$(KBINARY)
+$(OBJDIR)/$(KBINARY): $(KERNELPATH)/$(KBINARY)
 	@echo "      cp  $< -> $@"
 	@mkdir -p $(shell dirname $@)
 	@cp -r $< $@

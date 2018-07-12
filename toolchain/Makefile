@@ -1,12 +1,12 @@
-ROOTDIR ?= $(shell readlink -f ..)
-include $(ROOTDIR)/Makefile.config
+ROOTPATH ?= $(shell readlink -f ..)
+include $(ROOTPATH)/Makefile.config
 
 ############# TODO CHECK LIBCSTARTDIR is being output correct
 
-DLDIR := $(TOOLCHAINDIR)/dl
-SRCDIR := $(TOOLCHAINDIR)/src
-PATCHDIR := $(TOOLCHAINDIR)/patch
-BUILDDIR := $(TOOLCHAINDIR)/build
+DLDIR := $(TOOLCHAINPATH)/dl
+SRCDIR := $(TOOLCHAINPATH)/src
+PATCHDIR := $(TOOLCHAINPATH)/patch
+BUILDDIR := $(TOOLCHAINPATH)/build
 
 WGETFLAGS := -c
 
@@ -37,15 +37,15 @@ URL_MPFR := http://ftp.gnu.org/gnu/mpfr/$(AR_MPFR)
 URL_MPC := https://ftp.gnu.org/gnu/mpc/$(AR_MPC)
 URL_GCC := http://ftp.gnu.org/gnu/gcc/gcc-$(GCC_VER)/$(AR_GCC)
 
-ARTIFACT_PERL := $(TOOLCHAINBINDIR)/bin/perl
-ARTIFACT_AUTOCONF := $(TOOLCHAINBINDIR)/bin/autoconf
-ARTIFACT_AUTOMAKE := $(TOOLCHAINBINDIR)/bin/automake
-ARTIFACT_BINUTILS := $(TOOLCHAINBINDIR)/bin/$(TARGET)-ld
-ARTIFACT_GMP := $(TOOLCHAINBINDIR)/lib/libgmp.a
-ARTIFACT_MPFR := $(TOOLCHAINBINDIR)/lib/libmpfr.a
-ARTIFACT_MPC := $(TOOLCHAINBINDIR)/lib/libmpc.a
-ARTIFACT_GCC := $(TOOLCHAINBINDIR)/bin/$(TARGET)-gcc
-ARTIFACT_LIBGCC := $(TOOLCHAINBINDIR)/lib/gcc/$(TARGET)/$(GCC_VER)/libgcc.a
+ARTIFACT_PERL := $(TOOLCHAINBINPATH)/bin/perl
+ARTIFACT_AUTOCONF := $(TOOLCHAINBINPATH)/bin/autoconf
+ARTIFACT_AUTOMAKE := $(TOOLCHAINBINPATH)/bin/automake
+ARTIFACT_BINUTILS := $(TOOLCHAINBINPATH)/bin/$(TARGET)-ld
+ARTIFACT_GMP := $(TOOLCHAINBINPATH)/lib/libgmp.a
+ARTIFACT_MPFR := $(TOOLCHAINBINPATH)/lib/libmpfr.a
+ARTIFACT_MPC := $(TOOLCHAINBINPATH)/lib/libmpc.a
+ARTIFACT_GCC := $(TOOLCHAINBINPATH)/bin/$(TARGET)-gcc
+ARTIFACT_LIBGCC := $(TOOLCHAINBINPATH)/lib/gcc/$(TARGET)/$(GCC_VER)/libgcc.a
 
 PATCH_AUTOCONF := $(PATCHDIR)/$(NAME_AUTOCONF).patch
 PATCH_BINUTILS := $(PATCHDIR)/$(NAME_BINUTILS).patch
@@ -54,7 +54,7 @@ PATCH_GCC := $(PATCHDIR)/$(NAME_GCC).patch
 export PERL := $(ARTIFACT_PERL)
 export AUTOCONF := $(ARTIFACT_AUTOCONF)
 export AUTOMAKE := $(ARTIFACT_AUTOMAKE)
-export ACLOCAL := $(TOOLCHAINBINDIR)/bin/aclocal
+export ACLOCAL := $(TOOLCHAINBINPATH)/bin/aclocal
 export MAKEINFO := true
 
 BISON := $(shell command -v bison 2> /dev/null)
@@ -153,7 +153,7 @@ $(SRCDIR)/$(NAME_GCC)/configure: $(DLDIR)/$(AR_GCC)
 
 .flag.$(NAME_BINUTILS)-patched: $(SRCDIR)/$(NAME_BINUTILS)/configure
 	patch -p0 < $(PATCH_BINUTILS)
-	sed -i "s_KOSLIBDIRS_/$(KSYSLIBPREFIX)_g" $(SRCDIR)/$(NAME_BINUTILS)/ld/configure.tgt
+	sed -i "s_KOSLIBDIRS_/$(KSYSLIBDIR)_g" $(SRCDIR)/$(NAME_BINUTILS)/ld/configure.tgt
 	touch $@
 
 .flag.$(NAME_BINUTILS)-reconfigured: .flag.$(NAME_BINUTILS)-patched $(ARTIFACT_AUTOMAKE)
@@ -162,9 +162,9 @@ $(SRCDIR)/$(NAME_GCC)/configure: $(DLDIR)/$(AR_GCC)
 
 .flag.$(NAME_GCC)-patched: $(SRCDIR)/$(NAME_GCC)/configure
 	patch -p0 < $(PATCH_GCC)
-	sed -i "s_KOSSYSHEADDIR_/$(KSYSHEADERPREFIX)_g" $(SRCDIR)/$(NAME_GCC)/gcc/config.gcc
+	sed -i "s_KOSSYSHEADDIR_/$(KSYSHEADERDIR)_g" $(SRCDIR)/$(NAME_GCC)/gcc/config.gcc
 	rm -f $(SRCDIR)/$(NAME_GCC)/gcc/config/kos-autogen.h
-	echo "#undef STANDARD_STARTFILE_PREFIX\n#define STANDARD_STARTFILE_PREFIX \"$(KSYSSTARTDIR)\"\n" > $(SRCDIR)/$(NAME_GCC)/gcc/config/kos-autogen.h
+	echo "#undef STANDARD_STARTFILE_PREFIX\n#define STANDARD_STARTFILE_PREFIX \"$(KSYSSTARTPATH)\"\n" > $(SRCDIR)/$(NAME_GCC)/gcc/config/kos-autogen.h
 	touch $@
 
 .flag.$(NAME_GCC)-reconfigured: .flag.$(NAME_GCC)-patched $(ARTIFACT_AUTOCONF)
@@ -173,52 +173,52 @@ $(SRCDIR)/$(NAME_GCC)/configure: $(DLDIR)/$(AR_GCC)
 
 #Note: Perl must be compiled in the source dir
 $(SRCDIR)/$(NAME_PERL)/Makefile: $(SRCDIR)/$(NAME_PERL)/Configure
-	mkdir -p $(TOOLCHAINBINDIR)
-	cd $(SRCDIR)/$(NAME_PERL) && sh $< -des -Dprefix=$(TOOLCHAINBINDIR) -Dotherlibdirs=$(TOOLCHAINBINDIR)/lib/perl5
-	cd $(TOOLCHAINDIR)
+	mkdir -p $(TOOLCHAINBINPATH)
+	cd $(SRCDIR)/$(NAME_PERL) && sh $< -des -Dprefix=$(TOOLCHAINBINPATH) -Dotherlibdirs=$(TOOLCHAINBINPATH)/lib/perl5
+	cd $(TOOLCHAINPATH)
 
 $(BUILDDIR)/$(NAME_AUTOCONF)/Makefile: $(SRCDIR)/$(NAME_AUTOCONF)/configure $(ARTIFACT_PERL)
-	mkdir -p $(TOOLCHAINBINDIR)
+	mkdir -p $(TOOLCHAINBINPATH)
 	mkdir -p $(BUILDDIR)/$(NAME_AUTOCONF)
-	cd $(BUILDDIR)/$(NAME_AUTOCONF) && sh $< -v --prefix=$(TOOLCHAINBINDIR)
-	cd $(TOOLCHAINDIR)
+	cd $(BUILDDIR)/$(NAME_AUTOCONF) && sh $< -v --prefix=$(TOOLCHAINBINPATH)
+	cd $(TOOLCHAINPATH)
 
 $(BUILDDIR)/$(NAME_AUTOMAKE)/Makefile: $(SRCDIR)/$(NAME_AUTOMAKE)/configure $(ARTIFACT_PERL) $(ARTIFACT_AUTOCONF)
-	mkdir -p $(TOOLCHAINBINDIR)
+	mkdir -p $(TOOLCHAINBINPATH)
 	mkdir -p $(BUILDDIR)/$(NAME_AUTOMAKE)
-	cd $(BUILDDIR)/$(NAME_AUTOMAKE) && sh $< -v --prefix=$(TOOLCHAINBINDIR)
-	cd $(TOOLCHAINDIR)
+	cd $(BUILDDIR)/$(NAME_AUTOMAKE) && sh $< -v --prefix=$(TOOLCHAINBINPATH)
+	cd $(TOOLCHAINPATH)
 
 $(BUILDDIR)/$(NAME_BINUTILS)/Makefile: .flag.$(NAME_BINUTILS)-reconfigured
-	mkdir -p $(TOOLCHAINBINDIR)
+	mkdir -p $(TOOLCHAINBINPATH)
 	mkdir -p $(BUILDDIR)/$(NAME_BINUTILS)
-	cd $(BUILDDIR)/$(NAME_BINUTILS) && sh $(SRCDIR)/$(NAME_BINUTILS)/configure $(TOOLCHAIN_CONFFLAGS) --target=$(TARGET) --prefix=$(TOOLCHAINBINDIR) --with-sysroot=$(KSYSROOT)
-	cd $(TOOLCHAINDIR)
+	cd $(BUILDDIR)/$(NAME_BINUTILS) && sh $(SRCDIR)/$(NAME_BINUTILS)/configure $(TOOLCHAIN_CONFFLAGS) --target=$(TARGET) --prefix=$(TOOLCHAINBINPATH) --with-sysroot=$(KSYSROOT)
+	cd $(TOOLCHAINPATH)
 
 $(BUILDDIR)/$(NAME_GMP)/Makefile: $(SRCDIR)/$(NAME_GMP)/configure
-	mkdir -p $(TOOLCHAINBINDIR)
+	mkdir -p $(TOOLCHAINBINPATH)
 	mkdir -p $(BUILDDIR)/$(NAME_GMP)
-	cd $(BUILDDIR)/$(NAME_GMP) && sh $< $(TOOLCHAIN_CONFFLAGS) --prefix=$(TOOLCHAINBINDIR) --disable-shared
-	cd $(TOOLCHAINDIR)
+	cd $(BUILDDIR)/$(NAME_GMP) && sh $< $(TOOLCHAIN_CONFFLAGS) --prefix=$(TOOLCHAINBINPATH) --disable-shared
+	cd $(TOOLCHAINPATH)
 
 $(BUILDDIR)/$(NAME_MPFR)/Makefile: $(SRCDIR)/$(NAME_MPFR)/configure $(ARTIFACT_GMP)
-	mkdir -p $(TOOLCHAINBINDIR)
+	mkdir -p $(TOOLCHAINBINPATH)
 	mkdir -p $(BUILDDIR)/$(NAME_MPFR)
-	cd $(BUILDDIR)/$(NAME_MPFR) && sh $< $(TOOLCHAIN_CONFFLAGS) --prefix=$(TOOLCHAINBINDIR) --with-gmp=$(TOOLCHAINBINDIR) --disable-shared
-	cd $(TOOLCHAINDIR)
+	cd $(BUILDDIR)/$(NAME_MPFR) && sh $< $(TOOLCHAIN_CONFFLAGS) --prefix=$(TOOLCHAINBINPATH) --with-gmp=$(TOOLCHAINBINPATH) --disable-shared
+	cd $(TOOLCHAINPATH)
 
 $(BUILDDIR)/$(NAME_MPC)/Makefile: $(SRCDIR)/$(NAME_MPC)/configure $(ARTIFACT_GMP) $(ARTIFACT_MPFR)
-	mkdir -p $(TOOLCHAINBINDIR)
+	mkdir -p $(TOOLCHAINBINPATH)
 	mkdir -p $(BUILDDIR)/$(NAME_MPC)
-	cd $(BUILDDIR)/$(NAME_MPC) && sh $< $(TOOLCHAIN_CONFFLAGS) --target=$(TARGET) --prefix=$(TOOLCHAINBINDIR) --with-gmp=$(TOOLCHAINBINDIR) --with-mpfr=$(TOOLCHAINBINDIR) --disable-shared
-	cd $(TOOLCHAINDIR)
+	cd $(BUILDDIR)/$(NAME_MPC) && sh $< $(TOOLCHAIN_CONFFLAGS) --target=$(TARGET) --prefix=$(TOOLCHAINBINPATH) --with-gmp=$(TOOLCHAINBINPATH) --with-mpfr=$(TOOLCHAINBINPATH) --disable-shared
+	cd $(TOOLCHAINPATH)
 
 $(BUILDDIR)/$(NAME_GCC)/Makefile: .flag.$(NAME_GCC)-reconfigured $(ARTIFACT_BINUTILS) $(ARTIFACT_GMP) $(ARTIFACT_MPFR) $(ARTIFACT_MPC)
-	mkdir -p $(KSYSHEADERDIR)
-	mkdir -p $(TOOLCHAINBINDIR)
+	mkdir -p $(KSYSHEADERPATH)
+	mkdir -p $(TOOLCHAINBINPATH)
 	mkdir -p $(BUILDDIR)/$(NAME_GCC)
-	cd $(BUILDDIR)/$(NAME_GCC) && sh $(SRCDIR)/$(NAME_GCC)/configure $(TOOLCHAIN_CONFFLAGS) --target=$(TARGET) --prefix=$(TOOLCHAINBINDIR) --enable-languages=c --without-headers --disable-nls --with-gmp=$(TOOLCHAINBINDIR) --with-mpfr=$(TOOLCHAINBINDIR) --with-mpc=$(TOOLCHAINBINDIR) --with-sysroot=$(KSYSROOT)
-	cd $(TOOLCHAINDIR)
+	cd $(BUILDDIR)/$(NAME_GCC) && sh $(SRCDIR)/$(NAME_GCC)/configure $(TOOLCHAIN_CONFFLAGS) --target=$(TARGET) --prefix=$(TOOLCHAINBINPATH) --enable-languages=c --without-headers --disable-nls --with-gmp=$(TOOLCHAINBINPATH) --with-mpfr=$(TOOLCHAINBINPATH) --with-mpc=$(TOOLCHAINBINPATH) --with-sysroot=$(KSYSROOT)
+	cd $(TOOLCHAINPATH)
 
 $(ARTIFACT_PERL): $(SRCDIR)/$(NAME_PERL)/Makefile
 	$(MAKE) -C $(shell dirname $<)
@@ -231,7 +231,7 @@ $(ARTIFACT_AUTOCONF): $(BUILDDIR)/$(NAME_AUTOCONF)/Makefile
 $(ARTIFACT_AUTOMAKE): $(BUILDDIR)/$(NAME_AUTOMAKE)/Makefile
 	$(MAKE) -C $(shell dirname $<)
 	$(MAKE) -C $(shell dirname $<) install
-	ln -s $(TOOLCHAINBINDIR)/share/aclocal-* $(TOOLCHAINBINDIR)/share/aclocal
+	ln -s $(TOOLCHAINBINPATH)/share/aclocal-* $(TOOLCHAINBINPATH)/share/aclocal
 
 $(ARTIFACT_BINUTILS): $(BUILDDIR)/$(NAME_BINUTILS)/Makefile
 	$(MAKE) $(TOOLCHAIN_MAKEFLAGS) -C $(shell dirname $<)
@@ -250,7 +250,7 @@ $(ARTIFACT_MPC): $(BUILDDIR)/$(NAME_MPC)/Makefile
 	$(MAKE) $(TOOLCHAIN_MAKEFLAGS) -C $(shell dirname $<) install
 
 $(ARTIFACT_GCC): $(BUILDDIR)/$(NAME_GCC)/Makefile
-	mkdir -p $(KSYSHEADERDIR)
+	mkdir -p $(KSYSHEADERPATH)
 	$(MAKE) $(TOOLCHAIN_MAKEFLAGS) -C $(shell dirname $<) all-gcc
 	$(MAKE) $(TOOLCHAIN_MAKEFLAGS) -C $(shell dirname $<) install-gcc
 
@@ -261,9 +261,9 @@ $(ARTIFACT_LIBGCC): $(BUILDDIR)/$(NAME_GCC)/Makefile
 # FIXME I don't think this is necessary---gcc should autodetect where it put it
 # during the build phase
 # publish-libgcc: $(ARTIFACT_LIBGCC)
-# 	@mkdir -p $(KSYSLIBDIR)
-# 	@rm -f $(KSYSLIBDIR)/libgcc.a
-# 	cp $(ARTIFACT_LIBGCC) $(KSYSLIBDIR)/libgcc.a
+# 	@mkdir -p $(KSYSLIBPATH)
+# 	@rm -f $(KSYSLIBPATH)/libgcc.a
+# 	cp $(ARTIFACT_LIBGCC) $(KSYSLIBPATH)/libgcc.a
 
 check: check-binutils check-gmp check-mpfr check-mpc
 
@@ -309,5 +309,5 @@ clean-build:
 	rm -rf $(BUILDDIR)
 
 clean-dist:
-	rm -rf $(TOOLCHAINBINDIR)
+	rm -rf $(TOOLCHAINBINPATH)
 	rm -f $(FLAG_DIST_BUILT)

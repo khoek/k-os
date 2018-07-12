@@ -1,12 +1,12 @@
-ROOTDIR ?= $(shell readlink -f ..)
-include $(ROOTDIR)/Makefile.config
+ROOTPATH ?= $(shell readlink -f ..)
+include $(ROOTPATH)/Makefile.config
 
 .PHONY: all clean
 
 .DELETE_ON_ERROR:
 
 all:
-	$(MAKE) -C $(DISTIMAGEPREFIX) all
+	$(MAKE) -C $(DISTIMAGEDIR) all
 
 clean-all:
 	rm -rf $(KSYSROOT)
@@ -14,4 +14,4 @@ clean-all:
 clean: clean-image
 
 clean-image:
-	$(MAKE) -C $(DISTIMAGEPREFIX) clean
+	$(MAKE) -C $(DISTIMAGEDIR) clean

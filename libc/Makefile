@@ -1,21 +1,21 @@
-ROOTDIR ?= $(shell readlink -f ..)
-include $(ROOTDIR)/Makefile.config
+ROOTPATH ?= $(shell readlink -f ..)
+include $(ROOTPATH)/Makefile.config
 
-DLDIR := $(LIBCDIR)/dl
-SRCDIR := $(LIBCDIR)/src
-PATCHDIR := $(LIBCDIR)/patch
-BUILDDIR := $(LIBCDIR)/build
+DLPATH := $(LIBCPATH)/dl
+SRCPATH := $(LIBCPATH)/src
+PATCHPATH := $(LIBCPATH)/patch
+BUILDPATH := $(LIBCPATH)/build
 
-export CC_FOR_TARGET := $(TOOLCHAINBINDIR)/bin/$(TARGET)-gcc
-export AR_FOR_TARGET := $(TOOLCHAINBINDIR)/bin/$(TARGET)-ar
-export AS_FOR_TARGET := $(TOOLCHAINBINDIR)/bin/$(TARGET)-as
-export LD_FOR_TARGET := $(TOOLCHAINBINDIR)/bin/$(TARGET)-ld
-export NM_FOR_TARGET := $(TOOLCHAINBINDIR)/bin/$(TARGET)-nm
-export RANLIB_FOR_TARGET := $(TOOLCHAINBINDIR)/bin/$(TARGET)-ranlib
-export STRIP_FOR_TARGET := $(TOOLCHAINBINDIR)/bin/$(TARGET)-strip
-export OBJCOPY_FOR_TARGET := $(TOOLCHAINBINDIR)/bin/$(TARGET)-objcopy
-export OBJDUMP_FOR_TARGET := $(TOOLCHAINBINDIR)/bin/$(TARGET)-objdump
-export READELF_FOR_TARGET := $(TOOLCHAINBINDIR)/bin/$(TARGET)-readelf
+export CC_FOR_TARGET := $(TOOLCHAINBINPATH)/bin/$(TARGET)-gcc
+export AR_FOR_TARGET := $(TOOLCHAINBINPATH)/bin/$(TARGET)-ar
+export AS_FOR_TARGET := $(TOOLCHAINBINPATH)/bin/$(TARGET)-as
+export LD_FOR_TARGET := $(TOOLCHAINBINPATH)/bin/$(TARGET)-ld
+export NM_FOR_TARGET := $(TOOLCHAINBINPATH)/bin/$(TARGET)-nm
+export RANLIB_FOR_TARGET := $(TOOLCHAINBINPATH)/bin/$(TARGET)-ranlib
+export STRIP_FOR_TARGET := $(TOOLCHAINBINPATH)/bin/$(TARGET)-strip
+export OBJCOPY_FOR_TARGET := $(TOOLCHAINBINPATH)/bin/$(TARGET)-objcopy
+export OBJDUMP_FOR_TARGET := $(TOOLCHAINBINPATH)/bin/$(TARGET)-objdump
+export READELF_FOR_TARGET := $(TOOLCHAINBINPATH)/bin/$(TARGET)-readelf
 
 WGETFLAGS := -c
 
@@ -28,16 +28,16 @@ AR_NEWLIB := $(NAME_NEWLIB).tar.gz
 
 URL_NEWLIB := ftp://sourceware.org/pub/newlib/$(AR_NEWLIB)
 
-ARTIFACT_NEWLIB := $(LIBCBINDIR)/$(TARGET)/lib/libc.a
+ARTIFACT_NEWLIB := $(LIBCBINPATH)/$(TARGET)/lib/libc.a
 
-PATCH_NEWLIB := $(PATCHDIR)/$(NAME_NEWLIB).patch
+PATCH_NEWLIB := $(PATCHPATH)/$(NAME_NEWLIB).patch
 
-PUBLISHED_NEWLIB := $(KSYSLIBDIR)/libc.a
+PUBLISHED_NEWLIB := $(KSYSLIBPATH)/libc.a
 
-export AUTOCONF := $(TOOLCHAINBINDIR)/bin/autoconf
-export AUTORECONF := $(TOOLCHAINBINDIR)/bin/autoreconf
-export AUTOMAKE := $(TOOLCHAINBINDIR)/bin/automake
-export ACLOCAL := $(TOOLCHAINBINDIR)/bin/aclocal
+export AUTOCONF := $(TOOLCHAINBINPATH)/bin/autoconf
+export AUTORECONF := $(TOOLCHAINBINPATH)/bin/autoreconf
+export AUTOMAKE := $(TOOLCHAINBINPATH)/bin/automake
+export ACLOCAL := $(TOOLCHAINBINPATH)/bin/aclocal
 
 FLAG_DIST_BUILT := .flag.dist-built
 
@@ -53,54 +53,54 @@ $(FLAG_DIST_BUILT):
 
 required: $(FLAG_DIST_BUILT)
 
-dl: $(DLDIR)/$(AR_NEWLIB)
+dl: $(DLPATH)/$(AR_NEWLIB)
 
-$(DLDIR)/$(AR_NEWLIB):
-	$(WGET) -P $(DLDIR) $(WGETFLAGS) $(URL_NEWLIB)
+$(DLPATH)/$(AR_NEWLIB):
+	$(WGET) -P $(DLPATH) $(WGETFLAGS) $(URL_NEWLIB)
 
-$(SRCDIR)/$(NAME_NEWLIB)/configure: $(DLDIR)/$(AR_NEWLIB)
-	mkdir -p $(SRCDIR)
-	$(TAR) -C $(SRCDIR) -xf $(DLDIR)/$(AR_NEWLIB)
+$(SRCPATH)/$(NAME_NEWLIB)/configure: $(DLPATH)/$(AR_NEWLIB)
+	mkdir -p $(SRCPATH)
+	$(TAR) -C $(SRCPATH) -xf $(DLPATH)/$(AR_NEWLIB)
 	touch $@
 
 #TODO ADD SOME CONSTANTS FOR THESE COMMANDS
-.flag.$(NAME_NEWLIB)-patched: $(SRCDIR)/$(NAME_NEWLIB)/configure
-	rm -rf $(SRCDIR)/$(NAME_NEWLIB)/newlib/libc/sys/kos
-	cp -r sys $(SRCDIR)/$(NAME_NEWLIB)/newlib/libc/sys/kos
-	mkdir -p $(SRCDIR)/$(NAME_NEWLIB)/newlib/libc/sys/kos/include
-	cp -r $(LIBKDIR)/inc/. $(SRCDIR)/$(NAME_NEWLIB)/newlib/libc/sys/kos/include
+.flag.$(NAME_NEWLIB)-patched: $(SRCPATH)/$(NAME_NEWLIB)/configure
+	rm -rf $(SRCPATH)/$(NAME_NEWLIB)/newlib/libc/sys/kos
+	cp -r sys $(SRCPATH)/$(NAME_NEWLIB)/newlib/libc/sys/kos
+	mkdir -p $(SRCPATH)/$(NAME_NEWLIB)/newlib/libc/sys/kos/include
+	cp -r $(LIBKPATH)/inc/. $(SRCPATH)/$(NAME_NEWLIB)/newlib/libc/sys/kos/include
 	patch -p0 < $(PATCH_NEWLIB)
 	touch $@
 
 .flag.$(NAME_NEWLIB)-reconfigured: .flag.$(NAME_NEWLIB)-patched
-	(cd $(SRCDIR)/$(NAME_NEWLIB)/newlib/libc/sys; $(AUTOCONF))
-	(cd $(SRCDIR)/$(NAME_NEWLIB)/newlib/libc/sys/kos; $(ACLOCAL) -I ../../.. && $(AUTOCONF) && $(AUTOMAKE) --cygnus --add-missing Makefile)
+	(cd $(SRCPATH)/$(NAME_NEWLIB)/newlib/libc/sys; $(AUTOCONF))
+	(cd $(SRCPATH)/$(NAME_NEWLIB)/newlib/libc/sys/kos; $(ACLOCAL) -I ../../.. && $(AUTOCONF) && $(AUTOMAKE) --cygnus --add-missing Makefile)
 	touch $@
 
-$(BUILDDIR)/$(NAME_NEWLIB)/Makefile: .flag.$(NAME_NEWLIB)-reconfigured $(ARTIFACT_AUTOMAKE) $(ARTIFACT_AUTOCONF)
-	mkdir -p $(LIBCBINDIR)
-	mkdir -p $(BUILDDIR)/$(NAME_NEWLIB)
-	cd $(BUILDDIR)/$(NAME_NEWLIB) && sh $(SRCDIR)/$(NAME_NEWLIB)/configure -v --build=$(shell gcc -dumpmachine) --target=$(TARGET) --prefix=$(LIBCBINDIR)
-	cd $(LIBCDIR)
+$(BUILDPATH)/$(NAME_NEWLIB)/Makefile: .flag.$(NAME_NEWLIB)-reconfigured $(ARTIFACT_AUTOMAKE) $(ARTIFACT_AUTOCONF)
+	mkdir -p $(LIBCBINPATH)
+	mkdir -p $(BUILDPATH)/$(NAME_NEWLIB)
+	cd $(BUILDPATH)/$(NAME_NEWLIB) && sh $(SRCPATH)/$(NAME_NEWLIB)/configure -v --build=$(shell gcc -dumpmachine) --target=$(TARGET) --prefix=$(LIBCBINPATH)
+	cd $(LIBCPATH)
 
-$(ARTIFACT_NEWLIB): $(BUILDDIR)/$(NAME_NEWLIB)/Makefile
+$(ARTIFACT_NEWLIB): $(BUILDPATH)/$(NAME_NEWLIB)/Makefile
 	$(MAKE) -C $(shell dirname $<)
 	$(MAKE) -C $(shell dirname $<) install
-	cp -r -L $(LIBKDIR)/inc/. $(LIBCHEADERDIR)
+	cp -r -L $(LIBKPATH)/inc/. $(LIBCHEADERPATH)
 
 #FIXME HACKY
 #FIXME Clean this if we run make clean? surely...
 libgcc: $(ARTIFACT_NEWLIB)
-		$(MAKE) $(TOOLCHAIN_MAKEFLAGS) -C $(TOOLCHAINDIR) libgcc
+		$(MAKE) $(TOOLCHAIN_MAKEFLAGS) -C $(TOOLCHAINPATH) libgcc
 
 publish: $(PUBLISHED_NEWLIB)
 
 $(PUBLISHED_NEWLIB): $(ARTIFACT_NEWLIB)
-	@mkdir -p $(KSYSLIBDIR)
-	cp -r $(LIBCHEADERDIR)/. $(KSYSHEADERDIR)
-	cp $(LIBCBINDIR)/$(TARGET)/lib/libc.a $(KSYSLIBDIR)
-	cp $(LIBCBINDIR)/$(TARGET)/lib/libg.a $(KSYSLIBDIR)
-	cp $(LIBCBINDIR)/$(TARGET)/lib/libm.a $(KSYSLIBDIR)
+	@mkdir -p $(KSYSLIBPATH)
+	cp -r $(LIBCHEADERPATH)/. $(KSYSHEADERPATH)
+	cp $(LIBCBINPATH)/$(TARGET)/lib/libc.a $(KSYSLIBPATH)
+	cp $(LIBCBINPATH)/$(TARGET)/lib/libg.a $(KSYSLIBPATH)
+	cp $(LIBCBINPATH)/$(TARGET)/lib/libm.a $(KSYSLIBPATH)
 
 clean-all: clean-dl clean-src clean-build clean-dist
 
@@ -109,15 +109,15 @@ clean: clean-noredl
 clean-noredl: clean-src clean-build clean-dist
 
 clean-dl:
-	rm -rf $(DLDIR)
+	rm -rf $(DLPATH)
 
 clean-src:
-	rm -rf $(SRCDIR)
+	rm -rf $(SRCPATH)
 	rm -f .flag.$(NAME_NEWLIB)-patched .flag.$(NAME_NEWLIB)-reconfigured
 
 clean-build:
-	rm -rf $(BUILDDIR)
+	rm -rf $(BUILDPATH)
 
 clean-dist:
-	rm -rf $(LIBCBINDIR)
+	rm -rf $(LIBCBINPATH)
 	rm -f $(FLAG_DIST_BUILT)

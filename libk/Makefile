@@ -1,5 +1,5 @@
-ROOTDIR ?= $(shell readlink -f ..)
-include $(ROOTDIR)/Makefile.config
+ROOTPATH ?= $(shell readlink -f ..)
+include $(ROOTPATH)/Makefile.config
 
 .PHONY: all clean
 
@@ -9,8 +9,8 @@ SRCDIR := src
 INCDIR := inc
 OBJDIR := build
 
-LIBDIR := $(LIBKBINDIR)/lib
-CRTDIR := $(LIBKBINDIR)/crt
+LIBDIR := $(LIBKBINPATH)/lib
+CRTDIR := $(LIBKBINPATH)/crt
 
 CRTOBJS := $(CRTDIR)/crt0.o
 
@@ -57,13 +57,13 @@ $(LIBDIR)/$(LIBKAR): $(OBJS)
 	@mkdir -p $(shell dirname $@)
 	@$(KAR) rcs $@ $(OBJS)
 
-$(KSYSLIBDIR)/$(LIBKAR): $(LIBDIR)/$(LIBKAR) $(CRTOBJS)
-	@mkdir -p $(KSYSLIBDIR)
-	cp -r $(LIBDIR)/. $(KSYSLIBDIR)
-	cp -r $(CRTDIR)/. $(KSYSLIBDIR)
+$(KSYSLIBPATH)/$(LIBKAR): $(LIBDIR)/$(LIBKAR) $(CRTOBJS)
+	@mkdir -p $(KSYSLIBPATH)
+	cp -r $(LIBDIR)/. $(KSYSLIBPATH)
+	cp -r $(CRTDIR)/. $(KSYSLIBPATH)
 
-publish: $(KSYSLIBDIR)/$(LIBKAR)
+publish: $(KSYSLIBPATH)/$(LIBKAR)
 
 clean:
 	rm -rf $(OBJDIR)
-	rm -rf $(LIBKBINDIR)
+	rm -rf $(LIBKBINPATH)

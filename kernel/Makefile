@@ -1,5 +1,5 @@
-ROOTDIR ?= $(shell readlink -f ..)
-include $(ROOTDIR)/Makefile.config
+ROOTPATH ?= $(shell readlink -f ..)
+include $(ROOTPATH)/Makefile.config
 
 .PHONY: all clean doc
 

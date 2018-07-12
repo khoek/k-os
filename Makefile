@@ -1,4 +1,4 @@
-ROOTDIR ?= $(shell readlink -f .)
+ROOTPATH ?= $(shell readlink -f .)
 include Makefile.config
 
 .PHONY: all complete aux aux-required toolchain-required libc-required toolchain run debug shared kernel libk libc util apps dist run clean-all clean-all-noredl clean clean-run clean-aux clean-libc clean-toolchain

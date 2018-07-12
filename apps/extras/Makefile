@@ -1,5 +1,5 @@
-ROOTDIR ?= $(shell readlink -f ../..)
-include $(ROOTDIR)/Makefile.config
+ROOTPATH ?= $(shell readlink -f ../..)
+include $(ROOTPATH)/Makefile.config
 
 DLDIR := dl
 SRCDIR := src
@@ -7,16 +7,16 @@ BUILDDIR := build
 BINDIR := dist
 PATCHDIR := patch
 
-export CC := $(TOOLCHAINBINDIR)/bin/$(TARGET)-gcc
-export AR := $(TOOLCHAINBINDIR)/bin/$(TARGET)-ar
-export AS := $(TOOLCHAINBINDIR)/bin/$(TARGET)-as
-export LD := $(TOOLCHAINBINDIR)/bin/$(TARGET)-ld
-export NM := $(TOOLCHAINBINDIR)/bin/$(TARGET)-nm
-export RANLIB := $(TOOLCHAINBINDIR)/bin/$(TARGET)-ranlib
-export STRIP := $(TOOLCHAINBINDIR)/bin/$(TARGET)-strip
-export OBJCOPY := $(TOOLCHAINBINDIR)/bin/$(TARGET)-objcopy
-export OBJDUMP := $(TOOLCHAINBINDIR)/bin/$(TARGET)-objdump
-export READELF := $(TOOLCHAINBINDIR)/bin/$(TARGET)-readelf
+export CC := $(TOOLCHAINBINPATH)/bin/$(TARGET)-gcc
+export AR := $(TOOLCHAINBINPATH)/bin/$(TARGET)-ar
+export AS := $(TOOLCHAINBINPATH)/bin/$(TARGET)-as
+export LD := $(TOOLCHAINBINPATH)/bin/$(TARGET)-ld
+export NM := $(TOOLCHAINBINPATH)/bin/$(TARGET)-nm
+export RANLIB := $(TOOLCHAINBINPATH)/bin/$(TARGET)-ranlib
+export STRIP := $(TOOLCHAINBINPATH)/bin/$(TARGET)-strip
+export OBJCOPY := $(TOOLCHAINBINPATH)/bin/$(TARGET)-objcopy
+export OBJDUMP := $(TOOLCHAINBINPATH)/bin/$(TARGET)-objdump
+export READELF := $(TOOLCHAINBINPATH)/bin/$(TARGET)-readelf
 
 WGETFLAGS := -c
 
@@ -41,8 +41,8 @@ ARTIFACT_COREUTILS := $(BUILDDIR)/$(NAME_COREUTILS)/src/coreutils
 PATCH_BASH := $(PATCHDIR)/$(NAME_BASH).patch
 PATCH_COREUTILS := $(PATCHDIR)/$(NAME_COREUTILS).patch
 
-PUBLISHED_BASH := $(APPSDIR)/build/bin/bash
-PUBLISHED_COREUTILS := $(APPSDIR)/build/bin/coreutils
+PUBLISHED_BASH := $(APPSPATH)/build/bin/bash
+PUBLISHED_COREUTILS := $(APPSPATH)/build/bin/coreutils
 
 FLAG_DIST_BUILT := .flag.dist-built
 
@@ -54,7 +54,7 @@ FLAG_DIST_BUILT := .flag.dist-built
 all: publish
 	@touch $(FLAG_DIST_BUILT)
 
-$(FLAG_DIST_BUILT): $(KSYSLIBDIR)/libk.a $(KSYSLIBDIR)/libc.a
+$(FLAG_DIST_BUILT): $(KSYSLIBPATH)/libk.a $(KSYSLIBPATH)/libc.a
 	$(MAKE) all
 
 required: $(FLAG_DIST_BUILT)
@@ -67,13 +67,13 @@ $(DLDIR)/$(AR_BASH):
 $(DLDIR)/$(AR_COREUTILS):
 	$(WGET) -P $(DLDIR) $(WGETFLAGS) $(URL_COREUTILS)
 
-$(SRCDIR)/$(NAME_BASH)/configure: $(DLDIR)/$(AR_BASH) $(KSYSLIBDIR)/libk.a $(KSYSLIBDIR)/libc.a
+$(SRCDIR)/$(NAME_BASH)/configure: $(DLDIR)/$(AR_BASH) $(KSYSLIBPATH)/libk.a $(KSYSLIBPATH)/libc.a
 	rm -rf $(BUILDDIR)/$(NAME_BASH)
 	mkdir -p $(SRCDIR)
 	$(TAR) -C $(SRCDIR) -xf $(DLDIR)/$(AR_BASH)
 	touch $@
 
-$(SRCDIR)/$(NAME_COREUTILS)/configure: $(DLDIR)/$(AR_COREUTILS) $(KSYSLIBDIR)/libk.a $(KSYSLIBDIR)/libc.a
+$(SRCDIR)/$(NAME_COREUTILS)/configure: $(DLDIR)/$(AR_COREUTILS) $(KSYSLIBPATH)/libk.a $(KSYSLIBPATH)/libc.a
 	rm -rf $(BUILDDIR)/$(NAME_COREUTILS)
 	mkdir -p $(SRCDIR)
 	$(TAR) -C $(SRCDIR) -xf $(DLDIR)/$(AR_COREUTILS)
@@ -87,24 +87,24 @@ $(SRCDIR)/$(NAME_COREUTILS)/configure: $(DLDIR)/$(AR_COREUTILS) $(KSYSLIBDIR)/li
 	patch -p0 < $(PATCH_COREUTILS)
 	touch $@
 
-$(BUILDDIR)/$(NAME_BASH)/Makefile: .flag.$(NAME_BASH)-patched $(DLDIR)/$(AR_BASH) $(KSYSLIBDIR)/libk.a
+$(BUILDDIR)/$(NAME_BASH)/Makefile: .flag.$(NAME_BASH)-patched $(DLDIR)/$(AR_BASH) $(KSYSLIBPATH)/libk.a
 	mkdir -p $(BUILDDIR)/$(NAME_BASH)
-	cd $(APPSDIR)/extras/$(BUILDDIR)/$(NAME_BASH) && export CFLAGS="$(CFLAGS_BASH)" && sh $(APPSDIR)/extras/$(SRCDIR)/$(NAME_BASH)/configure -v --build=$(shell gcc -dumpmachine) --host=$(TARGET) --prefix=/
-	cd $(APPSDIR)/extras
+	cd $(APPSPATH)/extras/$(BUILDDIR)/$(NAME_BASH) && export CFLAGS="$(CFLAGS_BASH)" && sh $(APPSPATH)/extras/$(SRCDIR)/$(NAME_BASH)/configure -v --build=$(shell gcc -dumpmachine) --host=$(TARGET) --prefix=/
+	cd $(APPSPATH)/extras
 
-$(BUILDDIR)/$(NAME_COREUTILS)/Makefile: .flag.$(NAME_COREUTILS)-patched $(DLDIR)/$(AR_BASH) $(KSYSLIBDIR)/libk.a
+$(BUILDDIR)/$(NAME_COREUTILS)/Makefile: .flag.$(NAME_COREUTILS)-patched $(DLDIR)/$(AR_BASH) $(KSYSLIBPATH)/libk.a
 	mkdir -p $(BUILDDIR)/$(NAME_COREUTILS)
-	mkdir -p $(APPSDIR)/extras/$(BINDIR)/$(NAME_COREUTILS)
-	cd $(APPSDIR)/extras/$(BUILDDIR)/$(NAME_COREUTILS) && export CFLAGS="$(CFLAGS_COREUTILS)" && sh $(APPSDIR)/extras/$(SRCDIR)/$(NAME_COREUTILS)/configure -v --build=$(shell gcc -dumpmachine) --host=$(TARGET) --prefix=/ --enable-single-binary --without-selinux --without-gmp --enable-no-install-program=stdbuf
-	cd $(APPSDIR)/extras
+	mkdir -p $(APPSPATH)/extras/$(BINDIR)/$(NAME_COREUTILS)
+	cd $(APPSPATH)/extras/$(BUILDDIR)/$(NAME_COREUTILS) && export CFLAGS="$(CFLAGS_COREUTILS)" && sh $(APPSPATH)/extras/$(SRCDIR)/$(NAME_COREUTILS)/configure -v --build=$(shell gcc -dumpmachine) --host=$(TARGET) --prefix=/ --enable-single-binary --without-selinux --without-gmp --enable-no-install-program=stdbuf
+	cd $(APPSPATH)/extras
 
 $(ARTIFACT_BASH): $(BUILDDIR)/$(NAME_BASH)/Makefile
 	$(MAKE) -C $(shell dirname $<)
-	$(MAKE) -C $(shell dirname $<) DESTDIR=$(APPSDIR)/extras/$(BINDIR)/$(NAME_BASH) install
+	$(MAKE) -C $(shell dirname $<) DESTDIR=$(APPSPATH)/extras/$(BINDIR)/$(NAME_BASH) install
 
 $(ARTIFACT_COREUTILS): $(BUILDDIR)/$(NAME_COREUTILS)/Makefile
 	$(MAKE) -C $(shell dirname $<)
-	$(MAKE) -C $(shell dirname $<) DESTDIR=$(APPSDIR)/extras/$(BINDIR)/$(NAME_COREUTILS) install
+	$(MAKE) -C $(shell dirname $<) DESTDIR=$(APPSPATH)/extras/$(BINDIR)/$(NAME_COREUTILS) install
 
 publish: $(PUBLISHED_BASH) $(PUBLISHED_COREUTILS)
 
@@ -113,8 +113,8 @@ $(PUBLISHED_BASH): $(ARTIFACT_BASH)
 	cp $(ARTIFACT_BASH) $(PUBLISHED_BASH)
 
 $(PUBLISHED_COREUTILS): $(ARTIFACT_COREUTILS)
-	@mkdir -p $(APPSDIR)/build/bin
-	-cp -r $(BINDIR)/$(NAME_COREUTILS)/bin/. $(APPSDIR)/build/bin
+	@mkdir -p $(APPSPATH)/build/bin
+	-cp -r $(BINDIR)/$(NAME_COREUTILS)/bin/. $(APPSPATH)/build/bin
 
 clean-all: clean-dl clean-src clean-build clean-dist
 

@@ -1,12 +1,12 @@
-ROOTDIR ?= $(shell readlink -f ..)
-include $(ROOTDIR)/Makefile.config
+ROOTPATH ?= $(shell readlink -f ..)
+include $(ROOTPATH)/Makefile.config
 
 .PHONY: all clean
 
 .DELETE_ON_ERROR:
 
 SRCDIR := src
-OBJDIR := $(UTILBINDIR)
+OBJDIR := $(UTILBINPATH)
 
 CFLAGS := -Wall -Wextra -Werror -Wno-unused-parameter -std=gnu99 -g -O3
 

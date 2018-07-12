@@ -1,5 +1,5 @@
-ROOTDIR ?= $(shell readlink -f ..)
-include $(ROOTDIR)/Makefile.config
+ROOTPATH ?= $(shell readlink -f ..)
+include $(ROOTPATH)/Makefile.config
 
 .PHONY: all extras clean
 
@@ -25,19 +25,19 @@ all: $(ROOTRAMFS)
 extras:
 	$(MAKE) -C $(EXTRASDIR) all
 
-$(EXTRA_FLAG_DIST_BUILT): $(KSYSLIBDIR)/libk.a $(KSYSLIBDIR)/libc.a
+$(EXTRA_FLAG_DIST_BUILT): $(KSYSLIBPATH)/libk.a $(KSYSLIBPATH)/libc.a
 	$(MAKE) extras
 
 $(ROOTRAMFS): $(RESO) $(OBJS) $(EXTRA_FLAG_DIST_BUILT)
 	@echo "      mkrootramfs"
-	@$(UTILBINDIR)/$(MKROOTRAMFS) -o $@ $(OUTDIR)
+	@$(UTILBINPATH)/$(MKROOTRAMFS) -o $@ $(OUTDIR)
 
 $(RESO): $(OUTDIR)/% : $(RESDIR)/%
 	@echo "      cp  $(patsubst $(RESDIR)%,%,$<) -> $(patsubst $(OUTDIR)%,%,$@)"
 	@mkdir -p $(shell dirname $@)
 	@cp $< $@
 
-$(OBJS): $(OUTDIR)/% : $(SRCDIR)/%.c $(KSYSLIBDIR)/libk.a $(KSYSLIBDIR)/libc.a
+$(OBJS): $(OUTDIR)/% : $(SRCDIR)/%.c $(KSYSLIBPATH)/libk.a $(KSYSLIBPATH)/libc.a
 	@echo "      cc  $(patsubst $(SRCDIR)%,%,$<) -> $(patsubst $(OUTDIR)%,%,$@)"
 	@mkdir -p $(shell dirname $@)
 	@$(KCC) $(CFLAGS) $< -o $@
