@@ -14,6 +14,7 @@
 #define CSI_SINGLE ((char) 0x9B)
 #define CSI_DOUBLE_PARTA ((char) 0x1B)
 #define CSI_DOUBLE_PARTB ((char) '[')
+#define CSI_DOUBLE "\x1b["
 
 #define B_KEY      0x30
 #define C_KEY      0x2e
@@ -59,7 +60,7 @@ void __init console_early_remap();
 void vram_init(console_t *console);
 void keyboard_init(console_t *console);
 
-ssize_t keybuff_read(char* buff, size_t len);
+ssize_t keybuff_read(uint8_t *buff, size_t len);
 
 void vram_color(console_t *con, char c);
 void vram_clear(console_t *con);

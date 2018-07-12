@@ -88,7 +88,7 @@ static INITCALL console_init() {
 }
 
 static ssize_t console_char_read(char_device_t UNUSED(*cdev), char *buff, size_t len) {
-    return keybuff_read(buff, len);
+    return keybuff_read((uint8_t *) buff, len);
 }
 
 static ssize_t console_char_write(char_device_t *cdev, const char *buff, size_t len) {

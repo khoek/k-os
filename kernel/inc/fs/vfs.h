@@ -32,8 +32,6 @@
 #define	S_ISSOCK(m)	(S_GETTTYPE(m) == S_IFSOCK)
 #define	S_ISFIFO(m)	(S_GETTTYPE(m) == S_IFIFO)
 
-#define 	S_BLKSIZE  1024 /* size of a block */
-
 #define	S_ISUID		0004000	/* set user id on execution */
 #define	S_ISGID		0002000	/* set group id on execution */
 #define	S_ISVTX		0001000	/* save swapped text even after use */

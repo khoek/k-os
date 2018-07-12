@@ -1,81 +1,65 @@
 #include <stdbool.h>
 
 #include "common/types.h"
-#include "init/initcall.h"
 #include "common/asm.h"
+#include "common/ringbuff.h"
+#include "init/initcall.h"
 #include "sync/spinlock.h"
 #include "sync/semaphore.h"
 #include "arch/gdt.h"
 #include "arch/idt.h"
+#include "bug/panic.h"
 #include "driver/console/console.h"
 #include "log/log.h"
 
-#define KEYBUFFLEN 512
+#define KEYBUFFLEN 2048
 
 #define KEYBOARD_IRQ 1
 
 static console_t *the_console;
 
-static uint32_t keybuff_front = 0, keybuff_back = 0;
-static uint8_t keybuff[KEYBUFFLEN];
-static volatile uint32_t read_waiting = 0;
+static uint8_t keybuf[KEYBUFFLEN];
+static DEFINE_RINGBUFF(keyrb, keybuf);
 static DEFINE_SPINLOCK(keybuff_lock);
+
+static volatile uint32_t read_waiting = 0;
 static DEFINE_SEMAPHORE(wait_semaphore, 0);
 
 static inline void keybuff_append(uint8_t code) {
+    // kprintf("C%XC", code);
+
     uint32_t flags;
     spin_lock_irqsave(&keybuff_lock, &flags);
 
-    uint32_t new_front = (keybuff_front + 1) % KEYBUFFLEN;
-    if(new_front == keybuff_back) goto append_out;
-
-    keybuff[keybuff_front] = code;
-    keybuff_front = new_front;
-
-    if(read_waiting) {
-        semaphore_up(&wait_semaphore);
-
-        read_waiting--;
+    if(ringbuff_is_full(&keyrb, uint8_t)) {
+        panic("keybuff full");
     }
 
-append_out:
+    ringbuff_write(&keyrb, &code, 1, uint8_t);
+    if(read_waiting) {
+        semaphore_up(&wait_semaphore);
+    }
+
     spin_unlock_irqstore(&keybuff_lock, flags);
 }
 
 //read at most len bytes from the key buffer, blocking only if it is empty
-ssize_t keybuff_read(char *buff, size_t len) {
+ssize_t keybuff_read(uint8_t *buff, size_t len) {
     uint32_t flags;
     spin_lock_irqsave(&keybuff_lock, &flags);
 
-    if(keybuff_front == keybuff_back) {
-read_retry:
-        read_waiting++;
-
+    read_waiting++;
+    while(ringbuff_is_empty(&keyrb, uint8_t)) {
         spin_unlock_irqstore(&keybuff_lock, flags);
-
         semaphore_down(&wait_semaphore);
-
         spin_lock_irqsave(&keybuff_lock, &flags);
-
-        if(keybuff_front == keybuff_back) {
-                goto read_retry;
-        }
     }
-
-    uint32_t copied = 0;
-    while(copied < len && keybuff_front != keybuff_back) {
-        uint32_t chunk_len = keybuff_front < keybuff_back ? KEYBUFFLEN - keybuff_back : keybuff_front - keybuff_back;
-        chunk_len = MIN(chunk_len, len - copied);
-
-        memcpy(buff + copied, &keybuff[keybuff_back], chunk_len);
-
-        copied += chunk_len;
-        keybuff_back = (keybuff_back + chunk_len) % KEYBUFFLEN;
-    }
+    read_waiting--;
+    ssize_t ret = ringbuff_read(&keyrb, buff, len, uint8_t);
 
     spin_unlock_irqstore(&keybuff_lock, flags);
 
-    return copied;
+    return ret;
 }
 
 #define CTRL_REG 0x64
@@ -84,8 +68,11 @@ read_retry:
 #define CTRL_STATUS_INBUF (1 << 1)
 
 uint8_t encr_read() {
-	while(inb(CTRL_REG) & CTRL_STATUS_INBUF);
-	return inb(ENCR_REG);
+    //FIXME potential infinite loop?
+    while(inb(CTRL_REG) & CTRL_STATUS_INBUF) {
+        //wait
+    }
+    return inb(ENCR_REG);
 }
 
 static void handle_keyboard(interrupt_t *interrupt, void *data) {
