@@ -6,11 +6,11 @@
 #include "fs/vfs.h"
 #include "log/log.h"
 
-#define CHUNK_SIZE 512
+#define CHUNK_SIZE 1024
 
 typedef struct chunk {
-    int32_t used;
-    char *buff;
+    uint32_t used;
+    void *buff;
 
     list_head_t list;
 } chunk_t;
@@ -33,110 +33,141 @@ static chunk_t * chunk_alloc(record_t *r) {
     return c;
 }
 
-static chunk_t * chunk_find(record_t *r, ssize_t off) {
-    chunk_t *c;
-    LIST_FOR_EACH_ENTRY(c, &r->chunks, list) {
-        if(off >= CHUNK_SIZE) {
-            off -= CHUNK_SIZE;
-            continue;
-        }
+//CONTRACT: if chunk_read and chunk_write return a size less than the size
+//passed to them, then immediately calling chunk_read/write with the remainder
+//must return zero (they return having filled/emptied the buffer as best they
+//could). This might become important if the data structure underlying chunks
+//is changed (and the get bigger).
 
-        return c;
-    }
-
-    return NULL;
-}
-
-static ssize_t chunk_write(chunk_t *c, const char *buff, ssize_t len, ssize_t off) {
-    BUG_ON(off >= CHUNK_SIZE);
-    len = MIN(CHUNK_SIZE - off, len);
-    memcpy(c->buff + off, buff, len);
-    c->used = MAX(c->used, off + len);
-    return len;
-}
-
-static ssize_t chunk_read(chunk_t *c, char *buff, ssize_t len, ssize_t off) {
+static ssize_t chunk_read(chunk_t *c, void *buff, size_t len, size_t off) {
     BUG_ON(off > c->used);
     len = MIN(c->used - off, len);
     memcpy(buff, c->buff + off, len);
     return len;
 }
 
-static ssize_t record_write(inode_t *inode, const char *buff, ssize_t len, ssize_t off) {
-    record_t *r = inode->private;
+//record_size is for bookkeeping of this record, and is updated when we expand
+static ssize_t chunk_write(chunk_t *c, size_t *record_size, const void *buff,
+    size_t len, size_t off) {
+    BUG_ON(off >= CHUNK_SIZE);
+    len = MIN(CHUNK_SIZE - off, len);
+    memcpy(c->buff + off, buff, len);
 
-    ssize_t written = 0;
-    while(written < len) {
-        //FIXME this call to chunk_find is insane:
-        //we should just find the first chunk we need, and keep taking the next
-        //in the list. Probably, the list_add_before in chunk_alloc is wrong for
-        //these purposes (figure out which of list_add and list_add_before puts
-        //the entry at the end of the list).
-        chunk_t *c = chunk_find(r, off + written);
+    uint32_t old_used = c->used;
+    c->used = MAX(c->used, off + len);
+    *record_size += c->used - old_used;
+
+    return len;
+}
+
+static ssize_t record_read(file_t *file, void *buff, size_t len, size_t off) {
+    chunk_t *c = file->private; //current chunk
+    inode_t *inode = file->dentry->inode;
+    record_t *r = inode->private;
+    ssize_t amt = 0;
+
+    if(!c) {
+        return 0;
+    }
+
+    while(len - amt && c) {
+        amt += chunk_read(c, buff + amt, len - amt, (off + amt) % CHUNK_SIZE);
+
+        if(!(len - amt) || list_is_last(c, &r->chunks, list)) {
+            file->private = (off + amt) % CHUNK_SIZE ? c : list_next(c, &r->chunks, list);
+        }
+        c = list_next(c, &r->chunks, list);
+    }
+
+    file->offset += amt;
+    return amt;
+}
+
+static ssize_t record_write(file_t *file, const void *buff, size_t len, size_t off) {
+    chunk_t *c = file->private; //current chunk
+    inode_t *inode = file->dentry->inode;
+    record_t *r = inode->private;
+    ssize_t amt = 0;
+
+    while(len - amt) {
         if(!c) {
             c = chunk_alloc(r);
         }
-        uint32_t old_used = c->used;
-        written += chunk_write(c, buff + written, len - written, (off + written) % CHUNK_SIZE);
-        inode->size += c->used - old_used;
-    }
-    return written;
-}
 
-static ssize_t record_read(inode_t *inode, char *buff, ssize_t len, ssize_t off) {
-    record_t *r = inode->private;
+        amt += chunk_write(c, &inode->size, buff + amt, len - amt,
+            (off + amt) % CHUNK_SIZE);
 
-    ssize_t read = 0;
-    while(read < len) {
-        //FIXME this call to chunk_find is insane:
-        //we should just find the first chunk we need, and keep taking the next
-        //in the list. Probably, the list_add_before in chunk_alloc is wrong for
-        //these purposes (figure out which of list_add and list_add_before puts
-        //the entry at the end of the list).
-        chunk_t *c = chunk_find(r, off + read);
-        if(!c) {
-            break;
+        if(len - amt) {
+            if(c) {
+                c = list_next(c, &r->chunks, list);
+            }
+        } else {
+            file->private = (off + amt) % CHUNK_SIZE ? c : list_next(c, &r->chunks, list);
         }
-
-        uint32_t amt = chunk_read(c, buff + read, len - read, (off + read) % CHUNK_SIZE);
-        //if we didn't read to the end of the chunk, but is has no more data,
-        //i.e. we found the last chunk
-        if(!amt) {
-            break;
-        }
-        read += amt;
     }
-    return read;
+
+    file->offset += amt;
+    return amt;
 }
 
 static record_t * record_create() {
     record_t *r = cache_alloc(record_cache);
     list_init(&r->chunks);
-    chunk_alloc(r);
     return r;
 }
 
+//Note: inode->private stores a record_t *, while file->private stores a
+//chunk_t *.
+
+//XXX if we ever implement deletion/deallocation of chunks, we must be mindful
+//of other file_t *s storing pointers to chunks which we are deleting, or
+//rearranging.
+
 static void ramfs_file_open(file_t *file, inode_t *inode) {
+    if(!(inode->flags & INODE_FLAG_DIRECTORY)) {
+        record_t *r = inode->private;
+        if(list_empty(&r->chunks)) {
+            file->private = NULL;
+        } else {
+            file->private = list_first(&r->chunks, chunk_t, list);
+        }
+    }
 }
 
 static void ramfs_file_close(file_t *file) {
 }
 
 static off_t ramfs_file_seek(file_t *file, off_t offset) {
-    file->offset = offset;
-    return file->offset;
+    inode_t *inode = file->dentry->inode;
+    record_t *r = inode->private;
+    size_t pos = 0;
+
+    //FIXME only do a relative seek, instead of just starting over
+    chunk_t *c;
+    LIST_FOR_EACH_ENTRY(c, &r->chunks, list) {
+        if(offset - pos < CHUNK_SIZE) {
+            if(offset - pos > c->used) {
+                //FIXME allow seeking beyond end of file
+                panic("ramfs - seek beyond EOF");
+            }
+
+            file->private = c;
+            file->offset = offset;
+            return offset;
+        }
+        pos += CHUNK_SIZE;
+    }
+
+    //FIXME allow seeking beyond end of file
+    panic("ramfs - seek beyond EOF");
 }
 
 static ssize_t ramfs_file_read(file_t *file, char *buff, size_t bytes) {
-    ssize_t ret = record_read(file->dentry->inode, buff, bytes, file->offset);
-    file->offset += ret;
-    return ret;
+    return record_read(file, buff, bytes, file->offset);
 }
 
 static ssize_t ramfs_file_write(file_t *file, const char *buff, size_t bytes) {
-    ssize_t ret = record_write(file->dentry->inode, buff, bytes, file->offset);
-    file->offset += ret;
-    return ret;
+    return record_write(file, buff, bytes, file->offset);
 }
 
 static file_ops_t ramfs_file_ops = {
@@ -192,7 +223,7 @@ static bool ramfs_inode_create(inode_t *inode, dentry_t *new, uint32_t mode) {
 
     new->inode->private = record_create();
 
-    return new;
+    return true;
 }
 
 static bool ramfs_inode_mkdir(inode_t *inode, dentry_t *new, uint32_t mode) {

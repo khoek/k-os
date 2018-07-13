@@ -145,7 +145,7 @@ struct inode {
     uint32_t uid;
     uint32_t gid;
     uint32_t rdev;
-    int32_t size;
+    uint32_t size;
 
     uint32_t atime;
     uint32_t mtime;
