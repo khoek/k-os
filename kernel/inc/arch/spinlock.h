@@ -4,7 +4,7 @@
 #include "common/types.h"
 #include "common/compiler.h"
 #include "common/asm.h"
-#include "sync/spinlock.h"
+#include "bug/check.h"
 
 typedef uint16_t ticket_t;
 

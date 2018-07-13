@@ -6,6 +6,7 @@
 #include "mm/mm.h"
 #include "mm/cache.h"
 #include "sched/proc.h"
+#include "sched/sched.h"
 #include "log/log.h"
 
 processor_t *bsp;

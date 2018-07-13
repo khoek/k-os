@@ -23,10 +23,32 @@ static inline void spinlock_init(spinlock_t *spinlock) {
     list_init(&spinlock->list);
 }
 
-void spin_lock_irq(volatile spinlock_t *lock);
-void spin_unlock_irq(volatile spinlock_t *lock);
+static void spin_lock_irq(volatile spinlock_t *lock);
+static void spin_unlock_irq(volatile spinlock_t *lock);
 
-void spin_lock_irqsave(volatile spinlock_t *lock, uint32_t *flags);
-void spin_unlock_irqstore(volatile spinlock_t *lock, uint32_t flags);
+static void spin_lock_irqsave(volatile spinlock_t *lock, uint32_t *flags);
+static void spin_unlock_irqstore(volatile spinlock_t *lock, uint32_t flags);
+
+#include "arch/interrupt.h"
+
+static void spin_lock_irq(volatile spinlock_t *lock) {
+    irqdisable();
+    spin_lock(lock);
+}
+
+static void spin_unlock_irq(volatile spinlock_t *lock) {
+    spin_unlock(lock);
+    irqenable();
+}
+
+static void spin_lock_irqsave(volatile spinlock_t *lock, uint32_t *flags) {
+    irqsave(flags);
+    spin_lock(lock);
+}
+
+static void spin_unlock_irqstore(volatile spinlock_t *lock, uint32_t flags) {
+    spin_unlock(lock);
+    irqstore(flags);
+}
 
 #endif

@@ -8,6 +8,7 @@
 #include "arch/gdt.h"
 #include "arch/pl.h"
 #include "arch/pit.h"
+#include "arch/pic.h"
 #include "mm/cache.h"
 #include "sched/sched.h"
 #include "log/log.h"

@@ -1,5 +1,6 @@
-#include "sched/syscall.h"
 #include "arch/gdt.h"
+#include "sched/syscall.h"
+#include "sched/sched.h"
 #include "init/initcall.h"
 
 static void syscall_handler(interrupt_t *interrupt, void *data) {

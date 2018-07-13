@@ -140,16 +140,6 @@ void idt_init() {
     lidt(&idtd);
 }
 
-void irqsave(uint32_t *flags) {
-    *flags = get_eflags() & EFLAGS_IF;
-    irqdisable();
-}
-
-void irqstore(uint32_t flags) {
-    if(flags & EFLAGS_IF) irqenable();
-    else irqdisable();
-}
-
 extern void register_isr_stubs();
 
 static INITCALL isr_init() {

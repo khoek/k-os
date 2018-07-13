@@ -5,6 +5,8 @@
 #include "arch/idt.h"
 #include "time/timer.h"
 #include "time/clock.h"
+#include "arch/idt.h"
+#include "fs/char.h"
 #include "log/log.h"
 
 #define TIMER_FREQ 1000
@@ -181,7 +183,7 @@ static void end_beep(void *unused) {
 
 void beep() {
     spkr_set_freq(1000);
-    
+
     //FIXME make sure we aren't being called too early to use a timer
     timer_create(10, (void (*)(void *)) end_beep, NULL);
 }
