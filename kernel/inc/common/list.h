@@ -15,6 +15,13 @@ struct list_head {
 #define list_entry(ptr, type, member) containerof(ptr, type, member)
 #define list_first(ptr, type, member) list_entry((ptr)->next, type, member)
 
+#define list_is_last(pos, head, member) (&(pos)->member == (head))
+
+#define list_next_unsafe(pos, head, member) list_entry(pos->member.next, typeof(*pos), member)
+#define list_next(pos, head, member) \
+  ((pos)->member.next == (head) ? NULL : list_next_unsafe(pos, head, member))
+
+
 static inline void list_init(list_head_t *entry) {
     entry->next = entry;
     entry->prev = entry;
@@ -70,24 +77,20 @@ static inline void list_move_before(list_head_t *entry, list_head_t *head) {
 }
 
 static inline void list_rotate_left(list_head_t *head) {
-    list_head_t *first;
-
     if (!list_empty(head)) {
-        first = head->next;
-        list_move_before(first, head);
+        list_move_before(head->next, head);
     }
 }
 
 #define LIST_HEAD(name) { &(name), &(name) }
 #define DEFINE_LIST(name) list_head_t name = LIST_HEAD(name)
 
-#define LIST_FOR_EACH(pos, head)                                                \
+#define LIST_FOR_EACH(pos, head) \
     for (pos = (head)->next; pos != (head); pos = pos->next)
-
-#define LIST_FOR_EACH_ENTRY(pos, head, member)                                  \
-    for (pos = list_entry((head)->next, typeof(*pos), member);                  \
-         &pos->member != (head);                                                \
-         pos = list_entry(pos->member.next, typeof(*pos), member))
+#define LIST_FOR_EACH_ENTRY(pos, head, member) \
+    for (pos = list_entry((head)->next, typeof(*pos), member); \
+        !list_is_last(pos, head, member);                      \
+        pos = list_next_unsafe(pos, head, member))
 
 typedef struct chain_node chain_node_t;
 
@@ -100,10 +103,9 @@ typedef struct chain_head_t {
 } chain_head_t;
 
 #define chain_entry(ptr, type, member) containerof(ptr,type,member)
-
-#define chain_entry_safe(ptr, type, member)                                     \
-    ({ typeof(ptr) ____ptr = (ptr);                                             \
-       ____ptr ? chain_entry(____ptr, type, member) : NULL;                     \
+#define chain_entry_safe(ptr, type, member) \
+    ({ typeof(ptr) ____ptr = (ptr);                         \
+       ____ptr ? chain_entry(____ptr, type, member) : NULL; \
     })
 
 static inline void chain_init(chain_head_t *head) {
@@ -125,8 +127,9 @@ static inline bool chain_empty(const chain_head_t *h) {
 
 static inline void chain_join(chain_node_t **pprev, chain_node_t *next) {
     *pprev = next;
-    if(next)
+    if(next) {
         next->pprev = pprev;
+    }
 }
 
 static inline void chain_rm(chain_node_t *n) {
@@ -138,8 +141,9 @@ static inline void chain_rm(chain_node_t *n) {
 static inline void chain_add_head(chain_node_t *n, chain_head_t *h) {
     chain_node_t *first = h->first;
     n->next = first;
-    if (first)
+    if(first) {
         first->pprev = &n->next;
+    }
     h->first = n;
     n->pprev = &h->first;
 }
@@ -156,26 +160,27 @@ static inline void chain_add_after(chain_node_t *n, chain_node_t *next) {
     n->next = next;
     next->pprev = &n->next;
 
-    if(next->next)
+    if(next->next) {
         next->next->pprev = &next->next;
+    }
 }
 
 static inline void chain_move_list(chain_head_t *old, chain_head_t *new) {
     new->first = old->first;
-    if (new->first)
+    if(new->first) {
         new->first->pprev = &new->first;
+    }
     old->first = NULL;
 }
 
 #define CHAIN_HEAD { .first = NULL }
 #define DEFINE_CHAIN(name) chain_head_t name = {  .first = NULL }
 
-#define CHAIN_FOR_EACH(pos, head)                                               \
+#define CHAIN_FOR_EACH(pos, head) \
     for (pos = (head)->first; pos ; pos = pos->next)
-
-#define CHAIN_FOR_EACH_ENTRY(pos, head, member)                                 \
-    for (pos = chain_entry_safe((head)->first, typeof(*(pos)), member);         \
-         pos;                                                                   \
+#define CHAIN_FOR_EACH_ENTRY(pos, head, member) \
+    for (pos = chain_entry_safe((head)->first, typeof(*(pos)), member);      \
+         pos;                                                                \
          pos = chain_entry_safe((pos)->member.next, typeof(*(pos)), member))
 
 #endif
