@@ -538,16 +538,19 @@ DEFINE_SYSCALL(waitpid, pid_t pid, int *stat_loc, int options) {
 
 DEFINE_SYSCALL(chdir, const char *pathname) {
     if(!pathname) {
-        //errno = EFAULT            <- I looked it up!/ (tried lon linux!)
-        return -1;
+        return -EFAULT;
     }
 
     path_t path;
     if(vfs_lookup(&obtain_fs_context(current)->pwd, pathname, &path)) {
+        if(!S_ISDIR(path.dentry->inode->mode)) {
+            return -ENOTDIR;
+        }
+
         //FIXME this desperately needs to be locked
         obtain_fs_context(current)->pwd = path;
     } else {
-        return -1;
+        return -ENOENT;
     }
 
     return 0;
