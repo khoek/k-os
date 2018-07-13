@@ -27,6 +27,10 @@ alias l='ls -CF'
 # set prompt string
 PS1='\u@\h:\w\$ '
 
+# FIXME get the kernel to set this?
+HOME='/root'
+cd
+
 # print silly welcome message
 echo "Welcome to K-OS!"
 echo "Written by Keeley Hoek."
