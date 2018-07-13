@@ -15,9 +15,9 @@ ASFLAGS := --32
 CFLAGS := -Wall -Wextra -Werror -Wno-unused-parameter                         \
 	-Wno-missing-field-initializers -Wno-unused-function                        \
 	-m32 -I$(INCDIR) -std=gnu99 -fno-strict-aliasing -nostdlib -ffreestanding -c \
-	-g -include "common/config.h"
+	-g -O3 -include "common/config.h"
 
-LDFLAGS := -m32 -nostdlib -ffreestanding -g -Wl,--build-id=none
+LDFLAGS := -m32 -nostdlib -ffreestanding -g -O3 -Wl,--build-id=none
 
 ASSRCS := $(shell find -L $(SRCDIR) -type f -name "*.s")
 ASOBJS := $(patsubst $(SRCDIR)/%.s,$(OBJDIR)/%.o,$(ASSRCS))
