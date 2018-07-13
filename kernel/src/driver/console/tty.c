@@ -143,38 +143,32 @@ static void populate_rb(tty_t *tty) {
     read_one_from_console(tty, &c);
 
     if(c == KBD_SPECIAL_CHAR) {
+        char *s;
+
         read_one_from_console(tty, &c);
         switch(c) {
             //Arrowkey up
-            case 0x48: {
-                c = 'A';
-                break;
-            }
+            case 0x48: { s = "A"; break; }
             //Arrowkey left
-            case 0x4B: {
-                c = 'C';
-                break;
-            }
+            case 0x4B: { s = "D"; break; }
             //Arrowkey right
-            case 0x4D: {
-                c = 'D';
-                break;
-            }
+            case 0x4D: { s = "C"; break; }
             //Arrowkey down
-            case 0x50: {
-                c = 'B';
-                break;
-            }
-            default: {
-                return;
-            }
+            case 0x50: { s = "B"; break; }
+            //Home
+            case 0x47: { s = "H"; break; }
+            //End
+            case 0x4F: { s = "F"; break; }
+            //DEL --- FIXME supply enough info for bash to work this out
+            // case 0x53: { s = "3~"; break; }
+            default: { return; }
         }
 
         ret = ringbuff_write(&tty->rb, CSI_DOUBLE, STRLEN(CSI_DOUBLE), char);
         if(!ret) {
             panic("tty buff full");
         }
-        ret = ringbuff_write(&tty->rb, &c, 1, char);
+        ret = ringbuff_write(&tty->rb, s, strlen(s), char);
         if(!ret) {
             panic("tty buff full");
         }
@@ -183,7 +177,6 @@ static void populate_rb(tty_t *tty) {
         if(!c) {
             return;
         }
-
         ret = ringbuff_write(&tty->rb, &c, 1, char);
         if(!ret) {
             panic("tty buff full");
