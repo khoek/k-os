@@ -61,6 +61,7 @@ __init void module_load() {
         uint32_t first_page = DIV_UP(modules[i].start, PAGE_SIZE);
         uint32_t last_page = DIV_DOWN(modules[i].end, PAGE_SIZE);
         claim_pages(first_page, last_page - first_page);
+        freed_pages += last_page - first_page;
     }
 
     kprintf("module - %u pages reclaimed", freed_pages);
