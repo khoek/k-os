@@ -26,8 +26,6 @@ static volatile uint32_t read_waiting = 0;
 static DEFINE_SEMAPHORE(wait_semaphore, 0);
 
 static inline void keybuff_append(uint8_t code) {
-    // kprintf("C%XC", code);
-
     uint32_t flags;
     spin_lock_irqsave(&keybuff_lock, &flags);
 

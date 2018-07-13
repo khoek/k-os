@@ -26,7 +26,7 @@ static const char KEYMAP[] = {
           '-', '_',
           '=', '+',
           '\x7f', '\x7f', // backspace
-          ' ', ' ',
+          '\x9', '\x9',   // tab
 
           // 0x10
           'q', 'Q',
