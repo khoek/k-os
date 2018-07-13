@@ -243,9 +243,9 @@ static char * get_strpath(const char *name) {
     return str;
 }
 
-bool devfs_lookup(const char *name, path_t *out) {
+int32_t devfs_lookup(const char *name, path_t *out) {
     char *path = get_strpath(name);
-    bool ret = vfs_lookup(NULL, path, out);
+    int32_t ret = vfs_lookup(NULL, path, out);
     kfree(path);
     return ret;
 }
@@ -266,7 +266,7 @@ static bool devfs_set_mntpoint(char *point) {
 
 cmdline_param("devfs.mount", devfs_set_mntpoint);
 
-static bool create_path(path_t *start, const char *orig_path) {
+static int32_t create_path(path_t *start, const char *orig_path) {
     char *path = strdup(orig_path);
     char *part = path;
 
@@ -274,7 +274,10 @@ static bool create_path(path_t *start, const char *orig_path) {
         part = strchr(part, '/');
 
         if(part) part[0] = '\0';
-        if(vfs_create(start, path, S_IFDIR | 0755, NULL) < 0) return false;
+        int32_t ret = vfs_create(start, path, S_IFDIR | 0755, NULL);
+        if(ret) {
+            return ret;
+        }
         if(part) {
             part[0] = '/';
             part++;
@@ -283,7 +286,7 @@ static bool create_path(path_t *start, const char *orig_path) {
 
     kfree(path);
 
-    return true;
+    return 0;
 }
 
 //called with devfs_lock held
@@ -340,10 +343,11 @@ static INITCALL devfs_mount() {
         wd.mount = root_mount;
         wd.dentry = root_mount->fs->root;
 
-        if(!create_path(&wd, mntpoint)) {
+        int32_t ret;
+        if((ret = create_path(&wd, mntpoint))) {
             kprintf("devfs - could not create path \"%s\"", mntpoint);
-        } else if(!vfs_lookup(&wd, mntpoint, &target)) {
-            kprintf("devfs - could not lookup \"%s\"", mntpoint);
+        } else if((ret = vfs_lookup(&wd, mntpoint, &target))) {
+            kprintf("devfs - could not lookup \"%s\": %d", mntpoint, ret);
         } else if(vfs_do_mount(devfs, &target)) {
             kprintf("devfs - mounted at \"%s\"", mntpoint);
         } else {

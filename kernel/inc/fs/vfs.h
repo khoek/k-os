@@ -269,7 +269,7 @@ dentry_t * fs_create_single(fs_type_t *type, void (*fill)(fs_t *fs));
 void vfs_getattr(dentry_t *dentry, stat_t *stat);
 void generic_getattr(inode_t *inode, stat_t *stat);
 
-bool vfs_lookup(const path_t *start, const char *path, path_t *out);
+int32_t vfs_lookup(const path_t *start, const char *path, path_t *out);
 file_t * vfs_open_file(dentry_t *dentry);
 off_t vfs_seek(file_t *file, uint32_t off);
 ssize_t vfs_read(file_t *file, void *buff, size_t bytes);

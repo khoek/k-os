@@ -220,8 +220,9 @@ void tty_create(char *name) {
     devfs_publish_pending();
 
     path_t out;
-    if(!devfs_lookup(name, &out)) {
-        panicf("tty - lookup of console (%s) failure", name);
+    int32_t ret = devfs_lookup(name, &out);
+    if(ret) {
+        panicf("tty - lookup of console (%s) failure: %d", name, ret);
     }
 
     tty_t *tty = kmalloc(sizeof(tty_t));

@@ -258,7 +258,7 @@ static char * last_segment(const char *path) {
     return (char *) seg;
 }
 
-static bool get_path_wd(const path_t *start, const char *orig_pathname, path_t *wd, char **out_last) {
+static int32_t get_path_wd(const path_t *start, const char *orig_pathname, path_t *wd, char **out_last) {
     char *pathname = strdup(orig_pathname);
     char *last = last_segment(pathname);
 
@@ -266,9 +266,10 @@ static bool get_path_wd(const path_t *start, const char *orig_pathname, path_t *
         *(last - 1) = '\0';
 
         path_t path;
-        if(!vfs_lookup(start, pathname, &path)) {
+        int32_t ret = vfs_lookup(start, pathname, &path);
+        if(ret) {
             kfree(pathname);
-            return false;
+            return ret;
         }
 
         *wd = path;
@@ -279,8 +280,7 @@ static bool get_path_wd(const path_t *start, const char *orig_pathname, path_t *
     *out_last = strdup(last);
 
     kfree(pathname);
-
-    return true;
+    return 0;
 }
 
 //sanitise the (newly-created) inode associated to this dentry
@@ -298,17 +298,21 @@ int32_t vfs_create(const path_t *start, const char *pathname, uint32_t mode, den
 
     path_t wd;
     char *last;
-    if(!get_path_wd(start, pathname, &wd, &last) || strlen(pathname) == 0) {
+    if((ret = get_path_wd(start, pathname, &wd, &last))) {
+        return ret;
+    }
+    if(strlen(pathname) == 0) {
         return -ENOENT;
     }
 
     path_t f;
-    if(vfs_lookup(&wd, last, &f)) {
+    ret = vfs_lookup(&wd, last, &f);
+    if(!ret) {
         ret = -EEXIST;
         if(dentry) *dentry = f.dentry;
 
         //otherwise, do nothing?
-    } else {
+    } else if(ret == -ENOENT) {
         dentry_t *new = dentry_alloc(last);
         ret = wd.dentry->inode->ops->create(wd.dentry->inode, new, mode);
         if(ret < 0)  {
@@ -328,7 +332,7 @@ create_fail:
     return ret;
 }
 
-bool vfs_lookup(const path_t *start, const char *orig_path, path_t *out) {
+int32_t vfs_lookup(const path_t *start, const char *orig_path, path_t *out) {
     char *path = strdup(orig_path);
     char *new_path = path;
 
@@ -448,7 +452,7 @@ lookup_next:
 
     kfree(new_path);
 
-    return cwd.dentry;
+    return cwd.dentry ? 0 : -ENOENT;
 }
 
 file_t * vfs_open_file(dentry_t *dentry) {

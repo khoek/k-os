@@ -70,8 +70,9 @@ static int32_t load_shebang(binary_t *binary) {
     *interp_end = '\0';
 
     path_t path;
-    if(!vfs_lookup(&obtain_fs_context(current)->pwd, interp, &path)) {
-        return -EIO;
+    ret = vfs_lookup(&obtain_fs_context(current)->pwd, interp, &path);
+    if(ret) {
+        return ret;
     }
 
     file_t *f = vfs_open_file(path.dentry);

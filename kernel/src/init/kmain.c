@@ -43,7 +43,8 @@ static bool try_load_init(char *path) {
     argv[1] = NULL;
 
     path_t out;
-    if(vfs_lookup(NULL, path, &out)) {
+    int32_t ret = vfs_lookup(NULL, path, &out);
+    if(!ret) {
         execute_path(out.dentry, argv, ENVP);
     }
 
@@ -57,8 +58,9 @@ static void umain() {
     kprintf("init - ktaskd created");
 
     path_t out;
-    if(!devfs_lookup(TTY_NAME, &out)) {
-        panicf("init - cannot open \"" TTY_NAME "\"");
+    int32_t ret = devfs_lookup(TTY_NAME, &out);
+    if(ret) {
+        panicf("init - cannot open \"" TTY_NAME "\": %d", ret);
     }
 
     if(!verbose) {

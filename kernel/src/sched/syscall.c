@@ -94,10 +94,9 @@ DEFINE_SYSCALL(open, const char *pathname, uint32_t flags, uint32_t mode) {
         }
     } else {
         path_t path;
-        if(vfs_lookup(pwd, pathname, &path)) {
+        ret = vfs_lookup(pwd, pathname, &path);
+        if(!ret) {
             dentry = path.dentry;
-        } else {
-            ret = -ENOENT;
         }
     }
 
@@ -344,30 +343,24 @@ DEFINE_SYSCALL(getdents, ufd_idx_t ufd, struct dirent *user_buff, uint32_t buffs
 DEFINE_SYSCALL(stat, const char *pathname, void *buff) {
     //FIXME implement symbolic links and make this different to lstat
 
-    int32_t ret = -1;
-
     //TODO verify that path is a pointer to a valid path string, etc.
 
     path_t path;
-    if(vfs_lookup(&obtain_fs_context(current)->pwd, pathname, &path)) {
+    int32_t ret = vfs_lookup(&obtain_fs_context(current)->pwd, pathname, &path);
+    if(!ret) {
         vfs_getattr(path.dentry, buff);
-
-        ret = 0;
     }
 
     return ret;
 }
 
 DEFINE_SYSCALL(lstat, const char *pathname, void *buff)  {
-    int32_t ret = -1;
-
     //TODO verify that path is a pointer to a valid path string, etc.
 
     path_t path;
-    if(vfs_lookup(&obtain_fs_context(current)->pwd, pathname, &path)) {
+    int32_t ret = vfs_lookup(&obtain_fs_context(current)->pwd, pathname, &path);
+    if(!ret) {
         vfs_getattr(path.dentry, buff);
-
-        ret = 0;
     }
 
     return ret;
@@ -433,19 +426,18 @@ static int32_t do_execve(dentry_t *dentry, char *const user_argv[], char *const 
 }
 
 DEFINE_SYSCALL(execve, const char *pathname, char *const user_argv[], char *const user_envp[]) {
-    int32_t ret = -1;
-
     //FIXME sanitize pathname...
     path_t path;
-    if(vfs_lookup(&obtain_fs_context(current)->pwd, pathname, &path)) {
-        ret = do_execve(path.dentry, user_argv, user_envp);
+    int32_t ret = vfs_lookup(&obtain_fs_context(current)->pwd, pathname, &path);
+    if(ret) {
+        return ret;
     }
 
-    return ret;
+    return do_execve(path.dentry, user_argv, user_envp);
 }
 
 DEFINE_SYSCALL(fexecve, ufd_idx_t ufd, char *const user_argv[], char *const user_envp[]) {
-    int32_t ret = -1;
+    int32_t ret = -EINVAL;
 
     file_t *fd = ufdt_get(ufd);
     if(fd) {
@@ -542,18 +534,18 @@ DEFINE_SYSCALL(chdir, const char *pathname) {
     }
 
     path_t path;
-    if(vfs_lookup(&obtain_fs_context(current)->pwd, pathname, &path)) {
-        if(!S_ISDIR(path.dentry->inode->mode)) {
-            return -ENOTDIR;
-        }
-
-        //FIXME this desperately needs to be locked
-        obtain_fs_context(current)->pwd = path;
-    } else {
-        return -ENOENT;
+    int32_t ret = vfs_lookup(&obtain_fs_context(current)->pwd, pathname, &path);
+    if(ret) {
+        return ret;
+    }
+    if(!S_ISDIR(path.dentry->inode->mode)) {
+        return -ENOTDIR;
     }
 
-    return 0;
+    //FIXME this desperately needs to be locked
+    obtain_fs_context(current)->pwd = path;
+
+    return ret;
 }
 
 DEFINE_SYSCALL(getcwd, char *buff, size_t size) {
