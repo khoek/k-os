@@ -141,14 +141,19 @@ static inode_t * devfs_inode_alloc(devfs_device_t *device) {
     inode_t *inode;
 
     switch(device->type) {
-        case CHAR_DEV:
+        case CHAR_DEV: {
             inode = inode_alloc(devfs, &char_inode_ops);
             inode->mode = S_IFCHR | 0755;
             break;
-        case BLCK_DEV:
+        }
+        case BLCK_DEV: {
             inode = inode_alloc(devfs, &block_inode_ops);
             inode->mode = S_IFBLK | 0755;
             break;
+        }
+        default: {
+            panicf("devfs - unknown device type %X", device->type);
+        }
     }
 
     //FIXME sensibly populate these
@@ -195,7 +200,7 @@ static void devfs_fill(fs_t *fs) {
 
     inode->blkshift = 12;
     inode->blocks = 8;
-    
+
     inode->size = 1 << inode->blkshift;
 }
 
