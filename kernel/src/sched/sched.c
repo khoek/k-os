@@ -26,7 +26,7 @@
 
 #define MAX_NUM_FDS ((ufd_idx_t) (PAGE_SIZE / sizeof(ufd_t)))
 
-#define FREELIST_END (1 << 31)
+#define FREELIST_END ((uint32_t) (1 << 31))
 
 #define UFD_FLAG_CLOSING (1 << 0)
 
@@ -404,7 +404,7 @@ ufd_idx_t ufdt_add(uint32_t flags, file_t *gfd) {
 
     spin_unlock_irqstore(&ufds->lock, f);
 
-    return added == FREELIST_END ? -1 : added;
+    return added == FREELIST_END ? (uint32_t) -1 : added;
 }
 
 bool ufdt_valid(ufd_idx_t ufd) {

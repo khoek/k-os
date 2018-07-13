@@ -131,7 +131,6 @@ static inode_ops_t devfs_root_inode_ops = {
 
     .lookup = devfs_root_inode_lookup,
     .create = fs_no_create,
-    .mkdir = fs_no_mkdir,
 
     //FIXME define devfs_root_inode_getattr
     //.getattr = devfs_root_inode_getattr,
@@ -275,7 +274,7 @@ static bool create_path(path_t *start, const char *orig_path) {
         part = strchr(part, '/');
 
         if(part) part[0] = '\0';
-        if(!vfs_mkdir(start, path, 0755)) return false;
+        if(vfs_create(start, path, S_IFDIR | 0755, NULL) < 0) return false;
         if(part) {
             part[0] = '/';
             part++;

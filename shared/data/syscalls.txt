@@ -4,7 +4,7 @@
  3:log:const char *loc, uint32_t len
  4:uptime:
 
- 5:open:const char *path, uint32_t flags
+ 5:open:const char *path, uint32_t flags, uint32_t mode
  6:close:ufd_idx_t ufd
  7:socket:uint32_t family, uint32_t type, uint32_t protocol
  8:listen:ufd_idx_t ufd, uint32_t backlog
@@ -29,7 +29,7 @@
 23:chdir:const char *path
 24:getcwd:char *buf, size_t size
 
-25:fexecve:int fd, char *const argv[], char *const envp[]
+25:fexecve:ufd_idx_t ufd, char *const argv[], char *const envp[]
 26:getpid:
 27:getppid:
 28:waitpid:pid_t pid, int *stat_loc, int options

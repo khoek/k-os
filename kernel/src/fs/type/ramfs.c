@@ -181,7 +181,7 @@ static file_ops_t ramfs_file_ops = {
 };
 
 static void ramfs_inode_lookup(inode_t *inode, dentry_t *dentry);
-static bool ramfs_inode_create(inode_t *inode, dentry_t *new, uint32_t mode);
+static int32_t ramfs_inode_create(inode_t *inode, dentry_t *new, uint32_t mode);
 static bool ramfs_inode_mkdir(inode_t *inode, dentry_t *new, uint32_t mode);
 
 static inode_ops_t ramfs_inode_ops = {
@@ -189,21 +189,28 @@ static inode_ops_t ramfs_inode_ops = {
 
     .lookup = ramfs_inode_lookup,
     .create = ramfs_inode_create,
-    .mkdir  = ramfs_inode_mkdir,
 };
 
 static void ramfs_inode_lookup(inode_t *inode, dentry_t *dentry) {
     dentry->inode = NULL;
 }
 
-static bool ramfs_inode_create(inode_t *inode, dentry_t *new, uint32_t mode) {
-    new->inode = inode_alloc(inode->fs, &ramfs_inode_ops);
-    new->inode->flags = 0;
-
-    if(!S_ISREG(mode)) {
-        return false;
+static int32_t ramfs_inode_create(inode_t *inode, dentry_t *new, uint32_t mode) {
+    if(S_ISREG(mode)) {
+        new->inode = inode_alloc(inode->fs, &ramfs_inode_ops);
+        new->inode->mode = mode;
+        new->inode->flags = 0;
+        new->inode->size = 0;
+        new->inode->private = record_create();
+    } else if(S_ISDIR(mode)) {
+        new->inode = inode_alloc(inode->fs, &ramfs_inode_ops);
+        new->inode->mode = mode;
+        new->inode->flags = INODE_FLAG_DIRECTORY;
+        new->inode->size = 1 << new->inode->blkshift;
+        new->inode->private = NULL;
+    } else {
+        return -EINVAL;
     }
-    new->inode->mode = mode;
 
     //FIXME sensibly populate these
     new->inode->uid = 0;
@@ -219,39 +226,14 @@ static bool ramfs_inode_create(inode_t *inode, dentry_t *new, uint32_t mode) {
     new->inode->blkshift = 12;
     new->inode->blocks = 8;
 
-    new->inode->size = 0;
-
-    new->inode->private = record_create();
-
-    return true;
+    return 0;
 }
 
 static bool ramfs_inode_mkdir(inode_t *inode, dentry_t *new, uint32_t mode) {
-    new->inode = inode_alloc(inode->fs, &ramfs_inode_ops);
-    new->inode->flags = INODE_FLAG_DIRECTORY;
 
     if(!S_ISDIR(mode)) {
         return false;
     }
-    new->inode->mode = mode;
-
-    //FIXME sensibly populate these
-    new->inode->uid = 0;
-    new->inode->gid = 0;
-    new->inode->nlink = 0;
-    new->inode->dev = 0;
-    new->inode->rdev = 0;
-
-    new->inode->atime = 0;
-    new->inode->mtime = 0;
-    new->inode->ctime = 0;
-
-    new->inode->blkshift = 12;
-    new->inode->blocks = 8;
-
-    new->inode->size = 1 << new->inode->blkshift;
-
-    new->inode->private = NULL;
 
     return true;
 }

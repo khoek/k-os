@@ -33,6 +33,8 @@ static uint32_t entry_reconstruct(entry_t *e, const path_t *root) {
             path[e->name_len] = '/';
             path[e->name_len + 1] = '\0';
 
+            kprintf("rootramfs - loading \"/%s\"", path);
+
             char *part = path;
             while(*part) {
                 part = strchr(part, '/');
@@ -40,17 +42,16 @@ static uint32_t entry_reconstruct(entry_t *e, const path_t *root) {
                 if(!part) break;
 
                 part[0] = '\0';
-                path_t out;
-                if(!vfs_lookup(root, path, &out)) {
-                    if(!vfs_mkdir(root, path, S_IFDIR | 0755)) {
-                        panicf("rootramfs - vfs_mkdir() failed");
-                    }
+
+                dentry_t *dentry;
+                int32_t ret = vfs_create(root, path, S_IFDIR | 0755, &dentry);
+                if(ret < 0 && ret != -EEXIST) {
+                    panicf("rootramfs - vfs_create() failed: %d", ret);
                 }
+
                 part[0] = '/';
                 part++;
             }
-
-            kprintf("rootramfs - created \"/%s\"", path);
 
             return sizeof(entry_t) + e->name_len;
         }
@@ -59,21 +60,18 @@ static uint32_t entry_reconstruct(entry_t *e, const path_t *root) {
             memcpy(path, e->name, e->name_len);
             path[e->name_len] = '\0';
 
-            if(!vfs_create(root, path, S_IFREG | 0755, true)) {
-                panicf("rootramfs - vfs_create() failed");
-            }
+            kprintf("rootramfs - loading \"/%s\"", path);
 
-            path_t out;
-            if(!vfs_lookup(root, path, &out)) {
-                panicf("rootramfs - vfs_lookup() failed");
+            dentry_t *dentry;
+            int32_t ret = vfs_create(root, path, S_IFREG | 0755, &dentry);
+            if(ret < 0) {
+                panicf("rootramfs - vfs_create() failed: %d", ret);
             }
 
             frecord_t *fr = ((void *) e) + sizeof(entry_t) + e->name_len;
 
-            file_t *f = vfs_open_file(out.dentry);
+            file_t *f = vfs_open_file(dentry);
             vfs_write(f, fr->data, fr->len);
-
-            kprintf("rootramfs - created \"/%s\"", path);
 
             return sizeof(entry_t) + e->name_len + sizeof(frecord_t) + fr->len;
         }

@@ -284,65 +284,48 @@ static bool get_path_wd(const path_t *start, const char *orig_pathname, path_t *
 }
 
 //sanitise the (newly-created) inode associated to this dentry
-static bool validate_inode(dentry_t *dentry) {
+static void validate_inode(dentry_t *dentry) {
     BUG_ON(!dentry);
     if(!dentry->inode->ino) {
         panicf("Bad inode, ino = 0 for %X->%X", dentry, dentry->inode);
-        return false;
     }
-
-    return true;
 }
 
-bool vfs_create(const path_t *start, const char *pathname, uint32_t mode, bool excl) {
+//Semantics: the dentry pointer is filled on success, or identification of
+//file which we were asked to create (in which case we return -EEXIST) only.
+int32_t vfs_create(const path_t *start, const char *pathname, uint32_t mode, dentry_t **dentry) {
+    int32_t ret = 0;
+
     path_t wd;
     char *last;
-    if(!get_path_wd(start, pathname, &wd, &last)) {
-        return false;
+    if(!get_path_wd(start, pathname, &wd, &last) || strlen(pathname) == 0) {
+        return -ENOENT;
     }
 
     path_t f;
     if(vfs_lookup(&wd, last, &f)) {
-        if(excl) {
-            kfree(last);
-            return false;
-        }
+        ret = -EEXIST;
+        if(dentry) *dentry = f.dentry;
 
-        //otherwise, do nothing
+        //otherwise, do nothing?
     } else {
-        char *copy = strdup(last);
-        dentry_t *new = dentry_alloc(copy);
-        wd.dentry->inode->ops->create(wd.dentry->inode, new, mode);
-        if(!new->inode || !validate_inode(new))  {
-            kfree(copy);
-            return false;
+        dentry_t *new = dentry_alloc(last);
+        ret = wd.dentry->inode->ops->create(wd.dentry->inode, new, mode);
+        if(ret < 0)  {
+            //FIXME dealloc new
+            goto create_fail;
         }
 
+        validate_inode(new);
         dentry_activate(new, wd.dentry);
+        if(dentry) *dentry = new;
     }
 
-    return true;
-}
+    return ret;
 
-bool vfs_mkdir(const path_t *start, const char *pathname, uint32_t mode) {
-    path_t wd;
-    char *last = NULL;
-    if(!get_path_wd(start, pathname, &wd, &last)) {
-        kfree(last);
-        return false;
-    }
-
-    char *copy = strdup(last);
-    dentry_t *newdir = dentry_alloc(copy);
-    wd.dentry->inode->ops->mkdir(wd.dentry->inode, newdir, mode);
-    if(!newdir->inode || !validate_inode(newdir))  {
-        kfree(copy);
-        return false;
-    }
-
-    dentry_activate(newdir, wd.dentry);
-
-    return true;
+create_fail:
+    kfree(last);
+    return ret;
 }
 
 bool vfs_lookup(const path_t *start, const char *orig_path, path_t *out) {
@@ -520,12 +503,8 @@ uint32_t simple_file_iterate(file_t *file, dir_entry_dat_t *buff, uint32_t num) 
     return num_read;
 }
 
-bool fs_no_create(inode_t *inode, dentry_t *d, uint32_t mode) {
-    return false;
-}
-
-bool fs_no_mkdir(inode_t *inode, dentry_t *d, uint32_t mode) {
-    return false;
+int32_t fs_no_create(inode_t *inode, dentry_t *d, uint32_t mode) {
+    return -EINVAL;
 }
 
 static void fs_add(fs_t *fs) {

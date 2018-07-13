@@ -72,20 +72,44 @@ DEFINE_SYSCALL(uptime)  {
     return uptime();
 }
 
-DEFINE_SYSCALL(open, const char *pathname, uint32_t flags) {
-    //TODO verify that path is a pointer to a valid path string, and that flags are valid flags
+DEFINE_SYSCALL(open, const char *pathname, uint32_t flags, uint32_t mode) {
+    int32_t ret = 0;
+
+    //FIXME actually mask this properly
+    mode &= 0777;
 
     if(!pathname) {
-        //errno = EFAULT            <- I looked it up!/ (tried lon linux!)
-        return -1;
+        return -EFAULT;
     }
 
-    path_t path;
-    if(vfs_lookup(&obtain_fs_context(current)->pwd, pathname, &path)) {
-        return ufdt_add(flags, vfs_open_file(path.dentry));
+    //TODO verify that path is a pointer to a valid path string, and that flags are valid flags
+
+    path_t *pwd = &obtain_fs_context(current)->pwd;
+
+    dentry_t *dentry;
+    if(flags & O_CREAT) {
+        ret = vfs_create(pwd, pathname, S_IFREG | mode, &dentry);
+        if(ret == -EEXIST && !(flags & O_EXCL)) {
+            ret = 0;
+        }
     } else {
-        return -1;
+        path_t path;
+        if(vfs_lookup(pwd, pathname, &path)) {
+            dentry = path.dentry;
+        } else {
+            ret = -ENOENT;
+        }
     }
+
+    if(!ret) {
+        file_t *file = vfs_open_file(dentry);
+        if(!file || (uint32_t) file == 0xF31301) {
+            BUG();
+        }
+        return ufdt_add(0, file);
+    }
+
+    return ret;
 }
 
 DEFINE_SYSCALL(close, ufd_idx_t ufd) {

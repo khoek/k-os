@@ -40,6 +40,37 @@
 #define	S_IEXEC		0000100	/* execute/search permission, owner */
 #define	S_ENFMT 	0002000	/* enforcement-mode locking */
 
+#define	_FOPEN		(-1)	  /* from sys/file.h, kernel use only */
+#define	_FREAD		0x0001	/* read enabled */
+#define	_FWRITE		0x0002	/* write enabled */
+#define	_FAPPEND	0x0008	/* append (writes guaranteed at the end) */
+#define	_FMARK		0x0010	/* internal; mark during gc() */
+#define	_FDEFER		0x0020	/* internal; defer for next gc pass */
+#define	_FASYNC		0x0040	/* signal pgrp when data ready */
+#define	_FSHLOCK	0x0080	/* BSD flock() shared lock present */
+#define	_FEXLOCK	0x0100	/* BSD flock() exclusive lock present */
+#define	_FCREAT		0x0200	/* open with file create */
+#define	_FTRUNC		0x0400	/* open with truncation */
+#define	_FEXCL		0x0800	/* error on open if file exists */
+#define	_FNBIO		0x1000	/* non blocking I/O (sys5 style) */
+#define	_FSYNC		0x2000	/* do all writes synchronously */
+#define	_FNONBLOCK	0x4000	/* non blocking I/O (POSIX style) */
+#define	_FNDELAY	_FNONBLOCK	/* non blocking I/O (4.2 style) */
+#define	_FNOCTTY	0x8000	/* don't assign a ctty on this open */
+
+#define	O_ACCMODE	(O_RDONLY|O_WRONLY|O_RDWR)
+
+#define	O_RDONLY	0
+#define	O_WRONLY	1
+#define	O_RDWR		2
+#define	O_APPEND	_FAPPEND
+#define	O_CREAT		_FCREAT
+#define	O_TRUNC		_FTRUNC
+#define	O_EXCL		_FEXCL
+#define O_SYNC		_FSYNC
+#define	O_NONBLOCK	_FNONBLOCK
+#define	O_NOCTTY	_FNOCTTY
+
 typedef struct fs_type fs_type_t;
 typedef struct fs fs_t;
 
@@ -164,8 +195,7 @@ struct inode_ops {
     //correct inode if it exists, or set target->inode = NULL if it does not.
     void (*lookup)(inode_t *inode, dentry_t *target);
 
-    bool (*create)(inode_t *inode, dentry_t *d, uint32_t mode);
-    bool (*mkdir)(inode_t *inode, dentry_t *d, uint32_t mode);
+    int32_t (*create)(inode_t *inode, dentry_t *d, uint32_t mode);
     void (*getattr)(dentry_t *dentry, stat_t *stat);
 };
 
@@ -224,13 +254,15 @@ void vfs_mount_destroy(mount_t *mount);
 
 bool vfs_umount(path_t *mountpoint);
 
-bool vfs_create(const path_t *start, const char *pathname, uint32_t mode, bool excl);
-bool vfs_mkdir(const path_t *start, const char *pathname, uint32_t mode);
+//Semantics: the dentry pointer is filled on success, or identification of
+//file which we were asked to create (in which case we return -EEXIST) only.
+//Incidentally, this is different to POSIX's O_CREAT.
+int32_t vfs_create(const path_t *start, const char *pathname, uint32_t mode, dentry_t **dentry);
 
 uint32_t simple_file_iterate(file_t *file, dir_entry_dat_t *buff, uint32_t num);
 
-bool fs_no_create(inode_t *inode, dentry_t *d, uint32_t mode);
-bool fs_no_mkdir(inode_t *inode, dentry_t *d, uint32_t mode);
+int32_t fs_no_create(inode_t *inode, dentry_t *d, uint32_t mode);
+
 dentry_t * fs_create_nodev(fs_type_t *type, void (*fill)(fs_t *fs));
 dentry_t * fs_create_single(fs_type_t *type, void (*fill)(fs_t *fs));
 
