@@ -258,13 +258,6 @@ $(ARTIFACT_LIBGCC): $(BUILDDIR)/$(NAME_GCC)/Makefile
 	$(MAKE) $(TOOLCHAIN_MAKEFLAGS) -C $(shell dirname $<) all-target-libgcc
 	$(MAKE) $(TOOLCHAIN_MAKEFLAGS) -C $(shell dirname $<) install-target-libgcc
 
-# FIXME I don't think this is necessary---gcc should autodetect where it put it
-# during the build phase
-# publish-libgcc: $(ARTIFACT_LIBGCC)
-# 	@mkdir -p $(KSYSLIBPATH)
-# 	@rm -f $(KSYSLIBPATH)/libgcc.a
-# 	cp $(ARTIFACT_LIBGCC) $(KSYSLIBPATH)/libgcc.a
-
 check: check-binutils check-gmp check-mpfr check-mpc
 
 .flag.checked-$(NAME_BINUTILS): $(ARTIFACT_BINUTILS)
