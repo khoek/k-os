@@ -182,7 +182,6 @@ static file_ops_t ramfs_file_ops = {
 
 static void ramfs_inode_lookup(inode_t *inode, dentry_t *dentry);
 static int32_t ramfs_inode_create(inode_t *inode, dentry_t *new, uint32_t mode);
-static bool ramfs_inode_mkdir(inode_t *inode, dentry_t *new, uint32_t mode);
 
 static inode_ops_t ramfs_inode_ops = {
     .file_ops = &ramfs_file_ops,
@@ -195,15 +194,15 @@ static void ramfs_inode_lookup(inode_t *inode, dentry_t *dentry) {
     dentry->inode = NULL;
 }
 
-static int32_t ramfs_inode_create(inode_t *inode, dentry_t *new, uint32_t mode) {
+static int32_t ramfs_create_internal(fs_t *fs, dentry_t *new, uint32_t mode) {
     if(S_ISREG(mode)) {
-        new->inode = inode_alloc(inode->fs, &ramfs_inode_ops);
+        new->inode = inode_alloc(fs, &ramfs_inode_ops);
         new->inode->mode = mode;
         new->inode->flags = 0;
         new->inode->size = 0;
         new->inode->private = record_create();
     } else if(S_ISDIR(mode)) {
-        new->inode = inode_alloc(inode->fs, &ramfs_inode_ops);
+        new->inode = inode_alloc(fs, &ramfs_inode_ops);
         new->inode->mode = mode;
         new->inode->flags = INODE_FLAG_DIRECTORY;
         new->inode->size = 1 << new->inode->blkshift;
@@ -229,13 +228,8 @@ static int32_t ramfs_inode_create(inode_t *inode, dentry_t *new, uint32_t mode) 
     return 0;
 }
 
-static bool ramfs_inode_mkdir(inode_t *inode, dentry_t *new, uint32_t mode) {
-
-    if(!S_ISDIR(mode)) {
-        return false;
-    }
-
-    return true;
+static int32_t ramfs_inode_create(inode_t *inode, dentry_t *d, uint32_t mode) {
+    return ramfs_create_internal(inode->fs, d, mode);
 }
 
 static dentry_t * ramfs_create(fs_type_t *type, const char *device);
@@ -251,9 +245,10 @@ static void ramfs_fill(fs_t *fs) {
     root->parent = NULL;
     root->fs = fs;
 
-    root->inode = inode_alloc(fs, &ramfs_inode_ops);
-    root->inode->flags |= INODE_FLAG_DIRECTORY;
-    root->inode->mode = 0755;
+    int32_t ret = ramfs_create_internal(fs, fs->root, S_IFDIR | 0755);
+    if(ret) {
+        panicf("ramfs_fill failed: %d", ret);
+    }
 }
 
 static dentry_t * ramfs_create(fs_type_t *type, const char *device) {
