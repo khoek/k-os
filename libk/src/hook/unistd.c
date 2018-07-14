@@ -32,9 +32,7 @@ int fchdir(int fd) {
 }
 
 int execve(const char *filename, char *const argv[], char *const envp[]) {
-    int fd = open(filename, 0);
-    //TODO handle err conditions
-    return fexecve(fd, argv, envp);
+    return MAKE_SYSCALL(execve, filename, argv, envp);
 }
 
 int fexecve(int fd, char *const argv[], char *const envp[]) {
@@ -184,8 +182,8 @@ int chown(const char *path, uid_t owner, gid_t group) {
     return MAKE_SYSCALL(unimplemented, "chown", true);
 }
 
-off_t lseek(int file, off_t off, int whence) {
-    return MAKE_SYSCALL(unimplemented, "lseek", true);
+off_t lseek(int fd, off_t off, int whence) {
+    return MAKE_SYSCALL(seek, fd, off, whence);
 }
 
 int link(const char *existing, const char *new) {
@@ -230,4 +228,12 @@ int nice(int incr) {
 
 int getpagesize() {
     return PAGE_SIZE;
+}
+
+pid_t tcgetpgrp(int fd) {
+    return MAKE_SYSCALL(unimplemented, "tcgetpgrp", true);
+}
+
+int tcsetpgrp(int fd, pid_t pgid) {
+    return MAKE_SYSCALL(unimplemented, "tcsetpgrp", true);
 }

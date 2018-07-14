@@ -41,7 +41,7 @@ static void char_file_open(file_t *file, inode_t *inode) {
     file->private = device;
 }
 
-static off_t char_file_seek(file_t *file, off_t off) {
+static off_t char_file_seek(file_t *file, off_t off, int whence) {
     return 0;
 }
 
@@ -79,7 +79,7 @@ static void block_file_open(file_t *file, inode_t *inode) {
     file->private = device;
 }
 
-static off_t block_file_seek(file_t *file, off_t off) {
+static off_t block_file_seek(file_t *file, off_t off, int whence) {
     return 0;
 }
 

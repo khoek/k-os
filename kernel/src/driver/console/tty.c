@@ -148,26 +148,22 @@ static void populate_rb(tty_t *tty) {
         read_one_from_console(tty, &c);
         switch(c) {
             //Arrowkey up
-            case 0x48: { s = "A"; break; }
+            case 0x48: { s = CSI_DOUBLE "A"; break; }
             //Arrowkey left
-            case 0x4B: { s = "D"; break; }
+            case 0x4B: { s = CSI_DOUBLE "D"; break; }
             //Arrowkey right
-            case 0x4D: { s = "C"; break; }
+            case 0x4D: { s = CSI_DOUBLE "C"; break; }
             //Arrowkey down
-            case 0x50: { s = "B"; break; }
+            case 0x50: { s = CSI_DOUBLE "B"; break; }
             //Home
-            case 0x47: { s = "H"; break; }
+            case 0x47: { s = CSI_DOUBLE "H"; break; }
             //End
-            case 0x4F: { s = "F"; break; }
-            //DEL --- FIXME supply enough info for bash to work this out
-            // case 0x53: { s = "3~"; break; }
+            case 0x4F: { s = CSI_DOUBLE "F"; break; }
+            //Delete key (not DEL!)
+            case 0x53: { s = CSI_DOUBLE "3~"; break; }
             default: { return; }
         }
 
-        ret = ringbuff_write(&tty->rb, CSI_DOUBLE, STRLEN(CSI_DOUBLE), char);
-        if(!ret) {
-            panic("tty buff full");
-        }
         ret = ringbuff_write(&tty->rb, s, strlen(s), char);
         if(!ret) {
             panic("tty buff full");

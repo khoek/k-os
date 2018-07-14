@@ -465,8 +465,8 @@ file_t * vfs_open_file(dentry_t *dentry) {
     return file;
 }
 
-off_t vfs_seek(file_t *file, uint32_t off) {
-    return file->ops->seek(file, off);
+off_t vfs_seek(file_t *file, uint32_t off, int whence) {
+    return file->ops->seek(file, off, whence);
 }
 
 ssize_t vfs_read(file_t *file, void *buff, size_t bytes) {

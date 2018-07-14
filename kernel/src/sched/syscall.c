@@ -114,19 +114,19 @@ DEFINE_SYSCALL(open, const char *pathname, uint32_t flags, uint32_t mode) {
 DEFINE_SYSCALL(close, ufd_idx_t ufd) {
     //TODO sanitize arguments
 
-    file_t *gfd = ufdt_get(ufd);
-    if(gfd) {
+    file_t *file = ufdt_get(ufd);
+    if(file) {
         ufdt_close(ufd);
         ufdt_put(ufd);
 
         return 0;
-    } else {
-        return -1;
     }
+
+    return -EINVAL;
 }
 
 DEFINE_SYSCALL(socket, uint32_t family, uint32_t type, uint32_t protocol) {
-    int32_t ret = -1;
+    int32_t ret = -EBADF;
 
     sock_t *sock = sock_create(family, type, protocol);
     if(sock) {
@@ -143,7 +143,7 @@ DEFINE_SYSCALL(socket, uint32_t family, uint32_t type, uint32_t protocol) {
 }
 
 DEFINE_SYSCALL(listen, ufd_idx_t ufd, uint32_t backlog) {
-    int32_t ret = -1;
+    int32_t ret = -EBADF;
 
     file_t *fd = ufdt_get(ufd);
     if(fd) {
@@ -156,7 +156,7 @@ DEFINE_SYSCALL(listen, ufd_idx_t ufd, uint32_t backlog) {
 }
 
 DEFINE_SYSCALL(accept, ufd_idx_t ufd, struct sockaddr *user_addr, socklen_t *len) {
-    int32_t ret = -1;
+    int32_t ret = -EBADF;
 
     file_t *fd = ufdt_get(ufd);
     if(fd) {
@@ -182,7 +182,7 @@ DEFINE_SYSCALL(accept, ufd_idx_t ufd, struct sockaddr *user_addr, socklen_t *len
 }
 
 DEFINE_SYSCALL(bind, ufd_idx_t ufd, const struct sockaddr *user_addr, socklen_t len) {
-    int32_t ret = -1;
+    int32_t ret = -EBADF;
 
     file_t *fd = ufdt_get(ufd);
     if(fd) {
@@ -212,7 +212,7 @@ DEFINE_SYSCALL(bind, ufd_idx_t ufd, const struct sockaddr *user_addr, socklen_t 
 }
 
 DEFINE_SYSCALL(connect, ufd_idx_t ufd, const struct sockaddr *user_addr, socklen_t len) {
-    int32_t ret = -1;
+    int32_t ret = -EBADF;
 
     file_t *fd = ufdt_get(ufd);
     if(fd) {
@@ -249,7 +249,7 @@ DEFINE_SYSCALL(connect, ufd_idx_t ufd, const struct sockaddr *user_addr, socklen
 }
 
 DEFINE_SYSCALL(shutdown, ufd_idx_t ufd, int how) {
-    int32_t ret = -1;
+    int32_t ret = -EBADF;
 
     file_t *fd = ufdt_get(ufd);
     if(fd) {
@@ -262,7 +262,7 @@ DEFINE_SYSCALL(shutdown, ufd_idx_t ufd, int how) {
 }
 
 DEFINE_SYSCALL(send, ufd_idx_t ufd, const void *user_buff, uint32_t buffsize, uint32_t flags) {
-    int32_t ret = -1;
+    int32_t ret = -EBADF;
 
     file_t *fd = ufdt_get(ufd);
     if(fd) {
@@ -281,7 +281,7 @@ DEFINE_SYSCALL(send, ufd_idx_t ufd, const void *user_buff, uint32_t buffsize, ui
 }
 
 DEFINE_SYSCALL(recv, ufd_idx_t ufd, void *user_buff, uint32_t buffsize, uint32_t flags) {
-    int32_t ret = -1;
+    int32_t ret = -EBADF;
 
     file_t *fd = ufdt_get(ufd);
     if(fd) {
@@ -314,7 +314,6 @@ struct dirent {
 } PACKED;
 
 DEFINE_SYSCALL(getdents, ufd_idx_t ufd, struct dirent *user_buff, uint32_t buffsize) {
-    int32_t ret = -1;
     uint32_t count = buffsize / sizeof(struct dirent);
 
     file_t *fd = ufdt_get(ufd);
@@ -332,12 +331,12 @@ DEFINE_SYSCALL(getdents, ufd_idx_t ufd, struct dirent *user_buff, uint32_t buffs
         }
         kfree(buff);
 
-        ret = num;
-
         ufdt_put(ufd);
+
+        return num * sizeof(struct dirent);
     }
 
-    return ret * sizeof(struct dirent);
+    return -EINVAL;
 }
 
 DEFINE_SYSCALL(stat, const char *pathname, void *buff) {
@@ -367,7 +366,7 @@ DEFINE_SYSCALL(lstat, const char *pathname, void *buff)  {
 }
 
 DEFINE_SYSCALL(fstat, ufd_idx_t ufd, void *buff) {
-    int32_t ret = -1;
+    int32_t ret = -EBADF;
 
     file_t *fd = ufdt_get(ufd);
     if(fd) {
@@ -383,7 +382,7 @@ DEFINE_SYSCALL(fstat, ufd_idx_t ufd, void *buff) {
 }
 
 DEFINE_SYSCALL(read, ufd_idx_t ufd, void *user_buff, uint32_t len) {
-    int32_t ret = -1;
+    int32_t ret = -EBADF;
 
     file_t *fd = ufdt_get(ufd);
     if(fd) {
@@ -398,7 +397,7 @@ DEFINE_SYSCALL(read, ufd_idx_t ufd, void *user_buff, uint32_t len) {
 }
 
 DEFINE_SYSCALL(write, ufd_idx_t ufd, const void *buff, uint32_t len) {
-    int32_t ret = -1;
+    int32_t ret = -EBADF;
 
     file_t *fd = ufdt_get(ufd);
     if(fd) {
@@ -437,7 +436,7 @@ DEFINE_SYSCALL(execve, const char *pathname, char *const user_argv[], char *cons
 }
 
 DEFINE_SYSCALL(fexecve, ufd_idx_t ufd, char *const user_argv[], char *const user_envp[]) {
-    int32_t ret = -EINVAL;
+    int32_t ret = -EBADF;
 
     file_t *fd = ufdt_get(ufd);
     if(fd) {
@@ -504,7 +503,7 @@ DEFINE_SYSCALL(waitpid, pid_t pid, int *stat_loc, int options) {
                 return 0;
             } else {
                 if(!wait_for_condition(zombie = reap_zombie(node))) {
-                    return -1; //FIXME ERRINTR
+                    return -EINTR;
                 }
             }
         }
@@ -517,7 +516,7 @@ DEFINE_SYSCALL(waitpid, pid_t pid, int *stat_loc, int options) {
         BUG_ON(!child);
 
         if(!wait_for_condition(atomic_read(&child->exit_state) == TASK_EXITED)) {
-            return -1; //FIXME ERRINTR
+            return -EINTR;
         }
 
         cpid = pid;
@@ -572,8 +571,7 @@ DEFINE_SYSCALL(getcwd, char *buff, size_t size) {
 
     // + 1 for null byte
     if(size < path_len + 1) {
-        //FIXME set errno
-        return -1;
+        return -EINVAL;
     }
     buff[path_len] = 0;
 
@@ -596,6 +594,25 @@ DEFINE_SYSCALL(getcwd, char *buff, size_t size) {
     BUG_ON(pos != 0);
 
     return (uint32_t) buff;
+}
+
+DEFINE_SYSCALL(seek, ufd_idx_t ufd, off_t off, int whence) {
+    if(((uint32_t) whence) > SEEK_MAX) {
+        return -EINVAL;
+    }
+
+    int32_t ret = -EBADF;
+
+    file_t *fd = ufdt_get(ufd);
+    if(fd) {
+        //TODO sanitize buffer/size arguments
+
+        ret = vfs_seek(fd, off, whence);
+
+        ufdt_put(ufd);
+    }
+
+    return ret;
 }
 
 DEFINE_SYSCALL(unimplemented, char *msg, bool fatal) {

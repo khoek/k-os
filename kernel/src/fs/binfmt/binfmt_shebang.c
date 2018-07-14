@@ -33,7 +33,7 @@ static char * advance_to_whitespace(char *str) {
 static int32_t load_shebang(binary_t *binary) {
     char buff[MAX_LINE_LEN + 1];
 
-    int32_t ret = vfs_seek(binary->file, 0);
+    int32_t ret = vfs_seek(binary->file, 0, SEEK_SET);
     if(ret < 0) {
         return ret;
     }

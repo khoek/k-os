@@ -1,8 +1,13 @@
 #include <stdio.h>
 #include <stdbool.h>
+#include <stdlib.h>
 #include <unistd.h>
 #include <sys/wait.h>
 #include <string.h>
+#include <errno.h>
+
+#define SHELL_PATH "/bin/bash"
+#define TERMINAL_NAME "kosterm"
 
 #define CSI_DOUBLE "\x1b["
 
@@ -15,8 +20,8 @@ void clear_screen() {
 int main(int argc, char **argv) {
     clear_screen();
 
-    char *shell_argv[] = {"/sbin/ksh", NULL};
-    char *shell_envp[] = {NULL};
+    char *shell_argv[] = {SHELL_PATH, NULL};
+    char *shell_envp[] = {"TERM=" TERMINAL_NAME, NULL};
 
     bool first_shell = true;
     while(1) {
@@ -29,8 +34,10 @@ int main(int argc, char **argv) {
             if(!first_shell) {
                 printf("\nShell died, respawning!\n");
             }
-
-            execve("/bin/bash", shell_argv, shell_envp);
+            execve(SHELL_PATH, shell_argv, shell_envp);
+            perror("init");
+            //FIXME send kill signal to parent process to trigger a panic
+            while(1);
         }
     }
 

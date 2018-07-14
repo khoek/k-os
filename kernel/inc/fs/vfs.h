@@ -14,6 +14,11 @@
 
 #define MNT_ROOT(mnt) ((path_t) {.mount = mnt, .dentry = mnt->fs->root})
 
+#define SEEK_SET 0	/* set file offset to offset */
+#define SEEK_CUR 1	/* set file offset to current plus offset */
+#define SEEK_END 2	/* set file offset to EOF plus offset */
+#define SEEK_MAX 2
+
 #define	S_IFMT   0170000	/* type of file */
 #define S_IFDIR  0040000	/* directory */
 #define S_IFCHR  0020000	/* character special */
@@ -156,7 +161,7 @@ struct file_ops {
     void (*open)(file_t *file, inode_t *inode);
     void (*close)(file_t *file);
 
-    off_t (*seek)(file_t *file, off_t offset);
+    off_t (*seek)(file_t *file, off_t offset, int whence);
     ssize_t (*read)(file_t *file, char *buff, size_t bytes);
     ssize_t (*write) (file_t *file, const char *buff, size_t bytes);
 
@@ -271,7 +276,7 @@ void generic_getattr(inode_t *inode, stat_t *stat);
 
 int32_t vfs_lookup(const path_t *start, const char *path, path_t *out);
 file_t * vfs_open_file(dentry_t *dentry);
-off_t vfs_seek(file_t *file, uint32_t off);
+off_t vfs_seek(file_t *file, uint32_t off, int whence);
 ssize_t vfs_read(file_t *file, void *buff, size_t bytes);
 ssize_t vfs_write(file_t *file, const void *buff, size_t bytes);
 uint32_t vfs_iterate(file_t *file, dir_entry_dat_t *buff, uint32_t num);

@@ -137,7 +137,11 @@ static void ramfs_file_open(file_t *file, inode_t *inode) {
 static void ramfs_file_close(file_t *file) {
 }
 
-static off_t ramfs_file_seek(file_t *file, off_t offset) {
+static off_t ramfs_file_seek(file_t *file, off_t offset, int whence) {
+    if(!(whence == SEEK_SET)) {
+        panicf("ramfs - unimplemented whence value %d", whence);
+    }
+
     inode_t *inode = file->dentry->inode;
     record_t *r = inode->private;
     size_t pos = 0;

@@ -256,6 +256,12 @@ struct termios
 #define	TCIOFF	3		/* Send a STOP character.  */
 #define	TCION	4	/* Send a START character.  */
 
+#define cfgetospeed(tp)	((tp)->__ospeed)
+#define cfgetispeed(tp)	((tp)->__ispeed)
+#define cfsetospeed(tp,s)	(((tp)->__ospeed = (s)), 0)
+#define cfsetispeed(tp,s)	(((tp)->__ispeed = (s)), 0)
+#define cfsetspeed(tp,s)	({ int __ret = cfsetispeed(tp,s); if(!ret) __ret = cfsetospeed(tp,s); __ret; })
+
 /* grr, this shouldn't have to be here */
 
 int tcgetattr(int fd,struct termios *termios_p);

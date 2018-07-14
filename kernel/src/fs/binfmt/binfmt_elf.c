@@ -97,7 +97,7 @@ static int32_t load_elf(binary_t *binary) {
     void *olddir = arch_replace_mem(current, NULL);
 
     Elf32_Ehdr *ehdr = kmalloc(sizeof(Elf32_Ehdr));
-    if(vfs_seek(binary->file, 0) != 0) {
+    if(vfs_seek(binary->file, 0, SEEK_SET) != 0) {
         goto fail_io;
     }
     if(vfs_read(binary->file, ehdr, sizeof(Elf32_Ehdr)) != sizeof(Elf32_Ehdr)) {
@@ -111,7 +111,7 @@ static int32_t load_elf(binary_t *binary) {
     kprintf("binfmt_elf - phdr @ %X", ehdr->e_phoff);
 
     Elf32_Phdr *phdr = kmalloc(sizeof(Elf32_Phdr) * ehdr->e_phnum);
-    if(vfs_seek(binary->file, ehdr->e_phoff) != ehdr->e_phoff) {
+    if(vfs_seek(binary->file, ehdr->e_phoff, SEEK_SET) != ehdr->e_phoff) {
         goto fail_io;
     }
     if(vfs_read(binary->file, phdr, sizeof(Elf32_Phdr) * ehdr->e_phnum)
@@ -129,7 +129,8 @@ static int32_t load_elf(binary_t *binary) {
                 kprintf("binfmt_elf - LOAD (%X, %X) @ %X -> %X - %X", phdr[i].p_filesz, phdr[i].p_memsz, phdr[i].p_offset, phdr[i].p_vaddr, phdr[i].p_vaddr + phdr[i].p_memsz);
 
                 void *addr = (void *) phdr[i].p_vaddr;
-                if(vfs_seek(binary->file, phdr[i].p_offset) != phdr[i].p_offset) {
+                if(vfs_seek(binary->file, phdr[i].p_offset, SEEK_SET)
+                    != phdr[i].p_offset) {
                     goto fail_io;
                 }
 
@@ -189,10 +190,10 @@ static int32_t load_elf(binary_t *binary) {
     void *uargv = arg_buff;
     arg_buff = build_strtab(arg_buff, binary->argv, &argc);
 
-    // void *uenvp = arg_buff;
-    // arg_buff = build_strtab(arg_buff, binary->envp, NULL);
+    void *uenvp = arg_buff;
+    arg_buff = build_strtab(arg_buff, binary->envp, NULL);
 
-    pl_bootstrap_userland((void *) ehdr->e_entry, ustack, argc, uargv, NULL);
+    pl_bootstrap_userland((void *) ehdr->e_entry, ustack, argc, uargv, uenvp);
 
     BUG();
 
