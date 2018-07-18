@@ -28,10 +28,6 @@ int fdatasync(int fd) {
     return MAKE_SYSCALL(unimplemented, "fdatasync", true);
 }
 
-int fchdir(int fd) {
-    return MAKE_SYSCALL(unimplemented, "fchdir", true);
-}
-
 int execve(const char *filename, char *const argv[], char *const envp[]) {
     return MAKE_SYSCALL(execve, filename, argv, envp);
 }
@@ -50,6 +46,10 @@ int close(int fildes) {
 
 int chdir(const char *path) {
     return MAKE_SYSCALL(chdir, path);
+}
+
+int fchdir(int fd) {
+    return MAKE_SYSCALL(fchdir, fd);
 }
 
 static char my_cwd[256];

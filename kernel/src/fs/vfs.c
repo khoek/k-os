@@ -293,7 +293,8 @@ static void validate_inode(dentry_t *dentry) {
 
 //Semantics: the dentry pointer is filled on success, or identification of
 //file which we were asked to create (in which case we return -EEXIST) only.
-int32_t vfs_create(const path_t *start, const char *pathname, uint32_t mode, dentry_t **dentry) {
+int32_t vfs_create(const path_t *start, const char *pathname, uint32_t mode,
+    path_t *path) {
     int32_t ret = 0;
 
     path_t wd;
@@ -309,7 +310,7 @@ int32_t vfs_create(const path_t *start, const char *pathname, uint32_t mode, den
     ret = vfs_lookup(&wd, last, &f);
     if(!ret) {
         ret = -EEXIST;
-        if(dentry) *dentry = f.dentry;
+        if(path) *path = f;
 
         //otherwise, do nothing?
     } else if(ret == -ENOENT) {
@@ -322,7 +323,10 @@ int32_t vfs_create(const path_t *start, const char *pathname, uint32_t mode, den
 
         validate_inode(new);
         dentry_activate(new, wd.dentry);
-        if(dentry) *dentry = new;
+        if(path) {
+            path->dentry = new;
+            path->mount = wd.mount;
+        }
     }
 
     return ret;
@@ -455,11 +459,11 @@ lookup_next:
     return cwd.dentry ? 0 : -ENOENT;
 }
 
-file_t * vfs_open_file(dentry_t *dentry) {
-    file_t *file = file_alloc(dentry->inode->ops->file_ops);
+file_t * vfs_open_file(path_t *path) {
+    file_t *file = file_alloc(path->dentry->inode->ops->file_ops);
     if(file) {
-        file->dentry = dentry;
-        file->ops->open(file, dentry->inode);
+        file->path = *path;
+        file->ops->open(file, path->dentry->inode);
     }
 
     return file;
@@ -475,14 +479,14 @@ off_t vfs_seek(file_t *file, uint32_t off, int whence) {
 }
 
 ssize_t vfs_read(file_t *file, void *buff, size_t bytes) {
-    if(file->dentry->inode->flags & INODE_FLAG_DIRECTORY) {
+    if(file->path.dentry->inode->flags & INODE_FLAG_DIRECTORY) {
         return -EISDIR;
     }
     return file->ops->read(file, buff, bytes);
 }
 
 ssize_t vfs_write(file_t *file, const void *buff, size_t bytes) {
-    if(file->dentry->inode->flags & INODE_FLAG_DIRECTORY) {
+    if(file->path.dentry->inode->flags & INODE_FLAG_DIRECTORY) {
         return -EISDIR;
     }
     return file->ops->write(file, buff, bytes);
@@ -492,7 +496,7 @@ uint32_t simple_file_iterate(file_t *file, dir_entry_dat_t *buff, uint32_t num) 
     uint32_t curpos = 0;
     uint32_t num_read = 0;
     dentry_t *child;
-    LIST_FOR_EACH_ENTRY(child, &file->dentry->children_list, list) {
+    LIST_FOR_EACH_ENTRY(child, &file->path.dentry->children_list, list) {
         if(num_read >= num) {
             break;
         }

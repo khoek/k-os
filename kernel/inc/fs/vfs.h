@@ -140,7 +140,7 @@ struct path {
 };
 
 struct file {
-    dentry_t *dentry;
+    path_t path;
     file_ops_t *ops;
 
     uint32_t refs;
@@ -265,10 +265,10 @@ void vfs_mount_destroy(mount_t *mount);
 
 bool vfs_umount(path_t *mountpoint);
 
-//Semantics: the dentry pointer is filled on success, or identification of
+//Semantics: the path pointer is filled on success, or identification of
 //file which we were asked to create (in which case we return -EEXIST) only.
 //Incidentally, this is different to POSIX's O_CREAT.
-int32_t vfs_create(const path_t *start, const char *pathname, uint32_t mode, dentry_t **dentry);
+int32_t vfs_create(const path_t *start, const char *pathname, uint32_t mode, path_t *path);
 
 uint32_t simple_file_iterate(file_t *file, dir_entry_dat_t *buff, uint32_t num);
 
@@ -281,7 +281,7 @@ void vfs_getattr(dentry_t *dentry, stat_t *stat);
 void generic_getattr(inode_t *inode, stat_t *stat);
 
 int32_t vfs_lookup(const path_t *start, const char *path, path_t *out);
-file_t * vfs_open_file(dentry_t *dentry);
+file_t * vfs_open_file(path_t *path);
 int32_t vfs_close_file(file_t *file);
 
 off_t vfs_seek(file_t *file, uint32_t off, int whence);

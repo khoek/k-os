@@ -75,7 +75,7 @@ static int32_t load_shebang(binary_t *binary) {
         return ret;
     }
 
-    file_t *f = vfs_open_file(path.dentry);
+    file_t *f = vfs_open_file(&path);
     if(!f) {
         return -EIO;
     }

@@ -62,7 +62,7 @@ static ssize_t chunk_write(chunk_t *c, size_t *record_size, const void *buff,
 
 static ssize_t record_read(file_t *file, void *buff, size_t len, size_t off) {
     chunk_t *c = file->private; //current chunk
-    inode_t *inode = file->dentry->inode;
+    inode_t *inode = file->path.dentry->inode;
     record_t *r = inode->private;
     ssize_t amt = 0;
 
@@ -85,7 +85,7 @@ static ssize_t record_read(file_t *file, void *buff, size_t len, size_t off) {
 
 static ssize_t record_write(file_t *file, const void *buff, size_t len, size_t off) {
     chunk_t *c = file->private; //current chunk
-    inode_t *inode = file->dentry->inode;
+    inode_t *inode = file->path.dentry->inode;
     record_t *r = inode->private;
     ssize_t amt = 0;
 
@@ -142,7 +142,7 @@ static off_t ramfs_file_seek(file_t *file, off_t offset, int whence) {
         panicf("ramfs - unimplemented whence value %d", whence);
     }
 
-    inode_t *inode = file->dentry->inode;
+    inode_t *inode = file->path.dentry->inode;
     record_t *r = inode->private;
     size_t pos = 0;
 

@@ -46,7 +46,7 @@ static bool try_load_init(char *path) {
     path_t out;
     int32_t ret = vfs_lookup(NULL, path, &out);
     if(!ret) {
-        execute_path(out.dentry, argv, ENVP);
+        execute_path(&out, argv, ENVP);
     }
 
     return false;
@@ -68,7 +68,7 @@ static void umain() {
         vlog_disable();
     }
 
-    file_t *tty_file = vfs_open_file(out.dentry);
+    file_t *tty_file = vfs_open_file(&out);
     ufdt_add(tty_file);
     ufdt_add(tty_file);
     ufdt_add(tty_file);

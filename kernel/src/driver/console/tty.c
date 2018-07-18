@@ -341,7 +341,7 @@ void tty_create(char *name) {
     }
 
     tty_t *tty = kmalloc(sizeof(tty_t));
-    tty->console = vfs_open_file(out.dentry);
+    tty->console = vfs_open_file(&out);
     memset(tty->keystate, 0, sizeof(tty->keystate));
     ringbuff_init(&tty->rb, BUFFLEN, char);
     spinlock_init(&tty->lock);

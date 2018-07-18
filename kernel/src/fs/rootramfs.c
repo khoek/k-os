@@ -28,14 +28,14 @@ typedef struct rootramfs_header {
 static uint32_t entry_reconstruct(entry_t *e, const path_t *root) {
     switch(e->type) {
         case ENTRY_TYPE_DIR: {
-            char *path = kmalloc(e->name_len + 2);
-            memcpy(path, e->name, e->name_len);
-            path[e->name_len] = '/';
-            path[e->name_len + 1] = '\0';
+            char *pathname = kmalloc(e->name_len + 2);
+            memcpy(pathname, e->name, e->name_len);
+            pathname[e->name_len] = '/';
+            pathname[e->name_len + 1] = '\0';
 
-            kprintf("rootramfs - loading \"/%s\"", path);
+            kprintf("rootramfs - loading \"/%s\"", pathname);
 
-            char *part = path;
+            char *part = pathname;
             while(*part) {
                 part = strchr(part, '/');
 
@@ -43,8 +43,8 @@ static uint32_t entry_reconstruct(entry_t *e, const path_t *root) {
 
                 part[0] = '\0';
 
-                dentry_t *dentry;
-                int32_t ret = vfs_create(root, path, S_IFDIR | 0755, &dentry);
+                path_t path;
+                int32_t ret = vfs_create(root, pathname, S_IFDIR | 0755, &path);
                 if(ret < 0 && ret != -EEXIST) {
                     panicf("rootramfs - vfs_create() failed: %d", ret);
                 }
@@ -56,21 +56,21 @@ static uint32_t entry_reconstruct(entry_t *e, const path_t *root) {
             return sizeof(entry_t) + e->name_len;
         }
         case ENTRY_TYPE_FRECORD: {
-            char *path = kmalloc(e->name_len + 1);
-            memcpy(path, e->name, e->name_len);
-            path[e->name_len] = '\0';
+            char *pathname = kmalloc(e->name_len + 1);
+            memcpy(pathname, e->name, e->name_len);
+            pathname[e->name_len] = '\0';
 
-            kprintf("rootramfs - loading \"/%s\"", path);
+            kprintf("rootramfs - loading \"/%s\"", pathname);
 
-            dentry_t *dentry;
-            int32_t ret = vfs_create(root, path, S_IFREG | 0755, &dentry);
+            path_t path;
+            int32_t ret = vfs_create(root, pathname, S_IFREG | 0755, &path);
             if(ret < 0) {
                 panicf("rootramfs - vfs_create() failed: %d", ret);
             }
 
             frecord_t *fr = ((void *) e) + sizeof(entry_t) + e->name_len;
 
-            file_t *f = vfs_open_file(dentry);
+            file_t *f = vfs_open_file(&path);
             vfs_write(f, fr->data, fr->len);
 
             return sizeof(entry_t) + e->name_len + sizeof(frecord_t) + fr->len;
