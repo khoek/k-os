@@ -32,9 +32,11 @@
 41:lstat:const char *path, void *buff
 42:fstat:ufd_idx_t ufd, void *buff
 
-50:chdir:const char *path
-51:fchdir:ufd_idx_t ufd
-52:getcwd:char *buf, size_t size
+50:getcwd:char *buf, size_t size
+51:chdir:const char *path
+52:fchdir:ufd_idx_t ufd
+53:chown:const char *path, uid_t owner, gid_t group
+54:fchown:ufd_idx_t ufd, uid_t owner, gid_t group
 
 60:execve:const char *pathname, char *const argv[], char *const envp[]
 61:fexecve:ufd_idx_t ufd, char *const argv[], char *const envp[]

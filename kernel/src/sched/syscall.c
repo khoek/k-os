@@ -601,41 +601,6 @@ DEFINE_SYSCALL(waitpid, pid_t pid, int *stat_loc, int options) {
     return cpid;
 }
 
-DEFINE_SYSCALL(chdir, const char *pathname) {
-    if(!pathname) {
-        return -EFAULT;
-    }
-
-    path_t path;
-    int32_t ret = vfs_lookup(&obtain_fs_context(current)->pwd, pathname, &path);
-    if(ret) {
-        return ret;
-    }
-    if(!S_ISDIR(path.dentry->inode->mode)) {
-        return -ENOTDIR;
-    }
-
-    //FIXME this desperately needs to be locked
-    obtain_fs_context(current)->pwd = path;
-
-    return ret;
-}
-
-DEFINE_SYSCALL(fchdir, ufd_idx_t ufd) {
-    file_t *fd = ufdt_get(ufd);
-    if(!fd) {
-        return -EBADF;
-    }
-    if(!S_ISDIR(fd->path.dentry->inode->mode)) {
-        return -ENOTDIR;
-    }
-
-    //FIXME this desperately needs to be locked
-    obtain_fs_context(current)->pwd = fd->path;
-    
-    return 0;
-}
-
 DEFINE_SYSCALL(getcwd, char *buff, size_t size) {
     path_t pwd = obtain_fs_context(current)->pwd;
     uint32_t path_len = 0;
@@ -683,6 +648,72 @@ DEFINE_SYSCALL(getcwd, char *buff, size_t size) {
     BUG_ON(pos != 0);
 
     return (uint32_t) buff;
+}
+
+static int32_t do_chdir(path_t *path) {
+    if(!S_ISDIR(path->dentry->inode->mode)) {
+        return -ENOTDIR;
+    }
+
+    //FIXME this desperately needs to be locked
+    obtain_fs_context(current)->pwd = *path;
+    return 0;
+}
+
+DEFINE_SYSCALL(chdir, const char *pathname) {
+    if(!pathname) {
+        return -EFAULT;
+    }
+
+    path_t path;
+    int32_t ret = vfs_lookup(&obtain_fs_context(current)->pwd, pathname, &path);
+    if(ret) {
+        return ret;
+    }
+
+    return do_chdir(&path);
+}
+
+DEFINE_SYSCALL(fchdir, ufd_idx_t ufd) {
+    file_t *fd = ufdt_get(ufd);
+    if(!fd) {
+        return -EBADF;
+    }
+
+    return do_chdir(&fd->path);
+}
+
+static int32_t do_chown(path_t *path, uid_t owner, gid_t group) {
+    if(owner != 0 || group != 0) {
+        kprintf("syscall - users/groups not implemented!");
+        return -ENOSYS;
+    }
+
+    //FIXME update appropriate inode times
+    return 0;
+}
+
+DEFINE_SYSCALL(chown, const char *pathname, uid_t owner, gid_t group) {
+    if(!pathname) {
+        return -EFAULT;
+    }
+
+    path_t path;
+    int32_t ret = vfs_lookup(&obtain_fs_context(current)->pwd, pathname, &path);
+    if(ret) {
+        return ret;
+    }
+
+    return do_chown(&path, owner, group);
+}
+
+DEFINE_SYSCALL(fchown, ufd_idx_t ufd, uid_t owner, gid_t group) {
+    file_t *fd = ufdt_get(ufd);
+    if(!fd) {
+        return -EBADF;
+    }
+
+    return do_chown(&fd->path, owner, group);
 }
 
 DEFINE_SYSCALL(seek, ufd_idx_t ufd, off_t off, int whence) {
@@ -811,13 +842,18 @@ DEFINE_SYSCALL(setpgid, pid_t pid, pid_t pgid) {
         task_node_get(current->node);
     }
 
-    if(!pgid) pgid = node->pid;
-
     if(pgid == 0 || pgid == node->pid) {
         pgroup_rm(node);
         pgroup_create(node);
     } else {
-        panicf("unimplemented - setpgid %d %d", pid, pgid);
+        pgroup_t *pg = pgroup_find(pgid);
+        if(!pg) {
+            return -EPERM;
+        }
+
+        //FIXME check that pg is in the same session
+        pgroup_rm(node);
+        pgroup_add(node, pg);
     }
 
     task_node_put(node);

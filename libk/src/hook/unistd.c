@@ -190,7 +190,11 @@ int isatty(int fd) {
 }
 
 int chown(const char *path, uid_t owner, gid_t group) {
-    return MAKE_SYSCALL(unimplemented, "chown", true);
+    return MAKE_SYSCALL(chown, path, owner, group);
+}
+
+int fchown(int fd, uid_t owner, gid_t group) {
+    return MAKE_SYSCALL(fchown, fd, owner, group);
 }
 
 off_t lseek(int fd, off_t off, int whence) {
