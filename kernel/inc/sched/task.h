@@ -30,23 +30,28 @@ typedef struct thread thread_t;
 #include "sync/semaphore.h"
 #include "fs/fd.h"
 #include "fs/vfs.h"
+#include "user/signal.h"
+
+//thread runs with kernel privilege level
+#define THREAD_FLAG_KERNEL (1 << 0)
+//thread has resulted from a fork, and execve() has not yet been called
+//FIXME implement clearing this
+#define THREAD_FLAG_FORKED (1 << 1)
+//thread is waiting in a semaphore
+#define THREAD_FLAG_INSEM  (1 << 2)
 
 typedef uint32_t ufd_idx_t;
 
 typedef struct ufd {
-    uint32_t refs;
     uint32_t flags;
     file_t *gfd;
 } ufd_t;
 
 typedef struct ufd_context {
     spinlock_t lock;
-
     uint32_t refs;
 
-    ufd_idx_t next;
     ufd_t *table;
-    ufd_idx_t *list;
 } ufd_context_t;
 
 typedef struct fs_context {
@@ -57,6 +62,28 @@ typedef struct fs_context {
     path_t root;
     path_t pwd;
 } fs_context_t;
+
+typedef void (*sigtramp_t)(void *);
+
+//FIXME add a layer of indirection using task_id structs, which stay alive to
+//keep track of session leaders and the like while allowing the main task_node
+//to be deallocated when/if that task dies.
+
+typedef struct psession {
+    spinlock_t lock;
+    task_node_t *leader;
+    list_head_t members;
+
+    list_head_t list;
+} psession_t;
+
+typedef struct pgroup {
+    spinlock_t lock;
+    task_node_t *leader;
+    list_head_t members;
+
+    list_head_t list;
+} pgroup_t;
 
 typedef struct task_node {
     spinlock_t lock;
@@ -72,15 +99,26 @@ typedef struct task_node {
     atomic_t exit_state;
     uint32_t exit_code;
 
+    sigtramp_t sigtramp;
+    struct sigaction sigactions[NSIG];
+
+    sigset_t sig_mask;
+
+    psession_t *session;
+    pgroup_t *pgroup;
+
     //List heads
     list_head_t threads;
     list_head_t children;
     list_head_t zombies;
 
-    //for parent's children list
-    list_head_t child_list;
-    //for zombieing
-    list_head_t zombie_list;
+    //FIXME implement sessions and PGs
+    list_head_t psession_list; //session
+    list_head_t pgroup_list;   //process group members
+    list_head_t child_list;  //parent's children
+    list_head_t zombie_list; //for zombieing
+
+    list_head_t list; //for master task list
 } task_node_t;
 
 typedef struct thread {
@@ -100,17 +138,19 @@ typedef struct thread {
 
     //Thread-local data (read/write):
     int32_t state;
-    uint32_t sig_pending;
+    sigset_t sig_pending;
 
-    //processor this task is currently executing on, NULL otherwise
+    //architecture-specific execution state
     arch_thread_data_t arch;
 
     //for global list "threads"
     list_head_t list;
     //for task_node list "threads"
     list_head_t thread_list;
-    //for queueing and sleeping
-    list_head_t state_list;
+    //for queueing
+    list_head_t queue_list;
+    //for sleeping in semaphore
+    list_head_t sleep_list;
     //used in wait_for_condition()
     list_head_t poll_list;
 } thread_t;
@@ -141,14 +181,28 @@ void spawn_kernel_task(char *name, void (*main)(void *arg), void *arg);
 thread_t * thread_fork(thread_t *t, uint32_t flags, void (*setup)(void *arg), void *arg);
 void thread_exit();
 
+void task_node_get(task_node_t *node);
+void task_node_put(task_node_t *node);
 void task_node_exit(int32_t code);
+task_node_t * task_node_find(pid_t pid);
+
+void session_create(task_node_t *t);
+void session_add(task_node_t *new, psession_t *session);
+void session_rm(task_node_t *new);
+psession_t * session_find(pid_t pid);
+
+void pgroup_create(task_node_t *t);
+void pgroup_add(task_node_t *new, pgroup_t *pg);
+void pgroup_rm(task_node_t *new);
+pgroup_t * pgroup_find(pid_t pid);
 
 bool ufdt_valid(ufd_idx_t ufd);
-ufd_idx_t ufdt_add(uint32_t flags, file_t *gfd);
+ufd_idx_t ufdt_add(file_t *gfd);
+int32_t ufdt_replace(ufd_idx_t ufd, file_t *fd);
+int32_t ufdt_close(ufd_idx_t ufd);
 
 file_t * ufdt_get(ufd_idx_t ufd);
 void ufdt_put(ufd_idx_t ufd);
-void ufdt_close(ufd_idx_t ufd);
 
 void __init root_task_init(void *umain);
 

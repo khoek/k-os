@@ -76,12 +76,10 @@ void context_switch(thread_t *t) {
 
 static inline void set_exec_state(exec_state_t *exec, void *ip, bool user) {
     exec->eip = (uint32_t) ip;
-
+    exec->eflags = EFLAGS_IF;
     if(user) {
-        exec->eflags = EFLAGS_IF;
         exec->cs = SEL_USER_CODE | SPL_USER;
     } else {
-        exec->eflags = 0;
         exec->cs = SEL_KRNL_CODE | SPL_KRNL;
     }
 }
@@ -91,7 +89,8 @@ static inline void set_stack_state(stack_state_t *stack, void *sp, bool user) {
         stack->ss = SEL_USER_DATA | SPL_USER;
         stack->esp = (uint32_t) sp;
     } else {
-        //For kernel->kernel irets, ss and esp are not popped off.
+        //For kernel->kernel irets, ss and esp are not popped off (or pushed in
+        //the first place).
         BUG();
     }
 }
@@ -126,6 +125,9 @@ void pl_enter_userland(void *user_ip, void *user_stack, registers_t *reg) {
     //We can't be interrupted after clobbering live_state, else a task switch
     //interrupt will modify this value and we will end up who-knows-where?
     irqdisable();
+
+    //Remove our the "kernel thread" flag
+    me->flags &= ~THREAD_FLAG_KERNEL;
 
     //Inform context_switch() of the register launchpad's location.
     set_live_state(me, &user_state);
@@ -208,7 +210,7 @@ typedef struct fork_data {
 } fork_data_t;
 
 void arch_ret_from_fork(void *arg) {
-    check_irqs_disabled();
+    irqdisable();
 
     fork_data_t forkd;
     memcpy(&forkd, arg, sizeof(fork_data_t));
@@ -224,4 +226,52 @@ void * arch_prepare_fork(cpu_state_t *state) {
     fork_data_t *forkd = kmalloc(sizeof(fork_data_t));
     memcpy(&forkd->resume_state, state, sizeof(cpu_state_t));
     return forkd;
+}
+
+typedef struct sigdata {
+    uint32_t restore_mask;
+    cpu_state_t state;
+} PACKED sigdata_t;
+
+void arch_setup_sigaction(cpu_state_t *state, void *sighandler, void *sigtramp,
+    uint32_t restore_mask) {
+    //assert that we are not modifying a kernel state
+    BUG_ON(state->exec.cs != (SEL_USER_CODE | SPL_USER));
+
+    uint32_t sp = state->stack.esp;
+
+    //4b align sigdata
+    sp -= sizeof(sigdata_t);
+    sp &= ~0xF;
+    sigdata_t *sd = (void *) sp;
+    sd->restore_mask = restore_mask;
+    sd->state = *state;
+
+    //16b align esp + 4 on entry to the sighandler, then put on the arg to
+    //sigtramp (sd) and then the address of sigtramp, in that order.
+    sp -= sizeof(uint32_t) * 2;
+    sp &= ~0xFF;
+    ((uint32_t *) sp)[1] = (uint32_t) sd; //I have no idea why this offset works
+    ((uint32_t *) sp)[-1] = (uint32_t) sigtramp;
+    sp -= sizeof(uint32_t);
+
+    //sp is now positioned at the top of the stack, and we are ready to go
+    state->stack.esp = sp;
+    state->exec.eip = (uint32_t) sighandler;
+}
+
+void arch_setup_sigreturn(cpu_state_t *state, void *sp) {
+    sigdata_t *sd = sp;
+
+    //assert that we are not modifying a kernel state
+    BUG_ON(state->exec.cs != (SEL_USER_CODE | SPL_USER));
+
+    current->node->sig_mask = sd->restore_mask;
+    *state = sd->state;
+
+    //Prevent privilege escalation
+    state->exec.eflags &= EFLAGS_USER_MASK;
+    state->exec.eflags |= EFLAGS_IF;
+    state->exec.cs = SEL_USER_CODE | SPL_USER;
+    state->stack.ss = SEL_USER_DATA | SPL_USER;
 }

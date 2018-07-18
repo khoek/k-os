@@ -61,6 +61,7 @@ void vram_init(console_t *console);
 void keyboard_init(console_t *console);
 
 ssize_t keybuff_read(uint8_t *buff, size_t len);
+bool keybuff_is_empty();
 
 void vram_color(console_t *con, char c);
 void vram_clear(console_t *con);

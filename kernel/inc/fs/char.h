@@ -11,6 +11,7 @@ typedef struct char_device_ops char_device_ops_t;
 struct char_device_ops {
     ssize_t (*read)(char_device_t *device, char *buff, size_t len);
     ssize_t (*write)(char_device_t *device, const char *buff, size_t len);
+    ssize_t (*poll)(char_device_t *device, fpoll_data_t *fp);
 };
 
 struct char_device {

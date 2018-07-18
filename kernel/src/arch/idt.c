@@ -110,26 +110,31 @@ static void handle_exception(interrupt_t *interrupt) {
 
 void interrupt_dispatch(interrupt_t *interrupt) {
     check_on_correct_stack();
-	check_irqs_disabled();
+		check_irqs_disabled();
 
     if(interrupt->vector < IRQ_OFFSET) {
         handle_exception(interrupt);
     }
 
-	if(!is_spurious(interrupt->vector)
-		&& !list_empty(&isrs[interrupt->vector - IRQ_OFFSET])) {
+		if(!is_spurious(interrupt->vector)
+				&& !list_empty(&isrs[interrupt->vector - IRQ_OFFSET])) {
         irq_handler_t *handler;
         LIST_FOR_EACH_ENTRY(handler, &isrs[interrupt->vector - IRQ_OFFSET], list) {
             handler->isr(interrupt, handler->data);
-			check_irqs_disabled();
+						check_irqs_disabled();
         }
     }
 
-	sched_interrupt_notify();
+		sched_interrupt_notify();
 
     eoi_handler(interrupt->vector);
 
     sched_try_resched();
+
+    //This might not return (as in SIGKILL).
+    //FIXME call deliver_signals() after every interrupt where we are returning
+    //to a user task.
+    sched_deliver_signals(&interrupt->cpu);
 }
 
 void idt_init() {

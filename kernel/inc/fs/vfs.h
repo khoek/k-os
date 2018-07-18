@@ -23,7 +23,7 @@
 #define S_IFDIR  0040000	/* directory */
 #define S_IFCHR  0020000	/* character special */
 #define S_IFBLK  0060000	/* block special */
-#define S_IFREG  0100000	/* regular */
+#define S_IFREG  0100000	/* regulstruct fpoll_dataar */
 #define S_IFLNK  0120000	/* symbolic link */
 #define S_IFSOCK 0140000	/* socket */
 #define S_IFIFO  0010000	/* fifo */
@@ -94,6 +94,8 @@ typedef struct dentry dentry_t;
 
 typedef struct stat stat_t;
 
+typedef struct fpoll_data fpoll_data_t;
+
 extern mount_t *root_mount;
 
 #include "common/types.h"
@@ -139,13 +141,12 @@ struct path {
 
 struct file {
     dentry_t *dentry;
+    file_ops_t *ops;
 
-    void *private;
-
-    uint32_t offset;
     uint32_t refs;
 
-    file_ops_t *ops;
+    uint32_t offset;
+    void *private;
 };
 
 #define ENTRY_TYPE_FILE 0
@@ -166,6 +167,7 @@ struct file_ops {
     ssize_t (*write) (file_t *file, const char *buff, size_t bytes);
 
     uint32_t (*iterate)(file_t *file, dir_entry_dat_t *buff, uint32_t num);
+    int32_t (*poll)(file_t *file, fpoll_data_t *fp);
 };
 
 struct inode {
@@ -241,6 +243,10 @@ struct stat {
     int32_t st_spare4[2];
 };
 
+struct fpoll_data {
+    bool readable, writable, errored;
+};
+
 dentry_t * dentry_alloc(const char *name);
 inode_t * inode_alloc(fs_t *fs, inode_ops_t *ops);
 file_t * file_alloc(file_ops_t *ops);
@@ -276,9 +282,12 @@ void generic_getattr(inode_t *inode, stat_t *stat);
 
 int32_t vfs_lookup(const path_t *start, const char *path, path_t *out);
 file_t * vfs_open_file(dentry_t *dentry);
+int32_t vfs_close_file(file_t *file);
+
 off_t vfs_seek(file_t *file, uint32_t off, int whence);
 ssize_t vfs_read(file_t *file, void *buff, size_t bytes);
 ssize_t vfs_write(file_t *file, const void *buff, size_t bytes);
 uint32_t vfs_iterate(file_t *file, dir_entry_dat_t *buff, uint32_t num);
+int32_t vfs_poll(file_t *file, fpoll_data_t *fp);
 
 #endif

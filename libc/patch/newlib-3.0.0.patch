@@ -23,7 +23,7 @@ diff -ruEwN src/newlib-3.0.0/newlib/configure.host src/newlib-3.0.0-custom/newli
 +	unix_dir=unix
 +	syscall_dir=
 +	have_crt0="no"
-+	newlib_cflags="${newlib_cflags} -DREENTRANT_SYSCALLS_PROVIDED -DMISSING_SYSCALL_NAMES -D__DYNAMIC_REENT__ -D_NO_EXECVE -D_NO_GETCWD"
++	newlib_cflags="${newlib_cflags} -DREENTRANT_SYSCALLS_PROVIDED -DMISSING_SYSCALL_NAMES -D__DYNAMIC_REENT__ -DSIGNAL_PROVIDED -D_NO_EXECVE -D_NO_GETCWD"
 +	;;
  esac
  

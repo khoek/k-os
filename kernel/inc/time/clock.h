@@ -5,6 +5,7 @@
 #include "common/list.h"
 
 #define MILLIS_PER_SEC 1000
+#define MICROS_PER_MILLI 1000
 #define FEMPTOS_PER_SEC 1000000000000000ULL
 
 typedef struct clock {

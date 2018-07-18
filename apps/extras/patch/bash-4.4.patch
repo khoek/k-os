@@ -1,6 +1,6 @@
 diff -ruEwN src/bash-4.4/configure src/bash-4.4-custom/configure
---- src/bash-4.4/configure	2018-07-08 20:43:31.690983612 +1000
-+++ src/bash-4.4-custom/configure	2018-07-08 20:23:15.884995000 +1000
+--- src/bash-4.4/configure	2018-07-15 19:41:17.644321533 +1000
++++ src/bash-4.4-custom/configure	2018-07-15 19:40:55.325071568 +1000
 @@ -14642,9 +14642,9 @@
    $as_echo_n "(cached) " >&6
  else
@@ -14,9 +14,22 @@ diff -ruEwN src/bash-4.4/configure src/bash-4.4-custom/configure
  
  else
    cat confdefs.h - <<_ACEOF >conftest.$ac_ext
+@@ -15203,9 +15203,9 @@
+   $as_echo_n "(cached) " >&6
+ else
+   if test "$cross_compiling" = yes; then :
+-  { $as_echo "$as_me:${as_lineno-$LINENO}: WARNING: cannot check job control if cross-compiling -- defaulting to missing" >&5
+-$as_echo "$as_me: WARNING: cannot check job control if cross-compiling -- defaulting to missing" >&2;}
+-     bash_cv_job_control_missing=missing
++  { $as_echo "$as_me:${as_lineno-$LINENO}: WARNING: cannot check job control if cross-compiling -- defaulting to present" >&5
++$as_echo "$as_me: WARNING: cannot check job control if cross-compiling -- defaulting to present" >&2;}
++     bash_cv_job_control_missing=present
+ 
+ else
+   cat confdefs.h - <<_ACEOF >conftest.$ac_ext
 diff -ruEwN src/bash-4.4/lib/sh/getenv.c src/bash-4.4-custom/lib/sh/getenv.c
 --- src/bash-4.4/lib/sh/getenv.c	2008-08-13 01:53:20.000000000 +1000
-+++ src/bash-4.4-custom/lib/sh/getenv.c	2018-07-08 20:42:34.940960000 +1000
++++ src/bash-4.4-custom/lib/sh/getenv.c	2018-07-15 19:40:47.741325442 +1000
 @@ -69,7 +69,7 @@
        if (var && exported_p (var))
  	return (value_cell (var));
@@ -28,7 +41,7 @@ diff -ruEwN src/bash-4.4/lib/sh/getenv.c src/bash-4.4-custom/lib/sh/getenv.c
  
 diff -ruEwN src/bash-4.4/support/config.sub src/bash-4.4-custom/support/config.sub
 --- src/bash-4.4/support/config.sub	2013-12-18 02:49:47.000000000 +1100
-+++ src/bash-4.4-custom/support/config.sub	2018-07-08 20:23:15.884995000 +1000
++++ src/bash-4.4-custom/support/config.sub	2018-07-15 19:40:47.741325442 +1000
 @@ -1376,7 +1376,7 @@
  	      | -os2* | -vos* | -palmos* | -uclinux* | -nucleus* \
  	      | -morphos* | -superux* | -rtmk* | -rtmk-nova* | -windiss* \

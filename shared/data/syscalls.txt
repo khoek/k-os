@@ -4,37 +4,53 @@
  3:log:const char *loc, uint32_t len
  4:uptime:
 
- 5:open:const char *path, uint32_t flags, uint32_t mode
- 6:close:ufd_idx_t ufd
- 7:seek:ufd_idx_t ufd, off_t off, int whence
- 8:socket:uint32_t family, uint32_t type, uint32_t protocol
- 9:listen:ufd_idx_t ufd, uint32_t backlog
-10:accept:ufd_idx_t ufd, struct sockaddr *useraddr, socklen_t *len
-11:bind:ufd_idx_t ufd, const struct sockaddr *useraddr, socklen_t len
-12:connect:ufd_idx_t ufd, const struct sockaddr *useraddr, socklen_t len
-13:shutdown:ufd_idx_t ufd, int how
-14:recv:ufd_idx_t ufd, void *user_buff, uint32_t buffsize, uint32_t flags
-15:send:ufd_idx_t ufd, const void *user_buff, uint32_t buffsize, uint32_t flags
+ 5:gettimeofday:struct timeval *tv
 
-16:alloc_page:void *addr
-17:free_page:
+10:open:const char *path, uint32_t flags, uint32_t mode
+11:close:ufd_idx_t ufd
+12:dup:ufd_idx_t ufd
+13:dup2:ufd_idx_t ufd, ufd_idx_t ufd2
+14:seek:ufd_idx_t ufd, off_t off, int whence
+15:read:ufd_idx_t ufd, void *buff, uint32_t len
+16:write:ufd_idx_t ufd, const void *buff, uint32_t len
+17:select:int nfds, void *rfds, void *wfds, void *efds, struct timeval *timeout
 
-18:getdents:ufd_idx_t ufd, struct dirent *user_buff, uint32_t buffsize
+20:socket:uint32_t family, uint32_t type, uint32_t protocol
+21:listen:ufd_idx_t ufd, uint32_t backlog
+22:accept:ufd_idx_t ufd, struct sockaddr *useraddr, socklen_t *len
+23:bind:ufd_idx_t ufd, const struct sockaddr *useraddr, socklen_t len
+24:connect:ufd_idx_t ufd, const struct sockaddr *useraddr, socklen_t len
+25:shutdown:ufd_idx_t ufd, int how
+26:recv:ufd_idx_t ufd, void *user_buff, uint32_t buffsize, uint32_t flags
+27:send:ufd_idx_t ufd, const void *user_buff, uint32_t buffsize, uint32_t flags
 
-19:stat:const char *path, void *buff
-20:lstat:const char *path, void *buff
-21:fstat:ufd_idx_t ufd, void *buff
-22:read:ufd_idx_t ufd, void *buff, uint32_t len
-23:write:ufd_idx_t ufd, const void *buff, uint32_t len
+30:alloc_page:uint32_t
+31:free_page:uint32_t
+32:getdents:ufd_idx_t ufd, struct dirent *user_buff, uint32_t buffsize
 
-24:chdir:const char *path
-25:getcwd:char *buf, size_t size
+40:stat:const char *path, void *buff
+41:lstat:const char *path, void *buff
+42:fstat:ufd_idx_t ufd, void *buff
 
-26:execve:const char *pathname, char *const argv[], char *const envp[]
-27:fexecve:ufd_idx_t ufd, char *const argv[], char *const envp[]
+50:chdir:const char *path
+51:getcwd:char *buf, size_t size
 
-28:getpid:
-29:getppid:
-30:waitpid:pid_t pid, int *stat_loc, int options
+60:execve:const char *pathname, char *const argv[], char *const envp[]
+61:fexecve:ufd_idx_t ufd, char *const argv[], char *const envp[]
 
-100:unimplemented:char *msg, bool fatal
+70:waitpid:pid_t pid, int *stat_loc, int options
+
+80:getpid:
+81:getppid:
+82:getpgid:pid_t pid
+83:setpgid:pid_t pid, pid_t pgid
+84:tcgetpgrp:ufd_idx_t ufd
+85:tcsetpgrp:ufd_idx_t ufd, pid_t pgid
+
+91:_register_sigtramp:void (*sigtramp)(void *)
+92:_sigreturn:void *
+93:kill:int pid, int sig
+94:sigaction:int sig, const struct sigaction *restrict sa, struct sigaction *restrict sa_old
+95:sigprocmask:int how, const sigset_t *set, sigset_t *oset
+
+500:unimplemented:char *msg, bool fatal

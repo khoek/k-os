@@ -5,6 +5,7 @@
 #include <k/sys.h>
 #include <stdlib.h>
 #include <string.h>
+#include <limits.h>
 
 void _exit(int status) {
     MAKE_SYSCALL(_exit, status);
@@ -89,7 +90,6 @@ int sethostname(const char *name, size_t len) {
 
 //FIXME unimplemented
 uid_t getuid() {
-    MAKE_SYSCALL(unimplemented, "getuid", false);
     return 0;
 }
 
@@ -105,20 +105,33 @@ pid_t getppid() {
     return MAKE_SYSCALL(getppid);
 }
 
-//FIXME unimplemented
 pid_t getpgid(pid_t pid) {
-    MAKE_SYSCALL(unimplemented, "getpgid", true);
-    return 0;
+    return MAKE_SYSCALL(getpgid, pid);
 }
 
-//FIXME unimplemented
 int setpgid(pid_t pid, pid_t pgid) {
-    return MAKE_SYSCALL(unimplemented, "setpgid", true);
+    return MAKE_SYSCALL(setpgid, pid, pgid);
+}
+
+pid_t getpgrp() {
+    return getpgid(0);
+}
+
+pid_t setpgrp() {
+    setpgid(0, 0);
+    return getpid();
+}
+
+pid_t tcgetpgrp(int fd) {
+    return MAKE_SYSCALL(tcgetpgrp, fd);
+}
+
+int tcsetpgrp(int fd, pid_t pgid) {
+    return MAKE_SYSCALL(tcsetpgrp, fd, pgid);
 }
 
 //FIXME unimplemented
 gid_t getgid(void) {
-    MAKE_SYSCALL(unimplemented, "getgid", false);
     return 0;
 }
 
@@ -128,7 +141,6 @@ int setgid(gid_t uid) {
 
 //FIXME unimplemented
 uid_t geteuid() {
-    MAKE_SYSCALL(unimplemented, "geteuid", false);
     return 0;
 }
 
@@ -138,7 +150,6 @@ int setreuid(uid_t ruid, uid_t euid) {
 
 //FIXME unimplemented
 gid_t getegid() {
-    MAKE_SYSCALL(unimplemented, "getegid", false);
     return 0;
 }
 
@@ -154,12 +165,12 @@ int pipe(int fildes[2]) {
     return MAKE_SYSCALL(unimplemented, "pipe", true);
 }
 
-int dup(int fildes) {
-    return MAKE_SYSCALL(unimplemented, "dup", true);
+int dup(int fd) {
+    return MAKE_SYSCALL(dup, fd);
 }
 
-int dup2(int fildes, int fildes2) {
-    return MAKE_SYSCALL(unimplemented, "dup2", true);
+int dup2(int fd, int fd2) {
+    return MAKE_SYSCALL(dup2, fd, fd2);
 }
 
 int access(const char *path, int amode) {
@@ -203,7 +214,8 @@ int symlink(const char *path1, const char *path2) {
 }
 
 int getdtablesize() {
-    return MAKE_SYSCALL(unimplemented, "getdtablesize", true);
+    //FIXME implement
+    return INT_MAX - 1;
 }
 
 int truncate(const char *path, off_t length) {
@@ -228,12 +240,4 @@ int nice(int incr) {
 
 int getpagesize() {
     return PAGE_SIZE;
-}
-
-pid_t tcgetpgrp(int fd) {
-    return MAKE_SYSCALL(unimplemented, "tcgetpgrp", true);
-}
-
-int tcsetpgrp(int fd, pid_t pgid) {
-    return MAKE_SYSCALL(unimplemented, "tcsetpgrp", true);
 }

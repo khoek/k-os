@@ -17,7 +17,7 @@ struct list_head {
 
 #define list_is_last(pos, head, member) (&(pos)->member == (head))
 
-#define list_next_unsafe(pos, head, member) list_entry(pos->member.next, typeof(*pos), member)
+#define list_next_unsafe(pos, head, member) list_entry((pos)->member.next, typeof(*pos), member)
 #define list_next(pos, head, member) \
   ((pos)->member.next == (head) ? NULL : list_next_unsafe(pos, head, member))
 
@@ -88,8 +88,8 @@ static inline void list_rotate_left(list_head_t *head) {
 #define LIST_FOR_EACH(pos, head) \
     for (pos = (head)->next; pos != (head); pos = pos->next)
 #define LIST_FOR_EACH_ENTRY(pos, head, member) \
-    for (pos = list_entry((head)->next, typeof(*pos), member); \
-        !list_is_last(pos, head, member);                      \
+    for (pos = list_first(head, typeof(*pos), member); \
+        !list_is_last(pos, head, member);              \
         pos = list_next_unsafe(pos, head, member))
 
 typedef struct chain_node chain_node_t;

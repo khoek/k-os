@@ -24,13 +24,8 @@
 
 #define SWITCH_INT 0x81
 
-#define MAX_NUM_FDS ((ufd_idx_t) (PAGE_SIZE / sizeof(ufd_t)))
-
-#define FREELIST_END ((uint32_t) (1 << 31))
-
-#define UFD_FLAG_CLOSING (1 << 0)
-
-#define TASK_FLAG_USER (1 << 0)
+#define UFD_INVALID ((ufd_idx_t) -1)
+#define MAX_NUM_FDS MIN(((ufd_idx_t) (PAGE_SIZE / sizeof(ufd_t))), UFD_INVALID)
 
 static pid_t pid = 0;
 
@@ -43,12 +38,36 @@ volatile bool tasking_up = false;
 static DEFINE_LIST(threads);
 static DEFINE_LIST(queued_threads);
 
+static DEFINE_LIST(tasks);
+static DEFINE_LIST(sessions);
+static DEFINE_LIST(pgroups);
+
 //Must be aquired before any task locks, used when manipulating the queue.
-//Must be aquired before the heirarchy lock.
+//It must be held whenever the heirachy is being walked.
 static DEFINE_SPINLOCK(sched_lock);
+static DEFINE_SPINLOCK(session_lock);
+static DEFINE_SPINLOCK(pgroup_lock);
 
 static DEFINE_PER_CPU(thread_t *, idle_task);
 static DEFINE_PER_CPU(uint64_t, switch_time);
+
+#define SD_NONE 0
+
+//cannot be caught or ignored
+#define SD_UNCATCHABLE (1 << 0)
+//should be delivered to kernel-mode threads (by default none are)
+#define SD_KERNEL      (1 << 1)
+
+typedef struct sig_descriptor {
+    uint32_t num;
+    uint32_t flags;
+    void (*handler)();
+} sig_descriptor_t;
+
+static struct sigaction default_sigactions[NSIG];
+static sig_descriptor_t signals[NSIG];
+
+static bool __ufdt_is_present(ufd_context_t *ufds, ufd_idx_t ufd);
 
 void sched_switch() {
     uint32_t flags;
@@ -83,31 +102,24 @@ static inline ufd_context_t * ufd_context_build() {
     ufd_context_t *ufd = kmalloc(sizeof(ufd_context_t));
     ufd->refs = 1;
     ufd->table = kmalloc(UFDT_PAGES * PAGE_SIZE);
-    ufd->list = kmalloc(UFD_LIST_PAGES * PAGE_SIZE);
-    ufd->next = 0;
     spinlock_init(&ufd->lock);
 
     for(ufd_idx_t i = 0; i < MAX_NUM_FDS - 1; i++) {
-        ufd->list[i] = i + 1;
-
         ufd->table[i].gfd = NULL;
         ufd->table[i].flags = 0;
-        ufd->table[i].refs = 0;
     }
-    ufd->list[MAX_NUM_FDS - 1] = FREELIST_END;
 
     return ufd;
 }
 
 static inline void ufd_context_destroy(ufd_context_t *ufd) {
     for(uint32_t i = 0; i < MAX_NUM_FDS; i++) {
-        if(ufd->table[i].gfd) {
+        if(__ufdt_is_present(ufd, i)) {
             gfdt_put(ufd->table[i].gfd);
         }
     }
 
     kfree(ufd->table);
-    kfree(ufd->list);
     kfree(ufd);
 }
 
@@ -115,21 +127,18 @@ static inline ufd_context_t * ufd_context_dup(ufd_context_t *src) {
     ufd_context_t *dst = kmalloc(sizeof(ufd_context_t));
     dst->refs = 1;
     dst->table = kmalloc(UFDT_PAGES * PAGE_SIZE);
-    dst->list = kmalloc(UFD_LIST_PAGES * PAGE_SIZE);
     spinlock_init(&dst->lock);
 
     uint32_t flags;
     spin_lock_irqsave(&src->lock, &flags);
 
-    dst->next = src->next;
     for(ufd_idx_t i = 0; i < MAX_NUM_FDS - 1; i++) {
-        dst->list[i] = src->list[i];
-
-        if(src->table[i].gfd) gfdt_get(src->table[i].gfd);
+        if(__ufdt_is_present(src, i)) {
+            gfdt_get(src->table[i].gfd);
+        }
 
         dst->table[i].gfd = src->table[i].gfd;
         dst->table[i].flags = src->table[i].flags;
-        dst->table[i].refs = src->table[i].refs;
     }
 
     spin_unlock_irqstore(&src->lock, flags);
@@ -186,8 +195,153 @@ static inline void put_fs_context(thread_t *t) {
     }
 }
 
+task_node_t * task_node_find(pid_t pid) {
+    uint32_t flags;
+    spin_lock_irqsave(&sched_lock, &flags);
+
+    bool found = false;
+    task_node_t *t;
+    LIST_FOR_EACH_ENTRY(t, &tasks, list) {
+        spin_lock(&t->lock);
+        if(t->pid == pid) {
+            found = true;
+        }
+        spin_unlock(&t->lock);
+
+        if(found) break;
+    }
+
+    task_node_get(t);
+
+    spin_unlock_irqstore(&sched_lock, flags);
+
+    if(!found) {
+        return NULL;
+    }
+
+    return t;
+}
+
+void session_create(task_node_t *t) {
+    psession_t *session = kmalloc(sizeof(psession_t));
+    session->leader = t;
+    spinlock_init(&session->lock);
+    list_init(&session->members);
+
+    uint32_t flags;
+    spin_lock_irqsave(&session_lock, &flags);
+
+    session_add(t, session);
+    list_add(&session->list, &sessions);
+
+    spin_unlock_irqstore(&session_lock, flags);
+}
+
+void session_add(task_node_t *new, psession_t *session) {
+    task_node_get(session->leader);
+    new->session = session;
+
+    uint32_t flags;
+    spin_lock_irqsave(&session->lock, &flags);
+    list_add(&new->psession_list, &session->members);
+    spin_unlock_irqstore(&session->lock, flags);
+}
+
+void session_rm(task_node_t *new) {
+    psession_t *session = new->session;
+
+    uint32_t flags;
+    spin_lock_irqsave(&session->lock, &flags);
+    list_rm(&new->psession_list);
+    spin_unlock_irqstore(&session->lock, flags);
+
+    task_node_put(session->leader);
+}
+
+psession_t * session_find(pid_t pid) {
+    uint32_t flags;
+    spin_lock_irqsave(&session_lock, &flags);
+
+    bool found = false;
+    psession_t *session;
+    LIST_FOR_EACH_ENTRY(session, &sessions, list) {
+        spin_lock(&session->lock);
+        if(session->leader->pid == pid) {
+            found = true;
+        }
+        spin_unlock(&session->lock);
+
+        if(found) break;
+    }
+
+    spin_unlock_irqstore(&session_lock, flags);
+
+    return found ? session : NULL;
+}
+
+void pgroup_create(task_node_t *t) {
+    pgroup_t *pg = kmalloc(sizeof(pgroup_t));
+    pg->leader = t;
+    spinlock_init(&pg->lock);
+    list_init(&pg->members);
+
+    uint32_t flags;
+    spin_lock_irqsave(&pgroup_lock, &flags);
+
+    pgroup_add(t, pg);
+    list_add(&pg->list, &pgroups);
+
+    spin_unlock_irqstore(&pgroup_lock, flags);
+}
+
+void pgroup_add(task_node_t *new, pgroup_t *pg) {
+    task_node_get(pg->leader);
+    new->pgroup = pg;
+
+    uint32_t flags;
+    spin_lock_irqsave(&pg->lock, &flags);
+    list_add(&new->pgroup_list, &pg->members);
+    spin_unlock_irqstore(&pg->lock, flags);
+}
+
+void pgroup_rm(task_node_t *new) {
+    pgroup_t *pg = new->pgroup;
+
+    uint32_t flags;
+    spin_lock_irqsave(&pg->lock, &flags);
+    list_rm(&new->pgroup_list);
+    spin_unlock_irqstore(&pg->lock, flags);
+
+    //FIXME if this emtpy now, delete it
+
+    task_node_put(pg->leader);
+}
+
+pgroup_t * pgroup_find(pid_t pid) {
+    uint32_t flags;
+    spin_lock_irqsave(&pgroup_lock, &flags);
+
+    bool found = false;
+    pgroup_t *pg;
+    LIST_FOR_EACH_ENTRY(pg, &pgroups, list) {
+        spin_lock(&pg->lock);
+        if(pg->leader->pid == pid) {
+            found = true;
+        }
+        spin_unlock(&pg->lock);
+
+        if(found) break;
+    }
+
+    spin_unlock_irqstore(&pgroup_lock, flags);
+
+    return found ? pg : NULL;
+}
+
 static inline task_node_t * task_node_build(task_node_t *parent, char **argv,
-    char **envp) {
+        char **envp) {
+
+
     task_node_t *node = kmalloc(sizeof(task_node_t));
     node->refs = 1;
     node->pid = pid++;
@@ -197,24 +351,67 @@ static inline task_node_t * task_node_build(task_node_t *parent, char **argv,
     atomic_set(&node->exit_state, TASK_RUNNING);
     spinlock_init(&node->lock);
 
-    if(parent) {
-        uint32_t flags;
-        spin_lock_irqsave(&parent->lock, &flags);
-
-        list_add(&node->child_list, &parent->children);
-
-        spin_unlock_irqstore(&parent->lock, flags);
+    node->sigtramp = (sigtramp_t) NULL;
+    for(uint32_t i = 0; i < NSIG; i++) {
+        node->sigactions[i] = default_sigactions[i];
     }
 
     list_init(&node->threads);
     list_init(&node->children);
     list_init(&node->zombies);
 
+    uint32_t flags;
+    spin_lock_irqsave(&sched_lock, &flags);
+
+    if(parent) {
+        spin_lock(&parent->lock);
+        list_add(&node->child_list, &parent->children);
+        spin_unlock(&parent->lock);
+
+        session_add(node, parent->session);
+        pgroup_add(node, parent->pgroup);
+    } else {
+        session_create(node);
+        pgroup_create(node);
+    }
+
+    list_add(&node->list, &tasks);
+
+    spin_unlock_irqstore(&sched_lock, flags);
+
     return node;
 }
 
-static inline void task_node_destroy(task_node_t *node) {
+static void task_node_destroy(task_node_t *node) {
+    panic("task_node_destroy()");
     kfree(node);
+}
+
+//assumed that we have at least one refcnt on node to begin with, else this is
+//crazy
+void task_node_get(task_node_t *node) {
+    uint32_t flags;
+    spin_lock_irqsave(&node->lock, &flags);
+
+    BUG_ON(!node->refs);
+    node->refs++;
+
+    spin_unlock_irqstore(&node->lock, flags);
+}
+
+//assumed we have a lock on node (else this is crazy)
+void task_node_put(task_node_t *node) {
+    uint32_t flags;
+    spin_lock_irqsave(&node->lock, &flags);
+
+    BUG_ON(!node->refs);
+    node->refs--;
+
+    if(!node->refs) {
+        task_node_destroy(node);
+    }
+
+    spin_unlock_irqstore(&node->lock, flags);
 }
 
 //Invoked under node->lock.
@@ -222,6 +419,10 @@ static inline void task_node_zombify(task_node_t *node) {
     //TODO when reaped invoke destroy
 
     atomic_set(&node->exit_state, TASK_EXITED);
+
+    if(node->pid == 1) {
+        panic("init exited");
+    }
 
     //Zombify ourself
     task_node_t *parent = node->parent;
@@ -305,9 +506,6 @@ static inline void put_task_node(thread_t *t) {
         uint32_t flags;
         spin_lock_irqsave(&node->lock, &flags);
         node->refs--;
-        if(!node->refs) {
-            task_node_zombify(node);
-        }
         spin_unlock_irqstore(&node->lock, flags);
     }
 }
@@ -316,11 +514,11 @@ static inline thread_t * thread_build(task_node_t *node, ufd_context_t *ufd,
         fs_context_t *fs) {
     thread_t *thread = cache_alloc(thread_cache);
     thread->state = THREAD_BUILDING;
-    thread->sig_pending = 0;
+    sigemptyset(&thread->sig_pending);
     thread->node = node;
     thread->ufd = ufd;
     thread->fs = fs;
-    thread->flags = 0;
+    thread->flags = THREAD_FLAG_KERNEL; //every thread starts of in kernel land
     thread->active = false;
     thread->kernel_stack_top = kmalloc(KERNEL_STACK_LEN);
     thread->kernel_stack_bottom = thread->kernel_stack_top + KERNEL_STACK_LEN;
@@ -349,6 +547,7 @@ thread_t * thread_fork(thread_t *t, uint32_t flags, void (*setup)(void *arg),
     task_node_t *node = task_node_build(obtain_task_node(t), NULL, NULL);
 
     thread_t *child = thread_build(node, ufd, fs);
+    child->flags |= THREAD_FLAG_FORKED;
     pl_setup_thread(child, setup, arg);
 
     copy_mem(child, t);
@@ -385,29 +584,100 @@ thread_t * create_idle_task() {
     return idler;
 }
 
-ufd_idx_t ufdt_add(uint32_t flags, file_t *gfd) {
+//FIXME XXX we need to be getting and putting the underlying file in all of the
+//ufdt_*() functions below.
+
+static bool __ufdt_is_present(ufd_context_t *ufds, ufd_idx_t ufd) {
+    return ufd < MAX_NUM_FDS && ufds->table[ufd].gfd;
+}
+
+static ufd_idx_t __ufdt_find_next(ufd_context_t *ufds) {
+    for(uint32_t idx = 0; idx < MAX_NUM_FDS; idx++) {
+        if(!__ufdt_is_present(ufds, idx)) {
+            return idx;
+        }
+    }
+    return UFD_INVALID;
+}
+
+static int32_t __ufdt_install(ufd_context_t *ufds, ufd_idx_t idx, file_t *gfd) {
+    gfdt_get(gfd);
+    ufds->table[idx].gfd = gfd;
+    ufds->table[idx].flags = 0;
+
+    return 0;
+}
+
+ufd_idx_t ufdt_add(file_t *gfd) {
     ufd_context_t *ufds = obtain_ufds(current);
 
     uint32_t f;
     spin_lock_irqsave(&ufds->lock, &f);
 
-    ufd_idx_t added = ufds->next;
-    if(added != FREELIST_END) {
-        ufds->next = ufds->list[added];
-
-        gfdt_get(gfd);
-
-        ufds->table[added].refs = 1;
-        ufds->table[added].flags = flags;
-        ufds->table[added].gfd = gfd;
+    ufd_idx_t added = __ufdt_find_next(ufds);
+    if(added != UFD_INVALID) {
+        __ufdt_install(ufds, added, gfd);
     }
 
     spin_unlock_irqstore(&ufds->lock, f);
 
-    return added == FREELIST_END ? (uint32_t) -1 : added;
+    return added;
 }
 
+static int32_t __ufdt_close(ufd_context_t *ufds, ufd_idx_t ufd) {
+    gfdt_put(ufds->table[ufd].gfd);
+    ufds->table[ufd].gfd = NULL;
+    ufds->table[ufd].flags = 0;
+
+    return 0;
+}
+
+int32_t ufdt_close(ufd_idx_t ufd) {
+    int32_t ret = 0;
+    ufd_context_t *ufds = obtain_ufds(current);
+
+    uint32_t flags;
+    spin_lock_irqsave(&ufds->lock, &flags);
+
+    if(!__ufdt_is_present(ufds, ufd)) {
+        ret = -EBADF;
+        goto out;
+    }
+    ret = __ufdt_close(ufds, ufd);
+
+out:
+    spin_unlock_irqstore(&ufds->lock, flags);
+    return ret;
+}
+
+//close if open, then install
+int32_t ufdt_replace(ufd_idx_t ufd, file_t *fd) {
+    int32_t ret;
+    ufd_context_t *ufds = obtain_ufds(current);
+
+    uint32_t f;
+    spin_lock_irqsave(&ufds->lock, &f);
+
+    if(__ufdt_is_present(ufds, ufd)) {
+        ret = __ufdt_close(ufds, ufd);
+        if(ret) {
+            goto out;
+        }
+    }
+
+    ret = __ufdt_install(ufds, ufd, fd);
+
+out:
+    spin_unlock_irqstore(&ufds->lock, f);
+    return ret;
+}
+
+//FIXME this function _is_ a race!!
 bool ufdt_valid(ufd_idx_t ufd) {
+    if(ufd >= MAX_NUM_FDS) {
+        return false;
+    }
+
     ufd_context_t *ufds = obtain_ufds(current);
 
     bool response;
@@ -422,36 +692,18 @@ bool ufdt_valid(ufd_idx_t ufd) {
     return response;
 }
 
-//thread->fd_lock is required to call this function
-static void ufdt_try_free(ufd_idx_t ufd) {
-    ufd_context_t *ufds = obtain_ufds(current);
-
-    if(!ufds->table[ufd].refs) {
-        gfdt_put(ufds->table[ufd].gfd);
-
-        ufds->table[ufd].gfd = NULL;
-        ufds->table[ufd].flags = 0;
-        ufds->list[ufd] = ufds->next;
-        ufds->next = ufd;
-    }
-}
-
 file_t * ufdt_get(ufd_idx_t ufd) {
     ufd_context_t *ufds = obtain_ufds(current);
 
-    file_t *gfd;
+    file_t *gfd = NULL;
 
     uint32_t flags;
     spin_lock_irqsave(&ufds->lock, &flags);
 
-    if(ufd > MAX_NUM_FDS) {
-        gfd = NULL;
-    } else {
+    if(__ufdt_is_present(ufds, ufd)) {
         gfd = ufds->table[ufd].gfd;
 
-        if(gfd) {
-            ufds->table[ufd].refs++;
-        }
+        //inc gfd refcnt
     }
 
     spin_unlock_irqstore(&ufds->lock, flags);
@@ -465,25 +717,7 @@ void ufdt_put(ufd_idx_t ufd) {
     uint32_t flags;
     spin_lock_irqsave(&ufds->lock, &flags);
 
-    ufds->table[ufd].refs--;
-
-    ufdt_try_free(ufd);
-
-    spin_unlock_irqstore(&ufds->lock, flags);
-}
-
-void ufdt_close(ufd_idx_t ufd) {
-    ufd_context_t *ufds = obtain_ufds(current);
-
-    uint32_t flags;
-    spin_lock_irqsave(&ufds->lock, &flags);
-
-    if(!(ufds->table[ufd].flags & UFD_FLAG_CLOSING)) {
-        ufds->table[ufd].flags |= UFD_FLAG_CLOSING;
-        ufds->table[ufd].refs--;
-
-        ufdt_try_free(ufd);
-    }
+    //FIXME dec the count of the underlying file
 
     spin_unlock_irqstore(&ufds->lock, flags);
 }
@@ -505,11 +739,14 @@ void thread_sleep_prepare() {
 static void do_wake(thread_t *t) {
     spin_lock(&t->lock);
 
-    BUG_ON(t->state != THREAD_SLEEPING);
-
-    t->state = THREAD_AWAKE;
-    if(!t->active) {
-        list_add(&t->state_list, &queued_threads);
+    // XXX don't freak out if the thread is already running. For example,
+    // we could be asking for a wake from the semaphore code, after the thread
+    // has already been asynchronously poked, for example.
+    if(t->state == THREAD_SLEEPING) {
+        t->state = THREAD_AWAKE;
+        if(!t->active) {
+            list_add(&t->queue_list, &queued_threads);
+        }
     }
 
     spin_unlock(&t->lock);
@@ -520,6 +757,17 @@ void thread_wake(thread_t *t) {
     spin_lock_irqsave(&sched_lock, &flags);
 
     do_wake(t);
+
+    spin_unlock_irqstore(&sched_lock, flags);
+}
+
+void thread_poke(thread_t *t) {
+    uint32_t flags;
+    spin_lock_irqsave(&sched_lock, &flags);
+
+    if(t->state == THREAD_SLEEPING) {
+        do_wake(t);
+    }
 
     spin_unlock_irqstore(&sched_lock, flags);
 }
@@ -553,10 +801,28 @@ void thread_exit() {
     sched_switch();
 }
 
-#define S_DIE 0
+void pgroup_send_signal(pgroup_t *pg, uint32_t sig) {
+    task_node_t *t;
+    LIST_FOR_EACH_ENTRY(t, &pg->members, pgroup_list) {
+        task_send_signal(t, sig);
+    }
+}
+
+void task_send_signal(task_node_t *t, uint32_t sig) {
+    //FIXME have returning threads poll this field, and not have to push this
+    //on them
+    if(list_empty(&t->threads)) {
+        return;
+    }
+
+    thread_send_signal(list_first(&t->threads, thread_t, thread_list), sig);
+}
 
 void thread_send_signal(thread_t *t, uint32_t sig) {
-    set_bit(&t->sig_pending, sig);
+    //FIXME interrupt waiting threads!
+
+    sigaddset(&t->sig_pending, sig);
+    thread_poke(t);
 }
 
 void task_node_exit(int32_t code) {
@@ -578,10 +844,10 @@ void task_node_exit(int32_t code) {
 
         //Perform un-graceful shootdown of all threads. In the event that it's
         //just us this is graceful, as we just invoke thread_exit() when we try
-        //to drop back to userland (as the S_DIE is processed then).
+        //to drop back to userland (as the SIGKILL is processed then).
         thread_t *t;
         LIST_FOR_EACH_ENTRY(t, &node->threads, thread_list) {
-            thread_send_signal(t, S_DIE);
+            thread_send_signal(t, SIGKILL);
         }
 
         spin_unlock(&node->lock);
@@ -641,17 +907,117 @@ void sched_interrupt_notify() {
     spin_unlock(&sched_lock);
 }
 
-void deliver_signals() {
-    check_irqs_disabled();
-
-    //FIXME implement this
-
+static bool do_invoke_sigaction(cpu_state_t *state, sig_descriptor_t *sig) {
     thread_t *me = current;
 
-    if(test_bit(&me->sig_pending, S_DIE)) {
-        thread_exit();
-        BUG();
+    //Don't deliver most signals to kernel threads
+    if(me->flags & THREAD_FLAG_KERNEL
+        && !(sig->flags & SD_KERNEL)) {
+        return false;
     }
+
+    struct sigaction *sa = &me->node->sigactions[sig->num];
+
+    //Dispatch default handlers, noting that init (pid=1) never catches
+    //and signals unless it explicitly installs handlers for them.
+    if((sa->sa_handler == SIG_DFL || sig->flags & SD_UNCATCHABLE)
+        && me->node->pid != 1) {
+        if(sig->handler) {
+            sig->handler();
+        }
+        return true;
+    }
+
+    //Is the signal currently masked?
+    if(sigismember(&me->node->sig_mask, sig->num)) {
+        return false;
+    }
+
+    sigdelset(&me->sig_pending, sig->num);
+
+    //Should we ignore the signal?
+    if(sa->sa_handler == SIG_IGN) {
+        return false;
+    }
+
+    //even if SA_SIGINFO is set, the handler pointer is stored in a union...
+    void *entry = sa->sa_handler;
+    sigset_t old_mask = current->node->sig_mask;
+    sigset_t new_mask = old_mask | sa->sa_mask;
+
+    if(sa->sa_flags & SA_ONSTACK) {
+        panic("sig - onstack unimplemented");
+    }
+
+    if(sa->sa_flags & SA_NOCLDSTOP) {
+        panic("sig - nocldstop unimplemented");
+    }
+
+    if(sa->sa_flags & SA_SIGINFO) {
+        panic("sig - siginfo unimplemented");
+    }
+
+    if(sa->sa_flags & SA_RESTART) {
+        panic("sig - restart unimplemented");
+    }
+
+    // These are linux extensions:
+    //
+    // if(sa->sa_flags & SA_NOCLDWAIT) {
+    //     panic("sig - nocldwait unimplemented");
+    // }
+    //
+    // if(sa->sa_flags & SA_RESETHAND) {
+    //     panic("sig - resethand unimplemented");
+    // }
+    //
+    // if(!(sa->sa_flags & (SA_NODEFER | SA_RESETHAND))) {
+    sigaddset(&new_mask, sig->num);
+    // }
+
+    //It is arch's job to set up the stack with all of the sigreturn data,
+    //including setting the return address to the registered sigtramp (but we
+    //pass all of the requred data).
+    current->node->sig_mask = new_mask;
+    arch_setup_sigaction(state, entry, me->node->sigtramp, old_mask);
+
+    return true;
+}
+
+void sched_deliver_signals(cpu_state_t *state) {
+    check_irqs_disabled();
+
+    if(!tasking_up) {
+        return;
+    }
+
+    //FIXME LOCK THIS
+
+    thread_t *me = current;
+    sigset_t *pending = &me->sig_pending;
+
+    //If there is no registered handler, any signal should immediately be
+    //upgraded to SIGKILL --- i.e. right here we immediately invoke
+    //thread_exit().
+    if(*pending && !me->node->sigtramp) {
+        sigemptyset(pending);
+        sigaddset(pending, SIGKILL);
+    }
+
+    for(uint32_t i = 0; i < NSIG; i++) {
+        if(sigismember(pending, signals[i].num)
+            && do_invoke_sigaction(state, &signals[i])) {
+            break;
+        }
+    }
+}
+
+bool are_signals_pending(thread_t *me) {
+    return me->sig_pending;
+}
+
+bool should_abort_slow_io() {
+    return are_signals_pending(current);
 }
 
 void thread_destroy(thread_t *t) {
@@ -670,7 +1036,7 @@ static void deactivate_thread(thread_t *t) {
         }
         case THREAD_AWAKE: {
             BUG_ON(!t->active);
-            list_add(&t->state_list, &queued_threads);
+            list_add(&t->queue_list, &queued_threads);
 
             FALLTHROUGH;
         }
@@ -683,6 +1049,7 @@ static void deactivate_thread(thread_t *t) {
             //FIXME this is garbage
 
             list_rm(&t->list);
+            list_rm(&t->thread_list);
 
             spin_unlock(&t->lock);
             spin_lock(&t->lock);
@@ -691,6 +1058,10 @@ static void deactivate_thread(thread_t *t) {
             put_fs_context(t);
             put_ufds(t);
             put_task_node(t);
+
+            if(list_empty(&t->node->threads)) {
+                task_node_zombify(t->node);
+            }
 
             spin_lock(&t->lock);
 
@@ -711,12 +1082,12 @@ static void deactivate_thread(thread_t *t) {
 //lock is already held for old
 static inline thread_t * lock_next_current(thread_t *old) {
     thread_t *t;
-    while(!list_empty(&queued_threads)) {
-        t = list_first(&queued_threads, thread_t, state_list);
+    while(tasking_up && !list_empty(&queued_threads)) {
+        t = list_first(&queued_threads, thread_t, queue_list);
         if(t != old) {
             spin_lock(&t->lock);
         }
-        list_rm(&t->state_list);
+        list_rm(&t->queue_list);
 
         switch(t->state) {
             case THREAD_AWAKE: {
@@ -804,8 +1175,8 @@ void __noreturn sched_loop() {
         percpu_up = true;
         tasking_up = true;
     } else {
-        //FIXME don't busy wait
-        while(!tasking_up);
+        //during init, the APs just fall through to the idle task here, and
+        //can never be given a real task until tasking_up = true is set.
     }
 
     do_sched_switch();
@@ -826,6 +1197,88 @@ static void switch_interrupt(interrupt_t *interrupt, void *data) {
 
     do_sched_switch();
 }
+
+static void sig_ignr() {
+    //do nothing
+}
+
+static void sig_kill() {
+    //FIXME correctly set the exit code (here and in sys__exit())
+    thread_exit();
+    BUG();
+}
+
+static void sig_core() {
+    panic("sig - core dump unimplemented");
+}
+
+static void sig_stop() {
+    panic("sig - stop unimplemented");
+}
+
+static void sig_cont() {
+    panic("sig - cont unimplemented");
+}
+
+static struct sigaction default_sigactions[NSIG] = {
+    [SIGHUP  ] = {.sa_flags = 0, .sa_handler = SIG_DFL},
+    [SIGINT  ] = {.sa_flags = 0, .sa_handler = SIG_DFL},
+    [SIGQUIT ] = {.sa_flags = 0, .sa_handler = SIG_DFL},
+    [SIGILL  ] = {.sa_flags = 0, .sa_handler = SIG_DFL},
+    [SIGTRAP ] = {.sa_flags = 0, .sa_handler = SIG_DFL},
+    [SIGABRT ] = {.sa_flags = 0, .sa_handler = SIG_DFL},
+    [SIGEMT  ] = {.sa_flags = 0, .sa_handler = SIG_DFL},
+    [SIGFPE  ] = {.sa_flags = 0, .sa_handler = SIG_DFL},
+    [SIGKILL ] = {.sa_flags = 0, .sa_handler = SIG_DFL},
+    [SIGBUS  ] = {.sa_flags = 0, .sa_handler = SIG_DFL},
+    [SIGSEGV ] = {.sa_flags = 0, .sa_handler = SIG_DFL},
+    [SIGSYS  ] = {.sa_flags = 0, .sa_handler = SIG_DFL},
+    [SIGPIPE ] = {.sa_flags = 0, .sa_handler = SIG_DFL},
+    [SIGALRM ] = {.sa_flags = 0, .sa_handler = SIG_DFL},
+    [SIGTERM ] = {.sa_flags = 0, .sa_handler = SIG_DFL},
+    [SIGURG  ] = {.sa_flags = 0, .sa_handler = SIG_DFL},
+    [SIGSTOP ] = {.sa_flags = 0, .sa_handler = SIG_DFL},
+    [SIGTSTP ] = {.sa_flags = 0, .sa_handler = SIG_DFL},
+    [SIGCONT ] = {.sa_flags = 0, .sa_handler = SIG_DFL},
+    [SIGCHLD ] = {.sa_flags = 0, .sa_handler = SIG_DFL},
+    [SIGTTIN ] = {.sa_flags = 0, .sa_handler = SIG_DFL},
+    [SIGTTOU ] = {.sa_flags = 0, .sa_handler = SIG_DFL},
+    [SIGIO   ] = {.sa_flags = 0, .sa_handler = SIG_DFL},
+    [SIGWINCH] = {.sa_flags = 0, .sa_handler = SIG_DFL},
+    [SIGUSR1 ] = {.sa_flags = 0, .sa_handler = SIG_DFL},
+    [SIGUSR2 ] = {.sa_flags = 0, .sa_handler = SIG_DFL},
+};
+
+//this order is the signal dispatch order!
+static sig_descriptor_t signals[NSIG] = {
+    {.num = SIGKILL , .flags = SD_UNCATCHABLE
+                             | SD_KERNEL     , .handler = sig_kill},
+    {.num = SIGSTOP , .flags = SD_UNCATCHABLE, .handler = sig_stop},
+    {.num = SIGHUP  , .flags = SD_NONE,        .handler = sig_kill},
+    {.num = SIGINT  , .flags = SD_NONE,        .handler = sig_kill},
+    {.num = SIGQUIT , .flags = SD_NONE,        .handler = sig_core},
+    {.num = SIGILL  , .flags = SD_NONE,        .handler = sig_core},
+    {.num = SIGTRAP , .flags = SD_NONE,        .handler = sig_core},
+    {.num = SIGABRT , .flags = SD_NONE,        .handler = sig_core},
+    {.num = SIGEMT  , .flags = SD_NONE,        .handler = sig_kill},
+    {.num = SIGFPE  , .flags = SD_NONE,        .handler = sig_core},
+    {.num = SIGBUS  , .flags = SD_NONE,        .handler = sig_core},
+    {.num = SIGSEGV , .flags = SD_NONE,        .handler = sig_kill},
+    {.num = SIGSYS  , .flags = SD_NONE,        .handler = sig_core},
+    {.num = SIGPIPE , .flags = SD_NONE,        .handler = sig_kill},
+    {.num = SIGALRM , .flags = SD_NONE,        .handler = sig_kill},
+    {.num = SIGTERM , .flags = SD_NONE,        .handler = sig_kill},
+    {.num = SIGURG  , .flags = SD_NONE,        .handler = sig_ignr},
+    {.num = SIGTSTP , .flags = SD_NONE,        .handler = sig_stop},
+    {.num = SIGCONT , .flags = SD_NONE,        .handler = sig_cont},
+    {.num = SIGCHLD , .flags = SD_NONE,        .handler = sig_ignr},
+    {.num = SIGTTIN , .flags = SD_NONE,        .handler = sig_stop},
+    {.num = SIGTTOU , .flags = SD_NONE,        .handler = sig_stop},
+    {.num = SIGIO   , .flags = SD_NONE,        .handler = sig_kill},
+    {.num = SIGWINCH, .flags = SD_NONE,        .handler = sig_ignr},
+    {.num = SIGUSR1 , .flags = SD_NONE,        .handler = sig_kill},
+    {.num = SIGUSR2 , .flags = SD_NONE,        .handler = sig_kill},
+};
 
 static char *idle_argv[] = {"kidle", NULL};
 static char *init_argv[] = {"kinit", NULL};

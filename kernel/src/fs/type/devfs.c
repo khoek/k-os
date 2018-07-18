@@ -9,26 +9,6 @@
 #include "fs/type/devfs.h"
 #include "log/log.h"
 
-typedef enum device_type {
-    CHAR_DEV,
-    BLCK_DEV,
-} device_type_t;
-
-typedef struct devfs_device {
-    list_head_t list;
-
-    char *name;
-
-    dentry_t *dentry;
-
-    device_type_t type;
-    union {
-        void *dev;
-        block_device_t *blockdev;
-        char_device_t *chardev;
-    };
-} devfs_device_t;
-
 static fs_t *devfs;
 static thread_t *devfs_task;
 static DEFINE_LIST(devfs_devices);
@@ -59,6 +39,13 @@ static ssize_t char_file_write(file_t *file, const char *buff, size_t bytes) {
     return cdev->ops->write(cdev, buff, bytes);
 }
 
+static int32_t char_file_poll(file_t *file, fpoll_data_t *fd) {
+    devfs_device_t *device = file->private;
+    char_device_t *cdev = device->chardev;
+
+    return cdev->ops->poll(cdev, fd);
+}
+
 static void char_file_close(file_t *file) {
 }
 
@@ -68,6 +55,7 @@ static file_ops_t char_file_ops = {
     .seek = char_file_seek,
     .read = char_file_read,
     .write = char_file_write,
+    .poll = char_file_poll,
 };
 
 static inode_ops_t char_inode_ops = {
@@ -85,13 +73,16 @@ static off_t block_file_seek(file_t *file, off_t off, int whence) {
 
 static ssize_t block_file_read(file_t *file, char *buff, size_t bytes) {
     //TODO implement buffered IO scheduler for block abstracted reads
-
     return -1;
 }
 
 static ssize_t block_file_write(file_t *file, const char *buff, size_t bytes) {
     //TODO implement buffered IO scheduler for block abstracted writes
+    return -1;
+}
 
+static int32_t block_file_poll(file_t *file, fpoll_data_t *fd) {
+    //TODO implement me
     return -1;
 }
 
@@ -104,6 +95,7 @@ static file_ops_t block_file_ops = {
     .seek = block_file_seek,
     .read = block_file_read,
     .write = block_file_write,
+    .poll = block_file_poll,
 };
 
 static inode_ops_t block_inode_ops = {

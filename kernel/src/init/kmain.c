@@ -18,6 +18,7 @@
 #include "fs/exec.h"
 #include "fs/type/devfs.h"
 #include "driver/console/console.h"
+#include "driver/console/tty.h"
 
 #define TTY_NAME "tty"
 
@@ -67,9 +68,12 @@ static void umain() {
         vlog_disable();
     }
 
-    ufdt_add(0, vfs_open_file(out.dentry));
-    ufdt_add(0, vfs_open_file(out.dentry));
-    ufdt_add(0, vfs_open_file(out.dentry));
+    file_t *tty_file = vfs_open_file(out.dentry);
+    ufdt_add(tty_file);
+    ufdt_add(tty_file);
+    ufdt_add(tty_file);
+
+    tty_set_pgroup(tty_file, current->node->pgroup);
 
     if(!try_load_init("/sbin/init")
         && !try_load_init("/etc/init")

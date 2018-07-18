@@ -41,22 +41,30 @@ static void ktaskd_fulfil_req(ktaskd_req_t *req) {
 static void ktaskd_spawn_pending() {
     semaphore_down(&ktaskd_semaphore);
 
+    ktaskd_req_t *req = NULL;
+
     uint32_t flags;
     spin_lock_irqsave(&ktaskd_lock, &flags);
 
-    BUG_ON(list_empty(&ktaskd_reqlist));
-
-    ktaskd_req_t *req = list_first(&ktaskd_reqlist, ktaskd_req_t, list);
-    list_rm(&req->list);
+    if(!list_empty(&ktaskd_reqlist)) {
+        req = list_first(&ktaskd_reqlist, ktaskd_req_t, list);
+        list_rm(&req->list);
+    }
 
     spin_unlock_irqstore(&ktaskd_lock, flags);
 
-    ktaskd_fulfil_req(req);
-    kfree(req);
+    if(req) {
+        ktaskd_fulfil_req(req);
+        kfree(req);
+    }
 }
 
 static void ktaskd_run(void *UNUSED(arg)) {
     irqenable();
+
+    //Do setpgrp()
+    pgroup_rm(current->node);
+    pgroup_create(current->node);
 
     while(true) {
         ktaskd_spawn_pending();

@@ -9,21 +9,22 @@
 #include "arch/gdt.h"
 #include "arch/idt.h"
 #include "bug/panic.h"
+#include "sched/sched.h"
 #include "driver/console/console.h"
+#include "driver/console/tty.h"
 #include "log/log.h"
 
-#define KEYBUFFLEN 2048
+#define KEYBUFFLEN 100
 
 #define KEYBOARD_IRQ 1
+
+#define KBD_SPECIAL_CHAR 0xE0
 
 static console_t *the_console;
 
 static uint8_t keybuf[KEYBUFFLEN];
 static DEFINE_RINGBUFF(keyrb, keybuf);
 static DEFINE_SPINLOCK(keybuff_lock);
-
-static volatile uint32_t read_waiting = 0;
-static DEFINE_SEMAPHORE(wait_semaphore, 0);
 
 static inline void keybuff_append(uint8_t code) {
     uint32_t flags;
@@ -34,27 +35,32 @@ static inline void keybuff_append(uint8_t code) {
     }
 
     ringbuff_write(&keyrb, &code, 1, uint8_t);
-    if(read_waiting) {
-        semaphore_up(&wait_semaphore);
-    }
 
     spin_unlock_irqstore(&keybuff_lock, flags);
+
+    if(code != KBD_SPECIAL_CHAR) {
+        tty_notify();
+    }
 }
 
-//read at most len bytes from the key buffer, blocking only if it is empty
+//read at most len bytes from the key buffer, NEVER blocking
 ssize_t keybuff_read(uint8_t *buff, size_t len) {
+    int32_t ret = 0;
+
     uint32_t flags;
     spin_lock_irqsave(&keybuff_lock, &flags);
+    ret = ringbuff_read(&keyrb, buff, len, uint8_t);
+    spin_unlock_irqstore(&keybuff_lock, flags);
 
-    read_waiting++;
-    while(ringbuff_is_empty(&keyrb, uint8_t)) {
-        spin_unlock_irqstore(&keybuff_lock, flags);
-        semaphore_down(&wait_semaphore);
-        spin_lock_irqsave(&keybuff_lock, &flags);
-    }
-    read_waiting--;
-    ssize_t ret = ringbuff_read(&keyrb, buff, len, uint8_t);
+    return ret;
+}
 
+bool keybuff_is_empty() {
+    bool ret = 0;
+
+    uint32_t flags;
+    spin_lock_irqsave(&keybuff_lock, &flags);
+    ret = ringbuff_is_empty(&keyrb, uint8_t);
     spin_unlock_irqstore(&keybuff_lock, flags);
 
     return ret;

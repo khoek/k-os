@@ -5,6 +5,9 @@
 
 #define EFLAGS_IF (1 << 9)
 
+//These are the only flags which may be freely modified by user mode processes.
+#define EFLAGS_USER_MASK 0x8CFF
+
 uint32_t get_eflags();
 void set_eflags(uint32_t flags);
 

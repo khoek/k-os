@@ -1,7 +1,7 @@
 #ifndef KERNEL_ARCH_SYSCALL_H
 #define KERNEL_ARCH_SYSCALL_H
 
-#define MAX_SYSCALL 256
+#define MAX_SYSCALL 1024
 
 #define SYSCALL_INT 0x80
 

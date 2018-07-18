@@ -7,23 +7,23 @@ static void syscall_handler(interrupt_t *interrupt, void *data) {
     enter_syscall();
 
     cpu_state_t *state = &interrupt->cpu;
+    uint32_t num = state->reg.eax;
 
-    if(state->reg.eax >= MAX_SYSCALL || !syscalls[state->reg.eax]) {
-        panicf("Unregistered Syscall #%u", state->reg.eax);
+    if(num >= MAX_SYSCALL || !syscalls[num]) {
+        panicf("Unregistered Syscall #%u", num);
     } else {
-        uint64_t ret = syscalls[state->reg.eax]
-          (state, state->reg.ecx, state->reg.edx, state->reg.ebx,
-            state->reg.esi, state->reg.edi);
-        /*MISSING: state->reg.ebp, state->reg.esp, state->reg.eax*/
+        uint64_t ret = syscalls[num](state, state->reg.ecx, state->reg.edx,
+            state->reg.ebx, state->reg.esi, state->reg.edi);
+        /*MISSING: state->reg.ebp, state->reg.esp, num*/
 
-        state->reg.edx = ret >> 32;
-        state->reg.eax = ret;
+        //sys__sigreturn() restores state, and doesn't return a value!
+        if(num != NSYS__SIGRETURN) {
+            state->reg.edx = ret >> 32;
+            state->reg.eax = ret;
+        }
     }
 
     leave_syscall();
-
-    //This might not return (as in S_DIE).
-    deliver_signals();
 }
 
 static INITCALL syscall_init() {

@@ -34,7 +34,7 @@ diff -ruEwN src/gcc-8.1.0/gcc/config/kos.h src/gcc-8.1.0-custom/gcc/config/kos.h
 +/* Default arguments you want when running your
 +   i686-kos-gcc/x86_64-kos-gcc toolchain */
 +#undef LIB_SPEC
-+#define LIB_SPEC "-lc -lk -lg -lk -lm" /* link against C standard library */
++#define LIB_SPEC "-lk -lc -lk -lg -lk -lm" /* link against C standard library */
 +
 +/* Files that are linked before user code.
 +   The %s tells GCC to look for these files in the library directory. */

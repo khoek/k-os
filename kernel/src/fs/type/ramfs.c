@@ -174,12 +174,20 @@ static ssize_t ramfs_file_write(file_t *file, const char *buff, size_t bytes) {
     return record_write(file, buff, bytes, file->offset);
 }
 
+static int32_t ramfs_file_poll(file_t *file, fpoll_data_t *fp) {
+    fp->readable = true;
+    fp->writable = true;
+    fp->errored = false;
+    return 0;
+}
+
 static file_ops_t ramfs_file_ops = {
-    .open   = ramfs_file_open,
-    .close  = ramfs_file_close,
-    .seek   = ramfs_file_seek,
-    .read   = ramfs_file_read,
-    .write  = ramfs_file_write,
+    .open  = ramfs_file_open,
+    .close = ramfs_file_close,
+    .seek  = ramfs_file_seek,
+    .read  = ramfs_file_read,
+    .write = ramfs_file_write,
+    .poll  = ramfs_file_poll,
 
     .iterate = simple_file_iterate,
 };

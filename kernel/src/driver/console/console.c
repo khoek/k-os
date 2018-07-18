@@ -94,15 +94,23 @@ static ssize_t console_char_read(char_device_t UNUSED(*cdev), char *buff, size_t
 static ssize_t console_char_write(char_device_t *cdev, const char *buff, size_t len) {
     console_t *con = cdev->private;
     if(!con->lockup) {
-        vram_write(cdev->private, buff, len);
+        vram_write(con, buff, len);
     }
 
     return len;
 }
 
+static ssize_t console_char_poll(char_device_t *device, fpoll_data_t *fp) {
+    fp->readable = keybuff_is_empty();
+    fp->writable = true;
+    fp->errored = false;
+    return 0;
+}
+
 static char_device_ops_t console_ops = {
     .read = console_char_read,
     .write = console_char_write,
+    .poll = console_char_poll,
 };
 
 static INITCALL console_register() {

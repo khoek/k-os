@@ -465,6 +465,11 @@ file_t * vfs_open_file(dentry_t *dentry) {
     return file;
 }
 
+int32_t vfs_close_file(file_t *file) {
+    //FIXME close file, and wait until that is done
+    return 0;
+}
+
 off_t vfs_seek(file_t *file, uint32_t off, int whence) {
     return file->ops->seek(file, off, whence);
 }
@@ -561,8 +566,12 @@ void generic_getattr(inode_t *inode, stat_t *stat) {
 }
 
 uint32_t vfs_iterate(file_t *file, dir_entry_dat_t *buff, uint32_t num) {
-  if(!file->ops->iterate) return -1;
-  return file->ops->iterate(file, buff, num);
+    if(!file->ops->iterate) return -1;
+    return file->ops->iterate(file, buff, num);
+}
+
+int32_t vfs_poll(file_t *file, fpoll_data_t *fp) {
+    return file->ops->poll(file, fp);
 }
 
 static INITCALL vfs_init() {

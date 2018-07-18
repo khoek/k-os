@@ -19,7 +19,8 @@ int tcgetattr(int fd, struct termios *t) {
 }
 
 int tcsetattr(int fd, int optact, const struct termios *t) {
-    return MAKE_SYSCALL(unimplemented, "tcsetattr", false);
+    //FIXME we silently fail here (for bash)
+    return 0;
 }
 
 int tcsendbreak(int fd, int duration) {

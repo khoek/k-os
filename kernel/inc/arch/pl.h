@@ -2,6 +2,7 @@
 #define KERNEL_ARCH_PL_H
 
 #include "common/types.h"
+#include "common/compiler.h"
 #include "arch/cpu.h"
 #include "sched/task.h"
 
@@ -18,5 +19,9 @@ void arch_free_mem(void *dir);
 void arch_thread_build(thread_t *t);
 void arch_ret_from_fork(void *arg);
 void * arch_prepare_fork(cpu_state_t *state);
+
+void arch_setup_sigaction(cpu_state_t *state, void *sighandler, void *sigtramp,
+    uint32_t restore_mask);
+void arch_setup_sigreturn(cpu_state_t *state, void *sp);
 
 #endif

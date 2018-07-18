@@ -226,9 +226,17 @@ static ssize_t spkr_char_write(char_device_t *cdev, const char *buff, size_t len
     return len;
 }
 
+static ssize_t spkr_char_poll(char_device_t *device, fpoll_data_t *fp) {
+    fp->readable = true;
+    fp->writable = true;
+    fp->errored = false;
+    return 0;
+}
+
 static char_device_ops_t spkr_ops = {
     .read = spkr_char_read,
     .write = spkr_char_write,
+    .poll = spkr_char_poll,
 };
 
 void __init pit_init() {

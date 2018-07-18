@@ -16,7 +16,9 @@
 #include "net/socket.h"
 #include "fs/vfs.h"
 #include "fs/exec.h"
+#include "driver/console/tty.h"
 #include "log/log.h"
+#include "user/select.h"
 
 syscall_t syscalls[MAX_SYSCALL] = {
 #include "shared/syscall_ents.h"
@@ -25,8 +27,8 @@ syscall_t syscalls[MAX_SYSCALL] = {
 DEFINE_SYSCALL(_exit, int32_t code) {
     task_node_exit(code);
 
-    //We should have S_DIE marked right now, which will kill us in
-    //deliver_signals().
+    //We should have SIGKILL marked right now, which will kill us in
+    //sched_deliver_signals().
 
     return 0;
 }
@@ -105,7 +107,7 @@ DEFINE_SYSCALL(open, const char *pathname, uint32_t flags, uint32_t mode) {
         if(!file || (uint32_t) file == 0xF31301) {
             BUG();
         }
-        return ufdt_add(0, file);
+        return ufdt_add(file);
     }
 
     return ret;
@@ -125,6 +127,79 @@ DEFINE_SYSCALL(close, ufd_idx_t ufd) {
     return -EINVAL;
 }
 
+static void read_in_fdset(fd_set *kern, fd_set *user) {
+    if(user) {
+        *kern = *((fd_set *) user);
+    } else {
+        FD_ZERO(&kern);
+    }
+}
+
+DEFINE_SYSCALL(select, int nfds, void *rfds, void *wfds, void *efds, struct timeval *timeout) {
+    uint64_t then = uptime(); //in millis
+    //FIXME precision
+    uint64_t waittime = timeout ? (timeout->tv_sec * MILLIS_PER_SEC)
+        + DIV_UP(timeout->tv_usec, MICROS_PER_MILLI) : 0;
+
+    fd_set rfds_in, rfds_out;
+    fd_set wfds_in, wfds_out;
+    fd_set efds_in, efds_out;
+
+    read_in_fdset(&rfds_in, rfds);
+    read_in_fdset(&wfds_in, wfds);
+    read_in_fdset(&efds_in, efds);
+    FD_ZERO(&rfds_out);
+    FD_ZERO(&wfds_out);
+    FD_ZERO(&efds_out);
+
+    uint32_t num = 0;
+    while(!num) {
+        for(uint32_t i = 0; i < (nfds < 0 ? 0 : nfds); i++) {
+            file_t *fd = ufdt_get(i);
+            if(!fd) continue;
+
+            fpoll_data_t fp;
+            int32_t ret = vfs_poll(fd, &fp);
+            if(ret < 0) {
+                panicf("poll failure! %d", ret);
+            }
+
+            if(FD_ISSET(i, &rfds_in) && fp.readable) {
+                FD_ISSET(i, &rfds_out);
+                num++;
+            }
+
+            if(FD_ISSET(i, &wfds_in) && fp.writable) {
+                FD_ISSET(i, &wfds_out);
+                num++;
+            }
+
+            if(FD_ISSET(i, &efds_in) && fp.errored) {
+                FD_ISSET(i, &efds_out);
+                num++;
+            }
+        }
+
+        if(!num) {
+            if(timeout && uptime() - then >= waittime) {
+                break;
+            }
+
+            if(are_signals_pending(current)) {
+                return -EINTR;
+            }
+            //FIXME need to set an alarm to make sure we get worken?
+            sched_suspend_pending_interrupt();
+        }
+    }
+
+    if(rfds) *((fd_set *) rfds) = rfds_out;
+    if(wfds) *((fd_set *) wfds) = wfds_out;
+    if(efds) *((fd_set *) efds) = efds_out;
+
+    return -1;
+}
+
 DEFINE_SYSCALL(socket, uint32_t family, uint32_t type, uint32_t protocol) {
     int32_t ret = -EBADF;
 
@@ -132,7 +207,7 @@ DEFINE_SYSCALL(socket, uint32_t family, uint32_t type, uint32_t protocol) {
     if(sock) {
         file_t *fd = sock_create_fd(sock);
         if(fd) {
-            ret = ufdt_add(0, fd);
+            ret = ufdt_add(fd);
             if(ret == -1) {
                 //TODO free sock and fd
             }
@@ -166,7 +241,7 @@ DEFINE_SYSCALL(accept, ufd_idx_t ufd, struct sockaddr *user_addr, socklen_t *len
         sock_t *child = sock_accept(sock);
 
         if(child) {
-            ret = ufdt_add(0, sock_create_fd(child));
+            ret = ufdt_add(sock_create_fd(child));
 
             if(user_addr) {
                 user_addr->sa_family = child->family->family;
@@ -295,13 +370,13 @@ DEFINE_SYSCALL(recv, ufd_idx_t ufd, void *user_buff, uint32_t buffsize, uint32_t
     return ret;
 }
 
-DEFINE_SYSCALL(alloc_page, void *addr)  {
+DEFINE_SYSCALL(alloc_page, uint32_t pidx)  {
     page_t *page = alloc_page(0);
-    user_map_page(current, addr, page_to_phys(page));
+    user_map_page(current, (void *) (pidx * PAGE_SIZE), page_to_phys(page));
     return 0;
 }
 
-DEFINE_SYSCALL(free_page)  {
+DEFINE_SYSCALL(free_page, uint32_t page)  {
     UNIMPLEMENTED();
 }
 
@@ -613,6 +688,185 @@ DEFINE_SYSCALL(seek, ufd_idx_t ufd, off_t off, int whence) {
     }
 
     return ret;
+}
+
+DEFINE_SYSCALL(_register_sigtramp, void (*tramp)(void *)) {
+    void (**sigtramp)(void *) = &obtain_task_node(current)->sigtramp;
+    if(*sigtramp) {
+        return -1;
+    }
+    *sigtramp = tramp;
+    return 0;
+}
+
+DEFINE_SYSCALL(_sigreturn, void *sp) {
+    arch_setup_sigreturn(state, sp);
+    return 0; //This isn't used
+}
+
+DEFINE_SYSCALL(kill, int pid, int sig) {
+    panic("syscall - kill");
+    return -ENOSYS;
+}
+
+DEFINE_SYSCALL(sigaction, int sig, const struct sigaction *restrict sa, struct sigaction *restrict sa_old) {
+    if(sig < 0 || sig > NSIG) {
+        return -EINVAL;
+    }
+
+    if(sa_old) {
+        *sa_old = obtain_task_node(current)->sigactions[sig];
+    }
+
+    if(sa) {
+        obtain_task_node(current)->sigactions[sig] = *sa;
+    }
+
+    return 0;
+}
+
+DEFINE_SYSCALL(sigprocmask, int how, const sigset_t *set, sigset_t *oset) {
+    //FIXME take action based on current->node->sig_mask
+
+    if(oset) {
+        *oset = current->node->sig_mask;
+    }
+
+    switch(how) {
+        case SIG_BLOCK: {
+            if(set) current->node->sig_mask |= *set;
+            break;
+        }
+        case SIG_UNBLOCK: {
+            if(set) current->node->sig_mask &= *set;
+            break;
+        }
+        case SIG_SETMASK: {
+            if(set) current->node->sig_mask = *set;
+            break;
+        }
+        default: return -EINVAL;
+    }
+
+    return 0;
+}
+
+DEFINE_SYSCALL(getpgid, pid_t pid) {
+    if(pid == 0 || pid == current->node->pid) {
+        return current->node->pgroup->leader->pid;
+    }
+
+    task_node_t *node = task_node_find(pid);
+    if(!node) {
+        return -ESRCH;
+    }
+
+    pid_t ret = node->pgroup->leader->pid;
+    task_node_put(node);
+    return ret;
+}
+
+DEFINE_SYSCALL(setpgid, pid_t pid, pid_t pgid) {
+    if(pid < 0 || pgid < 0) {
+        return -EINVAL;
+    }
+
+    task_node_t *node;
+
+    //determine the node having its group changed
+    if(pid != 0 && pid != current->node->pid) {
+        node = task_node_find(pid);
+        task_node_t *cur = node;
+
+        //verify that node is us or our child
+        while(cur) {
+            if(cur->pid == current->node->pid) {
+                break;
+            }
+            cur = cur->parent;
+        }
+
+        if(!cur) {
+            return -EACCES;
+        }
+
+        //FIXME make sure that this child has not execve'd after fork before
+        //this!
+    } else {
+        node = current->node;
+        task_node_get(current->node);
+    }
+
+    if(!pgid) pgid = node->pid;
+
+    if(pgid == 0 || pgid == node->pid) {
+        pgroup_rm(node);
+        pgroup_create(node);
+    } else {
+        panicf("unimplemented - setpgid %d %d", pid, pgid);
+    }
+
+    task_node_put(node);
+    return 0;
+}
+
+DEFINE_SYSCALL(tcgetpgrp, ufd_idx_t ufd) {
+    //FIXME CHECK THIS IS A TTY!
+
+    file_t *fd = ufdt_get(ufd);
+    if(!fd) {
+        return -EBADF;
+    }
+
+    return tty_get_pgroup(fd)->leader->pid;
+}
+
+DEFINE_SYSCALL(tcsetpgrp, ufd_idx_t ufd, pid_t pgid) {
+    //FIXME CHECK THIS IS A TTY!
+
+    file_t *fd = ufdt_get(ufd);
+    if(!fd) {
+        return -EBADF;
+    }
+
+    pgroup_t *pg = pgroup_find(pgid);
+    if(!pg) {
+        return -EPERM;
+    }
+
+    tty_set_pgroup(fd, pg);
+
+    return 0;
+}
+
+DEFINE_SYSCALL(dup, ufd_idx_t ufd) {
+    file_t *fd = ufdt_get(ufd);
+    if(!fd) {
+        return -EBADF;
+    }
+
+    return ufdt_add(fd);
+}
+
+DEFINE_SYSCALL(dup2, ufd_idx_t ufd, ufd_idx_t ufd2) {
+    file_t *fd = ufdt_get(ufd);
+    if(!fd) {
+        return -EBADF;
+    }
+
+    if(ufd != ufd2) {
+        ufdt_replace(ufd2, fd);
+    }
+
+    return ufd2;
+}
+
+DEFINE_SYSCALL(gettimeofday, struct timeval *tv) {
+    //FIXME sanitize tv ptr
+    uint64_t now = uptime();
+    tv->tv_sec = now / MILLIS_PER_SEC;
+    tv->tv_usec = (now % MILLIS_PER_SEC) * MICROS_PER_MILLI;
+    return 0;
 }
 
 DEFINE_SYSCALL(unimplemented, char *msg, bool fatal) {

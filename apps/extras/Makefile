@@ -114,7 +114,7 @@ $(PUBLISHED_BASH): $(ARTIFACT_BASH)
 
 $(PUBLISHED_COREUTILS): $(ARTIFACT_COREUTILS)
 	@mkdir -p $(APPSPATH)/build/bin
-	-cp -r $(BINDIR)/$(NAME_COREUTILS)/bin/. $(APPSPATH)/build/bin
+	cp -f -r $(BINDIR)/$(NAME_COREUTILS)/bin/. $(APPSPATH)/build/bin
 
 clean-all: clean-dl clean-src clean-build clean-dist
 

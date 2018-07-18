@@ -12,10 +12,10 @@ DOCDIR := doc
 
 ASFLAGS := --32
 
-CFLAGS := -Wall -Wextra -Werror -Wno-unused-parameter                         \
-	-Wno-missing-field-initializers -Wno-unused-function                        \
+CFLAGS := -Wall -Wextra -Werror -Wno-missing-field-initializers \
+  -Wno-unused-parameter -Wno-unused-function -Wno-unused-value                 \
 	-m32 -I$(INCDIR) -std=gnu99 -fno-strict-aliasing -nostdlib -ffreestanding -c \
-	-g -O3 -include "common/config.h"
+	-g -include "common/config.h"
 
 LDFLAGS := -m32 -nostdlib -ffreestanding -g -O3 -Wl,--build-id=none
 
@@ -26,6 +26,8 @@ CCSRCS := $(shell find -L $(SRCDIR) -type f -name "*.c")
 CCOBJS := $(patsubst $(SRCDIR)/%.c,$(OBJDIR)/%.o,$(CCSRCS))
 
 OBJS := $(ASOBJS) $(CCOBJS)
+
+LIBS := -static-libgcc -lgcc
 
 LDSCRIPTSRC := $(SRCDIR)/arch/linker.ld.pp
 LDSCRIPT := $(OBJDIR)/arch/linker.ld
@@ -49,7 +51,7 @@ $(LDSCRIPT): $(LDSCRIPTSRC)
 
 $(KBINARY): $(OBJS) $(LDSCRIPT)
 	@echo "      ld  $@"
-	@$(KCC) $(LDFLAGS) -T $(LDSCRIPT) -o $@ $(OBJS)
+	@$(KCC) $(LDFLAGS) -T $(LDSCRIPT) -o $@ $(OBJS) $(LIBS)
 
 clean:
 	rm -rf $(OBJDIR)
