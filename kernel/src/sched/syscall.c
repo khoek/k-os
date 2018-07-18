@@ -374,7 +374,8 @@ DEFINE_SYSCALL(alloc_page, uint32_t pidx)  {
 }
 
 DEFINE_SYSCALL(free_page, uint32_t page)  {
-    UNIMPLEMENTED();
+    //FIXME implement me
+    return 0;
 }
 
 struct dirent {
