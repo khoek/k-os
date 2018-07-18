@@ -148,6 +148,7 @@ static bool dhcp_parse_options(dhcp_options_t *opts, void *packet, uint16_t len)
                 break;
             }
             default: {
+                ptr += opt_len;
                 kprintf("dhcp - unknown option: %u", opt);
                 break;
             }
