@@ -178,7 +178,7 @@ static inline int32_t PTR_ERR(void *ptr) {
 }
 
 static inline bool IS_ERR(void *ptr) {
-	return ((uint32_t) ptr) >= ((uint32_t) MAX_ERRNO);
+	return ((uint32_t) ptr) >= ((uint32_t) (-((int32_t) MAX_ERRNO)));
 }
 
 #endif
