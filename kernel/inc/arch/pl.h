@@ -4,7 +4,13 @@
 #include "common/types.h"
 #include "common/compiler.h"
 #include "arch/cpu.h"
+#include "arch/gdt.h"
 #include "sched/task.h"
+
+//returns true if the cpu state corresponds to a usermode task
+static bool pl_is_usermode(cpu_state_t *state) {
+    return state->exec.cs == (SEL_USER_CODE | SPL_USER);
+}
 
 void context_switch(thread_t *t);
 

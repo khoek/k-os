@@ -129,12 +129,15 @@ void interrupt_dispatch(interrupt_t *interrupt) {
 
     eoi_handler(interrupt->vector);
 
-    sched_try_resched();
 
-    //This might not return (as in SIGKILL).
-    //FIXME call deliver_signals() after every interrupt where we are returning
-    //to a user task.
-    sched_deliver_signals(&interrupt->cpu);
+		//Only dispatch signals if we are returning to the user process! (We could
+		//be in the kernel on their time for a number of reasons.)
+    if(pl_is_usermode(&interrupt->cpu)) {
+				//This might not return, e.g. in the case of should_die being marked.
+				sched_deliver_signals(&interrupt->cpu);
+		}
+
+    sched_try_resched();
 }
 
 void idt_init() {
