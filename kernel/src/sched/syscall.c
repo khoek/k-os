@@ -19,13 +19,14 @@
 #include "driver/console/tty.h"
 #include "log/log.h"
 #include "user/select.h"
+#include "user/wait.h"
 
 syscall_t syscalls[MAX_SYSCALL] = {
 #include "shared/syscall_ents.h"
 };
 
-DEFINE_SYSCALL(_exit, int32_t code) {
-    task_node_exit(code);
+DEFINE_SYSCALL(_exit, uint32_t code) {
+    task_node_exit(code, ECAUSE_RQST);
 
     //We should have SIGKILL marked right now, which will kill us in
     //sched_deliver_signals().
@@ -538,8 +539,6 @@ static task_node_t * reap_zombie(task_node_t *node) {
     return zombie;
 }
 
-#define WSTATE_EXITED (1 << 8)
-
 static task_node_t * find_child(task_node_t *me, pid_t pid) {
     task_node_t *o;
     LIST_FOR_EACH_ENTRY(o, &me->children, child_list) {
@@ -583,7 +582,10 @@ DEFINE_SYSCALL(waitpid, pid_t pid, int *stat_loc, int options) {
             }
         }
 
-        if(stat_loc) *stat_loc = WSTATE_EXITED | zombie->exit_code;
+        if(stat_loc) {
+            *stat_loc = MK_STATCODE(zombie->exit_code, zombie->exit_cause);
+        }
+
         cpid = zombie->pid;
     } else if (pid > 0) {
         task_node_t *child = find_child(node, pid);

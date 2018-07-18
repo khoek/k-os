@@ -85,6 +85,11 @@ typedef struct pgroup {
     list_head_t list;
 } pgroup_t;
 
+//These codes are defined to be compatible with the libc
+#define ECAUSE_RQST 0x00 //exit requested
+#define ECAUSE_SIG  0x01 //exit due to signal
+#define EFLAG_CORE  0x80  //exit included core dump
+
 typedef struct task_node {
     spinlock_t lock;
 
@@ -98,6 +103,7 @@ typedef struct task_node {
 
     atomic_t exit_state;
     uint32_t exit_code;
+    uint8_t exit_cause;
 
     sigtramp_t sigtramp;
     struct sigaction sigactions[NSIG];
@@ -183,8 +189,8 @@ thread_t * thread_fork(thread_t *t, uint32_t flags, void (*setup)(void *arg), vo
 
 void task_node_get(task_node_t *node);
 void task_node_put(task_node_t *node);
-void task_node_exit(int32_t code);
 task_node_t * task_node_find(pid_t pid);
+void task_node_exit(uint32_t code, uint8_t exit_cause);
 
 void session_create(task_node_t *t);
 void session_add(task_node_t *new, psession_t *session);

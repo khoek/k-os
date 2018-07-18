@@ -61,7 +61,7 @@ static DEFINE_PER_CPU(uint64_t, switch_time);
 typedef struct sig_descriptor {
     uint32_t num;
     uint32_t flags;
-    void (*handler)();
+    void (*handler)(uint32_t num);
 } sig_descriptor_t;
 
 static struct sigaction default_sigactions[NSIG];
@@ -831,15 +831,21 @@ void thread_send_signal(thread_t *t, uint32_t sig) {
     thread_poke(t);
 }
 
-void task_node_exit(int32_t code) {
+//sig_caused indicated whether code contains the honest process exit code,
+//or instead is the number of the signal which caused termination.
+void task_node_exit(uint32_t code, uint8_t exit_cause) {
     thread_t *me = current;
 
+    //FIXME lock me! just as we should everywhere!
     task_node_t *node = obtain_task_node(me);
     BUG_ON(!node);
     node->exit_code = code;
+    node->exit_cause = exit_cause;
 
-    //FIXME don't do this (maybe)
-    irqdisable();
+    //task_node_ensure_not_exiting() acquires a lock on success, so disable irqs
+    //for now.
+    uint32_t flags;
+    irqsave(&flags);
 
     //Only allow one thread to commence the exit process (and aquire the
     //node->lock).
@@ -858,6 +864,8 @@ void task_node_exit(int32_t code) {
 
         spin_unlock(&node->lock);
     }
+
+    irqstore(flags);
 }
 
 void sched_try_resched() {
@@ -940,7 +948,7 @@ static bool do_invoke_sigaction(cpu_state_t *state, sig_descriptor_t *sig) {
     if((sa->sa_handler == SIG_DFL || sig->flags & SD_UNCATCHABLE)
         && me->node->pid != 1) {
         if(sig->handler) {
-            sig->handler();
+            sig->handler(sig->num);
         }
         return true;
     }
@@ -1215,20 +1223,20 @@ static void switch_interrupt(interrupt_t *interrupt, void *data) {
     do_sched_switch();
 }
 
-static void sig_ignr() {
+static void sig_ignr(uint32_t num) {
     //do nothing
 }
 
-static void sig_kill() {
+static void sig_kill(uint32_t num) {
     //FIXME correctly set the exit code (here and in sys__exit())
-    task_node_exit(1);
+    task_node_exit(num, ECAUSE_SIG);
 }
 
-static void sig_core() {
+static void sig_core(uint32_t num) {
     panic("sig - core dump unimplemented");
 }
 
-static void sig_stop() {
+static void sig_stop(uint32_t num) {
     panic("sig - stop unimplemented");
 }
 
