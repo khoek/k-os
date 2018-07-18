@@ -11,6 +11,11 @@ struct processor_arch {
     uint32_t acpi_id;
 };
 
+extern uint32_t percpu_data_start;
+extern uint32_t percpu_data_end;
+
+static inline volatile void * get_percpu_ptr();
+
 #define DEFINE_PER_CPU(type, name) \
     type __attribute__ ((section(".data.percpu"))) __percpu_##name
 
@@ -35,6 +40,12 @@ struct processor_arch {
 
 #define current get_percpu_unsafe(current_task)
 
+typedef struct thread thread_t;
+
+DECLARE_PER_CPU(thread_t *, current_task);
+DECLARE_PER_CPU(uint32_t, locks_held);
+DECLARE_PER_CPU(list_head_t, lock_list);
+
 #include "common/compiler.h"
 #include "common/asm.h"
 #include "common/list.h"
@@ -43,13 +54,6 @@ struct processor_arch {
 #include "arch/idt.h"
 #include "sched/proc.h"
 #include "sched/task.h"
-
-DECLARE_PER_CPU(thread_t *, current_task);
-DECLARE_PER_CPU(uint32_t, locks_held);
-DECLARE_PER_CPU(list_head_t, lock_list);
-
-extern uint32_t percpu_data_start;
-extern uint32_t percpu_data_end;
 
 static inline volatile void * get_percpu_ptr() {
     void *ptr;

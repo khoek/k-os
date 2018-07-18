@@ -17,8 +17,18 @@
 #define THREAD_EXITED   3
 #define THREAD_IDLE     4
 
+//thread runs with kernel privilege level
+#define THREAD_FLAG_KERNEL (1 << 0)
+//thread has resulted from a fork, and execve() has not yet been called
+//FIXME implement clearing this
+#define THREAD_FLAG_FORKED (1 << 1)
+//thread is waiting in a semaphore
+#define THREAD_FLAG_INSEM  (1 << 2)
+
 typedef struct task_node task_node_t;
 typedef struct thread thread_t;
+typedef struct psession psession_t;
+typedef struct pgroup pgroup_t;
 
 #include "common/types.h"
 #include "common/list.h"
@@ -31,14 +41,6 @@ typedef struct thread thread_t;
 #include "fs/fd.h"
 #include "fs/vfs.h"
 #include "user/signal.h"
-
-//thread runs with kernel privilege level
-#define THREAD_FLAG_KERNEL (1 << 0)
-//thread has resulted from a fork, and execve() has not yet been called
-//FIXME implement clearing this
-#define THREAD_FLAG_FORKED (1 << 1)
-//thread is waiting in a semaphore
-#define THREAD_FLAG_INSEM  (1 << 2)
 
 typedef uint32_t ufd_idx_t;
 
@@ -211,5 +213,9 @@ file_t * ufdt_get(ufd_idx_t ufd);
 void ufdt_put(ufd_idx_t ufd);
 
 void __init root_task_init(void *umain);
+
+//FIXME FIXME HEADER SOUP
+
+#include "sync/semaphore-post.h"
 
 #endif
