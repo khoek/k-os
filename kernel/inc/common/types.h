@@ -167,4 +167,18 @@ typedef uint32_t ino_t;
 #define ESTRPIPE 143	/* Streams pipe error */
 #define EWOULDBLOCK EAGAIN	/* Operation would block */
 
+#define MAX_ERRNO 143
+
+static inline void * ERR_PTR(int32_t error) {
+	return (void *) error;
+}
+
+static inline int32_t PTR_ERR(void *ptr) {
+	return (int32_t) ptr;
+}
+
+static inline bool IS_ERR(void *ptr) {
+	return ((uint32_t) ptr) >= ((uint32_t) MAX_ERRNO);
+}
+
 #endif
