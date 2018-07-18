@@ -340,8 +340,6 @@ pgroup_t * pgroup_find(pid_t pid) {
 
 static inline task_node_t * task_node_build(task_node_t *parent, char **argv,
         char **envp) {
-
-
     task_node_t *node = kmalloc(sizeof(task_node_t));
     node->refs = 1;
     node->pid = pid++;
@@ -514,7 +512,9 @@ static inline thread_t * thread_build(task_node_t *node, ufd_context_t *ufd,
         fs_context_t *fs) {
     thread_t *thread = cache_alloc(thread_cache);
     thread->state = THREAD_BUILDING;
+    thread->should_die = false;
     sigemptyset(&thread->sig_pending);
+
     thread->node = node;
     thread->ufd = ufd;
     thread->fs = fs;
@@ -788,7 +788,7 @@ void thread_schedule(thread_t *t) {
 
 //Final thread cleanup will occur in the scheduler running on another stack,
 //so that the current one can be freed.
-void thread_exit() {
+static void thread_die() {
     thread_t *me = current;
 
     //We're never coming back, so disable interrupts.
@@ -799,6 +799,12 @@ void thread_exit() {
     spin_unlock(&me->lock);
 
     sched_switch();
+}
+
+static void thread_mark_die(thread_t *t) {
+    spin_lock_irq(&t->lock);
+    t->should_die = true;
+    spin_unlock(&t->lock);
 }
 
 void pgroup_send_signal(pgroup_t *pg, uint32_t sig) {
@@ -843,11 +849,11 @@ void task_node_exit(int32_t code) {
         atomic_set(&node->exit_state, TASK_EXITING);
 
         //Perform un-graceful shootdown of all threads. In the event that it's
-        //just us this is graceful, as we just invoke thread_exit() when we try
-        //to drop back to userland (as the SIGKILL is processed then).
+        //just us this is graceful, as we just invoke thread_die() when we try
+        //to drop back to userland (as the should_die flag is processed then).
         thread_t *t;
         LIST_FOR_EACH_ENTRY(t, &node->threads, thread_list) {
-            thread_send_signal(t, SIGKILL);
+            thread_mark_die(t);
         }
 
         spin_unlock(&node->lock);
@@ -857,8 +863,19 @@ void task_node_exit(int32_t code) {
 void sched_try_resched() {
     check_no_locks_held();
 
-    if(tasking_up && (!current || get_percpu(switch_time) <= uptime()
-        || current->state != TASK_RUNNING)) {
+    if(!tasking_up) {
+        return;
+    }
+
+    thread_t *me = current;
+
+    //This is how threads get removed from circulation
+    if(me->should_die) {
+        thread_die();
+    }
+
+    if(!me || get_percpu(switch_time) <= uptime()
+        || me->state != THREAD_AWAKE) {
         sched_switch();
     }
 }
@@ -998,7 +1015,7 @@ void sched_deliver_signals(cpu_state_t *state) {
 
     //If there is no registered handler, any signal should immediately be
     //upgraded to SIGKILL --- i.e. right here we immediately invoke
-    //thread_exit().
+    //thread_die().
     if(*pending && !me->node->sigtramp) {
         sigemptyset(pending);
         sigaddset(pending, SIGKILL);
@@ -1204,8 +1221,7 @@ static void sig_ignr() {
 
 static void sig_kill() {
     //FIXME correctly set the exit code (here and in sys__exit())
-    thread_exit();
-    BUG();
+    task_node_exit(1);
 }
 
 static void sig_core() {

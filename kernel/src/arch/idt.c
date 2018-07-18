@@ -129,7 +129,6 @@ void interrupt_dispatch(interrupt_t *interrupt) {
 
     eoi_handler(interrupt->vector);
 
-
 		//Only dispatch signals if we are returning to the user process! (We could
 		//be in the kernel on their time for a number of reasons.)
     if(pl_is_usermode(&interrupt->cpu)) {

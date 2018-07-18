@@ -139,6 +139,7 @@ typedef struct thread {
     //Thread-local data (read/write):
     int32_t state;
     sigset_t sig_pending;
+    bool should_die;
 
     //architecture-specific execution state
     arch_thread_data_t arch;
@@ -179,7 +180,6 @@ thread_t * create_idle_task();
 void spawn_kernel_task(char *name, void (*main)(void *arg), void *arg);
 
 thread_t * thread_fork(thread_t *t, uint32_t flags, void (*setup)(void *arg), void *arg);
-void thread_exit();
 
 void task_node_get(task_node_t *node);
 void task_node_put(task_node_t *node);
