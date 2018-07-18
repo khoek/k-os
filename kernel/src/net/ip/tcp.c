@@ -612,18 +612,24 @@ static sock_t * tcp_accept(sock_t *sock) {
         tcp_data_listen_t *data = sock->private;
 
         if(sock->flags & SOCK_FLAG_SHUT_RDWR) {
-            //FIXME errno = EINVAL
+            child = ERR_PTR(-EINVAL); //FIXME is this a sensible error code
         } else {
 accept_retry:
             spin_unlock_irqstore(&port_lock, flags);
-            semaphore_down(&data->accept_semaphore);
+
+            if(!try_semaphore_down_while_condition(&data->accept_semaphore,
+                !are_signals_pending(current))) {
+                child = ERR_PTR(-EINTR);
+                goto out_noportlock;
+            }
+
             spin_lock_irqsave(&port_lock, &flags);
 
             uint32_t flags2;
             spin_lock_irqsave(&data->lock, &flags2);
 
             if(sock->flags & SOCK_FLAG_SHUT_RDWR) {
-                //FIXME errno = EINVAL
+                child = ERR_PTR(-EINVAL); //FIXME is this a sensible error code
             } else {
                 if(list_empty(&data->children)) {
                     spin_unlock_irqstore(&data->lock, flags2);
@@ -641,11 +647,11 @@ accept_retry:
             spin_unlock_irqstore(&data->lock, flags2);
         }
     } else {
-        //FIXME errno = EINVAL
+        child = ERR_PTR(-EINVAL); //FIXME is this a sensible error code
     }
 
     spin_unlock_irqstore(&port_lock, flags);
-
+out_noportlock:
     return child;
 }
 

@@ -237,7 +237,9 @@ DEFINE_SYSCALL(accept, ufd_idx_t ufd, struct sockaddr *user_addr, socklen_t *len
         sock_t *sock = gfd_to_sock(fd);
         sock_t *child = sock_accept(sock);
 
-        if(child) {
+        if(IS_ERR(child)) {
+            ret = PTR_ERR(child);
+        } else {
             ret = ufdt_add(sock_create_fd(child));
 
             if(user_addr) {
@@ -246,8 +248,6 @@ DEFINE_SYSCALL(accept, ufd_idx_t ufd, struct sockaddr *user_addr, socklen_t *len
                 *len = child->family->addr_len;
             }
         }
-
-        ufdt_put(ufd);
     }
 
     return ret;

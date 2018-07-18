@@ -877,6 +877,9 @@ void sched_try_resched(bool is_user) {
 
     //This is how threads get removed from circulation. Here we make sure we
     //aren't about to kill interrupted kernel code, instead of usermode code.
+    //FIXME currently, this prevents kernel-mode tasks from ever exiting.
+    //We really only care about whether returning from this funciton would cause
+    //a return back into other kernel handler code, or an honest task.
     if(me->should_die && is_user) {
         thread_die();
     }
