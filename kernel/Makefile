@@ -15,7 +15,7 @@ ASFLAGS := --32
 CFLAGS := -Wall -Wextra -Werror -Wno-missing-field-initializers \
   -Wno-unused-parameter -Wno-unused-function -Wno-unused-value                 \
 	-m32 -I$(INCDIR) -std=gnu99 -fno-strict-aliasing -nostdlib -ffreestanding -c \
-	-g -include "common/config.h"
+	-O3 -g -include "common/config.h"
 
 LDFLAGS := -m32 -nostdlib -ffreestanding -g -O3 -Wl,--build-id=none
 
