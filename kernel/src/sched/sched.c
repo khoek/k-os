@@ -825,8 +825,6 @@ void task_send_signal(task_node_t *t, uint32_t sig) {
 }
 
 void thread_send_signal(thread_t *t, uint32_t sig) {
-    //FIXME interrupt waiting threads!
-
     sigaddset(&t->sig_pending, sig);
     thread_poke(t);
 }
