@@ -129,14 +129,16 @@ void interrupt_dispatch(interrupt_t *interrupt) {
 
     eoi_handler(interrupt->vector);
 
+		bool is_user = pl_is_usermode(&interrupt->cpu);
+
 		//Only dispatch signals if we are returning to the user process! (We could
 		//be in the kernel on their time for a number of reasons.)
-    if(pl_is_usermode(&interrupt->cpu)) {
+    if(is_user) {
 				//This might not return, e.g. in the case of should_die being marked.
 				sched_deliver_signals(&interrupt->cpu);
 		}
 
-    sched_try_resched();
+    sched_try_resched(is_user);
 }
 
 void idt_init() {

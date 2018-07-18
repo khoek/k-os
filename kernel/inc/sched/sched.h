@@ -20,7 +20,7 @@ void thread_wake(thread_t *task);
 void thread_send_signal(thread_t *t, uint32_t sig);
 
 void sched_switch();
-void sched_try_resched();
+void sched_try_resched(bool is_user);
 
 #define wait_for_condition(C)                                            \
     ({while(!(C)) {sched_suspend_pending_interrupt();};true;})

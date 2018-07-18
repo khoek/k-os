@@ -866,7 +866,7 @@ void task_node_exit(uint32_t code, uint8_t exit_cause) {
     irqstore(flags);
 }
 
-void sched_try_resched() {
+void sched_try_resched(bool is_user) {
     check_no_locks_held();
 
     if(!tasking_up) {
@@ -875,8 +875,9 @@ void sched_try_resched() {
 
     thread_t *me = current;
 
-    //This is how threads get removed from circulation
-    if(me->should_die) {
+    //This is how threads get removed from circulation. Here we make sure we
+    //aren't about to kill interrupted kernel code, instead of usermode code.
+    if(me->should_die && is_user) {
         thread_die();
     }
 
