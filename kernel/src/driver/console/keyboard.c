@@ -66,21 +66,23 @@ bool keybuff_is_empty() {
     return ret;
 }
 
-#define CTRL_REG 0x64
-#define ENCR_REG 0x60
+#define CMD_REG 0x64
+#define DATA_REG 0x60
 
-#define CTRL_STATUS_INBUF (1 << 1)
+//the buffers are only one byte, so full means data present
+#define STATUS_OUTBUF_FULL (1 << 0)
+#define STATUS_INBUF_FULL  (1 << 1)
 
-uint8_t encr_read() {
-    //FIXME potential infinite loop?
-    while(inb(CTRL_REG) & CTRL_STATUS_INBUF) {
-        //wait
+void keyboard_poll() {
+    if(!(inb(CMD_REG) & STATUS_OUTBUF_FULL)) {
+        return;
     }
-    return inb(ENCR_REG);
+
+    keybuff_append(inb(DATA_REG));
 }
 
 static void handle_keyboard(interrupt_t *interrupt, void *data) {
-    keybuff_append(encr_read());
+    keyboard_poll();
 }
 
 void keyboard_init(console_t *console) {
