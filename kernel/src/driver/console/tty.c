@@ -317,7 +317,9 @@ static char_device_ops_t tty_ops = {
 static tty_t *master;
 
 void tty_notify() {
-    BUG_ON(!master);
+    if(!master) {
+        return;
+    }
 
     uint32_t flags;
     spin_lock_irqsave(&master->lock, &flags);
