@@ -4,6 +4,7 @@
 #include "bug/debug.h"
 #include "arch/proc.h"
 #include "arch/mmu.h"
+#include "arch/bios.h"
 #include "sched/task.h"
 
 pdir_t init_page_directory ALIGN(PAGE_SIZE);
@@ -144,6 +145,7 @@ void * __init mmu_init(phys_addr_t kernel_end, phys_addr_t malloc_start) {
     loadcr3(kvirt_to_phys(&init_page_directory));
 
     //Immediately fix the pointers to the console and symbol tables.
+    bios_early_remap();
     console_early_remap();
     debug_remap();
 

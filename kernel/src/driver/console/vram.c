@@ -19,11 +19,73 @@
 #define ASCII_BACKSPACE '\x8'
 #define ASCII_TAB       '\x9'
 
+#define PORTOFF_ADDR 0
+#define PORTOFF_DATA 1
+
+#define REG_CURSOR_START 0x0A
+#define REG_CURSOR_END   0x0B
+#define REG_CURSOR_HI    0x0E
+#define REG_CURSOR_LO    0x0F
+
+static inline void _select_reg(console_t *con, uint8_t reg) {
+    outb(con->port + PORTOFF_ADDR, reg);
+}
+
+static inline uint8_t _get_val(console_t *con) {
+    return inb(con->port + PORTOFF_DATA);
+}
+
+static inline void _put_val(console_t *con, uint8_t val) {
+    outb(con->port + PORTOFF_DATA, val);
+}
+
+static inline void set_reg(console_t *con, uint8_t reg, uint8_t val) {
+    _select_reg(con, reg);
+    _put_val(con, val);
+}
+
+//sets the bits indicated by mask of VGA register reg to (val & mask)
+static inline void set_reg_bits(console_t *con, uint8_t reg, uint8_t mask,
+    uint8_t val) {
+    _select_reg(con, reg);
+    uint8_t prev_val = 0;
+    if(mask != 0xFF) {
+        prev_val = _get_val(con);
+    }
+    _put_val(con, (prev_val & ~mask) | (val & mask));
+}
+
+#define _CURSOR_BLINK_ENABLE (1 << 6)
+#define _CURSOR_SPEED_SLOW (0 << 5)
+#define _CURSOR_SPEED_FAST (1 << 5)
+
+//valid options for "blink" below:
+#define CURSOR_BLINK_OFF  (0)
+#define CURSOR_BLINK_SLOW ((_CURSOR_BLINK_ENABLE | _CURSOR_SPEED_SLOW))
+#define CURSOR_BLINK_FAST ((_CURSOR_BLINK_ENABLE | _CURSOR_SPEED_SLOW))
+
+//Specifies the top and bottom scanlines for the drawing of the cursor (0-15),
+//along with timing and blink information.
+static void cursor_enable(console_t *con, uint8_t top_scanline, uint8_t bot_scanline, uint8_t blink) {
+    set_reg_bits(con, REG_CURSOR_START, 0x7F, (top_scanline & 0x1F)
+                                            | (blink        & 0x60));
+    set_reg_bits(con, REG_CURSOR_END  , 0x1F, (bot_scanline & 0x1F));
+}
+
+static void do_refresh_cursor(console_t *con) {
+    uint16_t pos = con->row * CONSOLE_WIDTH + con->col;
+    set_reg_bits(con, REG_CURSOR_LO, 0xFF, (uint8_t) (pos & 0xFF));
+    set_reg_bits(con, REG_CURSOR_HI, 0x3F, (uint8_t) ((pos >> 8) & 0xFF));
+}
+
 static void do_clear(console_t *con) {
+    con->row = 0;
+    con->col = 0;
     for(uint32_t i = 0; i < CONSOLE_WIDTH * CONSOLE_HEIGHT; i++) {
         con->vram[i * 2] = ' ';
         con->vram[i * 2 + 1] = con->color;
     }
+    do_refresh_cursor(con);
 }
 
 static void do_erase(console_t *con, bool to_end) {
@@ -40,14 +102,6 @@ static void do_erase(console_t *con, bool to_end) {
         cstart = dir == 1 ? 0 : CONSOLE_WIDTH - 1;
         rstart += dir;
     }
-}
-
-static void do_refresh_cursor(console_t *con) {
-    outb(con->port, 0x0e);
-    outb(con->port + 1, ((con->row * CONSOLE_WIDTH + con->col) >> 8) & 0xff);
-
-    outb(con->port, 0x0f);
-    outb(con->port + 1, (con->row * CONSOLE_WIDTH + con->col) & 0xff);
 }
 
 static void cursor_up(console_t *con, uint32_t amt) {
@@ -393,6 +447,8 @@ void __init vram_early_init(console_t *console) {
     console->escseq_buff_front = 0;
     console->vram = (void *) BIOS_VRAM;
     console->port = bda_getw(BDA_VRAM_PORT);
+
+    cursor_enable(console, 14, 15, CURSOR_BLINK_SLOW);
 
     vram_clear(con_global);
 }

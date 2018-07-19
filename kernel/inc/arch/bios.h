@@ -16,6 +16,7 @@
 
 #include "common/types.h"
 #include "common/math.h"
+#include "init/initcall.h"
 
 #define VRAM_PAGES (DIV_UP(VRAM_END - VRAM_START, PAGE_SIZE))
 
@@ -36,5 +37,7 @@ static inline uint32_t bda_getl(uint32_t off) {
 static inline void bda_putl(uint32_t off, uint32_t val) {
     *((volatile uint32_t *) (bios_bda_ptr + off)) = val;
 }
+
+void __init bios_early_remap();
 
 #endif

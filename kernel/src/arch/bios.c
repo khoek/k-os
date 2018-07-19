@@ -2,11 +2,8 @@
 #include "arch/bios.h"
 #include "mm/mm.h"
 
-uint8_t *bios_bda_ptr;
+uint8_t *bios_bda_ptr = (void *) BIOS_BDA;
 
-static INITCALL bios_init() {
+void __init bios_early_remap() {
     bios_bda_ptr = map_page(BIOS_BDA);
-    return 0;
 }
-
-early_initcall(bios_init);
