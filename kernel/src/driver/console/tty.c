@@ -248,11 +248,6 @@ static ssize_t populate_rb(tty_t *tty) {
 
 //read at most len available bytes, or block if none are avaiable
 static ssize_t tty_char_read(char_device_t *cdev, char *buff, size_t len) {
-    //manually poll the keyboard in case its buffer is full and so an intterrupt
-    //never comes in.
-    //FIXME that this is here is a consequence of the terrible hack below
-    keyboard_poll();
-
     tty_t *tty = cdev->private;
 
     uint32_t flags;
