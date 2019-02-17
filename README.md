@@ -43,6 +43,12 @@ K-OS is a C kernel, with the exception of the required architecture-specific ass
     * SysRq support
 
 ## Compiling
+
+The build system is handwritten, and fetches and builds the entire toolchain for you. Just run `make` in the project root directory to fetch and build everything (parallel builds with `make -j 8` are much faster and fine). The build system will prompt you when you don't have required utilities (like bison, or flex) installed or they can't be found. A burnable ISO will be emitted as (by default) `dist/image/package/cdrom.iso`.
+
+To run/test the kernel in a QEMU virtual machine use `make run` in the project root directory (something like `apt install qemu-system-x86`, in order to provide `qemu-system-i586` is required).
+
+### Configuration options
 Currently K-OS accepts the following optional configuration options:
 
 <table>
@@ -62,7 +68,7 @@ To enable/disable these options edit the "kernel/config.h" file.
 
 Where not explicitly indicated otherwise, all files are licensed under the following terms:
 
-    Copyright (c) 2018, Keeley Hoek
+    Copyright (c) 2019, Keeley Hoek
     All rights reserved.
 
     Redistribution and use in source and binary forms, with or without modification,
