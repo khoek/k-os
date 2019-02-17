@@ -1,8 +1,6 @@
 ROOTPATH ?= $(shell readlink -f ..)
 include $(ROOTPATH)/Makefile.config
 
-############# TODO CHECK LIBCSTARTDIR is being output correct
-
 DLDIR := $(TOOLCHAINPATH)/dl
 SRCDIR := $(TOOLCHAINPATH)/src
 PATCHDIR := $(TOOLCHAINPATH)/patch
@@ -61,10 +59,10 @@ BISON := $(shell command -v bison 2> /dev/null)
 FLEX := $(shell command -v flex 2> /dev/null)
 
 ifndef BISON
-    $(error "'bison' not available, please install it")
+    $(error 'bison' not available, please install it (or set BISON=xxx))
 endif
 ifndef FLEX
-    $(error "'flex' not available, please install it")
+    $(error 'flex' not available, please install it (or set FLEX=xxx))
 endif
 
 FLAG_DIST_BUILT := .flag.dist-built
