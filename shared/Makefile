@@ -13,11 +13,12 @@ KERNELSRCS :=
 LIBKSRCS := syscall_hooks.S
 
 RESSRCS := $(shell find -L $(RESDIR) -type f -name "*")
+RESOBJS := $(patsubst $(RESDIR)/%,$(BUILDDIR)/%,$(RESSRCS))
 OBJS := $(addprefix $(BUILDDIR)/$(SHAREDINCDIR)/shared/, $(INCS)) $(addprefix $(BUILDDIR)/$(SHAREDSRCDIR)/kernel/shared/, $(KERNELSRCS)) $(addprefix $(BUILDDIR)/$(SHAREDSRCDIR)/libk/shared/, $(LIBKSRCS))
 
-all: $(OBJS)
+all: $(RESOBJS) $(OBJS)
 
-$(RESSRCS): $(BUILDDIR)/% : $(RESDIR)/%
+$(RESOBJS): $(BUILDDIR)/% : $(RESDIR)/%
 	@echo "      cp  $< $@"
 	@mkdir -p $(shell dirname $@)
 	@cp $< $@
