@@ -11,7 +11,7 @@ OBJDIR := build
 SRCS := $(shell find -L $(SRCDIR) -type f -name "*")
 OBJS := $(patsubst $(SRCDIR)/%,$(OBJDIR)/%,$(SRCS))
 
-all: $(IMAGE)
+all: $(DISTPKGDIR)/$(IMAGE)
 
 $(OBJDIR)/$(ROOTRAMFS): $(APPSPATH)/$(ROOTRAMFS)
 	@echo "      cp  $< -> $@"
@@ -28,10 +28,11 @@ $(OBJS): $(OBJDIR)/% : $(SRCDIR)/%
 	@mkdir -p $(shell dirname $@)
 	@cp -r $< $@
 
-$(IMAGE): $(OBJS) $(OBJDIR)/$(ROOTRAMFS) $(OBJDIR)/$(KBINARY)
+$(DISTPKGDIR)/$(IMAGE): $(OBJS) $(OBJDIR)/$(ROOTRAMFS) $(OBJDIR)/$(KBINARY)
 	@echo "      mkimage"
+	@mkdir -p $(shell dirname $@)
 	@grub-mkrescue -o $@ $(OBJDIR)
 
 clean:
+	rm -rf $(DISTPKGDIR)
 	rm -rf $(OBJDIR)
-	rm -f $(IMAGE)

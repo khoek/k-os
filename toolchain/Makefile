@@ -55,8 +55,8 @@ export AUTOMAKE := $(ARTIFACT_AUTOMAKE)
 export ACLOCAL := $(TOOLCHAINBINPATH)/bin/aclocal
 export MAKEINFO := true
 
-BISON := $(shell command -v bison 2> /dev/null)
-FLEX := $(shell command -v flex 2> /dev/null)
+BISON ?= $(shell command -v bison 2> /dev/null)
+FLEX ?= $(shell command -v flex 2> /dev/null)
 
 ifndef BISON
     $(error 'bison' not available, please install it (or set BISON=xxx))

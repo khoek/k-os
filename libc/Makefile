@@ -17,6 +17,11 @@ export OBJCOPY_FOR_TARGET := $(TOOLCHAINBINPATH)/bin/$(TARGET)-objcopy
 export OBJDUMP_FOR_TARGET := $(TOOLCHAINBINPATH)/bin/$(TARGET)-objdump
 export READELF_FOR_TARGET := $(TOOLCHAINBINPATH)/bin/$(TARGET)-readelf
 
+AUTOM4TE ?= $(shell command -v autom4te 2> /dev/null)
+ifndef AUTOM4TE
+    $(error 'autom4te' not available, please install it (or set AUTOM4TE=xxx))
+endif
+
 WGETFLAGS := -c
 
 # These versions CANNOT be higher: automake requires perl version <= 5.22,

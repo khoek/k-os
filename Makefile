@@ -78,9 +78,6 @@ clean: clean-run
 	$(MAKE) -C apps clean
 	$(MAKE) -C dist clean
 
-clean-run:
-	@rm -rf $(HDD)
-
 clean-aux: clean-libc clean-toolchain
 
 clean-libc:
@@ -89,16 +86,11 @@ clean-libc:
 clean-toolchain:
 	$(MAKE) -C toolchain clean
 
-$(HDD):
-	@echo "      dd  $(HDD)"
-	@dd if=/dev/zero of=$(HDD) count=64000 bs=1k 2>&1
-	@parted $(HDD) -s -- mklabel msdos > /dev/null 2>&1
-	@parted $(HDD) -s -- mkpartfs primary fat32 1 -0 > /dev/null 2>&1
+clean-run:
+	$(MAKE) -C dist clean-run
 
-run: dist $(HDD)
-	@echo "      qemu"
-	@$(QEMU) $(QEMUARGS)
+run: dist
+	$(MAKE) -C dist run
 
-debug: dist $(HDD)
-	@echo "      qemu"
-	@$(QEMU) -s -S $(QEMUARGS)
+debug: dist
+	$(MAKE) -C dist debug
