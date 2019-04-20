@@ -742,8 +742,14 @@ static void do_wake(thread_t *t) {
     // XXX don't freak out if the thread is already running. For example,
     // we could be asking for a wake from the semaphore code, after the thread
     // has already been asynchronously poked, for example.
-    if(t->state == THREAD_SLEEPING) {
-        t->state = THREAD_AWAKE;
+    if(t->state != THREAD_AWAKE) {
+        // Only mark as awake if we were sleeping --- we could have been
+        // killed while asleep, for example, so persist the state in that
+        // case. Exited threads are cleaned up in the core queued_threads loop.
+        if(t->state == THREAD_SLEEPING) {
+            t->state = THREAD_AWAKE;
+        }
+
         if(!t->active) {
             list_add(&t->queue_list, &queued_threads);
         }
@@ -920,7 +926,9 @@ void sched_interrupt_notify() {
 
     thread_t *t;
     LIST_FOR_EACH_ENTRY(t, &poll_threads, poll_list) {
-        BUG_ON(t->state != THREAD_SLEEPING);
+        // Note: t could already be THREAD_AWAKE, for example if it was woken up
+        // by some other mechanism. do_wake gracefully deals with this case,
+        // by doing nothing.
         suspended_threads--;
         do_wake(t);
     }
