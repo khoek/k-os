@@ -12,6 +12,7 @@ jobs:
     runs-on: ubuntu-18.04
 
     steps:
+    - name: checkout repository
     - uses: actions/checkout@v2
 
     - name: prepare tools
@@ -29,7 +30,8 @@ jobs:
     - name: build operating system distribution
       run: make dist
 
-    - uses: actions/upload-artifact@v1
+    - name: archive image
+      uses: actions/upload-artifact@v1
       with:
         name: os-image
         path: dist/image/package/cdrom.iso
