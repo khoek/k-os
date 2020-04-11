@@ -1,46 +1,26 @@
-# K-OS [![Build Status](https://travis-ci.org/khoek/k-os.svg?branch=master)](https://travis-ci.org/khoek/k-os)
+# K-OS ![C/C++ CI](https://github.com/khoek/k-os/workflows/C/C++%20CI/badge.svg)
 
-An operating system written by Keeley Hoek as a hobby. It was inspired by Charlie Somerville's [JSOS](https://github.com/charliesome/JSOS).
+A UNIX-like operating system written by Keeley Hoek as a hobby. It was inspired by Charlie Somerville's [JSOS](https://github.com/charliesome/JSOS).
 
 K-OS is a C kernel, with the exception of the required architecture-specific assembly code.
 
 ## Features
 
+* Multiprocessor support
+* Multitasking scheduler subsystem, C signals, POSIX system calls
+* Userspace: Newlib port to K-OS, auto-builds `bash` and `coreutils`
+* Memory Managment subsystem: Page Frame Allocator/Cache Allocator/Page Mapping Manipulation
+* Drivers: PCI/SATA/PATA/Keyboard/E1000 (Intel 825xx) Ethernet Driver/PIT
+* Disk/Filesystem subsystem: Disk label support (MSDOS, GPT)/Partition support (FAT32)
+* Network subsystem: DHCP support and 4 layer packet switch
+     * Link layer (Ethernet)
+     * Network layer (IP, ARP)
+     * Transport layer (TCP, UDP)
+     * Application layer (ICMP, NBNS)
+* Device subsystem: Unified Bus, Device and Driver APIs
+* Time subsystem: Clock and Timer APIs
 * Multiboot 1 compliant
-* Memory Managment subsystem
-    * Page Frame Allocator
-    * Cache Allocator
-    * Page Mapping Manipulation
-* Drivers
-    * PIT
-    * PCI
-    * Keyboard
-    * SATA
-    * PATA
-    * E1000 (Intel 825xx) Ethernet Driver
-* Time subsystem
-    * Clock and Timer APIs
-* Device subsystem
-    * Unified Bus, Device and Driver APIs
-* Disk/Filesystem subsystem (functional, in progress)
-    * Disk label support (MSDOS, GPT)
-    * Partition support (FAT32)
-* Network subsystem (functional, in progress)
-    * DHCP support
-    * 4 layer packet switch
-        * Link layer (Ethernet)
-        * Network layer (IP, ARP)
-        * Transport layer (TCP, UDP)
-        * Application layer (ICMP, NBNS)
-* Scheduler subsystem (functional, in progress)
-    * Multitasking
-    * System Calls (POSIX, in progress)
-        * Process control (exit, fork, etc.)
-        * Filesystem access (open, close, read, write, etc.)
-        * Network access (socket, send, recv, etc.)
-* Misc:
-    * Profiler
-    * SysRq support
+* Misc: Profiler, SysRq support
 
 ## Compiling
 
@@ -54,11 +34,11 @@ Currently K-OS accepts the following optional configuration options:
 <table>
     <tr>
         <td>CONFIG_DEBUG_BUGCHECKS</td>
-        <td>Enable system-wide bugchecks which are normally compiled into the kernel, and other debugging information.</td>
+        <td>Compile system-wide bugchecks into the kernel, and other debugging information.</td>
     </tr>
     <tr>
         <td>CONFIG_DEBUG_MM</td>
-        <td>Enable particularly expensive MM-related bugchecks</td>
+        <td>Enable particularly expensive MM-related bugchecks.</td>
     </tr>
 </table>
 
@@ -68,7 +48,7 @@ To enable/disable these options edit the "kernel/config.h" file.
 
 Where not explicitly indicated otherwise, all files are licensed under the following terms:
 
-    Copyright (c) 2019, Keeley Hoek
+    Copyright (c) 2020, Keeley Hoek
     All rights reserved.
 
     Redistribution and use in source and binary forms, with or without modification,

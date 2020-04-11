@@ -1,0 +1,29 @@
+name: C/C++ CI
+
+on:
+  push:
+    branches: [ master ]
+  pull_request:
+    branches: [ master ]
+
+jobs:
+  build:
+    name: ubuntu-18.04-gcc-9
+    runs-on: ubuntu-18.04
+
+    steps:
+    - uses: actions/checkout@v2
+
+    - name: prepare tools
+      run: sudo apt install bison flex xorriso
+
+    - name: build toolchain
+      run: make aux
+
+    - name: build operating system
+      run: make all
+      
+    - uses: actions/upload-artifact@v1
+      with:
+        name: os-image
+        path: dist/image/package/cdrom.iso
