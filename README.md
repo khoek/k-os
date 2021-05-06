@@ -1,6 +1,6 @@
 # K-OS ![C/C++ CI](https://github.com/khoek/k-os/workflows/C/C++%20CI/badge.svg)
 
-A UNIX-like operating system written by Keeley Hoek as a hobby. It was inspired by Charlie Somerville's [JSOS](https://github.com/charliesome/JSOS).
+A UNIX-like operating system written by Keeley Hoek as a hobby. It was inspired by Hailey Somerville's [JSOS](https://github.com/charliesome/JSOS).
 
 K-OS is a C kernel, with the exception of the required architecture-specific assembly code.
 
